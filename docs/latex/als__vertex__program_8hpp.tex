@@ -1,0 +1,64 @@
+\hypertarget{als__vertex__program_8hpp}{\section{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-vertex\-\_\-program.hpp File Reference}
+\label{als__vertex__program_8hpp}\index{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-vertex\-\_\-program.\-hpp@{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-vertex\-\_\-program.\-hpp}}
+}
+
+
+This file describes the vertex program for the alternating least squares (A\-L\-S) matrix factorization algorithm. See \hyperlink{classals__vertex__program}{als\-\_\-vertex\-\_\-program} for description of the A\-L\-S Algorithm.  
+
+
+{\ttfamily \#include $<$Eigen/\-Dense$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structvertex__data}{vertex\-\_\-data}
+\begin{DoxyCompactList}\small\item\em the vertex data type which contains the latent factor. \end{DoxyCompactList}\item 
+struct \hyperlink{structedge__data}{edge\-\_\-data}
+\begin{DoxyCompactList}\small\item\em The edge data stores the entry in the matrix. \end{DoxyCompactList}\item 
+class \hyperlink{classgather__type}{gather\-\_\-type}
+\begin{DoxyCompactList}\small\item\em The graph loader function is a line parser used for distributed graph construction. \end{DoxyCompactList}\item 
+class \hyperlink{classals__vertex__program}{als\-\_\-vertex\-\_\-program}
+\item 
+struct \hyperlink{structerror__aggregator}{error\-\_\-aggregator}
+\item 
+struct \hyperlink{structprediction__saver}{prediction\-\_\-saver}
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als__vertex__program_8hpp_abff3f3130a5bb5fee0702765ecec0a47}{typedef Eigen\-::\-Vector\-Xd {\bfseries vec\-\_\-type}}\label{als__vertex__program_8hpp_abff3f3130a5bb5fee0702765ecec0a47}
+
+\item 
+\hypertarget{als__vertex__program_8hpp_adf6fad225baca18a7d6f1173263ada20}{typedef Eigen\-::\-Matrix\-Xd {\bfseries mat\-\_\-type}}\label{als__vertex__program_8hpp_adf6fad225baca18a7d6f1173263ada20}
+
+\item 
+\hypertarget{als__vertex__program_8hpp_ab9cfd2cad1698282b6c7fd7f7e7fd459}{typedef \\*
+\hyperlink{structgraphlab_1_1distributed__graph}{graphlab\-::distributed\-\_\-graph}\\*
+$<$ \hyperlink{structvertex__data}{vertex\-\_\-data}, \hyperlink{structedge__data}{edge\-\_\-data} $>$ \hyperlink{als__vertex__program_8hpp_ab9cfd2cad1698282b6c7fd7f7e7fd459}{graph\-\_\-type}}\label{als__vertex__program_8hpp_ab9cfd2cad1698282b6c7fd7f7e7fd459}
+
+\begin{DoxyCompactList}\small\item\em The graph type is defined in terms of the vertex and edge data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als__vertex__program_8hpp_a713562b4f44b2663241a3dd6292f0dab}{\hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{graph\-\_\-type\-::vertex\-\_\-type} \hyperlink{als__vertex__program_8hpp_a713562b4f44b2663241a3dd6292f0dab}{get\-\_\-other\-\_\-vertex} (\hyperlink{structgraphlab_1_1_graph_lab_edge_wrapper}{graph\-\_\-type\-::edge\-\_\-type} \&\hyperlink{structedge}{edge}, const \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{graph\-\_\-type\-::vertex\-\_\-type} \&vertex)}\label{als__vertex__program_8hpp_a713562b4f44b2663241a3dd6292f0dab}
+
+\begin{DoxyCompactList}\small\item\em Given a vertex and an edge return the other vertex in the edge. \end{DoxyCompactList}\item 
+\hypertarget{als__vertex__program_8hpp_afb0b8a4655197699932baa2bac0cc465}{double \hyperlink{als__vertex__program_8hpp_afb0b8a4655197699932baa2bac0cc465}{extract\-\_\-l2\-\_\-error} (const \hyperlink{structgraphlab_1_1_graph_lab_edge_wrapper}{graph\-\_\-type\-::edge\-\_\-type} \&\hyperlink{structedge}{edge})}\label{als__vertex__program_8hpp_afb0b8a4655197699932baa2bac0cc465}
+
+\begin{DoxyCompactList}\small\item\em Given an edge compute the error associated with that edge. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This file describes the vertex program for the alternating least squares (A\-L\-S) matrix factorization algorithm. See \hyperlink{classals__vertex__program}{als\-\_\-vertex\-\_\-program} for description of the A\-L\-S Algorithm. Copyright (c) 2009 Carnegie Mellon University. All rights reserved.
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at \begin{DoxyVerb}http://www.apache.org/licenses/LICENSE-2.0
+\end{DoxyVerb}
+ \begin{DoxyVerb}Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an "AS
+IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+express or implied.  See the License for the specific language
+governing permissions and limitations under the License.
+\end{DoxyVerb}
+
+
+For more about this software visit\-: \begin{DoxyVerb} http://www.graphlab.ml.cmu.edu\end{DoxyVerb}
+ 

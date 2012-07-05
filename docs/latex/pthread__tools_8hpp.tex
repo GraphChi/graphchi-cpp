@@ -1,0 +1,73 @@
+\hypertarget{pthread__tools_8hpp}{\section{src/util/pthread\-\_\-tools.hpp File Reference}
+\label{pthread__tools_8hpp}\index{src/util/pthread\-\_\-tools.\-hpp@{src/util/pthread\-\_\-tools.\-hpp}}
+}
+{\ttfamily \#include $<$cstdlib$>$}\\*
+{\ttfamily \#include $<$memory.\-h$>$}\\*
+{\ttfamily \#include $<$pthread.\-h$>$}\\*
+{\ttfamily \#include $<$semaphore.\-h$>$}\\*
+{\ttfamily \#include $<$sched.\-h$>$}\\*
+{\ttfamily \#include $<$signal.\-h$>$}\\*
+{\ttfamily \#include $<$sys/time.\-h$>$}\\*
+{\ttfamily \#include $<$vector$>$}\\*
+{\ttfamily \#include $<$cassert$>$}\\*
+{\ttfamily \#include $<$list$>$}\\*
+{\ttfamily \#include $<$iostream$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classgraphchi_1_1mutex}{graphchi\-::mutex}
+\item 
+class \hyperlink{classgraphchi_1_1conditional}{graphchi\-::conditional}
+\item 
+class \hyperlink{classgraphchi_1_1semaphore}{graphchi\-::semaphore}
+\item 
+class \hyperlink{classgraphchi_1_1spinrwlock}{graphchi\-::spinrwlock}
+\item 
+union {\bfseries graphchi\-::spinrwlock\-::rwticket}
+\item 
+class \hyperlink{classgraphchi_1_1rwlock}{graphchi\-::rwlock}
+\item 
+class \hyperlink{classgraphchi_1_1barrier}{graphchi\-::barrier}
+\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \hyperlink{namespacegraphchi}{graphchi}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{pthread__tools_8hpp_ad022064435f5624d1112e6dded65456a}{\#define {\bfseries \-\_\-\-P\-O\-S\-I\-X\-\_\-\-S\-P\-I\-N\-\_\-\-L\-O\-C\-K\-S}~-\/1}\label{pthread__tools_8hpp_ad022064435f5624d1112e6dded65456a}
+
+\item 
+\hypertarget{pthread__tools_8hpp_af18b4423b3fbe3bbc8e1fba580e9f959}{\#define {\bfseries S\-P\-I\-N\-L\-O\-C\-K\-\_\-\-S\-U\-P\-P\-O\-R\-T\-E\-D}~0}\label{pthread__tools_8hpp_af18b4423b3fbe3bbc8e1fba580e9f959}
+
+\item 
+\hypertarget{pthread__tools_8hpp_a97c020c88ee892bb5a3055d5a68c9788}{\#define {\bfseries atomic\-\_\-xadd}(P, V)~\-\_\-\-\_\-sync\-\_\-fetch\-\_\-and\-\_\-add((P), (V))}\label{pthread__tools_8hpp_a97c020c88ee892bb5a3055d5a68c9788}
+
+\item 
+\hypertarget{pthread__tools_8hpp_a2ecfcce98539a0b972d6fa2586c4e67f}{\#define {\bfseries cmpxchg}(P, O, N)~\-\_\-\-\_\-sync\-\_\-val\-\_\-compare\-\_\-and\-\_\-swap((P), (O), (N))}\label{pthread__tools_8hpp_a2ecfcce98539a0b972d6fa2586c4e67f}
+
+\item 
+\hypertarget{pthread__tools_8hpp_a45a583ebc7ce181c15688c871f955e98}{\#define {\bfseries atomic\-\_\-inc}(P)~\-\_\-\-\_\-sync\-\_\-add\-\_\-and\-\_\-fetch((P), 1)}\label{pthread__tools_8hpp_a45a583ebc7ce181c15688c871f955e98}
+
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacegraphchi_a86d970062f7c0596b53faaabd29cf9a8}{typedef mutex \hyperlink{namespacegraphchi_a86d970062f7c0596b53faaabd29cf9a8}{graphchi\-::spinlock}}\label{namespacegraphchi_a86d970062f7c0596b53faaabd29cf9a8}
+
+\begin{DoxyCompactList}\small\item\em if spinlock not supported, it is typedef it to a mutex. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacegraphchi_a06eafe9d38f82c61515fbcb151361af0}{void {\bfseries graphchi\-::prefetch\-\_\-range} (void $\ast$addr, size\-\_\-t len)}\label{namespacegraphchi_a06eafe9d38f82c61515fbcb151361af0}
+
+\item 
+\hypertarget{namespacegraphchi_a7cae7ee17128428446762964e0710b47}{void {\bfseries graphchi\-::prefetch\-\_\-range\-\_\-write} (void $\ast$addr, size\-\_\-t len)}\label{namespacegraphchi_a7cae7ee17128428446762964e0710b47}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+A collection of utilities for threading 

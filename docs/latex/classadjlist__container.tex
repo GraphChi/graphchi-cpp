@@ -1,0 +1,64 @@
+\hypertarget{classadjlist__container}{\section{adjlist\-\_\-container Class Reference}
+\label{classadjlist__container}\index{adjlist\-\_\-container@{adjlist\-\_\-container}}
+}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classadjlist__container_a236081fd44719d380ad8b48116366745}{void {\bfseries clear} ()}\label{classadjlist__container_a236081fd44719d380ad8b48116366745}
+
+\item 
+void \hyperlink{classadjlist__container_ac43be3ce9e2e0f19cc1d52e13f766e28}{extend\-\_\-pivotrange} (vid\-\_\-t en)
+\item 
+int \hyperlink{classadjlist__container_a01e1226beec003fdff368951031804f9}{grab\-\_\-adj} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ uint32\-\_\-t, uint32\-\_\-t $>$ \&v)
+\item 
+\hypertarget{classadjlist__container_a2cd6ffb88256e51ca1a6b52b6e344a05}{int {\bfseries acount} (vid\-\_\-t pivot)}\label{classadjlist__container_a2cd6ffb88256e51ca1a6b52b6e344a05}
+
+\item 
+int \hyperlink{classadjlist__container_aa9956e2b1bdbd885ec58037d84febef6}{intersection\-\_\-size} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ uint32\-\_\-t, uint32\-\_\-t $>$ \&v, vid\-\_\-t pivot, int start\-\_\-i)
+\item 
+\hypertarget{classadjlist__container_aee04887c7a6764ad18b38ff29712df6f}{bool {\bfseries is\-\_\-pivot} (vid\-\_\-t vid)}\label{classadjlist__container_aee04887c7a6764ad18b38ff29712df6f}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classadjlist__container_a1aa05230b7526183677420251be8daf1}{vid\-\_\-t {\bfseries pivot\-\_\-st}}\label{classadjlist__container_a1aa05230b7526183677420251be8daf1}
+
+\item 
+\hypertarget{classadjlist__container_aa0c56c40c2bb02337cfce73d7ca1b45e}{vid\-\_\-t {\bfseries pivot\-\_\-en}}\label{classadjlist__container_aa0c56c40c2bb02337cfce73d7ca1b45e}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classadjlist__container_ac43be3ce9e2e0f19cc1d52e13f766e28}{\index{adjlist\-\_\-container@{adjlist\-\_\-container}!extend\-\_\-pivotrange@{extend\-\_\-pivotrange}}
+\index{extend\-\_\-pivotrange@{extend\-\_\-pivotrange}!adjlist_container@{adjlist\-\_\-container}}
+\subsubsection[{extend\-\_\-pivotrange}]{\setlength{\rightskip}{0pt plus 5cm}void adjlist\-\_\-container\-::extend\-\_\-pivotrange (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{en}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classadjlist__container_ac43be3ce9e2e0f19cc1d52e13f766e28}
+Extend the interval of pivot vertices to en. \hypertarget{classadjlist__container_a01e1226beec003fdff368951031804f9}{\index{adjlist\-\_\-container@{adjlist\-\_\-container}!grab\-\_\-adj@{grab\-\_\-adj}}
+\index{grab\-\_\-adj@{grab\-\_\-adj}!adjlist_container@{adjlist\-\_\-container}}
+\subsubsection[{grab\-\_\-adj}]{\setlength{\rightskip}{0pt plus 5cm}int adjlist\-\_\-container\-::grab\-\_\-adj (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ uint32\-\_\-t, uint32\-\_\-t $>$ \&}]{v}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classadjlist__container_a01e1226beec003fdff368951031804f9}
+Grab pivot's adjacency list into memory. \hypertarget{classadjlist__container_aa9956e2b1bdbd885ec58037d84febef6}{\index{adjlist\-\_\-container@{adjlist\-\_\-container}!intersection\-\_\-size@{intersection\-\_\-size}}
+\index{intersection\-\_\-size@{intersection\-\_\-size}!adjlist_container@{adjlist\-\_\-container}}
+\subsubsection[{intersection\-\_\-size}]{\setlength{\rightskip}{0pt plus 5cm}int adjlist\-\_\-container\-::intersection\-\_\-size (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ uint32\-\_\-t, uint32\-\_\-t $>$ \&}]{v, }
+\item[{vid\-\_\-t}]{pivot, }
+\item[{int}]{start\-\_\-i}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classadjlist__container_aa9956e2b1bdbd885ec58037d84febef6}
+Compute size of the relevant intersection of v and a pivot If the adjacency list sizes are not too different, use 'merge'-\/type of operation to compute size intersection.
+
+\begin{DoxyVerb}                Otherwise, use linear/binary search.\end{DoxyVerb}
+
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/\hyperlink{trianglecounting_8cpp}{trianglecounting.\-cpp}\end{DoxyCompactItemize}

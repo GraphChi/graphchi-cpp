@@ -1,0 +1,55 @@
+\hypertarget{metrics_8hpp}{\section{src/metrics/metrics.hpp File Reference}
+\label{metrics_8hpp}\index{src/metrics/metrics.\-hpp@{src/metrics/metrics.\-hpp}}
+}
+{\ttfamily \#include $<$cstring$>$}\\*
+{\ttfamily \#include $<$map$>$}\\*
+{\ttfamily \#include $<$vector$>$}\\*
+{\ttfamily \#include $<$limits$>$}\\*
+{\ttfamily \#include $<$assert.\-h$>$}\\*
+{\ttfamily \#include $<$sys/time.\-h$>$}\\*
+{\ttfamily \#include \char`\"{}util/pthread\-\_\-tools.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}util/cmdopts.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structgraphchi_1_1metrics__entry}{graphchi\-::metrics\-\_\-entry}
+\item 
+class \hyperlink{classgraphchi_1_1imetrics__reporter}{graphchi\-::imetrics\-\_\-reporter}
+\item 
+class \hyperlink{classgraphchi_1_1metrics}{graphchi\-::metrics}
+\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \hyperlink{namespacegraphchi}{graphchi}
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum {\bfseries metrictype} \{ \\*
+{\bfseries R\-E\-A\-L}, 
+{\bfseries I\-N\-T\-E\-G\-E\-R}, 
+{\bfseries T\-I\-M\-E}, 
+{\bfseries S\-T\-R\-I\-N\-G}, 
+\\*
+{\bfseries V\-E\-C\-T\-O\-R}
+ \}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Metrics. 

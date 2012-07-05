@@ -1,0 +1,63 @@
+\hypertarget{structedge__data}{\section{edge\-\_\-data Struct Reference}
+\label{structedge__data}\index{edge\-\_\-data@{edge\-\_\-data}}
+}
+
+
+The edge data stores the entry in the matrix.  
+
+
+
+
+{\ttfamily \#include $<$als\-\_\-vertex\-\_\-program.\-hpp$>$}
+
+Inheritance diagram for edge\-\_\-data\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{structedge__data}
+\end{center}
+\end{figure}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{structedge__data_a058121c45cac9d350dd70939a023b55d}{data\-\_\-role\-\_\-type} \{ {\bfseries T\-R\-A\-I\-N}, 
+{\bfseries V\-A\-L\-I\-D\-A\-T\-E}, 
+{\bfseries P\-R\-E\-D\-I\-C\-T}
+ \}
+\begin{DoxyCompactList}\small\item\em The type of data on the edge;. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{structedge__data_a98967d7ad71e7ef996e6b9727e97949c}{\hyperlink{structedge__data_a98967d7ad71e7ef996e6b9727e97949c}{edge\-\_\-data} (float \hyperlink{structedge__data_a1fc50f971f9fdbb4c9c90e33bda1c758}{obs}=0, \hyperlink{structedge__data_a058121c45cac9d350dd70939a023b55d}{data\-\_\-role\-\_\-type} \hyperlink{structedge__data_a3fbba49eb9690a4fdeeda275d6c9cad9}{role}=P\-R\-E\-D\-I\-C\-T)}\label{structedge__data_a98967d7ad71e7ef996e6b9727e97949c}
+
+\begin{DoxyCompactList}\small\item\em basic initialization \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{structedge__data_a1fc50f971f9fdbb4c9c90e33bda1c758}{float \hyperlink{structedge__data_a1fc50f971f9fdbb4c9c90e33bda1c758}{obs}}\label{structedge__data_a1fc50f971f9fdbb4c9c90e33bda1c758}
+
+\begin{DoxyCompactList}\small\item\em the observed value for the edge \end{DoxyCompactList}\item 
+\hypertarget{structedge__data_a3fbba49eb9690a4fdeeda275d6c9cad9}{\hyperlink{structedge__data_a058121c45cac9d350dd70939a023b55d}{data\-\_\-role\-\_\-type} \hyperlink{structedge__data_a3fbba49eb9690a4fdeeda275d6c9cad9}{role}}\label{structedge__data_a3fbba49eb9690a4fdeeda275d6c9cad9}
+
+\begin{DoxyCompactList}\small\item\em The train/validation/test designation of the edge. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+The edge data stores the entry in the matrix. 
+
+In addition the edge data also stores the most recent error estimate. 
+
+\subsection{Member Enumeration Documentation}
+\hypertarget{structedge__data_a058121c45cac9d350dd70939a023b55d}{\index{edge\-\_\-data@{edge\-\_\-data}!data\-\_\-role\-\_\-type@{data\-\_\-role\-\_\-type}}
+\index{data\-\_\-role\-\_\-type@{data\-\_\-role\-\_\-type}!edge_data@{edge\-\_\-data}}
+\subsubsection[{data\-\_\-role\-\_\-type}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf edge\-\_\-data\-::data\-\_\-role\-\_\-type}}}\label{structedge__data_a058121c45cac9d350dd70939a023b55d}
+
+
+The type of data on the edge;. 
+
+\begin{DoxyItemize}
+\item {\itshape Train\-:} the observed value is correct and used in training \item {\itshape Validate\-:} the observed value is correct but not used in training \item {\itshape Predict\-:} The observed value is not correct and should not be used in training. \end{DoxyItemize}
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/\hyperlink{als__vertex__program_8hpp}{als\-\_\-vertex\-\_\-program.\-hpp}\end{DoxyCompactItemize}

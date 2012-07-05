@@ -1,0 +1,61 @@
+\hypertarget{als__edgefactors_8cpp}{\section{example\-\_\-apps/matrix\-\_\-factorization/als\-\_\-edgefactors.cpp File Reference}
+\label{als__edgefactors_8cpp}\index{example\-\_\-apps/matrix\-\_\-factorization/als\-\_\-edgefactors.\-cpp@{example\-\_\-apps/matrix\-\_\-factorization/als\-\_\-edgefactors.\-cpp}}
+}
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$algorithm$>$}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}als.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{struct_a_l_s_edge_factors_program}{A\-L\-S\-Edge\-Factors\-Program}
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef \hyperlink{structlatentvec__t}{latentvec\-\_\-t} \hyperlink{als__edgefactors_8cpp_acd2f11571e777894d1d2b0faab84bbb8}{Vertex\-Data\-Type}
+\item 
+\hypertarget{als__edgefactors_8cpp_a69515e5736ec6f0c05364570a42d8c36}{typedef \hyperlink{structals__factor__and__weight}{als\-\_\-factor\-\_\-and\-\_\-weight} {\bfseries Edge\-Data\-Type}}\label{als__edgefactors_8cpp_a69515e5736ec6f0c05364570a42d8c36}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als__edgefactors_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{als__edgefactors_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Matrix factorizatino with the Alternative Least Squares (A\-L\-S) algorithm. This code is based on Graph\-Lab's implementation of A\-L\-S by Joey Gonzalez and Danny Bickson (C\-M\-U). A good explanation of the algorithm is given in the following paper\-: Large-\/\-Scale Parallel Collaborative Filtering for the Netflix Prize Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan \href{http://www.springerlink.com/content/j1076u0h14586183/}{\tt http\-://www.\-springerlink.\-com/content/j1076u0h14586183/}
+
+There are two versions of the A\-L\-S in the example applications. This version is slower, but works with very low memory. In this implementation, a vertex writes its D-\/dimensional latent factor to its incident edges. See application \char`\"{}als\-\_\-vertices\-\_\-inmem\char`\"{} for a faster version, which requires more memory.
+
+In the code, we use movie-\/rating terminology for clarity. This code has been tested with the Netflix movie rating challenge, where the task is to predict how user rates movies in range from 1 to 5.
+
+This code is has integrated preprocessing, 'sharding', so it is not necessary to run sharder prior to running the matrix factorization algorithm. Input data must be provided in the Matrix Market format (\href{http://math.nist.gov/MatrixMarket/formats.html}{\tt http\-://math.\-nist.\-gov/\-Matrix\-Market/formats.\-html}).
+
+A\-L\-S uses free linear algebra library 'Eigen'. See Readme\-\_\-\-Eigen.\-txt for instructions how to obtain it.
+
+At the end of the processing, the two latent factor matrices are written into files in the matrix market format.\hypertarget{als__vertices__inmem_8cpp_USAGE}{}\subsection{U\-S\-A\-G\-E}\label{als__vertices__inmem_8cpp_USAGE}
+bin/example\-\_\-apps/matrix\-\_\-factorization/als\-\_\-edgefactors file $<$matrix-\/market-\/input$>$ niters 5 
+
+\subsection{Typedef Documentation}
+\hypertarget{als__edgefactors_8cpp_acd2f11571e777894d1d2b0faab84bbb8}{\index{als\-\_\-edgefactors.\-cpp@{als\-\_\-edgefactors.\-cpp}!Vertex\-Data\-Type@{Vertex\-Data\-Type}}
+\index{Vertex\-Data\-Type@{Vertex\-Data\-Type}!als_edgefactors.cpp@{als\-\_\-edgefactors.\-cpp}}
+\subsubsection[{Vertex\-Data\-Type}]{\setlength{\rightskip}{0pt plus 5cm}typedef {\bf latentvec\-\_\-t} {\bf Vertex\-Data\-Type}}}\label{als__edgefactors_8cpp_acd2f11571e777894d1d2b0faab84bbb8}
+Type definitions. Remember to create suitable graph shards using the Sharder-\/program. 

@@ -1,0 +1,91 @@
+\hypertarget{trianglecounting_8cpp}{\section{example\-\_\-apps/trianglecounting.cpp File Reference}
+\label{trianglecounting_8cpp}\index{example\-\_\-apps/trianglecounting.\-cpp@{example\-\_\-apps/trianglecounting.\-cpp}}
+}
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$vector$>$}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}engine/dynamic\-\_\-graphs/graphchi\-\_\-dynamicgraph\-\_\-engine.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structdense__adj}{dense\-\_\-adj}
+\item 
+class \hyperlink{classadjlist__container}{adjlist\-\_\-container}
+\item 
+struct \hyperlink{struct_triangle_counting_program}{Triangle\-Counting\-Program}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{trianglecounting_8cpp_a5e44d0ac338ca3ad77ad74a8e17d763d}{S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S}~1
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef uint32\-\_\-t \hyperlink{trianglecounting_8cpp_a16cfed23cb3f46f5044fc90df1a56aaf}{Vertex\-Data\-Type}
+\item 
+\hypertarget{trianglecounting_8cpp_a6f05b7abf0e7037cf4f9d60830818de5}{typedef uint32\-\_\-t {\bfseries Edge\-Data\-Type}}\label{trianglecounting_8cpp_a6f05b7abf0e7037cf4f9d60830818de5}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{trianglecounting_8cpp_aa99c6070ab4e5a86ec2964bf063c7d45}{bool {\bfseries findadj\-\_\-linear} (vid\-\_\-t $\ast$datachunk, size\-\_\-t n, vid\-\_\-t target)}\label{trianglecounting_8cpp_aa99c6070ab4e5a86ec2964bf063c7d45}
+
+\item 
+\hypertarget{trianglecounting_8cpp_aebd63c45db85a07a5a5806440cfba13d}{bool {\bfseries findadj} (vid\-\_\-t $\ast$datachunk, size\-\_\-t n, vid\-\_\-t target)}\label{trianglecounting_8cpp_aebd63c45db85a07a5a5806440cfba13d}
+
+\item 
+\hypertarget{trianglecounting_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{trianglecounting_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{trianglecounting_8cpp_ade7b20338aaa8b999330cb30c4d079f9}{grabbed\-\_\-edges} = 0
+\item 
+\hypertarget{trianglecounting_8cpp_a5c902db1bd58cca532a2495c145a5105}{\hyperlink{classadjlist__container}{adjlist\-\_\-container} $\ast$ {\bfseries adjcontainer}}\label{trianglecounting_8cpp_a5c902db1bd58cca532a2495c145a5105}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Triangle counting application. Counts the number of incident (full) triangles for each vertex. Edge direction is ignored.
+
+This algorithm is quite complicated and requires 'trickery' to work well on Graph\-Chi. The complexity stems from the need to store large number of adjacency lists in memory\-: we cannot store the adjacency lists reasonable to edges, nor can we store all of them once at memory. Therefore the problems is solved in a series of phases. On each phase, the relevant adjacency lists of an interval of vertices (called 'pivots') is loaded into memory, and all vertices that have id smaller than the pivots are matched with them. With 'relevant adjacency list' I mean the list of neighbors that have higher id then the pivots themselves. That is, we only count triangles a -\/$>$ b -\/$>$ c where a $>$ b $>$ c.
+
+The application involves a special preprocessing step which orders the vertices in ascending order of their degree. This turns out to be a very important optimization on big graphs.
+
+This algorithm also utilizes the dynamic graph engine, and deletes edges after they have been accounted for. 
+
+\subsection{Macro Definition Documentation}
+\hypertarget{trianglecounting_8cpp_a5e44d0ac338ca3ad77ad74a8e17d763d}{\index{trianglecounting.\-cpp@{trianglecounting.\-cpp}!S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S@{S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S}}
+\index{S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S@{S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S}!trianglecounting.cpp@{trianglecounting.\-cpp}}
+\subsubsection[{S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S}]{\setlength{\rightskip}{0pt plus 5cm}\#define S\-U\-P\-P\-O\-R\-T\-\_\-\-D\-E\-L\-E\-T\-I\-O\-N\-S~1}}\label{trianglecounting_8cpp_a5e44d0ac338ca3ad77ad74a8e17d763d}
+Need to define prior to including Graph\-Chi headers. This enabled edge-\/deletion in the vertex object. 
+
+\subsection{Typedef Documentation}
+\hypertarget{trianglecounting_8cpp_a16cfed23cb3f46f5044fc90df1a56aaf}{\index{trianglecounting.\-cpp@{trianglecounting.\-cpp}!Vertex\-Data\-Type@{Vertex\-Data\-Type}}
+\index{Vertex\-Data\-Type@{Vertex\-Data\-Type}!trianglecounting.cpp@{trianglecounting.\-cpp}}
+\subsubsection[{Vertex\-Data\-Type}]{\setlength{\rightskip}{0pt plus 5cm}typedef uint32\-\_\-t {\bf Vertex\-Data\-Type}}}\label{trianglecounting_8cpp_a16cfed23cb3f46f5044fc90df1a56aaf}
+Type definitions. Vertex data stores the number of incident triangles. Edge stores number of unaccounted triangles that the edge participates on. When vertex is updated, it updates its vertex count by summing up the counts from edges (after which the edges are deleted). 
+
+\subsection{Variable Documentation}
+\hypertarget{trianglecounting_8cpp_ade7b20338aaa8b999330cb30c4d079f9}{\index{trianglecounting.\-cpp@{trianglecounting.\-cpp}!grabbed\-\_\-edges@{grabbed\-\_\-edges}}
+\index{grabbed\-\_\-edges@{grabbed\-\_\-edges}!trianglecounting.cpp@{trianglecounting.\-cpp}}
+\subsubsection[{grabbed\-\_\-edges}]{\setlength{\rightskip}{0pt plus 5cm}int grabbed\-\_\-edges = 0}}\label{trianglecounting_8cpp_ade7b20338aaa8b999330cb30c4d079f9}
+Code for intersection size computation and pivot management. 

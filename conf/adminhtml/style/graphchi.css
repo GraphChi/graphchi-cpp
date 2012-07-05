@@ -1,0 +1,58 @@
+.psw {
+    border: 2px solid #000000;
+        background-color: #888888;
+    float: left;
+    margin: 3px;
+    border-top-left-radius: 4px 4px;
+    border-bottom-right-radius: 4px 4px;
+    border-bottom-left-radius: 4px 4px;
+    border-top-right-radius: 4px 4px;
+}
+
+.pswwindow {
+    background-color: #333333;
+    border: 1px solid #000000;
+    position: relative;
+    left: -1px;
+}
+
+.infobox {
+    float: left;
+    width: 320px;
+}
+
+.hero-unit2 {
+  padding: 12px;
+  margin-bottom: 30px;
+  background-color: #eeeeee;
+  -webkit-border-radius: 6px;
+     -moz-border-radius: 6px;
+          border-radius: 6px;
+}
+
+.rightcol {
+    text-align: right;
+    width: 140px;
+}   
+
+.leftcol {
+    text-align: left;
+    font-weight: bold;
+    width: 180px;
+}   
+
+.appresult {
+    margin: 5px;
+}
+
+.nav-header2 {
+  display: block;
+  padding: 3px 15px;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 18px;
+
+  color: #999999;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}

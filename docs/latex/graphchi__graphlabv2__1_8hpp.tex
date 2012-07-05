@@ -1,0 +1,71 @@
+\hypertarget{graphchi__graphlabv2__1_8hpp}{\section{src/api/graphlab2\-\_\-1\-\_\-\-G\-A\-S\-\_\-api/graphchi\-\_\-graphlabv2\-\_\-1.hpp File Reference}
+\label{graphchi__graphlabv2__1_8hpp}\index{src/api/graphlab2\-\_\-1\-\_\-\-G\-A\-S\-\_\-api/graphchi\-\_\-graphlabv2\-\_\-1.\-hpp@{src/api/graphlab2\-\_\-1\-\_\-\-G\-A\-S\-\_\-api/graphchi\-\_\-graphlabv2\-\_\-1.\-hpp}}
+}
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structgraphlab_1_1_i_s___p_o_d___t_y_p_e}{graphlab\-::\-I\-S\-\_\-\-P\-O\-D\-\_\-\-T\-Y\-P\-E}
+\item 
+struct \hyperlink{structgraphlab_1_1empty}{graphlab\-::empty}
+\item 
+class \hyperlink{classgraphlab_1_1icontext}{graphlab\-::icontext$<$ Graph\-Type, Gather\-Type, Message\-Type $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1distributed__graph}{graphlab\-::distributed\-\_\-graph$<$ vertex\-\_\-data, edge\-\_\-data $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1ivertex__program}{graphlab\-::ivertex\-\_\-program$<$ Graph, Gather\-Type, Message\-Type $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{graphlab\-::\-Graph\-Lab\-Vertex\-Wrapper$<$ G\-L\-Vertex\-Data\-Type, Edge\-Data\-Type $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1_graph_lab_edge_wrapper}{graphlab\-::\-Graph\-Lab\-Edge\-Wrapper$<$ G\-L\-Vertex\-Data\-Type, Edge\-Data\-Type $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1_graph_lab_wrapper}{graphlab\-::\-Graph\-Lab\-Wrapper$<$ Graph\-Lab\-Vertex\-Program $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1_graph_lab_edge_aggregator_wrapper}{graphlab\-::\-Graph\-Lab\-Edge\-Aggregator\-Wrapper$<$ Graph\-Lab\-Vertex\-Program, Reduction\-Type, Edge\-Map\-Type, Finalizer\-Type $>$}
+\item 
+struct \hyperlink{structgraphlab_1_1messages_1_1sum__priority}{graphlab\-::messages\-::sum\-\_\-priority}
+\item 
+struct \hyperlink{structgraphlab_1_1messages_1_1max__priority}{graphlab\-::messages\-::max\-\_\-priority}
+\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \hyperlink{namespacegraphlab_1_1messages}{graphlab\-::messages}
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum {\bfseries edge\-\_\-dir\-\_\-type} \{ {\bfseries graphlab\-::\-N\-O\-\_\-\-E\-D\-G\-E\-S} =  0, 
+{\bfseries graphlab\-::\-I\-N\-\_\-\-E\-D\-G\-E\-S} =  1, 
+{\bfseries graphlab\-::\-O\-U\-T\-\_\-\-E\-D\-G\-E\-S} =  2, 
+{\bfseries graphlab\-::\-A\-L\-L\-\_\-\-E\-D\-G\-E\-S} =  3
+ \}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{graphchi__graphlabv2__1_8hpp_af73c68312649d6dab218043f2daf9dc0}{{\footnotesize template$<$typename Graph\-Lab\-Vertex\-Program $>$ }\\std\-::vector$<$ typename \\*
+Graph\-Lab\-Vertex\-Program\-::vertex\-\_\-data\-\_\-type $>$ $\ast$ {\bfseries run\-\_\-graphlab\-\_\-vertexprogram} (std\-::string base\-\_\-filename, int nshards, int niters, bool scheduler, \hyperlink{classgraphchi_1_1metrics}{metrics} \&\-\_\-m, bool modifies\-\_\-inedges=true, bool modifies\-\_\-outedges=true)}\label{graphchi__graphlabv2__1_8hpp_af73c68312649d6dab218043f2daf9dc0}
+
+\item 
+\hypertarget{graphchi__graphlabv2__1_8hpp_aa8370f5e5416c3c30dbaaeac9a4eca20}{{\footnotesize template$<$typename Graph\-Lab\-Vertex\-Program , typename Reduction\-Type , typename Edge\-Map\-Type , typename Finalizer\-Type $>$ }\\Reduction\-Type {\bfseries run\-\_\-graphlab\-\_\-edge\-\_\-aggregator} (std\-::string base\-\_\-filename, int nshards, Edge\-Map\-Type map\-\_\-function, Finalizer\-Type finalize\-\_\-function, std\-::vector$<$ typename Graph\-Lab\-Vertex\-Program\-::vertex\-\_\-data\-\_\-type $>$ $\ast$vertices, \hyperlink{classgraphchi_1_1metrics}{metrics} \&\-\_\-m)}\label{graphchi__graphlabv2__1_8hpp_aa8370f5e5416c3c30dbaaeac9a4eca20}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Wrapper classes for Graph\-Lab v2.\-1 A\-P\-I. 

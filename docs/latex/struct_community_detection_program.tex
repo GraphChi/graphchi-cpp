@@ -1,0 +1,96 @@
+\hypertarget{struct_community_detection_program}{\section{Community\-Detection\-Program Struct Reference}
+\label{struct_community_detection_program}\index{Community\-Detection\-Program@{Community\-Detection\-Program}}
+}
+Inheritance diagram for Community\-Detection\-Program\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{struct_community_detection_program}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{struct_community_detection_program_aa371bbe8d4e79cb7cc512d9f77e9496c}{update} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&vertex, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_community_detection_program_a3dde791f5dec796cd9c6e0a61da114cc}{before\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&info)
+\item 
+void \hyperlink{struct_community_detection_program_ad7a1b4c6b9dcb29a2b4286d123044c2e}{after\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\item 
+void \hyperlink{struct_community_detection_program_aa8a15b9afd3731712ac3e01a9491d7c1}{before\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\item 
+void \hyperlink{struct_community_detection_program_a76118f786af150806ed45fb4cb1b18e3}{after\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+Graph\-Chi programs need to subclass Graph\-Chi\-Program$<$vertex-\/type, edge-\/type$>$ class. The main logic is usually in the update function. 
+
+\subsection{Member Function Documentation}
+\hypertarget{struct_community_detection_program_a76118f786af150806ed45fb4cb1b18e3}{\index{Community\-Detection\-Program@{Community\-Detection\-Program}!after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}}
+\index{after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}!CommunityDetectionProgram@{Community\-Detection\-Program}}
+\subsubsection[{after\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void Community\-Detection\-Program\-::after\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_community_detection_program_a76118f786af150806ed45fb4cb1b18e3}
+Called after an execution interval has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a9be881d1232e530c8d1852188cc8a84d}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_community_detection_program_ad7a1b4c6b9dcb29a2b4286d123044c2e}{\index{Community\-Detection\-Program@{Community\-Detection\-Program}!after\-\_\-iteration@{after\-\_\-iteration}}
+\index{after\-\_\-iteration@{after\-\_\-iteration}!CommunityDetectionProgram@{Community\-Detection\-Program}}
+\subsubsection[{after\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void Community\-Detection\-Program\-::after\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_community_detection_program_ad7a1b4c6b9dcb29a2b4286d123044c2e}
+Called after an iteration has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a24259d43b85d28af16d53a4176d29a07}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_community_detection_program_aa8a15b9afd3731712ac3e01a9491d7c1}{\index{Community\-Detection\-Program@{Community\-Detection\-Program}!before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}}
+\index{before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}!CommunityDetectionProgram@{Community\-Detection\-Program}}
+\subsubsection[{before\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void Community\-Detection\-Program\-::before\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_community_detection_program_aa8a15b9afd3731712ac3e01a9491d7c1}
+Called before an execution interval is started. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_ab2f7244ddb743deb859dbc2fc927078a}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_community_detection_program_a3dde791f5dec796cd9c6e0a61da114cc}{\index{Community\-Detection\-Program@{Community\-Detection\-Program}!before\-\_\-iteration@{before\-\_\-iteration}}
+\index{before\-\_\-iteration@{before\-\_\-iteration}!CommunityDetectionProgram@{Community\-Detection\-Program}}
+\subsubsection[{before\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void Community\-Detection\-Program\-::before\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{info}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_community_detection_program_a3dde791f5dec796cd9c6e0a61da114cc}
+Called before an iteration starts. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_aec6d16fd6dddf1543afe55360a653cf2}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_community_detection_program_aa371bbe8d4e79cb7cc512d9f77e9496c}{\index{Community\-Detection\-Program@{Community\-Detection\-Program}!update@{update}}
+\index{update@{update}!CommunityDetectionProgram@{Community\-Detection\-Program}}
+\subsubsection[{update}]{\setlength{\rightskip}{0pt plus 5cm}void Community\-Detection\-Program\-::update (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&}]{vertex, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_community_detection_program_aa371bbe8d4e79cb7cc512d9f77e9496c}
+Vertex update function. Write my label to my neighbors.
+
+Implements \hyperlink{classgraphchi_1_1_graph_chi_program_ad76f8881627e3c039144e261bfc77770}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/\hyperlink{communitydetection_8cpp}{communitydetection.\-cpp}\end{DoxyCompactItemize}

@@ -1,0 +1,92 @@
+\hypertarget{streaming__pagerank_8cpp}{\section{example\-\_\-apps/streaming\-\_\-pagerank.cpp File Reference}
+\label{streaming__pagerank_8cpp}\index{example\-\_\-apps/streaming\-\_\-pagerank.\-cpp@{example\-\_\-apps/streaming\-\_\-pagerank.\-cpp}}
+}
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$fstream$>$}\\*
+{\ttfamily \#include $<$cmath$>$}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}engine/dynamic\-\_\-graphs/graphchi\-\_\-dynamicgraph\-\_\-engine.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}util/toplist.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}httpadmin/chi\-\_\-httpadmin.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}httpadmin/plotter.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{struct_pagerank_program}{Pagerank\-Program}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{streaming__pagerank_8cpp_a4679d8ea8690999a6c6c7c0cb245c879}{\#define {\bfseries T\-H\-R\-E\-S\-H\-O\-L\-D}~1e-\/1f}\label{streaming__pagerank_8cpp_a4679d8ea8690999a6c6c7c0cb245c879}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_a5e3939b7192acef3f437bb0edc1c63df}{\#define {\bfseries R\-A\-N\-D\-O\-M\-R\-E\-S\-E\-T\-P\-R\-O\-B}~0.\-15f}\label{streaming__pagerank_8cpp_a5e3939b7192acef3f437bb0edc1c63df}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_ad5c46706b38c7dc7ebb32e964a24fd13}{\#define {\bfseries D\-E\-M\-O}~1}\label{streaming__pagerank_8cpp_ad5c46706b38c7dc7ebb32e964a24fd13}
+
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{streaming__pagerank_8cpp_a357c4eed6dd08b74c2a63472c0f10afa}{typedef float {\bfseries Vertex\-Data\-Type}}\label{streaming__pagerank_8cpp_a357c4eed6dd08b74c2a63472c0f10afa}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_af2381c28a1096b588ce381c1037d2264}{typedef float {\bfseries Edge\-Data\-Type}}\label{streaming__pagerank_8cpp_af2381c28a1096b588ce381c1037d2264}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{streaming__pagerank_8cpp_abd72c37d1db6a7d178db70ca4df5165d}{std\-::string {\bfseries getname} (vid\-\_\-t v)}\label{streaming__pagerank_8cpp_abd72c37d1db6a7d178db70ca4df5165d}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_af286b4603a69d710fbeca99e345d508f}{void $\ast$ {\bfseries plotter\-\_\-thread} (void $\ast$info)}\label{streaming__pagerank_8cpp_af286b4603a69d710fbeca99e345d508f}
+
+\item 
+void $\ast$ \hyperlink{streaming__pagerank_8cpp_a07cffb3d80a3b3a9f675df2f3a7f8fdd}{dynamic\-\_\-graph\-\_\-reader} (void $\ast$info)
+\item 
+\hypertarget{streaming__pagerank_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{streaming__pagerank_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{streaming__pagerank_8cpp_aaba7afae9ad22e92a975f980009b218a}{\hyperlink{classgraphchi_1_1graphchi__dynamicgraph__engine}{graphchi\-\_\-dynamicgraph\-\_\-engine}\\*
+$<$ float, float $>$ $\ast$ {\bfseries dyngraph\-\_\-engine}}\label{streaming__pagerank_8cpp_aaba7afae9ad22e92a975f980009b218a}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_af0de0677ed3e06af221954c75af9e23d}{std\-::string {\bfseries streaming\-\_\-graph\-\_\-file}}\label{streaming__pagerank_8cpp_af0de0677ed3e06af221954c75af9e23d}
+
+\item 
+\hypertarget{streaming__pagerank_8cpp_a36f7b6be7108281af77939ceaec42fd6}{bool {\bfseries running} = true}\label{streaming__pagerank_8cpp_a36f7b6be7108281af77939ceaec42fd6}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Demonstration for streaming graph updates. This application reads from a file list of edges and adds them into the graph continuously. Simultaneously, pagerank is computed for the evolving graph. 
+
+\subsection{Function Documentation}
+\hypertarget{streaming__pagerank_8cpp_a07cffb3d80a3b3a9f675df2f3a7f8fdd}{\index{streaming\-\_\-pagerank.\-cpp@{streaming\-\_\-pagerank.\-cpp}!dynamic\-\_\-graph\-\_\-reader@{dynamic\-\_\-graph\-\_\-reader}}
+\index{dynamic\-\_\-graph\-\_\-reader@{dynamic\-\_\-graph\-\_\-reader}!streaming_pagerank.cpp@{streaming\-\_\-pagerank.\-cpp}}
+\subsubsection[{dynamic\-\_\-graph\-\_\-reader}]{\setlength{\rightskip}{0pt plus 5cm}void $\ast$ dynamic\-\_\-graph\-\_\-reader (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{info}
+\end{DoxyParamCaption}
+)}}\label{streaming__pagerank_8cpp_a07cffb3d80a3b3a9f675df2f3a7f8fdd}
+Function executed by a separate thread that streams graph from a file. 

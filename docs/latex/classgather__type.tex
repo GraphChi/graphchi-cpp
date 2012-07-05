@@ -1,0 +1,65 @@
+\hypertarget{classgather__type}{\section{gather\-\_\-type Class Reference}
+\label{classgather__type}\index{gather\-\_\-type@{gather\-\_\-type}}
+}
+
+
+The graph loader function is a line parser used for distributed graph construction.  
+
+
+
+
+{\ttfamily \#include $<$als\-\_\-vertex\-\_\-program.\-hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classgather__type_a0ef41a0943ab5f4348eaff240ba87774}{\hyperlink{classgather__type_a0ef41a0943ab5f4348eaff240ba87774}{gather\-\_\-type} ()}\label{classgather__type_a0ef41a0943ab5f4348eaff240ba87774}
+
+\begin{DoxyCompactList}\small\item\em basic default constructor \end{DoxyCompactList}\item 
+\hypertarget{classgather__type_aac64cb2fd36d4c39fad0816895df907b}{\hyperlink{classgather__type_aac64cb2fd36d4c39fad0816895df907b}{gather\-\_\-type} (const vec\-\_\-type \&X, const double y)}\label{classgather__type_aac64cb2fd36d4c39fad0816895df907b}
+
+\begin{DoxyCompactList}\small\item\em This constructor computes Xt\-X and Xy and stores the result in Xt\-X and Xy. \end{DoxyCompactList}\item 
+\hyperlink{classgather__type}{gather\-\_\-type} \& \hyperlink{classgather__type_a672f8aac3ab0b1bb48e857b77307f621}{operator+=} (const \hyperlink{classgather__type}{gather\-\_\-type} \&other)
+\begin{DoxyCompactList}\small\item\em Save the values to a binary archive. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classgather__type_a79352d3ca5b6957aa4b21276c20da59f}{mat\-\_\-type \hyperlink{classgather__type_a79352d3ca5b6957aa4b21276c20da59f}{Xt\-X}}\label{classgather__type_a79352d3ca5b6957aa4b21276c20da59f}
+
+\begin{DoxyCompactList}\small\item\em Stores the current sum of nbr.\-factor.\-transpose() $\ast$ nbr.\-factor. \end{DoxyCompactList}\item 
+\hypertarget{classgather__type_a319a1856f1ad204ad8fd13592ab9a201}{vec\-\_\-type \hyperlink{classgather__type_a319a1856f1ad204ad8fd13592ab9a201}{Xy}}\label{classgather__type_a319a1856f1ad204ad8fd13592ab9a201}
+
+\begin{DoxyCompactList}\small\item\em Stores the current sum of nbr.\-factor $\ast$ edge.\-obs. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+The graph loader function is a line parser used for distributed graph construction. 
+
+The gather type used to construct Xt\-X and Xty needed for the A\-L\-S update
+
+To compute the A\-L\-S update we need to compute the sum of 
+\begin{DoxyCode}
+    sum: \hyperlink{classgather__type_a79352d3ca5b6957aa4b21276c20da59f}{XtX} = nbr.factor.transpose() * nbr.factor 
+    sum: \hyperlink{classgather__type_a319a1856f1ad204ad8fd13592ab9a201}{Xy}  = nbr.factor * \hyperlink{structedge}{edge}.obs
+\end{DoxyCode}
+ For each of the neighbors of a vertex.
+
+To do this in the Gather-\/\-Apply-\/\-Scatter model the gather function computes and returns a pair consisting of Xt\-X and Xy which are then added. The gather type represents that tuple and provides the necessary \hyperlink{classgather__type_a672f8aac3ab0b1bb48e857b77307f621}{gather\-\_\-type\-::operator+=} operation. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classgather__type_a672f8aac3ab0b1bb48e857b77307f621}{\index{gather\-\_\-type@{gather\-\_\-type}!operator+=@{operator+=}}
+\index{operator+=@{operator+=}!gather_type@{gather\-\_\-type}}
+\subsubsection[{operator+=}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gather\-\_\-type}\& gather\-\_\-type\-::operator+= (
+\begin{DoxyParamCaption}
+\item[{const {\bf gather\-\_\-type} \&}]{other}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classgather__type_a672f8aac3ab0b1bb48e857b77307f621}
+
+
+Save the values to a binary archive. 
+
+Read the values from a binary archive Computes Xt\-X += other.\-Xt\-X and Xy += other.\-Xy updating this tuples value 
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/\hyperlink{als__vertex__program_8hpp}{als\-\_\-vertex\-\_\-program.\-hpp}\end{DoxyCompactItemize}

@@ -1,0 +1,192 @@
+\hypertarget{logger_8hpp}{\section{src/logger/logger.hpp File Reference}
+\label{logger_8hpp}\index{src/logger/logger.\-hpp@{src/logger/logger.\-hpp}}
+}
+{\ttfamily \#include $<$fstream$>$}\\*
+{\ttfamily \#include $<$sstream$>$}\\*
+{\ttfamily \#include $<$cstdlib$>$}\\*
+{\ttfamily \#include $<$iostream$>$}\\*
+{\ttfamily \#include $<$cassert$>$}\\*
+{\ttfamily \#include $<$cstring$>$}\\*
+{\ttfamily \#include $<$cstdarg$>$}\\*
+{\ttfamily \#include $<$pthread.\-h$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structlogger__impl_1_1streambuff__tls__entry}{logger\-\_\-impl\-::streambuff\-\_\-tls\-\_\-entry}
+\item 
+class \hyperlink{classfile__logger}{file\-\_\-logger}
+\item 
+struct \hyperlink{structlog__dispatch}{log\-\_\-dispatch$<$ dostuff $>$}
+\item 
+struct \hyperlink{structlog__dispatch_3_01true_01_4}{log\-\_\-dispatch$<$ true $>$}
+\item 
+struct \hyperlink{structlog__dispatch_3_01false_01_4}{log\-\_\-dispatch$<$ false $>$}
+\item 
+struct \hyperlink{structnull__stream}{null\-\_\-stream}
+\item 
+struct \hyperlink{structlog__stream__dispatch}{log\-\_\-stream\-\_\-dispatch$<$ dostuff $>$}
+\item 
+struct \hyperlink{structlog__stream__dispatch_3_01true_01_4}{log\-\_\-stream\-\_\-dispatch$<$ true $>$}
+\item 
+struct \hyperlink{structlog__stream__dispatch_3_01false_01_4}{log\-\_\-stream\-\_\-dispatch$<$ false $>$}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{logger_8hpp_a1632479322efa3952798f98177b54471}{L\-O\-G\-\_\-\-N\-O\-N\-E}~5
+\item 
+\#define \hyperlink{logger_8hpp_ac2164369b4d2bf72296f8ba6ea576ecf}{L\-O\-G\-\_\-\-F\-A\-T\-A\-L}~4
+\item 
+\#define \hyperlink{logger_8hpp_aced66975c154ea0e2a8ec3bc818b4e08}{L\-O\-G\-\_\-\-E\-R\-R\-O\-R}~3
+\item 
+\#define \hyperlink{logger_8hpp_adf4476a6a4ea6c74231c826e899d7189}{L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G}~2
+\item 
+\#define \hyperlink{logger_8hpp_aeb4f36db01bd128c7afeac5889dac311}{L\-O\-G\-\_\-\-I\-N\-F\-O}~1
+\item 
+\#define \hyperlink{logger_8hpp_a6ff63e8955665c4a58b1598f2b07c51a}{L\-O\-G\-\_\-\-D\-E\-B\-U\-G}~0
+\item 
+\#define \hyperlink{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L}~\hyperlink{logger_8hpp_a6ff63e8955665c4a58b1598f2b07c51a}{L\-O\-G\-\_\-\-D\-E\-B\-U\-G}
+\item 
+\hypertarget{logger_8hpp_a407629ed2d44412adc1a9fd1bf8fc35b}{\#define \hyperlink{logger_8hpp_a407629ed2d44412adc1a9fd1bf8fc35b}{C\-O\-L\-O\-R\-O\-U\-T\-P\-U\-T}}\label{logger_8hpp_a407629ed2d44412adc1a9fd1bf8fc35b}
+
+\begin{DoxyCompactList}\small\item\em If set, logs to screen will be printed in color. \end{DoxyCompactList}\item 
+\#define \hyperlink{logger_8hpp_ab58cdd006f6b33cbe171ab32effef95b}{logger}(lvl, fmt,...)~(\hyperlink{structlog__dispatch}{log\-\_\-dispatch}$<$(lvl $>$= \hyperlink{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L})$>$\-::exec(lvl,\-\_\-\-\_\-\-F\-I\-L\-E\-\_\-\-\_\-, \-\_\-\-\_\-func\-\_\-\-\_\- ,\-\_\-\-\_\-\-L\-I\-N\-E\-\_\-\-\_\-,fmt,\#\#\-\_\-\-\_\-\-V\-A\-\_\-\-A\-R\-G\-S\-\_\-\-\_\-))
+\item 
+\#define {\bfseries logbuf}(lvl, buf, len)
+\item 
+\hypertarget{logger_8hpp_a7fe3c756650e371ad8739b860495106c}{\#define {\bfseries logstream}(lvl)~(\hyperlink{structlog__stream__dispatch}{log\-\_\-stream\-\_\-dispatch}$<$(lvl $>$= \hyperlink{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L})$>$\-::exec(lvl,\-\_\-\-\_\-\-F\-I\-L\-E\-\_\-\-\_\-, \-\_\-\-\_\-func\-\_\-\-\_\- ,\-\_\-\-\_\-\-L\-I\-N\-E\-\_\-\-\_\-) )}\label{logger_8hpp_a7fe3c756650e371ad8739b860495106c}
+
+\item 
+\hypertarget{logger_8hpp_ab702106cf3b3e96750b6845ded4e0299}{\#define {\bfseries R\-E\-S\-E\-T}~0}\label{logger_8hpp_ab702106cf3b3e96750b6845ded4e0299}
+
+\item 
+\hypertarget{logger_8hpp_ac7ebe8a74067308019e81190ede166e9}{\#define {\bfseries B\-R\-I\-G\-H\-T}~1}\label{logger_8hpp_ac7ebe8a74067308019e81190ede166e9}
+
+\item 
+\hypertarget{logger_8hpp_ac25189db92959bff3c6c2adf4c34b50a}{\#define {\bfseries D\-I\-M}~2}\label{logger_8hpp_ac25189db92959bff3c6c2adf4c34b50a}
+
+\item 
+\hypertarget{logger_8hpp_aaec1a65734e33bc49e8dc8d90e9546bc}{\#define {\bfseries U\-N\-D\-E\-R\-L\-I\-N\-E}~3}\label{logger_8hpp_aaec1a65734e33bc49e8dc8d90e9546bc}
+
+\item 
+\hypertarget{logger_8hpp_a38eec52a7dccb94ff563e30eda32c891}{\#define {\bfseries B\-L\-I\-N\-K}~4}\label{logger_8hpp_a38eec52a7dccb94ff563e30eda32c891}
+
+\item 
+\hypertarget{logger_8hpp_a00548cec6d104932bf79a65bac1c47e8}{\#define {\bfseries R\-E\-V\-E\-R\-S\-E}~7}\label{logger_8hpp_a00548cec6d104932bf79a65bac1c47e8}
+
+\item 
+\hypertarget{logger_8hpp_ab42ef41116f8f2fe447484e2844cf0df}{\#define {\bfseries H\-I\-D\-D\-E\-N}~8}\label{logger_8hpp_ab42ef41116f8f2fe447484e2844cf0df}
+
+\item 
+\hypertarget{logger_8hpp_a7b3b25cba33b07c303f3060fe41887f6}{\#define {\bfseries B\-L\-A\-C\-K}~0}\label{logger_8hpp_a7b3b25cba33b07c303f3060fe41887f6}
+
+\item 
+\hypertarget{logger_8hpp_a8d23feea868a983c8c2b661e1e16972f}{\#define {\bfseries R\-E\-D}~1}\label{logger_8hpp_a8d23feea868a983c8c2b661e1e16972f}
+
+\item 
+\hypertarget{logger_8hpp_acfbc006ea433ad708fdee3e82996e721}{\#define {\bfseries G\-R\-E\-E\-N}~2}\label{logger_8hpp_acfbc006ea433ad708fdee3e82996e721}
+
+\item 
+\hypertarget{logger_8hpp_abf681265909adf3d3e8116c93c0ba179}{\#define {\bfseries Y\-E\-L\-L\-O\-W}~3}\label{logger_8hpp_abf681265909adf3d3e8116c93c0ba179}
+
+\item 
+\hypertarget{logger_8hpp_a79d10e672abb49ad63eeaa8aaef57c38}{\#define {\bfseries B\-L\-U\-E}~4}\label{logger_8hpp_a79d10e672abb49ad63eeaa8aaef57c38}
+
+\item 
+\hypertarget{logger_8hpp_a6f699060902f800f12aaae150f3a708e}{\#define {\bfseries M\-A\-G\-E\-N\-T\-A}~5}\label{logger_8hpp_a6f699060902f800f12aaae150f3a708e}
+
+\item 
+\hypertarget{logger_8hpp_ad243f93c16bc4c1d3e0a13b84421d760}{\#define {\bfseries C\-Y\-A\-N}~6}\label{logger_8hpp_ad243f93c16bc4c1d3e0a13b84421d760}
+
+\item 
+\hypertarget{logger_8hpp_a87b537f5fa5c109d3c05c13d6b18f382}{\#define {\bfseries W\-H\-I\-T\-E}~7}\label{logger_8hpp_a87b537f5fa5c109d3c05c13d6b18f382}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{logger_8hpp_a820aa548737ed0a5cbce4d20cdbeb73a}{void {\bfseries textcolor} (F\-I\-L\-E $\ast$handle, int attr, int fg)}\label{logger_8hpp_a820aa548737ed0a5cbce4d20cdbeb73a}
+
+\item 
+\hypertarget{logger_8hpp_a5f0f93904d279224dd4da107408c1112}{void {\bfseries reset\-\_\-color} (F\-I\-L\-E $\ast$handle)}\label{logger_8hpp_a5f0f93904d279224dd4da107408c1112}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Copyright (c) 2009 Carnegie Mellon University. All rights reserved.
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at \begin{DoxyVerb}http://www.apache.org/licenses/LICENSE-2.0
+\end{DoxyVerb}
+ \begin{DoxyVerb}Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an "AS
+IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+express or implied.  See the License for the specific language
+governing permissions and limitations under the License.
+\end{DoxyVerb}
+
+
+For more about this software visit\-: \begin{DoxyVerb} http://www.graphlab.ml.cmu.edu\end{DoxyVerb}
+
+
+Usage\-: First include \hyperlink{logger_8hpp}{logger.\-hpp}. To logger, use the \hyperlink{logger_8hpp_ab58cdd006f6b33cbe171ab32effef95b}{logger()} function There are 2 output levels. A \char`\"{}soft\char`\"{} output level which is set by calling global\-\_\-logger.\-set\-\_\-log\-\_\-level(), as well as a \char`\"{}hard\char`\"{} output level O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L which is set in the source code (logger.\-h).
+
+when you call \char`\"{}logger()\char`\"{} with a loglevel and if the loglevel is greater than both of the output levels, the string will be written. written to a logger file. Otherwise, \hyperlink{logger_8hpp_ab58cdd006f6b33cbe171ab32effef95b}{logger()} has no effect.
+
+The difference between the hard level and the soft level is that the soft level can be changed at runtime, while the hard level optimizes away logging calls at compile time.
+
+\begin{DoxyAuthor}{Author}
+Yucheng Low (ylow) 
+\end{DoxyAuthor}
+
+
+\subsection{Macro Definition Documentation}
+\hypertarget{logger_8hpp_a6ff63e8955665c4a58b1598f2b07c51a}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-D\-E\-B\-U\-G@{L\-O\-G\-\_\-\-D\-E\-B\-U\-G}}
+\index{L\-O\-G\-\_\-\-D\-E\-B\-U\-G@{L\-O\-G\-\_\-\-D\-E\-B\-U\-G}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-D\-E\-B\-U\-G}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-D\-E\-B\-U\-G~0}}\label{logger_8hpp_a6ff63e8955665c4a58b1598f2b07c51a}
+Debugging purposes only \hypertarget{logger_8hpp_aced66975c154ea0e2a8ec3bc818b4e08}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-E\-R\-R\-O\-R@{L\-O\-G\-\_\-\-E\-R\-R\-O\-R}}
+\index{L\-O\-G\-\_\-\-E\-R\-R\-O\-R@{L\-O\-G\-\_\-\-E\-R\-R\-O\-R}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-E\-R\-R\-O\-R}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-E\-R\-R\-O\-R~3}}\label{logger_8hpp_aced66975c154ea0e2a8ec3bc818b4e08}
+Used for errors which are recoverable within the scope of the function \hypertarget{logger_8hpp_ac2164369b4d2bf72296f8ba6ea576ecf}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-F\-A\-T\-A\-L@{L\-O\-G\-\_\-\-F\-A\-T\-A\-L}}
+\index{L\-O\-G\-\_\-\-F\-A\-T\-A\-L@{L\-O\-G\-\_\-\-F\-A\-T\-A\-L}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-F\-A\-T\-A\-L}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-F\-A\-T\-A\-L~4}}\label{logger_8hpp_ac2164369b4d2bf72296f8ba6ea576ecf}
+N\-O\-T\-I\-C\-E\-: This file taken from Graph\-Lab (as stated in the license above). I have merged the C\-P\-P and H\-P\-P files. \begin{DoxyAuthor}{Author}
+Aapo Kyrola
+\end{DoxyAuthor}
+Used for fatal and probably irrecoverable conditions \hypertarget{logger_8hpp_aeb4f36db01bd128c7afeac5889dac311}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-I\-N\-F\-O@{L\-O\-G\-\_\-\-I\-N\-F\-O}}
+\index{L\-O\-G\-\_\-\-I\-N\-F\-O@{L\-O\-G\-\_\-\-I\-N\-F\-O}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-I\-N\-F\-O}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-I\-N\-F\-O~1}}\label{logger_8hpp_aeb4f36db01bd128c7afeac5889dac311}
+Used for providing general useful information \hypertarget{logger_8hpp_a1632479322efa3952798f98177b54471}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-N\-O\-N\-E@{L\-O\-G\-\_\-\-N\-O\-N\-E}}
+\index{L\-O\-G\-\_\-\-N\-O\-N\-E@{L\-O\-G\-\_\-\-N\-O\-N\-E}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-N\-O\-N\-E}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-N\-O\-N\-E~5}}\label{logger_8hpp_a1632479322efa3952798f98177b54471}
+O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L to L\-O\-G\-\_\-\-N\-O\-N\-E to disable logging \hypertarget{logger_8hpp_adf4476a6a4ea6c74231c826e899d7189}{\index{logger.\-hpp@{logger.\-hpp}!L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G@{L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G}}
+\index{L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G@{L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G}]{\setlength{\rightskip}{0pt plus 5cm}\#define L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G~2}}\label{logger_8hpp_adf4476a6a4ea6c74231c826e899d7189}
+Logs interesting conditions which are probably not fatal \hypertarget{logger_8hpp_ae20b7239b817483f352df7496c34155a}{\index{logger.\-hpp@{logger.\-hpp}!logbuf@{logbuf}}
+\index{logbuf@{logbuf}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{logbuf}]{\setlength{\rightskip}{0pt plus 5cm}\#define logbuf(
+\begin{DoxyParamCaption}
+\item[{}]{lvl, }
+\item[{}]{buf, }
+\item[{}]{len}
+\end{DoxyParamCaption}
+)}}\label{logger_8hpp_ae20b7239b817483f352df7496c34155a}
+{\bfseries Value\-:}
+\begin{DoxyCode}
+(\hyperlink{structlog__dispatch}{log\_dispatch<(lvl >}= \hyperlink{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}{OUTPUTLEVEL})>::exec(lvl,
+      \_\_FILE\_\_,     \(\backslash\)
+                        \_\_func\_\_ ,\_\_LINE\_\_,buf,len))
+\end{DoxyCode}
+\hypertarget{logger_8hpp_ab58cdd006f6b33cbe171ab32effef95b}{\index{logger.\-hpp@{logger.\-hpp}!logger@{logger}}
+\index{logger@{logger}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{logger}]{\setlength{\rightskip}{0pt plus 5cm}\#define logger(
+\begin{DoxyParamCaption}
+\item[{}]{lvl, }
+\item[{}]{fmt, }
+\item[{}]{...}
+\end{DoxyParamCaption}
+)~({\bf log\-\_\-dispatch}$<$(lvl $>$= {\bf O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L})$>$\-::exec(lvl,\-\_\-\-\_\-\-F\-I\-L\-E\-\_\-\-\_\-, \-\_\-\-\_\-func\-\_\-\-\_\- ,\-\_\-\-\_\-\-L\-I\-N\-E\-\_\-\-\_\-,fmt,\#\#\-\_\-\-\_\-\-V\-A\-\_\-\-A\-R\-G\-S\-\_\-\-\_\-))}}\label{logger_8hpp_ab58cdd006f6b33cbe171ab32effef95b}
+extracts the filename, line number and function name and calls \-\_\-log. It will be optimized away if L\-O\-G\-\_\-\-N\-O\-N\-E is set This relies on a few compiler macros. As far as I know, these macros are pretty standard among most other C++ compilers. \hypertarget{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}{\index{logger.\-hpp@{logger.\-hpp}!O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L@{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L}}
+\index{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L@{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L}!logger.hpp@{logger.\-hpp}}
+\subsubsection[{O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L}]{\setlength{\rightskip}{0pt plus 5cm}\#define O\-U\-T\-P\-U\-T\-L\-E\-V\-E\-L~{\bf L\-O\-G\-\_\-\-D\-E\-B\-U\-G}}}\label{logger_8hpp_a3d18ed817dcda9f54a4f353ccf9b1b36}
+The minimum level to logger at 

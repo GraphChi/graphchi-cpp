@@ -1,0 +1,103 @@
+\hypertarget{classfile__logger}{\section{file\-\_\-logger Class Reference}
+\label{classfile__logger}\index{file\-\_\-logger@{file\-\_\-logger}}
+}
+
+
+{\ttfamily \#include $<$logger.\-hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classfile__logger_afd49e36dd0cb905b9c8de05ec38eec5b}{set\-\_\-log\-\_\-to\-\_\-console} (bool consolelog)
+\begin{DoxyCompactList}\small\item\em If consolelog is true, subsequent logger output will be written to stderr. \end{DoxyCompactList}\item 
+\hypertarget{classfile__logger_ab1ac2156591d7b04d2d1bfbaf3eb4a69}{std\-::string \hyperlink{classfile__logger_ab1ac2156591d7b04d2d1bfbaf3eb4a69}{get\-\_\-log\-\_\-file} (void)}\label{classfile__logger_ab1ac2156591d7b04d2d1bfbaf3eb4a69}
+
+\begin{DoxyCompactList}\small\item\em Returns the current logger file. \end{DoxyCompactList}\item 
+\hypertarget{classfile__logger_acded5e9c6a2b21dfec2c889a9d0e5efd}{bool \hyperlink{classfile__logger_acded5e9c6a2b21dfec2c889a9d0e5efd}{get\-\_\-log\-\_\-to\-\_\-console} ()}\label{classfile__logger_acded5e9c6a2b21dfec2c889a9d0e5efd}
+
+\begin{DoxyCompactList}\small\item\em Returns true if output is being written to stderr. \end{DoxyCompactList}\item 
+\hypertarget{classfile__logger_a7e8dbb4fe48aa0983271e50e00406a2e}{int \hyperlink{classfile__logger_a7e8dbb4fe48aa0983271e50e00406a2e}{get\-\_\-log\-\_\-level} ()}\label{classfile__logger_a7e8dbb4fe48aa0983271e50e00406a2e}
+
+\begin{DoxyCompactList}\small\item\em Returns the current logger level. \end{DoxyCompactList}\item 
+\hypertarget{classfile__logger_a1af6d913dc8fa9bcad436909c1067414}{{\footnotesize template$<$typename T $>$ }\\\hyperlink{classfile__logger}{file\-\_\-logger} \& {\bfseries operator$<$$<$} (T a)}\label{classfile__logger_a1af6d913dc8fa9bcad436909c1067414}
+
+\item 
+\hypertarget{classfile__logger_a74af3648c42696b41fcc1f62d6bba3fa}{\hyperlink{classfile__logger}{file\-\_\-logger} \& {\bfseries operator$<$$<$} (const char $\ast$a)}\label{classfile__logger_a74af3648c42696b41fcc1f62d6bba3fa}
+
+\item 
+\hypertarget{classfile__logger_ad3753bbbe5e96733b7cf552442337ecc}{\hyperlink{classfile__logger}{file\-\_\-logger} \& {\bfseries operator$<$$<$} (std\-::ostream \&($\ast$f)(std\-::ostream \&))}\label{classfile__logger_ad3753bbbe5e96733b7cf552442337ecc}
+
+\item 
+void \hyperlink{classfile__logger_a21330e11d0d392e86d8d928e9408a4f1}{set\-\_\-log\-\_\-level} (int new\-\_\-log\-\_\-level)
+\item 
+\hyperlink{classfile__logger_a97b486960a56b3ca3bc657cfa9645cc9}{file\-\_\-logger} ()
+\item 
+\hypertarget{classfile__logger_abe325ad2b332c007e73053f111ff001b}{bool {\bfseries set\-\_\-log\-\_\-file} (std\-::string file)}\label{classfile__logger_abe325ad2b332c007e73053f111ff001b}
+
+\item 
+\hypertarget{classfile__logger_a6856b30bc36281bac53a3fef8b9baccc}{void {\bfseries textcolor} (F\-I\-L\-E $\ast$handle, int attr, int fg)}\label{classfile__logger_a6856b30bc36281bac53a3fef8b9baccc}
+
+\item 
+\hypertarget{classfile__logger_a8af1687ded9a0c178be3ec9b88d59e48}{void {\bfseries reset\-\_\-color} (F\-I\-L\-E $\ast$handle)}\label{classfile__logger_a8af1687ded9a0c178be3ec9b88d59e48}
+
+\item 
+\hypertarget{classfile__logger_a7de028f6b436a6bc0ae84df2d6aa9de7}{void {\bfseries \-\_\-log} (int lineloglevel, const char $\ast$file, const char $\ast$function, int line, const char $\ast$fmt, va\-\_\-list ap)}\label{classfile__logger_a7de028f6b436a6bc0ae84df2d6aa9de7}
+
+\item 
+\hypertarget{classfile__logger_ae811969922f3ba1010309bcea33e6866}{void {\bfseries \-\_\-logbuf} (int lineloglevel, const char $\ast$file, const char $\ast$function, int line, const char $\ast$buf, int len)}\label{classfile__logger_ae811969922f3ba1010309bcea33e6866}
+
+\item 
+\hypertarget{classfile__logger_ae6b57d652cdaf6c137533e5bac57b835}{void {\bfseries \-\_\-lograw} (int lineloglevel, const char $\ast$buf, int len)}\label{classfile__logger_ae6b57d652cdaf6c137533e5bac57b835}
+
+\item 
+\hypertarget{classfile__logger_a4c6deb7527f95f1786f2c4f4501a49b7}{\hyperlink{classfile__logger}{file\-\_\-logger} \& {\bfseries start\-\_\-stream} (int lineloglevel, const char $\ast$file, const char $\ast$function, int line)}\label{classfile__logger_a4c6deb7527f95f1786f2c4f4501a49b7}
+
+\item 
+\hypertarget{classfile__logger_a5f8d88ab1aa1db76958edf175edc7c06}{void {\bfseries stream\-\_\-flush} ()}\label{classfile__logger_a5f8d88ab1aa1db76958edf175edc7c06}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classfile__logger_a974b6ccd8179876cbe05fec8e0df0bb8}{static void {\bfseries streambuffdestructor} (void $\ast$v)}\label{classfile__logger_a974b6ccd8179876cbe05fec8e0df0bb8}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+logging class. This writes to a file, and/or the system console. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classfile__logger_a97b486960a56b3ca3bc657cfa9645cc9}{\index{file\-\_\-logger@{file\-\_\-logger}!file\-\_\-logger@{file\-\_\-logger}}
+\index{file\-\_\-logger@{file\-\_\-logger}!file_logger@{file\-\_\-logger}}
+\subsubsection[{file\-\_\-logger}]{\setlength{\rightskip}{0pt plus 5cm}file\-\_\-logger\-::file\-\_\-logger (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classfile__logger_a97b486960a56b3ca3bc657cfa9645cc9}
+Default constructor. By default, log\-\_\-to\-\_\-console is off, there is no logger file, and logger level is set to L\-O\-G\-\_\-\-W\-A\-R\-N\-I\-N\-G 
+
+\subsection{Member Function Documentation}
+\hypertarget{classfile__logger_a21330e11d0d392e86d8d928e9408a4f1}{\index{file\-\_\-logger@{file\-\_\-logger}!set\-\_\-log\-\_\-level@{set\-\_\-log\-\_\-level}}
+\index{set\-\_\-log\-\_\-level@{set\-\_\-log\-\_\-level}!file_logger@{file\-\_\-logger}}
+\subsubsection[{set\-\_\-log\-\_\-level}]{\setlength{\rightskip}{0pt plus 5cm}void file\-\_\-logger\-::set\-\_\-log\-\_\-level (
+\begin{DoxyParamCaption}
+\item[{int}]{new\-\_\-log\-\_\-level}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classfile__logger_a21330e11d0d392e86d8d928e9408a4f1}
+Sets the current logger level. All logging commands below the current logger level will not be written. \hypertarget{classfile__logger_afd49e36dd0cb905b9c8de05ec38eec5b}{\index{file\-\_\-logger@{file\-\_\-logger}!set\-\_\-log\-\_\-to\-\_\-console@{set\-\_\-log\-\_\-to\-\_\-console}}
+\index{set\-\_\-log\-\_\-to\-\_\-console@{set\-\_\-log\-\_\-to\-\_\-console}!file_logger@{file\-\_\-logger}}
+\subsubsection[{set\-\_\-log\-\_\-to\-\_\-console}]{\setlength{\rightskip}{0pt plus 5cm}void file\-\_\-logger\-::set\-\_\-log\-\_\-to\-\_\-console (
+\begin{DoxyParamCaption}
+\item[{bool}]{consolelog}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classfile__logger_afd49e36dd0cb905b9c8de05ec38eec5b}
+
+
+If consolelog is true, subsequent logger output will be written to stderr. 
+
+Closes the current logger file if one exists. if 'file' is not an empty string, it will be opened and all subsequent logger output will be written into 'file'. Any existing content of 'file' will be cleared. Return true on success and false on failure. 
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+src/logger/\hyperlink{logger_8hpp}{logger.\-hpp}\end{DoxyCompactItemize}

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>GraphChi Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <script src="bootstrap/js/jquery.js"></script>
+
+
+    <!-- Le styles -->
+    <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="style/graphchi.css" rel="stylesheet"> 
+
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
+    </style>
+    <link href="bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le fav and touch icons -->
+  
+  
+
+<script type="text/javascript">
+
+function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecreated) {
+    var bgElement = document.getElementById("psw_bg")
+    var shardElement = document.createElement("div")
+    
+    var shardHeight = bgElement.clientHeight - 20;
+    var shardWidth = Math.floor((parseInt(bgElement.clientWidth) - nShards*12) / nShards);
+    
+    shardElement.setAttribute("id", "shard" + num)
+    shardElement.setAttribute("class", "psw")
+    shardElement.style.width = shardWidth + "px"
+    shardElement.style.height = shardHeight + "px"
+    var b = document.createElement("b")
+
+	if (!beingRecreated) {
+    	b.appendChild(document.createTextNode(  num  ))
+    } else {
+		b.appendChild(document.createTextNode(  "(recreate)"  ))
+    	
+	}
+	shardElement.appendChild(b)
+    
+    // Window
+    winElement = document.createElement("div")
+    winElement.setAttribute("id", "win" + num)
+    winElement.setAttribute("class", "pswwindow")
+    winElement.style.position = "relative";
+    winElement.style.width = shardWidth + "px"
+    winElement.style.height = Math.round((windowEndFrac-windowStartFrac)*shardHeight) + "px"
+    winElement.style.top = Math.round(windowStartFrac * shardHeight - 20) + "px" 
+    
+    shardElement.appendChild(winElement)
+    bgElement.appendChild(shardElement)
+}
+
+function updatePageranks(data) {
+	var s = "<table>";
+	for(i=0; i< 20; i++) {
+		var r;
+		eval("r = data.rank" + i)
+		r = r.split(":")
+		s = s + "<tr><td >" + (i+1) + ". "  +  "</td><td width='150px'>" + r[1] + " </td><td style='text-align: right;'>" + r[2] + "</td></tr>"
+	}
+	s = s + "</table>"
+	document.getElementById("pageranks").innerHTML = s;
+}
+
+function updatePics() {
+    document.getElementById("updatesimg").src = "plots/updates.png?" + Math.random()
+    document.getElementById("edgesimg").src = "plots/edges.png?" + Math.random()
+    document.getElementById("ingestsimg").src = "plots/ingests.png?" + Math.random()
+    document.getElementById("bufedgesimg").src = "plots/bufedges.png?" + Math.random()
+
+}
+
+function update() {
+    $.getJSON("/ajax/getinfo", "",
+        function(data) {
+            var graphname = data.file;
+            
+            // Remove previous childs
+            var bgElement = document.getElementById("psw_bg")
+            if ( bgElement.hasChildNodes() )
+            {
+             while ( bgElement.childNodes.length >= 1 )
+              {
+                    bgElement.removeChild( bgElement.firstChild );       
+                } 
+            }
+          
+            document.getElementById("filename").innerHTML = graphname.split( "/" ).pop();
+            document.getElementById("state").innerHTML = data.state;
+
+            document.getElementById("nvertices").innerHTML = data.nvertices;
+
+			if (data.ingestedges != undefined) {
+            	document.getElementById("ingest").innerHTML = data.ingestedges;
+            	document.getElementById("ingestspeed").innerHTML =
+						data.ingestspeed;
+			}
+            document.getElementById("updates").innerHTML = data.updates;
+            document.getElementById("iteration").innerHTML = data.iteration + " / " + data.numIterations;
+            document.getElementById("runtime").innerHTML = data.runTime;
+            document.getElementById("curwindow").innerHTML = data.windowStart + " - " + data.windowEnd;
+            document.getElementById("updatessec").innerHTML = Math.floor(data.updates / (data.runTime+0.01));
+
+            $.each(data.shards, function(i, shard) {
+				if (shard.windowStart != undefined) {
+                	createPswWindow(i, data.shards.length, shard.windowStart / shard.size,
+                        shard.windowEnd / shard.size, false);
+				} else {
+						createPswWindow(i, data.shards.length, 0.0,
+	                        1.0, true);
+				}
+            });
+
+			updatePageranks(data)
+            
+            shardEl = document.getElementById("shard" + data.interval)
+            
+            if (shardEl != undefined) {
+                shardEl.style.backgroundColor = "#666666";
+                shardEl.style.border = "1px solid red"
+            }
+        }
+    );
+
+}
+
+function load() {
+    setInterval(function(){update()},500);
+    setInterval(function(){updatePics()},5000);
+}
+</script>
+
+
+  
+  </head>
+  
+  
+
+  <body onLoad="load()">
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#">GraphChi Admin Dashboard</a>
+      <!--    <div class="btn-group pull-right">
+            <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+              <i class="icon-user"></i> Username
+              <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Profile</a></li>
+              <li class="divider"></li>
+              <li><a href="#">Sign Out</a></li>
+            </ul>
+          </div>
+          
+        -->
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li class="active"><a target="_new" href="http://code.google.com/p/graphchi">GraphChi @ Google Code</a></li>
+
+            </ul>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <div class="well sidebar-nav">
+            <!-- <ul class="nav nav-list">
+              <li class="nav-header">Sidebar</li>
+              <li class="active"><a href="#">Link</a></li>
+              <li><a href="#">Link</a></li>
+              <li><a href="#">Link</a></li>
+              <li><a href="#">Link</a></li>
+            </ul> -->
+            
+            <span class="nav-header2">Summary</span>
+            <table style="margin: 5px;">
+<tr> <td class="leftcol">Input</td><td class="rightcol"> <span id="filename">input</span></td> </tr>
+<tr> <td class="leftcol">State</td><td  class="rightcol"> <span id="state">--</span> </td></tr>
+<tr> <td class="leftcol">Vertices</td><td  class="rightcol"><span id="nvertices">__</span></td></tr>
+<tr> <td class="leftcol">Edges</td><td  class="rightcol"><span id="nedges">__</span></td></tr>
+<tr> <td class="leftcol">Updates executed</td><td  class="rightcol"><span id="updates">0</span></td></tr>
+<tr> <td class="leftcol">Updates / sec</td><td  class="rightcol"> <span id="updatessec">0</span></td></tr>
+<tr> <td class="leftcol">Iteration</td><td  class="rightcol"> <span id="iteration">0</span> </td></tr>
+<tr> <td class="leftcol">Runtime</td><td  class="rightcol"> <span id="runtime">0</span> </td></tr>
+
+</table>
+
+ <span class="nav-header2 style="margin-top: 20px;"">Ingest</span>
+            <table style="margin: 5px;">
+<tr> <td class="leftcol">Streamed edges</td><td class="rightcol"> <span id="ingest">--</span></td> </tr>
+<tr> <td class="leftcol"> - edges / sec</td><td class="rightcol"> <span id="ingestspeed">--</span> </td> </tr>
+
+</table>
+             <span class="nav-header2" style="margin-top: 20px;" >App output</span>
+
+            <div id="pageranks" class="appresult">
+            1. dsfsfsf <br/>
+            2. dsfsfsf <br/>
+            3. dsfsfsf <br/>
+            4. dsfsfsf <br/>
+            5. dsfsfsf <br/>
+            6. dsfsfsf <br/>
+
+            </div>
+            
+            
+          </div><!--/.well  -->
+        </div><!--/span-->
+        <div class="span9">
+        Execution interval: <span id="curwindow" style="font-style:oblique;"></span> <br/>
+
+          <div class="hero-unit2">
+              <div id="psw_bg" style="margin: 4px; height: 200px;  overflow: auto;" >
+              
+              </div>
+          </div>
+          <div class="row-fluid">
+            <div class="span4">
+              <h2>Updates/sec</h2>
+              <p>
+              <img src="plots/updates.png" id="updatesimg" />
+              </p>
+            </div><!--/span-->
+            <div class="span4">
+            <h2>Ingests/sec</h2>
+             <p>
+              <img src="plots/ingests.png" id="ingestsimg" />
+              </p>  
+            </div><!--/span-->
+            <div class="span4">
+             <h2>Delta</h2>
+              <p>Image </p>
+            </div><!--/span-->
+          </div><!--/row-->
+          <div class="row-fluid">
+            <div class="span4">
+            <h2>Edges</h2>
+              <p>
+              <img src="plots/edges.png" id="edgesimg" />
+              </p>            </div><!--/span-->
+            <div class="span4">
+              <h2>Input/Output</h2>
+              <p>Line for reads and writes/sec </p>
+            </div><!--/span-->
+            <div class="span4">
+              <h2>Buffered Edges</h2>
+              <p>
+              <img src="plots/bufedges.png" id="bufedgesimg" />
+              </p>            
+              
+            </div><!--/span-->
+          </div><!--/row-->
+        </div><!--/span-->
+      </div><!--/row-->
+
+      <hr>
+
+      <footer>
+        <p>&copy; Aapo Kyrola et al. 2012 / Carnegie Mellon University</p>
+      </footer>
+
+    </div><!--/.fluid-container-->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="bootstrap/js/bootstrap-transition.js"></script>
+    <script src="bootstrap/js/bootstrap-alert.js"></script>
+    <script src="bootstrap/js/bootstrap-modal.js"></script>
+    <script src="bootstrap/js/bootstrap-dropdown.js"></script>
+    <script src="bootstrap/js/bootstrap-scrollspy.js"></script>
+    <script src="bootstrap/js/bootstrap-tab.js"></script>
+    <script src="bootstrap/js/bootstrap-tooltip.js"></script>
+    <script src="bootstrap/js/bootstrap-popover.js"></script>
+    <script src="bootstrap/js/bootstrap-button.js"></script>
+    <script src="bootstrap/js/bootstrap-collapse.js"></script>
+    <script src="bootstrap/js/bootstrap-carousel.js"></script>
+    <script src="bootstrap/js/bootstrap-typeahead.js"></script>
+
+  </body>
+</html>

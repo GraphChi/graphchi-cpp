@@ -1,0 +1,115 @@
+/* Greyscale
+Table Design by Scott Boyle, Two Plus Four
+www.twoplusfour.co.uk
+----------------------------------------------- */
+
+.dsinfo {
+    font: italic 80%/140% arial, helvetica, sans-serif;
+}
+
+.descs {
+   width: 650px;
+   font: italic 80%/140% arial, helvetica, sans-serif;
+   
+}
+
+h1 {
+	border: 1px solid #999999;
+	background: #ccc;
+	text-align: center;
+}
+
+h2 {
+	border: 1px solid #999999;
+	background: #eee;
+	text-align: center;
+}
+
+.psw {
+    background-color: #444444;
+    border: 1px solid #000000;
+    float: left;
+    margin: 3px;
+}
+
+.pswwindow {
+    background-color: #999999;
+    border: 1px solid #000000;
+    position: relative;
+    left: -1px;
+}
+
+.infobox {
+    float: left;
+}
+
+
+.restable {border-collapse: collapse;
+border: 1px solid #999999;
+
+font: normal 80%/140% arial, helvetica, sans-serif;
+
+color: #555;
+background: #fff;}
+
+table.restable td {font: normal 100%  courier, "courier new", monospace;;
+}
+
+table.restable th {font: bold 100%   arial;
+}
+
+table {border-collapse: collapse;
+border: 1px solid #999999;
+font: normal 80%/140% arial, helvetica, sans-serif;
+color: #555;
+background: #fff;}
+
+td, th {border: 1px dotted #bbb;
+padding: .5em;}
+
+caption {padding: 0 0 .5em 0;
+text-align: left;
+font-size: 1.4em;
+font-weight: bold;
+text-transform: uppercase;
+color: #333;
+background: transparent;}
+
+/* =links
+----------------------------------------------- */
+
+th a {padding: 1px;
+text-decoration: underline;
+font-weight: bold;
+ background: transparent;}
+
+table a:link {border-bottom: 1px dashed #ddd;
+color: #000;}
+ 
+
+table a:hover {border-bottom: 1px dashed #bbb;
+color: #666;}
+
+/* =head =foot
+----------------------------------------------- */
+
+thead th, tfoot th {border: 2px solid #000;
+text-align: left;
+font-size: 1.2em;
+font-weight: bold;
+color: #333;
+background: transparent;}
+
+tfoot td {border: 2px solid #000;}
+
+/* =body
+----------------------------------------------- */
+
+tbody th, tbody td {vertical-align: top;
+text-align: left;}
+
+tbody th {white-space: nowrap;}
+
+.odd {background: #fcfcfc;}
+
+tbody tr:hover {background: #fafafa;}

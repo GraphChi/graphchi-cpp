@@ -1,0 +1,96 @@
+\hypertarget{struct_connected_components_program}{\section{Connected\-Components\-Program Struct Reference}
+\label{struct_connected_components_program}\index{Connected\-Components\-Program@{Connected\-Components\-Program}}
+}
+Inheritance diagram for Connected\-Components\-Program\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{struct_connected_components_program}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{struct_connected_components_program_a31f583b07a3882bb1c231070d2f430c2}{update} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&vertex, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_connected_components_program_aae6274665671c137878968c6714cfdcf}{before\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&info)
+\item 
+void \hyperlink{struct_connected_components_program_acfee1eaafacf9a197b17fefb365914ba}{after\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\item 
+void \hyperlink{struct_connected_components_program_ab8720ed99bd8d2bc555e8e545a48a858}{before\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\item 
+void \hyperlink{struct_connected_components_program_ac7970431691b01689a29cee5f0baa759}{after\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&ginfo)
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+Graph\-Chi programs need to subclass Graph\-Chi\-Program$<$vertex-\/type, edge-\/type$>$ class. The main logic is usually in the update function. 
+
+\subsection{Member Function Documentation}
+\hypertarget{struct_connected_components_program_ac7970431691b01689a29cee5f0baa759}{\index{Connected\-Components\-Program@{Connected\-Components\-Program}!after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}}
+\index{after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}!ConnectedComponentsProgram@{Connected\-Components\-Program}}
+\subsubsection[{after\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void Connected\-Components\-Program\-::after\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_connected_components_program_ac7970431691b01689a29cee5f0baa759}
+Called after an execution interval has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a9be881d1232e530c8d1852188cc8a84d}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_connected_components_program_acfee1eaafacf9a197b17fefb365914ba}{\index{Connected\-Components\-Program@{Connected\-Components\-Program}!after\-\_\-iteration@{after\-\_\-iteration}}
+\index{after\-\_\-iteration@{after\-\_\-iteration}!ConnectedComponentsProgram@{Connected\-Components\-Program}}
+\subsubsection[{after\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void Connected\-Components\-Program\-::after\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_connected_components_program_acfee1eaafacf9a197b17fefb365914ba}
+Called after an iteration has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a24259d43b85d28af16d53a4176d29a07}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_connected_components_program_ab8720ed99bd8d2bc555e8e545a48a858}{\index{Connected\-Components\-Program@{Connected\-Components\-Program}!before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}}
+\index{before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}!ConnectedComponentsProgram@{Connected\-Components\-Program}}
+\subsubsection[{before\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void Connected\-Components\-Program\-::before\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{ginfo}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_connected_components_program_ab8720ed99bd8d2bc555e8e545a48a858}
+Called before an execution interval is started. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_ab2f7244ddb743deb859dbc2fc927078a}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_connected_components_program_aae6274665671c137878968c6714cfdcf}{\index{Connected\-Components\-Program@{Connected\-Components\-Program}!before\-\_\-iteration@{before\-\_\-iteration}}
+\index{before\-\_\-iteration@{before\-\_\-iteration}!ConnectedComponentsProgram@{Connected\-Components\-Program}}
+\subsubsection[{before\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void Connected\-Components\-Program\-::before\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{info}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_connected_components_program_aae6274665671c137878968c6714cfdcf}
+Called before an iteration starts. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_aec6d16fd6dddf1543afe55360a653cf2}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_connected_components_program_a31f583b07a3882bb1c231070d2f430c2}{\index{Connected\-Components\-Program@{Connected\-Components\-Program}!update@{update}}
+\index{update@{update}!ConnectedComponentsProgram@{Connected\-Components\-Program}}
+\subsubsection[{update}]{\setlength{\rightskip}{0pt plus 5cm}void Connected\-Components\-Program\-::update (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&}]{vertex, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_connected_components_program_a31f583b07a3882bb1c231070d2f430c2}
+Vertex update function. On first iteration ,each vertex chooses a label = the vertex id. On subsequent iterations, each vertex chooses the minimum of the neighbor's label (and itself). Broadcast new label to neighbors by writing the value to the incident edges. Note\-: on first iteration, write only to out-\/edges to avoid overwriting data (this is kind of a subtle point)
+
+Implements \hyperlink{classgraphchi_1_1_graph_chi_program_ad76f8881627e3c039144e261bfc77770}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/\hyperlink{connectedcomponents_8cpp}{connectedcomponents.\-cpp}\end{DoxyCompactItemize}

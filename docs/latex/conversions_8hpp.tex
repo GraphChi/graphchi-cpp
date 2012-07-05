@@ -1,0 +1,71 @@
+\hypertarget{conversions_8hpp}{\section{src/preprocessing/conversions.hpp File Reference}
+\label{conversions_8hpp}\index{src/preprocessing/conversions.\-hpp@{src/preprocessing/conversions.\-hpp}}
+}
+{\ttfamily \#include $<$fcntl.\-h$>$}\\*
+{\ttfamily \#include $<$unistd.\-h$>$}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-types.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}logger/logger.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}preprocessing/sharder.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classgraphchi_1_1_sharder_preprocessor}{graphchi\-::\-Sharder\-Preprocessor$<$ Edge\-Data\-Type $>$}
+\item 
+struct \hyperlink{structgraphchi_1_1vertex__degree}{graphchi\-::vertex\-\_\-degree}
+\item 
+class \hyperlink{classgraphchi_1_1_order_by_degree}{graphchi\-::\-Order\-By\-Degree$<$ Edge\-Data\-Type $>$}
+\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \hyperlink{namespacegraphchi}{graphchi}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{conversions_8hpp_a374bd2d6076b95bff33ea625a1e25e09}{V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{namespacegraphchi_ace1ff5b8c766b05e4d3a74cc21038a6b}{graphchi\-::parse} (Pair\-Container$<$ T $>$ \&x, const char $\ast$s)
+\item 
+\hypertarget{namespacegraphchi_acbe597de31b7ac91053a4ef6b557f170}{{\footnotesize template$<$typename T $>$ }\\void {\bfseries graphchi\-::parse} (T \&x, const char $\ast$s)}\label{namespacegraphchi_acbe597de31b7ac91053a4ef6b557f170}
+
+\item 
+{\footnotesize template$<$typename Edge\-Data\-Type $>$ }\\void \hyperlink{namespacegraphchi_a99513ad299ae1d25acb71aa322856e5e}{graphchi\-::convert\-\_\-edgelist} (std\-::string inputfile, sharder$<$ Edge\-Data\-Type $>$ \&sharderobj)
+\item 
+{\footnotesize template$<$typename Edge\-Data\-Type $>$ }\\void \hyperlink{namespacegraphchi_aad30a81856fd56402d4ced270e5ff0aa}{graphchi\-::convert\-\_\-adjlist} (std\-::string inputfile, sharder$<$ Edge\-Data\-Type $>$ \&sharderobj)
+\item 
+{\footnotesize template$<$typename Edge\-Data\-Type $>$ }\\int \hyperlink{namespacegraphchi_adbb0197281c952e57861a4a243f2148f}{graphchi\-::convert} (std\-::string basefilename, std\-::string nshards\-\_\-string, Sharder\-Preprocessor$<$ Edge\-Data\-Type $>$ $\ast$preprocessor=N\-U\-L\-L)
+\item 
+\hypertarget{namespacegraphchi_af3fe2413d0435f814761b5b1209717f1}{{\footnotesize template$<$typename Edge\-Data\-Type $>$ }\\int {\bfseries graphchi\-::convert\-\_\-if\-\_\-notexists} (std\-::string basefilename, std\-::string nshards\-\_\-string, Sharder\-Preprocessor$<$ Edge\-Data\-Type $>$ $\ast$preprocessor=N\-U\-L\-L)}\label{namespacegraphchi_af3fe2413d0435f814761b5b1209717f1}
+
+\item 
+\hypertarget{namespacegraphchi_a90060f8883f31cde264cb11f7144581a}{bool {\bfseries graphchi\-::vertex\-\_\-degree\-\_\-less} (const vertex\-\_\-degree \&a, const vertex\-\_\-degree \&b)}\label{namespacegraphchi_a90060f8883f31cde264cb11f7144581a}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Graph conversion and parsing routines. 
+
+\subsection{Macro Definition Documentation}
+\hypertarget{conversions_8hpp_a374bd2d6076b95bff33ea625a1e25e09}{\index{conversions.\-hpp@{conversions.\-hpp}!V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D@{V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D}}
+\index{V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D@{V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D}!conversions.hpp@{conversions.\-hpp}}
+\subsubsection[{V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D}]{\setlength{\rightskip}{0pt plus 5cm}\#define V\-A\-R\-I\-A\-B\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-U\-S\-E\-D}}\label{conversions_8hpp_a374bd2d6076b95bff33ea625a1e25e09}
+G\-N\-U C\-O\-M\-P\-I\-L\-E\-R H\-A\-C\-K T\-O P\-R\-E\-V\-E\-N\-T W\-A\-R\-N\-I\-N\-G\-S \char`\"{}\-Unused variable\char`\"{}, if the particular app being compiled does not use a function. 

@@ -1,0 +1,108 @@
+\hypertarget{als_8hpp}{\section{example\-\_\-apps/matrix\-\_\-factorization/als.hpp File Reference}
+\label{als_8hpp}\index{example\-\_\-apps/matrix\-\_\-factorization/als.\-hpp@{example\-\_\-apps/matrix\-\_\-factorization/als.\-hpp}}
+}
+{\ttfamily \#include $<$assert.\-h$>$}\\*
+{\ttfamily \#include $<$cmath$>$}\\*
+{\ttfamily \#include $<$errno.\-h$>$}\\*
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$stdint.\-h$>$}\\*
+{\ttfamily \#include \char`\"{}matrixmarket/mmio.\-h\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}matrixmarket/mmio.\-c\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/chifilenames.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/vertex\-\_\-aggregator.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}preprocessing/sharder.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}Eigen/\-Dense\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}Eigen/\-Sparse\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}Eigen/\-Cholesky\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}Eigen/\-Eigenvalues\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}Eigen/\-S\-V\-D\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structlatentvec__t}{latentvec\-\_\-t}
+\item 
+struct \hyperlink{structals__factor__and__weight}{als\-\_\-factor\-\_\-and\-\_\-weight}
+\item 
+struct \hyperlink{struct_m_m_outputter}{M\-M\-Outputter}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als_8hpp_aa93624b0b2836d2510e8c92ae951d817}{\#define {\bfseries E\-I\-G\-E\-N\-\_\-\-Y\-E\-S\-\_\-\-I\-\_\-\-K\-N\-O\-W\-\_\-\-S\-P\-A\-R\-S\-E\-\_\-\-M\-O\-D\-U\-L\-E\-\_\-\-I\-S\-\_\-\-N\-O\-T\-\_\-\-S\-T\-A\-B\-L\-E\-\_\-\-Y\-E\-T}}\label{als_8hpp_aa93624b0b2836d2510e8c92ae951d817}
+
+\item 
+\hypertarget{als_8hpp_a878eafe7cf6b5156358454b42f54ebc2}{\#define {\bfseries N\-L\-A\-T\-E\-N\-T}~5}\label{als_8hpp_a878eafe7cf6b5156358454b42f54ebc2}
+
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als_8hpp_aff07dd04699b2cd41370ab7d082c3543}{typedef Matrix\-Xd {\bfseries mat}}\label{als_8hpp_aff07dd04699b2cd41370ab7d082c3543}
+
+\item 
+\hypertarget{als_8hpp_a16181a64f53e504a205c7902bfba3b6c}{typedef Vector\-Xd {\bfseries vec}}\label{als_8hpp_a16181a64f53e504a205c7902bfba3b6c}
+
+\item 
+\hypertarget{als_8hpp_a0ce9996e94566e7cb99e992b90256510}{typedef Vector\-Xi {\bfseries ivec}}\label{als_8hpp_a0ce9996e94566e7cb99e992b90256510}
+
+\item 
+\hypertarget{als_8hpp_a717b01fad676e180f06d834185b2357d}{typedef Matrix\-Xi {\bfseries imat}}\label{als_8hpp_a717b01fad676e180f06d834185b2357d}
+
+\item 
+\hypertarget{als_8hpp_aba391f04054df3366b9d836ba418d5fc}{typedef Sparse\-Vector$<$ double $>$ {\bfseries sparse\-\_\-vec}}\label{als_8hpp_aba391f04054df3366b9d836ba418d5fc}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename als\-\_\-edge\-\_\-type $>$ }\\int \hyperlink{als_8hpp_aac24c18c19a226199f0b86cabb8ad63d}{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S} (std\-::string base\-\_\-filename)
+\item 
+\hypertarget{als_8hpp_ac9180d56da5dfd77789691c50e81f3cb}{void {\bfseries output\-\_\-als\-\_\-result} (std\-::string filename, vid\-\_\-t numvertices, vid\-\_\-t max\-\_\-left\-\_\-vertex)}\label{als_8hpp_ac9180d56da5dfd77789691c50e81f3cb}
+
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{als_8hpp_aa19eb42db8055c33a3d3eaf680166e51}{double {\bfseries L\-A\-M\-B\-D\-A} = 0.\-065}\label{als_8hpp_aa19eb42db8055c33a3d3eaf680166e51}
+
+\item 
+\hypertarget{als_8hpp_a4a31cf557efa8c68c5c0a73a5405ba3f}{double \hyperlink{als_8hpp_a4a31cf557efa8c68c5c0a73a5405ba3f}{rmse} = 0.\-0}\label{als_8hpp_a4a31cf557efa8c68c5c0a73a5405ba3f}
+
+\begin{DoxyCompactList}\small\item\em R\-M\-S\-E computation. \end{DoxyCompactList}\item 
+\hypertarget{als_8hpp_aa46377eb42a964d5fa8b3ac64440a0d0}{\hyperlink{classgraphchi_1_1mutex}{mutex} {\bfseries rmselock}}\label{als_8hpp_aa46377eb42a964d5fa8b3ac64440a0d0}
+
+\item 
+\hypertarget{als_8hpp_a79e0c7372da6188f813335ad0ea6c918}{vid\-\_\-t {\bfseries max\-\_\-left\-\_\-vertex} = 0}\label{als_8hpp_a79e0c7372da6188f813335ad0ea6c918}
+
+\item 
+\hypertarget{als_8hpp_a302d7862b2622f4b8f13097412570480}{vid\-\_\-t {\bfseries max\-\_\-right\-\_\-vertex} = 0}\label{als_8hpp_a302d7862b2622f4b8f13097412570480}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Common code for A\-L\-S implementations. 
+
+\subsection{Function Documentation}
+\hypertarget{als_8hpp_aac24c18c19a226199f0b86cabb8ad63d}{\index{als.\-hpp@{als.\-hpp}!convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S@{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S}}
+\index{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S@{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S}!als.hpp@{als.\-hpp}}
+\subsubsection[{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename als\-\_\-edge\-\_\-type $>$ int convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S (
+\begin{DoxyParamCaption}
+\item[{std\-::string}]{base\-\_\-filename}
+\end{DoxyParamCaption}
+)}}\label{als_8hpp_aac24c18c19a226199f0b86cabb8ad63d}
+Create a bipartite graph from a matrix. Each row corresponds to vertex with the same id as the row number (0-\/based), but vertices correponsing to columns have id + num-\/rows. Create sharder object

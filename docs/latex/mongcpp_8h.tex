@@ -1,0 +1,75 @@
+\hypertarget{mongcpp_8h}{\section{src/external/vpiotr-\/mongoose-\/cpp/mongcpp.h File Reference}
+\label{mongcpp_8h}\index{src/external/vpiotr-\/mongoose-\/cpp/mongcpp.\-h@{src/external/vpiotr-\/mongoose-\/cpp/mongcpp.\-h}}
+}
+{\ttfamily \#include $<$cstddef$>$}\\*
+{\ttfamily \#include $<$cstdlib$>$}\\*
+{\ttfamily \#include \char`\"{}mongoose.\-h\char`\"{}}\\*
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$map$>$}\\*
+{\ttfamily \#include $<$vector$>$}\\*
+{\ttfamily \#include $<$memory$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classmongoose_1_1_mongoose_connection}{mongoose\-::\-Mongoose\-Connection}
+\item 
+class \hyperlink{classmongoose_1_1_mongoose_request}{mongoose\-::\-Mongoose\-Request}
+\item 
+class \hyperlink{classmongoose_1_1_mongoose_response}{mongoose\-::\-Mongoose\-Response}
+\item 
+class \hyperlink{classmongoose_1_1_mongoose_server}{mongoose\-::\-Mongoose\-Server}
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacemongoose_aaf04ebb9551941b7805fd5e955a87612}{typedef std\-::map$<$ std\-::string, \\*
+std\-::string $>$ {\bfseries mongoose\-::\-Server\-Option\-Set}}\label{namespacemongoose_aaf04ebb9551941b7805fd5e955a87612}
+
+\item 
+\hypertarget{namespacemongoose_a1faeb7c94c1e95e26ef7597c404993c5}{typedef std\-::vector$<$ std\-::string $>$ {\bfseries mongoose\-::\-Server\-Option\-List}}\label{namespacemongoose_a1faeb7c94c1e95e26ef7597c404993c5}
+
+\item 
+\hypertarget{namespacemongoose_a07a15ee0ba2f157b108733cb338704c8}{typedef std\-::vector$<$ const char $\ast$ $>$ {\bfseries mongoose\-::\-Server\-Option\-Storage}}\label{namespacemongoose_a07a15ee0ba2f157b108733cb338704c8}
+
+\item 
+\hypertarget{namespacemongoose_a7aa721316cfe045aede4ea8ff9b34032}{typedef std\-::map$<$ std\-::string, \\*
+std\-::string $>$ {\bfseries mongoose\-::\-Request\-Value\-Set}}\label{namespacemongoose_a7aa721316cfe045aede4ea8ff9b34032}
+
+\item 
+\hypertarget{namespacemongoose_ad14f921daed0784d3da28ef0816013dd}{typedef std\-::map$<$ std\-::string, \\*
+int $>$ {\bfseries mongoose\-::\-Response\-Value\-Index}}\label{namespacemongoose_ad14f921daed0784d3da28ef0816013dd}
+
+\item 
+\hypertarget{namespacemongoose_a2309218b3fcda10f5d967173b2366a90}{typedef std\-::vector$<$ std\-::pair\\*
+$<$ std\-::string, std\-::string $>$ $>$ {\bfseries mongoose\-::\-Response\-Value\-List}}\label{namespacemongoose_a2309218b3fcda10f5d967173b2366a90}
+
+\item 
+\hypertarget{namespacemongoose_ace87cbc7450fcf913439f20cc481a868}{typedef enum mg\-\_\-event {\bfseries mongoose\-::\-Server\-Handling\-Event}}\label{namespacemongoose_ace87cbc7450fcf913439f20cc481a868}
+
+\item 
+\hypertarget{namespacemongoose_a0c26cf39acf5845520d0fa997a91d766}{typedef std\-::map$<$ std\-::string, \\*
+Mongoose\-Request\-Method\-Code $>$ {\bfseries mongoose\-::\-Method\-Map}}\label{namespacemongoose_a0c26cf39acf5845520d0fa997a91d766}
+
+\item 
+\hypertarget{namespacemongoose_aeb189a6e7a2722e8ffa11ec9abacdda6}{typedef std\-::auto\-\_\-ptr$<$ Method\-Map $>$ {\bfseries mongoose\-::\-Method\-Map\-Guard}}\label{namespacemongoose_aeb189a6e7a2722e8ffa11ec9abacdda6}
+
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum {\bfseries Mongoose\-Request\-Method\-Code} \{ \\*
+{\bfseries rmc\-Undef}, 
+{\bfseries rmc\-Get}, 
+{\bfseries rmc\-Post}, 
+{\bfseries rmc\-Head}, 
+\\*
+{\bfseries rmc\-Put}, 
+{\bfseries rmc\-Delete}, 
+{\bfseries rmc\-Trace}, 
+{\bfseries rmc\-Options}
+ \}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\hyperlink{class_mongoose}{Mongoose} wrapper for C++ 

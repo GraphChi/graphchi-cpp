@@ -1,0 +1,20 @@
+\hypertarget{structbidirectional__label}{\section{bidirectional\-\_\-label Struct Reference}
+\label{structbidirectional__label}\index{bidirectional\-\_\-label@{bidirectional\-\_\-label}}
+}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{structbidirectional__label_a69dbe6415de3b814ee699a5df2ed5702}{vid\-\_\-t {\bfseries smaller\-\_\-one}}\label{structbidirectional__label_a69dbe6415de3b814ee699a5df2ed5702}
+
+\item 
+\hypertarget{structbidirectional__label_a6007bbff3e619f639b83b174d9c00fe9}{vid\-\_\-t {\bfseries larger\-\_\-one}}\label{structbidirectional__label_a6007bbff3e619f639b83b174d9c00fe9}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Unlike in connected components, we need to ensure that neighbors do not overwrite each others values. This is achieved by keeping two values in an edge. In this struct, smaller\-\_\-one is the id of the vertex that has smaller id, and larger\-\_\-one the others. This complexity is due to us ignoring the direction of an edge. 
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/\hyperlink{communitydetection_8cpp}{communitydetection.\-cpp}\end{DoxyCompactItemize}

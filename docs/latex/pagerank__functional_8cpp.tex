@@ -1,0 +1,51 @@
+\hypertarget{pagerank__functional_8cpp}{\section{example\-\_\-apps/pagerank\-\_\-functional.cpp File Reference}
+\label{pagerank__functional_8cpp}\index{example\-\_\-apps/pagerank\-\_\-functional.\-cpp@{example\-\_\-apps/pagerank\-\_\-functional.\-cpp}}
+}
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$fstream$>$}\\*
+{\ttfamily \#include $<$cmath$>$}\\*
+{\ttfamily \#include \char`\"{}util/cmdopts.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/graphchi\-\_\-context.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/graph\-\_\-objects.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/ischeduler.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/functional/functional\-\_\-api.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}metrics/metrics.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}metrics/reps/basic\-\_\-reporter.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}util/toplist.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structpagerank__kernel}{pagerank\-\_\-kernel}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{pagerank__functional_8cpp_a5e3939b7192acef3f437bb0edc1c63df}{\#define {\bfseries R\-A\-N\-D\-O\-M\-R\-E\-S\-E\-T\-P\-R\-O\-B}~0.\-15}\label{pagerank__functional_8cpp_a5e3939b7192acef3f437bb0edc1c63df}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{pagerank__functional_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{pagerank__functional_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+\char`\"{}\-Functional\char`\"{} version of pagerank, which is quite a bit more efficient, because it does not construct the vertex-\/objects but directly processes the edges.
+
+This program can be run either in the semi-\/synchronous mode (faster, but less clearly defined semantics), or synchronously. Synchronous version needs double the amount of I/\-O because it needs to store both previous and current values. Use command line parameter mode with semisync or sync. 

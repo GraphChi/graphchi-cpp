@@ -1,0 +1,46 @@
+\hypertarget{als__graphlab_8cpp}{\section{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-graphlab.cpp File Reference}
+\label{als__graphlab_8cpp}\index{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-graphlab.\-cpp@{example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/als\-\_\-graphlab.\-cpp}}
+}
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$algorithm$>$}\\*
+{\ttfamily \#include \char`\"{}../matrixmarket/mmio.\-h\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}../matrixmarket/mmio.\-c\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/graphlab2\-\_\-1\-\_\-\-G\-A\-S\-\_\-api/graphlab.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}als\-\_\-vertex\-\_\-program.\-hpp\char`\"{}}\\*
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{als__graphlab_8cpp_a02f78fa953f1365d88783a04501f4016}{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab} (std\-::string filename)
+\item 
+\hypertarget{als__graphlab_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{als__graphlab_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+\hyperlink{class_program}{Program} for running A\-L\-S-\/matrix factorizatino toolkit from Graph\-Lab. This is an example of Graph\-Lab v2.\-1 programs development for Graph\-Chi. 
+
+\subsection{Function Documentation}
+\hypertarget{als__graphlab_8cpp_a02f78fa953f1365d88783a04501f4016}{\index{als\-\_\-graphlab.\-cpp@{als\-\_\-graphlab.\-cpp}!convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab@{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab}}
+\index{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab@{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab}!als_graphlab.cpp@{als\-\_\-graphlab.\-cpp}}
+\subsubsection[{convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab}]{\setlength{\rightskip}{0pt plus 5cm}int convert\-\_\-matrixmarket\-\_\-for\-\_\-\-A\-L\-S\-\_\-graphlab (
+\begin{DoxyParamCaption}
+\item[{std\-::string}]{base\-\_\-filename}
+\end{DoxyParamCaption}
+)}}\label{als__graphlab_8cpp_a02f78fa953f1365d88783a04501f4016}
+Create a bipartite graph from a matrix. Each row corresponds to vertex with the same id as the row number (0-\/based), but vertices correponsing to columns have id + num-\/rows. Create sharder object

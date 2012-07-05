@@ -1,0 +1,125 @@
+\hypertarget{classals__vertex__program}{\section{als\-\_\-vertex\-\_\-program Class Reference}
+\label{classals__vertex__program}\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}}
+}
+
+
+{\ttfamily \#include $<$als\-\_\-vertex\-\_\-program.\-hpp$>$}
+
+Inheritance diagram for als\-\_\-vertex\-\_\-program\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=1.062619cm]{classals__vertex__program}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+edge\-\_\-dir\-\_\-type \hyperlink{classals__vertex__program_aa70153f16b28263ed6112d012d7a3e86}{gather\-\_\-edges} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, const \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex) const 
+\item 
+gather\-\_\-type \hyperlink{classals__vertex__program_ab6263c7cdde54dea2c1cd50b4c732169}{gather} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, const \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex, \hyperlink{structgraphlab_1_1_graph_lab_edge_wrapper}{edge\-\_\-type} \&\hyperlink{structedge}{edge}) const 
+\item 
+void \hyperlink{classals__vertex__program_a38b2ce9db8057202495be03324bba2b5}{apply} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex, const gather\-\_\-type \&sum)
+\item 
+edge\-\_\-dir\-\_\-type \hyperlink{classals__vertex__program_a6854f1ddb0f0bccc3c8e48711320f645}{scatter\-\_\-edges} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, const \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex) const 
+\item 
+void \hyperlink{classals__vertex__program_a72eb6fbad2a390df75a023cdf8bbc5fd}{scatter} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, const \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex, \hyperlink{structgraphlab_1_1_graph_lab_edge_wrapper}{edge\-\_\-type} \&\hyperlink{structedge}{edge}) const 
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classals__vertex__program_aae00f0768a3086e600178185ae657b2e}{static \hyperlink{structgraphlab_1_1empty}{graphlab\-::empty} \hyperlink{classals__vertex__program_aae00f0768a3086e600178185ae657b2e}{signal\-\_\-left} (\hyperlink{classgraphlab_1_1icontext}{icontext\-\_\-type} \&context, \hyperlink{structgraphlab_1_1_graph_lab_vertex_wrapper}{vertex\-\_\-type} \&vertex)}\label{classals__vertex__program_aae00f0768a3086e600178185ae657b2e}
+
+\begin{DoxyCompactList}\small\item\em Signal all vertices on one side of the bipartite graph. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static double \hyperlink{classals__vertex__program_a4d3fe82f9b913c88361646fecea3e181}{T\-O\-L\-E\-R\-A\-N\-C\-E} = 1e-\/3
+\item 
+\hypertarget{classals__vertex__program_a253e4627e319193ddb8cba802c925c6f}{static double {\bfseries L\-A\-M\-B\-D\-A} = 0.\-01}\label{classals__vertex__program_a253e4627e319193ddb8cba802c925c6f}
+
+\item 
+\hypertarget{classals__vertex__program_a28e4959a34dfe6b3c1905a7b7c3e4a48}{static size\-\_\-t {\bfseries M\-A\-X\-\_\-\-U\-P\-D\-A\-T\-E\-S} = -\/1}\label{classals__vertex__program_a28e4959a34dfe6b3c1905a7b7c3e4a48}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+A\-L\-S vertex program type 
+
+\subsection{Member Function Documentation}
+\hypertarget{classals__vertex__program_a38b2ce9db8057202495be03324bba2b5}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!apply@{apply}}
+\index{apply@{apply}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{apply}]{\setlength{\rightskip}{0pt plus 5cm}void als\-\_\-vertex\-\_\-program\-::apply (
+\begin{DoxyParamCaption}
+\item[{{\bf icontext\-\_\-type} \&}]{context, }
+\item[{{\bf vertex\-\_\-type} \&}]{vertex, }
+\item[{const gather\-\_\-type \&}]{sum}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{classals__vertex__program_a38b2ce9db8057202495be03324bba2b5}
+apply collects the sum of Xt\-X and Xy 
+
+Implements \hyperlink{structgraphlab_1_1ivertex__program_ad1f9db9ebc638f6a9aa22014e8db1854}{graphlab\-::ivertex\-\_\-program$<$ graph\-\_\-type, gather\-\_\-type, graphlab\-::messages\-::sum\-\_\-priority $>$}.
+
+\hypertarget{classals__vertex__program_ab6263c7cdde54dea2c1cd50b4c732169}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!gather@{gather}}
+\index{gather@{gather}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{gather}]{\setlength{\rightskip}{0pt plus 5cm}gather\-\_\-type als\-\_\-vertex\-\_\-program\-::gather (
+\begin{DoxyParamCaption}
+\item[{{\bf icontext\-\_\-type} \&}]{context, }
+\item[{const {\bf vertex\-\_\-type} \&}]{vertex, }
+\item[{{\bf edge\-\_\-type} \&}]{edge}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{classals__vertex__program_ab6263c7cdde54dea2c1cd50b4c732169}
+The gather function computes Xt\-X and Xy 
+
+Reimplemented from \hyperlink{structgraphlab_1_1ivertex__program_a7ad835ddf125627fcedce3a3172428ef}{graphlab\-::ivertex\-\_\-program$<$ graph\-\_\-type, gather\-\_\-type, graphlab\-::messages\-::sum\-\_\-priority $>$}.
+
+\hypertarget{classals__vertex__program_aa70153f16b28263ed6112d012d7a3e86}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!gather\-\_\-edges@{gather\-\_\-edges}}
+\index{gather\-\_\-edges@{gather\-\_\-edges}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{gather\-\_\-edges}]{\setlength{\rightskip}{0pt plus 5cm}edge\-\_\-dir\-\_\-type als\-\_\-vertex\-\_\-program\-::gather\-\_\-edges (
+\begin{DoxyParamCaption}
+\item[{{\bf icontext\-\_\-type} \&}]{context, }
+\item[{const {\bf vertex\-\_\-type} \&}]{vertex}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{classals__vertex__program_aa70153f16b28263ed6112d012d7a3e86}
+The set of edges to gather along 
+
+Reimplemented from \hyperlink{structgraphlab_1_1ivertex__program_a7b978b86d8c8a47f68f1647b630887f8}{graphlab\-::ivertex\-\_\-program$<$ graph\-\_\-type, gather\-\_\-type, graphlab\-::messages\-::sum\-\_\-priority $>$}.
+
+\hypertarget{classals__vertex__program_a72eb6fbad2a390df75a023cdf8bbc5fd}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!scatter@{scatter}}
+\index{scatter@{scatter}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{scatter}]{\setlength{\rightskip}{0pt plus 5cm}void als\-\_\-vertex\-\_\-program\-::scatter (
+\begin{DoxyParamCaption}
+\item[{{\bf icontext\-\_\-type} \&}]{context, }
+\item[{const {\bf vertex\-\_\-type} \&}]{vertex, }
+\item[{{\bf edge\-\_\-type} \&}]{edge}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{classals__vertex__program_a72eb6fbad2a390df75a023cdf8bbc5fd}
+Scatter reschedules neighbors 
+
+Reimplemented from \hyperlink{structgraphlab_1_1ivertex__program_a68e93eefb25b31b0df72b4c454a89105}{graphlab\-::ivertex\-\_\-program$<$ graph\-\_\-type, gather\-\_\-type, graphlab\-::messages\-::sum\-\_\-priority $>$}.
+
+\hypertarget{classals__vertex__program_a6854f1ddb0f0bccc3c8e48711320f645}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!scatter\-\_\-edges@{scatter\-\_\-edges}}
+\index{scatter\-\_\-edges@{scatter\-\_\-edges}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{scatter\-\_\-edges}]{\setlength{\rightskip}{0pt plus 5cm}edge\-\_\-dir\-\_\-type als\-\_\-vertex\-\_\-program\-::scatter\-\_\-edges (
+\begin{DoxyParamCaption}
+\item[{{\bf icontext\-\_\-type} \&}]{context, }
+\item[{const {\bf vertex\-\_\-type} \&}]{vertex}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{classals__vertex__program_a6854f1ddb0f0bccc3c8e48711320f645}
+The edges to scatter along 
+
+Reimplemented from \hyperlink{structgraphlab_1_1ivertex__program_aa296513f9727bb48b372a0386c7e0c05}{graphlab\-::ivertex\-\_\-program$<$ graph\-\_\-type, gather\-\_\-type, graphlab\-::messages\-::sum\-\_\-priority $>$}.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classals__vertex__program_a4d3fe82f9b913c88361646fecea3e181}{\index{als\-\_\-vertex\-\_\-program@{als\-\_\-vertex\-\_\-program}!T\-O\-L\-E\-R\-A\-N\-C\-E@{T\-O\-L\-E\-R\-A\-N\-C\-E}}
+\index{T\-O\-L\-E\-R\-A\-N\-C\-E@{T\-O\-L\-E\-R\-A\-N\-C\-E}!als_vertex_program@{als\-\_\-vertex\-\_\-program}}
+\subsubsection[{T\-O\-L\-E\-R\-A\-N\-C\-E}]{\setlength{\rightskip}{0pt plus 5cm}double als\-\_\-vertex\-\_\-program\-::\-T\-O\-L\-E\-R\-A\-N\-C\-E = 1e-\/3\hspace{0.3cm}{\ttfamily [static]}}}\label{classals__vertex__program_a4d3fe82f9b913c88361646fecea3e181}
+The convergence tolerance 
+
+The documentation for this class was generated from the following files\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/\hyperlink{als__vertex__program_8hpp}{als\-\_\-vertex\-\_\-program.\-hpp}\item 
+example\-\_\-apps/matrix\-\_\-factorization/graphlab\-\_\-gas/\hyperlink{als__graphlab_8cpp}{als\-\_\-graphlab.\-cpp}\end{DoxyCompactItemize}

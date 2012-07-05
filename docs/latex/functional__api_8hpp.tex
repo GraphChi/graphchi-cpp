@@ -1,0 +1,48 @@
+\hypertarget{functional__api_8hpp}{\section{src/api/functional/functional\-\_\-api.hpp File Reference}
+\label{functional__api_8hpp}\index{src/api/functional/functional\-\_\-api.\-hpp@{src/api/functional/functional\-\_\-api.\-hpp}}
+}
+{\ttfamily \#include $<$assert.\-h$>$}\\*
+{\ttfamily \#include \char`\"{}api/graph\-\_\-objects.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/graphchi\-\_\-context.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}engine/functional/functional\-\_\-engine.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}metrics/metrics.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-types.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/functional/functional\-\_\-defs.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/functional/functional\-\_\-semisync.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}api/functional/functional\-\_\-bulksync.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}preprocessing/conversions.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structgraphchi_1_1functional__kernel}{graphchi\-::functional\-\_\-kernel$<$ F\-Vertex\-Data\-Type, F\-Edge\-Data\-Type $>$}
+\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \hyperlink{namespacegraphchi}{graphchi}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$class K\-E\-R\-N\-E\-L $>$ }\\void \hyperlink{namespacegraphchi_a70ac542b16515cd1f5e4bcdb4726ce1f}{graphchi\-::run\-\_\-functional\-\_\-unweighted\-\_\-semisynchronous} (std\-::string filename, int niters, metrics \&\-\_\-m)
+\item 
+{\footnotesize template$<$class K\-E\-R\-N\-E\-L $>$ }\\void \hyperlink{namespacegraphchi_abc244c04632c39d92dd3e16916da6bb9}{graphchi\-::run\-\_\-functional\-\_\-unweighted\-\_\-synchronous} (std\-::string filename, int niters, metrics \&\-\_\-m)
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+Alternative \char`\"{}functional\char`\"{} A\-P\-I for Graph\-Chi. The A\-P\-I is implemented as a layer on top of the standard A\-P\-I, but uses a specialized engine \char`\"{}functional\-\_\-engine\char`\"{}, which processes the graph data in different order. Namely, it first loads in-\/edges, then executes updates, and finally writes new values (broadcasts) to out-\/edges. 

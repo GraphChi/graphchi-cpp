@@ -1,0 +1,164 @@
+
+<html>
+<head>
+<link href="style/greyscale.css" rel="stylesheet" type="text/css">
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+
+<title>GraphChi Dashboard</title>
+</head>
+
+
+<script type="text/javascript">
+
+function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecreated) {
+    var bgElement = document.getElementById("psw_bg")
+    var shardElement = document.createElement("div")
+    
+    var shardHeight = 320;
+    var shardWidth = Math.floor((parseInt(bgElement.style.width) - nShards*12) / nShards);
+    
+    shardElement.setAttribute("id", "shard" + num)
+    shardElement.setAttribute("class", "psw")
+    shardElement.style.width = shardWidth + "px"
+    shardElement.style.height = shardHeight + "px"
+    var b = document.createElement("b")
+
+	if (!beingRecreated) {
+    	b.appendChild(document.createTextNode(  num  ))
+    } else {
+		b.appendChild(document.createTextNode(  "(recreate)"  ))
+    	
+	}
+		shardElement.appendChild(b)
+    
+    // Window
+    winElement = document.createElement("div")
+    winElement.setAttribute("id", "win" + num)
+    winElement.setAttribute("class", "pswwindow")
+    winElement.style.position = "relative";
+    winElement.style.width = shardWidth + "px"
+    winElement.style.height = Math.round((windowEndFrac-windowStartFrac)*shardHeight) + "px"
+    winElement.style.top = Math.round(windowStartFrac * shardHeight - 20) + "px" 
+    
+    shardElement.appendChild(winElement)
+    bgElement.appendChild(shardElement)
+}
+
+function updatePageranks(data) {
+	var s = "";
+	for(i=0; i<20; i++) {
+		var r;
+		eval("r = data.rank" + i)
+		s = s + r + "<br/>"
+	}
+	document.getElementById("pageranks").innerHTML = s;
+}
+
+function update() {
+    $.getJSON("/ajax/getinfo", "",
+        function(data) {
+            var graphname = data.file;
+            
+            // Remove previous childs
+            var bgElement = document.getElementById("psw_bg")
+            if ( bgElement.hasChildNodes() )
+            {
+             while ( bgElement.childNodes.length >= 1 )
+              {
+                    bgElement.removeChild( bgElement.firstChild );       
+                } 
+            }
+          
+            document.getElementById("filename").innerHTML = graphname;
+            document.getElementById("state").innerHTML = data.state;
+
+            document.getElementById("nvertices").innerHTML = data.nvertices;
+
+			if (data.ingestedges != undefined) {
+            	document.getElementById("ingest").innerHTML = data.ingestedges + " (" +
+						data.ingestspeed + " edges/sec)";
+			}
+            document.getElementById("updates").innerHTML = data.updates;
+            document.getElementById("iteration").innerHTML = data.iteration + " / " + data.numIterations;
+            document.getElementById("runtime").innerHTML = data.runTime;
+            document.getElementById("curwindow").innerHTML = data.windowStart + " - " + data.windowEnd;
+            document.getElementById("updatessec").innerHTML = Math.floor(data.updates / (data.runTime+0.01)) + " updates/sec";
+
+            $.each(data.shards, function(i, shard) {
+				if (shard.windowStart != undefined) {
+                	createPswWindow(i, data.shards.length, shard.windowStart / shard.size,
+                        shard.windowEnd / shard.size, false);
+				} else {
+						createPswWindow(i, data.shards.length, 0.0,
+	                        1.0, true);
+				}
+            });
+
+			updatePageranks(data)
+            
+            document.getElementById("shard" + data.interval).style.backgroundColor = "#ff1100";
+        }
+    );
+
+}
+
+function load() {
+    setInterval(function(){update()},500);
+}
+</script>
+
+
+<body onload="load()">
+
+<h2>Parallel Sliding Windows view</h2>
+
+<div id="upper" style="float: bottom;">
+
+<div id="summary" class="infobox">
+<table>
+<tr> <td>Input</td><td> <span id="filename">input</td> </tr>
+<tr> <td>Vertices</td><td><span id="nvertices">__</span></td></tr>
+<tr> <td>Edges</td><td><span id="nedges">__</span></td></tr>
+<tr> <td>Updates executed</td><td><span id="updates">0</span></td></tr>
+<tr> <td>Updates / sec</td><td> <span id="updatessec">0</span></td></tr>
+<tr> <td>Iteration</td><td> <span id="iteration">0</span> </td></tr>
+<tr> <td>Runtime</td><td> <span id="runtime">0</span> </td></tr>
+
+</table>
+</div>
+
+<div id="ingest" class="infobox">
+<table>
+<tr> <td>Ingest</td><td> <span id=ingest>0</span> </td></tr>
+
+</table>
+</div>
+
+<div id="appoutput" class="infobox">
+ 
+ <span id="topheader">Top 10</span>
+ <p>
+ <div id="pageranks">
+ </div>
+ </p>
+</div>
+
+
+</div>
+
+<p>
+
+<hr noshade/>
+
+<div id="pswblock">
+
+Execution interval: <span id="curwindow" style="font-style:oblique;"></span>
+<div id="psw_bg" style="width: 1000px; height: 340px; background-color: #FCF99F; border: 2px dotted;">
+</div>
+
+</div>
+
+</p>
+</body>
+
+</html>

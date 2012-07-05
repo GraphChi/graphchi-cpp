@@ -1,0 +1,105 @@
+\hypertarget{struct_a_l_s_vertices_in_mem_program}{\section{A\-L\-S\-Vertices\-In\-Mem\-Program Struct Reference}
+\label{struct_a_l_s_vertices_in_mem_program}\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+}
+Inheritance diagram for A\-L\-S\-Vertices\-In\-Mem\-Program\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{struct_a_l_s_vertices_in_mem_program}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{struct_a_l_s_vertices_in_mem_program_aa10200a9a239d9816e51f876985aec3c}{virtual void {\bfseries set\-\_\-latent\-\_\-factor} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&vertex, \hyperlink{structlatentvec__t}{latentvec\-\_\-t} \&fact)}\label{struct_a_l_s_vertices_in_mem_program_aa10200a9a239d9816e51f876985aec3c}
+
+\item 
+void \hyperlink{struct_a_l_s_vertices_in_mem_program_ad9a6a2fdf9c1e996b89ebef238a45de1}{before\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_a_l_s_vertices_in_mem_program_a79ab59ee2ac716c0a4c7489c5bffe987}{update} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&vertex, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_a_l_s_vertices_in_mem_program_ad5f96d529e7b579610944c660269b136}{after\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_a_l_s_vertices_in_mem_program_a36db7afcd9ec22c1ddbe378f91f0fe5e}{before\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_a_l_s_vertices_in_mem_program_a0a71542edb0835aa1bedf5cc1ef83975}{after\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{struct_a_l_s_vertices_in_mem_program_aebf3308cb87a54caffac08cf976889cc}{std\-::vector$<$ \hyperlink{structlatentvec__t}{latentvec\-\_\-t} $>$ {\bfseries latent\-\_\-factors\-\_\-inmem}}\label{struct_a_l_s_vertices_in_mem_program_aebf3308cb87a54caffac08cf976889cc}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+Graph\-Chi programs need to subclass Graph\-Chi\-Program$<$vertex-\/type, edge-\/type$>$ class. The main logic is usually in the update function. 
+
+\subsection{Member Function Documentation}
+\hypertarget{struct_a_l_s_vertices_in_mem_program_a0a71542edb0835aa1bedf5cc1ef83975}{\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}!after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}}
+\index{after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}!ALSVerticesInMemProgram@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+\subsubsection[{after\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void A\-L\-S\-Vertices\-In\-Mem\-Program\-::after\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_a_l_s_vertices_in_mem_program_a0a71542edb0835aa1bedf5cc1ef83975}
+Called after an execution interval has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a9be881d1232e530c8d1852188cc8a84d}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_a_l_s_vertices_in_mem_program_ad5f96d529e7b579610944c660269b136}{\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}!after\-\_\-iteration@{after\-\_\-iteration}}
+\index{after\-\_\-iteration@{after\-\_\-iteration}!ALSVerticesInMemProgram@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+\subsubsection[{after\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void A\-L\-S\-Vertices\-In\-Mem\-Program\-::after\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_a_l_s_vertices_in_mem_program_ad5f96d529e7b579610944c660269b136}
+Called after an iteration has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a24259d43b85d28af16d53a4176d29a07}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_a_l_s_vertices_in_mem_program_a36db7afcd9ec22c1ddbe378f91f0fe5e}{\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}!before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}}
+\index{before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}!ALSVerticesInMemProgram@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+\subsubsection[{before\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void A\-L\-S\-Vertices\-In\-Mem\-Program\-::before\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_a_l_s_vertices_in_mem_program_a36db7afcd9ec22c1ddbe378f91f0fe5e}
+Called before an execution interval is started. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_ab2f7244ddb743deb859dbc2fc927078a}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_a_l_s_vertices_in_mem_program_ad9a6a2fdf9c1e996b89ebef238a45de1}{\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}!before\-\_\-iteration@{before\-\_\-iteration}}
+\index{before\-\_\-iteration@{before\-\_\-iteration}!ALSVerticesInMemProgram@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+\subsubsection[{before\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void A\-L\-S\-Vertices\-In\-Mem\-Program\-::before\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_a_l_s_vertices_in_mem_program_ad9a6a2fdf9c1e996b89ebef238a45de1}
+Called before an iteration starts. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_aec6d16fd6dddf1543afe55360a653cf2}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_a_l_s_vertices_in_mem_program_a79ab59ee2ac716c0a4c7489c5bffe987}{\index{A\-L\-S\-Vertices\-In\-Mem\-Program@{A\-L\-S\-Vertices\-In\-Mem\-Program}!update@{update}}
+\index{update@{update}!ALSVerticesInMemProgram@{A\-L\-S\-Vertices\-In\-Mem\-Program}}
+\subsubsection[{update}]{\setlength{\rightskip}{0pt plus 5cm}void A\-L\-S\-Vertices\-In\-Mem\-Program\-::update (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&}]{vertex, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_a_l_s_vertices_in_mem_program_a79ab59ee2ac716c0a4c7489c5bffe987}
+Vertex update function. 
+
+Implements \hyperlink{classgraphchi_1_1_graph_chi_program_ad76f8881627e3c039144e261bfc77770}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/matrix\-\_\-factorization/\hyperlink{als__vertices__inmem_8cpp}{als\-\_\-vertices\-\_\-inmem.\-cpp}\end{DoxyCompactItemize}

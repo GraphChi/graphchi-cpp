@@ -1,0 +1,96 @@
+\hypertarget{struct_my_graph_chi_program}{\section{My\-Graph\-Chi\-Program Struct Reference}
+\label{struct_my_graph_chi_program}\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}}
+}
+Inheritance diagram for My\-Graph\-Chi\-Program\-:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{struct_my_graph_chi_program}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{struct_my_graph_chi_program_abdfcf1ebfeaa35790060e9f79dff4209}{update} (\hyperlink{classgraphchi_1_1graphchi__vertex}{graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&vertex, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_my_graph_chi_program_a2d16696c74cea6bdbb4f237595563b8a}{before\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_my_graph_chi_program_a6e9c87461584131b1b7546a258a9e1ab}{after\-\_\-iteration} (int iteration, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_my_graph_chi_program_a77c27ea8780ebffa75618cd6a875f353}{before\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\item 
+void \hyperlink{struct_my_graph_chi_program_a3d208961e548f3c29cc3edc26c74e3ac}{after\-\_\-exec\-\_\-interval} (vid\-\_\-t window\-\_\-st, vid\-\_\-t window\-\_\-en, \hyperlink{structgraphchi_1_1graphchi__context}{graphchi\-\_\-context} \&gcontext)
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+Graph\-Chi programs need to subclass Graph\-Chi\-Program$<$vertex-\/type, edge-\/type$>$ class. The main logic is usually in the update function. 
+
+\subsection{Member Function Documentation}
+\hypertarget{struct_my_graph_chi_program_a3d208961e548f3c29cc3edc26c74e3ac}{\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}!after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}}
+\index{after\-\_\-exec\-\_\-interval@{after\-\_\-exec\-\_\-interval}!MyGraphChiProgram@{My\-Graph\-Chi\-Program}}
+\subsubsection[{after\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void My\-Graph\-Chi\-Program\-::after\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_my_graph_chi_program_a3d208961e548f3c29cc3edc26c74e3ac}
+Called after an execution interval has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a9be881d1232e530c8d1852188cc8a84d}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_my_graph_chi_program_a6e9c87461584131b1b7546a258a9e1ab}{\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}!after\-\_\-iteration@{after\-\_\-iteration}}
+\index{after\-\_\-iteration@{after\-\_\-iteration}!MyGraphChiProgram@{My\-Graph\-Chi\-Program}}
+\subsubsection[{after\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void My\-Graph\-Chi\-Program\-::after\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_my_graph_chi_program_a6e9c87461584131b1b7546a258a9e1ab}
+Called after an iteration has finished. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_a24259d43b85d28af16d53a4176d29a07}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_my_graph_chi_program_a77c27ea8780ebffa75618cd6a875f353}{\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}!before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}}
+\index{before\-\_\-exec\-\_\-interval@{before\-\_\-exec\-\_\-interval}!MyGraphChiProgram@{My\-Graph\-Chi\-Program}}
+\subsubsection[{before\-\_\-exec\-\_\-interval}]{\setlength{\rightskip}{0pt plus 5cm}void My\-Graph\-Chi\-Program\-::before\-\_\-exec\-\_\-interval (
+\begin{DoxyParamCaption}
+\item[{vid\-\_\-t}]{window\-\_\-st, }
+\item[{vid\-\_\-t}]{window\-\_\-en, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_my_graph_chi_program_a77c27ea8780ebffa75618cd6a875f353}
+Called before an execution interval is started. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_ab2f7244ddb743deb859dbc2fc927078a}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_my_graph_chi_program_a2d16696c74cea6bdbb4f237595563b8a}{\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}!before\-\_\-iteration@{before\-\_\-iteration}}
+\index{before\-\_\-iteration@{before\-\_\-iteration}!MyGraphChiProgram@{My\-Graph\-Chi\-Program}}
+\subsubsection[{before\-\_\-iteration}]{\setlength{\rightskip}{0pt plus 5cm}void My\-Graph\-Chi\-Program\-::before\-\_\-iteration (
+\begin{DoxyParamCaption}
+\item[{int}]{iteration, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_my_graph_chi_program_a2d16696c74cea6bdbb4f237595563b8a}
+Called before an iteration starts. 
+
+Reimplemented from \hyperlink{classgraphchi_1_1_graph_chi_program_aec6d16fd6dddf1543afe55360a653cf2}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+\hypertarget{struct_my_graph_chi_program_abdfcf1ebfeaa35790060e9f79dff4209}{\index{My\-Graph\-Chi\-Program@{My\-Graph\-Chi\-Program}!update@{update}}
+\index{update@{update}!MyGraphChiProgram@{My\-Graph\-Chi\-Program}}
+\subsubsection[{update}]{\setlength{\rightskip}{0pt plus 5cm}void My\-Graph\-Chi\-Program\-::update (
+\begin{DoxyParamCaption}
+\item[{{\bf graphchi\-\_\-vertex}$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$ \&}]{vertex, }
+\item[{{\bf graphchi\-\_\-context} \&}]{gcontext}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}}\label{struct_my_graph_chi_program_abdfcf1ebfeaa35790060e9f79dff4209}
+Vertex update function. 
+
+Implements \hyperlink{classgraphchi_1_1_graph_chi_program_ad76f8881627e3c039144e261bfc77770}{graphchi\-::\-Graph\-Chi\-Program$<$ Vertex\-Data\-Type, Edge\-Data\-Type $>$}.
+
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+example\-\_\-apps/\hyperlink{application__template_8cpp}{application\-\_\-template.\-cpp}\end{DoxyCompactItemize}

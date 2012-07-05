@@ -1,0 +1,69 @@
+\hypertarget{communitydetection_8cpp}{\section{example\-\_\-apps/communitydetection.cpp File Reference}
+\label{communitydetection_8cpp}\index{example\-\_\-apps/communitydetection.\-cpp@{example\-\_\-apps/communitydetection.\-cpp}}
+}
+{\ttfamily \#include $<$cmath$>$}\\*
+{\ttfamily \#include $<$map$>$}\\*
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include \char`\"{}graphchi\-\_\-basic\-\_\-includes.\-hpp\char`\"{}}\\*
+{\ttfamily \#include \char`\"{}util/labelanalysis.\-hpp\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structbidirectional__label}{bidirectional\-\_\-label}
+\item 
+struct \hyperlink{struct_community_detection_program}{Community\-Detection\-Program}
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef vid\-\_\-t \hyperlink{communitydetection_8cpp_acf10237949ab87b83055ff6aa646c565}{Vertex\-Data\-Type}
+\item 
+\hypertarget{communitydetection_8cpp_a8de01fb3810641bbd5a8183ab351584d}{typedef \hyperlink{structbidirectional__label}{bidirectional\-\_\-label} {\bfseries Edge\-Data\-Type}}\label{communitydetection_8cpp_a8de01fb3810641bbd5a8183ab351584d}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{communitydetection_8cpp_a1836b46ef02075c00334ecc406107656}{vid\-\_\-t \& {\bfseries neighbor\-\_\-label} (\hyperlink{structbidirectional__label}{bidirectional\-\_\-label} \&bidir, vid\-\_\-t myid, vid\-\_\-t nbid)}\label{communitydetection_8cpp_a1836b46ef02075c00334ecc406107656}
+
+\item 
+\hypertarget{communitydetection_8cpp_a492d652a999fb7408dcf38952dc75ac4}{vid\-\_\-t \& {\bfseries my\-\_\-label} (\hyperlink{structbidirectional__label}{bidirectional\-\_\-label} \&bidir, vid\-\_\-t myid, vid\-\_\-t nbid)}\label{communitydetection_8cpp_a492d652a999fb7408dcf38952dc75ac4}
+
+\item 
+\hypertarget{communitydetection_8cpp_a217dbf8b442f20279ea00b898af96f52}{int {\bfseries main} (int argc, const char $\ast$$\ast$argv)}\label{communitydetection_8cpp_a217dbf8b442f20279ea00b898af96f52}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola \href{mailto:akyrola@cs.cmu.edu}{\tt akyrola@cs.\-cmu.\-edu} 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\-0
+\end{DoxyVersion}
+\hypertarget{toplist_8hpp_LICENSE}{}\subsection{L\-I\-C\-E\-N\-S\-E}\label{toplist_8hpp_LICENSE}
+Copyright \mbox{[}2012\mbox{]} \mbox{[}Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University\mbox{]}
+
+Licensed under the Apache License, Version 2.\-0 (the \char`\"{}\-License\char`\"{}); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+\href{http://www.apache.org/licenses/LICENSE-2.0}{\tt http\-://www.\-apache.\-org/licenses/\-L\-I\-C\-E\-N\-S\-E-\/2.\-0}
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \char`\"{}\-A\-S I\-S\char`\"{} B\-A\-S\-I\-S, W\-I\-T\-H\-O\-U\-T W\-A\-R\-R\-A\-N\-T\-I\-E\-S O\-R C\-O\-N\-D\-I\-T\-I\-O\-N\-S O\-F A\-N\-Y K\-I\-N\-D, either express or implied. See the License for the specific language governing permissions and limitations under the License.\hypertarget{toplist_8hpp_DESCRIPTION}{}\subsection{D\-E\-S\-C\-R\-I\-P\-T\-I\-O\-N}\label{toplist_8hpp_DESCRIPTION}
+A simple community detection algorithm based on label propagation. L\-P\-A-\/algorithm is explained in \href{http://arxiv.org/pdf/0910.1154.pdf}{\tt http\-://arxiv.\-org/pdf/0910.\-1154.\-pdf} "Advanced modularity-\/specialized label propagation algorithm for detecting communities in networks X. Liu, T. Murata Tokyo Institute of Technology, 2-\/12-\/1 Ookayama, Meguro, Tokyo 152-\/8552, Japan\hypertarget{connectedcomponents_8cpp_REMARKS}{}\subsection{R\-E\-M\-A\-R\-K\-S}\label{connectedcomponents_8cpp_REMARKS}
+The algorithm is very similar to the connected components algorithm, but instead of vertex choosing the minimum label of its neighbor, it chooses the most frequent one.
+
+However, because the operation (most frequent label) is not commutative, we need to store both vertices labels in an edge. See comment below, above the struct \char`\"{}bidirectional\-\_\-label\char`\"{}.
+
+Note, that this algorithm is not very sophisticated and is prone to local minimas. If you want to use this seriously, try with different initial labeling. Also, a more sophisticated algorithm called L\-P\-Am should be doable on Graph\-Chi.
+
+\begin{DoxyAuthor}{Author}
+Aapo Kyrola 
+\end{DoxyAuthor}
+
+
+\subsection{Typedef Documentation}
+\hypertarget{communitydetection_8cpp_acf10237949ab87b83055ff6aa646c565}{\index{communitydetection.\-cpp@{communitydetection.\-cpp}!Vertex\-Data\-Type@{Vertex\-Data\-Type}}
+\index{Vertex\-Data\-Type@{Vertex\-Data\-Type}!communitydetection.cpp@{communitydetection.\-cpp}}
+\subsubsection[{Vertex\-Data\-Type}]{\setlength{\rightskip}{0pt plus 5cm}typedef vid\-\_\-t {\bf Vertex\-Data\-Type}}}\label{communitydetection_8cpp_acf10237949ab87b83055ff6aa646c565}
+Type definitions. Remember to create suitable graph shards using the Sharder-\/program. 
