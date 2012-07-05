@@ -43,12 +43,25 @@
 
 namespace graphchi {
     
+    /** 
+      * Abstract class for callbacks that are invoked for each 
+      * vertex when foreach_vertices() is called (see below).
+      */
     template <typename VertexDataType>
     class VCallback {
     public:
         virtual void callback(vid_t vertex_id, VertexDataType &value) = 0;
     };
     
+    
+    /**
+      * Foreach: a callback object is invoked for every vertex in the given range.
+      * See VCallback above.
+      * @param basefilename base filename
+      * @param fromv first vertex
+      * @param tov last vertex (exclusive)
+      * @param callback user-defined callback-object.
+      */
     template <typename VertexDataType>
     void foreach_vertices(std::string basefilename, vid_t fromv, vid_t tov, VCallback<VertexDataType> &callback) {
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
@@ -74,7 +87,10 @@ namespace graphchi {
         }
     }
     
-    
+    /**
+      * Callback for computing a sum.
+      * TODO: a functional version instead of imperative.
+      */
     template <typename VertexDataType, typename SumType>
     class SumCallback : public VCallback<VertexDataType> {
     public:
@@ -88,6 +104,15 @@ namespace graphchi {
         }
     };
     
+    /** 
+      * Computes a sum over a range of vertices' values.
+      * Type SumType defines the accumulator type, which may be different
+      * than vertex type. For example, often vertex value is 32-bit 
+      * integer, but the sum will need to be 64-bit integer.
+      * @param basefilename base filename
+      * @param fromv first vertex
+      * @param tov last vertex (exclusive)
+      */
     template <typename VertexDataType, typename SumType>
     SumType sum_vertices(std::string base_filename, vid_t fromv, vid_t tov) {
         SumCallback<VertexDataType, SumType> sumc(0);
