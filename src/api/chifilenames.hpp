@@ -109,6 +109,21 @@ namespace graphchi {
         }
     }
     
+    /**
+     * Configuration file name - local version which can
+     * override the version in the version control.
+     */
+    static std::string filename_config_local();
+    static std::string filename_config_local() {
+        char * chi_root = getenv("GRAPHCHI_ROOT");
+        if (chi_root != NULL) {
+            return std::string(chi_root) + "/conf/graphchi.local.cnf";
+        } else {
+            return "conf/graphchi.local.cnf";
+        }
+    }
+    
+    
     bool shard_file_exists(std::string sname);
     bool shard_file_exists(std::string sname) {
         int tryf = open(sname.c_str(), O_RDONLY);

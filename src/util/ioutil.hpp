@@ -40,9 +40,10 @@ void preada(int f, T * tbuf, size_t nbytes, size_t off) {
     size_t nread = 0;
     char * buf = (char*)tbuf;
     while(nread<nbytes) {
-        size_t a = pread(f, buf, nbytes - nread, off + nread);
-        if (a <= 0) {
-            std::cout << "Error, could not read: " << strerror(errno) << std::endl;
+        ssize_t a = pread(f, buf, nbytes - nread, off + nread);
+        if (a == (-1)) {
+            std::cout << "Error, could not read: " << strerror(errno) << " file-desc: " << f << std::endl;
+            assert(a != (-1));
         }
         assert(a>0);
         buf += a;

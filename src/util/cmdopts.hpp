@@ -100,7 +100,7 @@ namespace graphchi {
         _argc = argc;
         _argv = (char**)argv;
         _cmd_configured = true;
-        conf = loadconfig(filename_config());
+        conf = loadconfig(filename_config_local(), filename_config());
     }
     
     static void graphchi_init(int argc, const char ** argv);

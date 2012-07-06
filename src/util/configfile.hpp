@@ -44,7 +44,7 @@ namespace graphchi {
     
     
     static void trimRight( std::string &str,
-                   const std::string& trimChars )
+                          const std::string& trimChars )
     {
         std::string::size_type pos = str.find_last_not_of( trimChars );
         str.erase( pos + 1 );    
@@ -52,7 +52,7 @@ namespace graphchi {
     
     
     static void trimLeft( std::string &str,
-                  const std::string& trimChars )
+                         const std::string& trimChars )
     {
         std::string::size_type pos = str.find_first_not_of( trimChars );
         str.erase( 0, pos );
@@ -73,17 +73,21 @@ namespace graphchi {
         int len = (int)strlen(s)-1; 	  
         if(s[len] == '\n') s[len] = 0;
     }
-
+    
     /**
-      * Returns a key-value map of a configuration file key-values.
-      * If file is not found, fails with an assertion.
-      * @param filename filename of the configuration file
-      */
-    static std::map<std::string, std::string> loadconfig(std::string filename) {
+     * Returns a key-value map of a configuration file key-values.
+     * If file is not found, fails with an assertion.
+     * @param filename filename of the configuration file
+     * @param secondary_filename secondary filename if the first version is not found.
+     */
+    static std::map<std::string, std::string> loadconfig(std::string filename, std::string secondary_filename) {
         FILE * f = fopen(filename.c_str(), "r");
         if (f == NULL) {
-            std::cout << "ERROR: Could not read configuration file: " << filename << std::endl;
-            std::cout << "Please define environment variable GRAPHCHI_ROOT or run the program from that directory." << std::endl;
+            f = fopen(secondary_filename.c_str(), "r");
+            if (f == NULL) {
+                std::cout << "ERROR: Could not read configuration file: " << filename << std::endl;
+                std::cout << "Please define environment variable GRAPHCHI_ROOT or run the program from that directory." << std::endl;
+            }
             assert(f != NULL);
         }
         
