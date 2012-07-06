@@ -172,6 +172,7 @@
 		5F359BF615955CD100AF7672 /* functional_bulksync.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_bulksync.hpp; sourceTree = "<group>"; };
 		5F359BF715955D1B00AF7672 /* functional_defs.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_defs.hpp; sourceTree = "<group>"; };
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
+		5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = binary_adjacency_list.hpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
 		5F56F701159A741F00423ECE /* vertex_aggregator.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_aggregator.hpp; sourceTree = "<group>"; };
 		5F56F703159B771900423ECE /* bulksync_functional_test.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bulksync_functional_test.cpp; sourceTree = "<group>"; };
@@ -474,6 +475,14 @@
 			path = functional;
 			sourceTree = "<group>";
 		};
+		5F3AA7AB15A632A300B467C1 /* formats */ = {
+			isa = PBXGroup;
+			children = (
+				5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */,
+			);
+			path = formats;
+			sourceTree = "<group>";
+		};
 		5F56F702159B771900423ECE /* tests */ = {
 			isa = PBXGroup;
 			children = (
@@ -588,6 +597,7 @@
 			isa = PBXGroup;
 			children = (
 				5FCC1D091595000F0003D0E9 /* conversions.hpp */,
+				5F3AA7AB15A632A300B467C1 /* formats */,
 				5FCC1CD81594F1890003D0E9 /* sharder.hpp */,
 				5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */,
 			);

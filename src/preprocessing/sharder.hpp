@@ -27,9 +27,9 @@
  */
 
 /**
-  * @section TODO
-  * Change all C-style IO to Unix-style IO.
-  */
+ * @section TODO
+ * Change all C-style IO to Unix-style IO.
+ */
 
 
 #ifndef GRAPHCHI_SHARDER_DEF
@@ -46,24 +46,25 @@
 #include <sstream>
 #include <string>
 
-#include "graphchi_types.hpp"
 #include "api/chifilenames.hpp"
 #include "api/graphchi_context.hpp"
+#include "graphchi_types.hpp"
 #include "io/stripedio.hpp"
-#include "shards/slidingshard.hpp"
-#include "shards/memoryshard.hpp"
 #include "logger/logger.hpp"
-#include "util/ioutil.hpp"
-#include "util/qsort.hpp"
 #include "metrics/metrics.hpp"
 #include "metrics/reps/basic_reporter.hpp"
+#include "preprocessing/formats/binary_adjacency_list.hpp"
+#include "shards/memoryshard.hpp"
+#include "shards/slidingshard.hpp"
+#include "util/ioutil.hpp"
+#include "util/qsort.hpp"
 
 namespace graphchi {
     
 #define SHARDER_BUFSIZE (64 * 1024 * 1024)
-  
+    
     enum ProcPhase  { COMPUTE_INTERVALS=1, SHOVEL=2 };
-
+    
     
     template <typename EdgeDataType>
     struct edge_with_value {
@@ -90,14 +91,7 @@ namespace graphchi {
     protected:
         std::string basefilename;
         
-        int binfile_fd;
         vid_t max_vertex_id;
-        
-        /* Preprocessing */
-        char * prebuf; 
-        char * prebufptr;  
-        
-        size_t bytes_preprocessed;
         
         /* Sharding */
         int nshards;
@@ -118,19 +112,19 @@ namespace graphchi {
         
         metrics m;
         
+        binary_adjacency_list_writer<EdgeDataType> * preproc_writer;
+        
     public:
         
-        sharder(std::string basefilename) : basefilename(basefilename), m("sharder") {
-            binfile_fd = (-1);
-            prebuf = NULL;
-            bufs = NULL;
+        sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
             edgedatasize = sizeof(EdgeDataType);
         }
         
         
         virtual ~sharder() {
-            if (prebuf != NULL) free(prebuf);
-            prebuf = NULL;
+            if (preproc_writer != NULL) {
+                delete preproc_writer;
+            }
         }
         
         std::string preprocessed_name() {
@@ -158,63 +152,37 @@ namespace graphchi {
          * Call to start a preprocessing session.
          */
         void start_preprocessing() {
-            if (prebuf != NULL) {
+            if (preproc_writer != NULL) {
                 logstream(LOG_FATAL) << "start_preprocessing() already called! Aborting." << std::endl;
             }   
             
             m.start_time("preprocessing");
-            assert(prebuf == NULL); 
             std::string tmpfilename = preprocessed_name() + ".tmp";
-            binfile_fd = open(tmpfilename.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            if (binfile_fd < 0) {
-                logstream(LOG_ERROR) << "Could not create file: " << tmpfilename << " error: " << strerror(errno) << std::endl;
-            }
-            assert(binfile_fd >= 0);
+            preproc_writer = new binary_adjacency_list_writer<EdgeDataType>(tmpfilename);
             
-            /* Initialize buffers */
-            prebuf = (char*) malloc(SHARDER_BUFSIZE); 
-            prebufptr = prebuf;
-            assert(prebuf != NULL);
             
             logstream(LOG_INFO) << "Started preprocessing: " << basefilename << " --> " << tmpfilename << std::endl;
             
             /* Write the maximum vertex id place holder - to be filled later */
-            bwrite(binfile_fd, prebuf, prebufptr, (vid_t)0);
             max_vertex_id = 0;
-            bytes_preprocessed = 0;
         }
         
         /**
          * Call to finish the preprocessing session.
          */
         void end_preprocessing() {
-            assert(prebuf != NULL);
+            assert(preproc_writer != NULL);
             
-            /* Flush buffer to disk */
-            writea(binfile_fd, prebuf, prebufptr - prebuf);
-            bytes_preprocessed += prebufptr - prebuf;
-            logstream(LOG_INFO) << "Preprocessed: " << float(bytes_preprocessed / 1024. / 1024.) << " MB." << std::endl;
-            
-            /* Write the max vertex id byte */
-            assert(max_vertex_id > 0);
-            logstream(LOG_INFO) << "Maximum vertex id: " << max_vertex_id << std::endl;
-            ssize_t written = pwrite(binfile_fd, &max_vertex_id, sizeof(vid_t), 0);
-            if (written != sizeof(vid_t)) {
-                logstream(LOG_ERROR) << "Error when writing preprocessed file: " << strerror(errno) << std::endl;
-            }
-            assert(written == sizeof(vid_t));
-            
-            /* Free buffer's memory */
-            free(prebuf);
-            prebuf = NULL;
-            prebufptr = NULL;
+            preproc_writer->finish();
+            delete preproc_writer;
+            preproc_writer = NULL;
             
             /* Rename temporary file */ 
             std::string tmpfilename = preprocessed_name() + ".tmp";
             rename(tmpfilename.c_str(), preprocessed_name().c_str());
             
             assert(preprocessed_file_exists());
-                     logstream(LOG_INFO) << "Finished preprocessing: " << basefilename << " --> " << preprocessed_name() << std::endl;
+            logstream(LOG_INFO) << "Finished preprocessing: " << basefilename << " --> " << preprocessed_name() << std::endl;
             m.stop_time("preprocessing");
         }
         
@@ -222,12 +190,15 @@ namespace graphchi {
          * Add edge to be preprocessed
          */
         void preprocessing_add_edge(vid_t from, vid_t to, EdgeDataType val) {
-            if (prebuf == NULL) {
-                logstream(LOG_FATAL) << "You need to call start_preprocessing() prior to adding any edges!" << std::endl;
-            }
-            assert(prebuf != NULL);
-            
-            bwrite(binfile_fd, prebuf, prebufptr, edge_t(from, to, val)); 
+            preproc_writer->add_edge(from, to, val);
+            max_vertex_id = std::max(std::max(from, to), max_vertex_id);
+        }
+        
+        /**
+         * Add edge without value to be preprocessed
+         */
+        void preprocessing_add_edge(vid_t from, vid_t to) {
+            preproc_writer->add_edge(from, to);
             max_vertex_id = std::max(std::max(from, to), max_vertex_id);
         }
         
@@ -237,18 +208,13 @@ namespace graphchi {
             if (bufptr + sizeof(T) - buf >= SHARDER_BUFSIZE) {
                 writea(f, buf, bufptr - buf);
                 bufptr = buf;
-                
-                if (buf == prebuf) { // Slightly ugly.
-                    bytes_preprocessed += SHARDER_BUFSIZE;
-                    logstream(LOG_INFO)<< "Preprocessed: " << float(bytes_preprocessed / 1024. / 1024.) << " MB." << std::endl;
-                }
             }
             *((T*)bufptr) = val;
             bufptr += sizeof(T);
         }
         
         
-      
+        
         
         
         /**
@@ -258,64 +224,25 @@ namespace graphchi {
         int execute_sharding(std::string nshards_string) {
             m.start_time("execute_sharding");
             determine_number_of_shards(nshards_string);
-          
-            size_t blocksize = 32 * 1024 * 1024;
-            while (blocksize % sizeof(edge_t)) blocksize++;
             
-            char * block = (char*) malloc(blocksize);
-            size_t total_to_process = get_filesize(preprocessed_name());
-
             for(int phase=1; phase <= 2; ++phase) {
                 /* Start the sharing process */
-                FILE * inf = fopen(preprocessed_name().c_str(), "r");
-                if (inf == NULL) {
-                    logstream(LOG_FATAL) << "Could not open preprocessed file: " << preprocessed_name() << 
-                    " error: " << strerror(errno) << std::endl;
-                }
-                assert(inf != NULL);
+                
+                binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
                 
                 /* Read max vertex id */
-                ssize_t rd = fread(&max_vertex_id, sizeof(vid_t), 1, inf);
-                if (rd != 1) {
-                    logstream(LOG_ERROR) << "Read: " << rd << std::endl;
-                    logstream(LOG_ERROR) << "Could not read from preprocessed file. Error: " << strerror(errno) << std::endl;
-                }
-                assert(rd == 1);
+                max_vertex_id = reader.get_max_vertex_id();
                 logstream(LOG_INFO) << "Max vertex id: " << max_vertex_id << std::endl; 
                 
                 this->start_phase(phase);
                 
-                size_t totread = 0;
-                do {
-                    size_t len = 0;
-                    while(len < blocksize) {
-                        int a = (int) fread(block + len, 1, blocksize - len, inf);
-                        len += a;
-                        if (a <= 0) break; // eof
-                    }
-                    totread += len;
-                    
-                   logstream(LOG_DEBUG) << "Phase: " << phase << " read:" 
-                            << (totread * 1.0 / total_to_process * 100) << "%" << std::endl;
-                    len /= sizeof(edge_t);
-                    edge_t * ptr = (edge_t*)block;      
-                    
-                    for(size_t i=0; i<len; i++) {
-                        this->receive_edge(ptr[i].src, ptr[i].dst, ptr[i].value);
-                    }
-                } while (!feof(inf));
-                this->end_phase();
+                reader.read_edges(this);
                 
-                fclose(inf);
+                this->end_phase();
             }
-            
-            /* Release memory */
-            free(block); 
-            block = NULL;
-
             /* Write the shards */
             write_shards();
-                      
+            
             m.stop_time("execute_sharding");
             
             /* Print metrics */
@@ -326,10 +253,10 @@ namespace graphchi {
         }
         
         /**
-          * Sharding. This code might be hard to read - modify very carefully! 
-          */
+         * Sharding. This code might be hard to read - modify very carefully! 
+         */
     protected:
-
+        
         virtual void determine_number_of_shards(std::string nshards_string) {
             assert(preprocessed_file_exists());
             if (nshards_string.find("auto") != std::string::npos || nshards_string == "0") {
@@ -339,9 +266,8 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Assuming available memory is " << membudget_mb << " megabytes. " << std::endl;
                 logstream(LOG_INFO) << " (This can be defined with configuration parameter 'membudget_mb')" << std::endl;
                 
-                bytes_preprocessed = get_filesize(preprocessed_name()) - sizeof(vid_t);
-                assert(bytes_preprocessed > 0);
-                size_t numedges = bytes_preprocessed / sizeof(edge_t);
+                binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
+                size_t numedges = reader.get_numedges() / sizeof(edge_t);
                 
                 double max_shardsize = membudget_mb * 1024. * 1024. / 8;
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
@@ -369,7 +295,7 @@ namespace graphchi {
             
             if (f == NULL) {
                 logstream(LOG_ERROR) << "Could not open file: " << fname << " error: " <<
-                        strerror(errno) << std::endl;
+                strerror(errno) << std::endl;
             }
             assert(f != NULL);
             
@@ -404,9 +330,9 @@ namespace graphchi {
             switch (phase) {
                 case COMPUTE_INTERVALS:
                     /* To compute the intervals, we need to keep track of the vertex degrees.
-                       If there is not enough memory to store degree for each vertex, we combine
-                       degrees of successive vertice. This results into less accurate shard split,
-                       but in practice it hardly matters. */
+                     If there is not enough memory to store degree for each vertex, we combine
+                     degrees of successive vertice. This results into less accurate shard split,
+                     but in practice it hardly matters. */
                     vertexchunk = (int) (max_vertex_id * sizeof(int) / (1024 * 1024 * get_option_long("membudget_mb", 1024)));
                     if (vertexchunk<1) vertexchunk = 1;                    
                     edgecounts = (int*)calloc( max_vertex_id / vertexchunk + 1, sizeof(int));
@@ -421,7 +347,7 @@ namespace graphchi {
                     while(bufsize % sizeof(edge_t) != 0) bufsize++;
                     
                     logstream(LOG_DEBUG)<< "Shoveling bufsize: " << bufsize << std::endl;
-                  
+                    
                     for(int i=0; i < nshards; i++) {
                         std::string fname = shovel_filename(i);
                         shovelfs[i] = open(fname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -468,7 +394,7 @@ namespace graphchi {
             }
             
         }
-        
+    
         void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
             if (to == from) {
                 logstream(LOG_WARNING) << "Tried to add self-edge " << from << "->" << to << std::endl;
@@ -476,7 +402,7 @@ namespace graphchi {
             }
             if (from > max_vertex_id || to > max_vertex_id) {
                 logstream(LOG_ERROR) << "Tried to add an edge with too large from/to values. From:" << 
-                    from << " to: "<< to << " max: " << max_vertex_id << std::endl;
+                from << " to: "<< to << " max: " << max_vertex_id << std::endl;
                 assert(false);
             }
             switch (phase) {
@@ -496,20 +422,20 @@ namespace graphchi {
                         }
                     }
                     if(!found) {
-                       logstream(LOG_ERROR) << "Shard not found for : " << to << std::endl; 
+                        logstream(LOG_ERROR) << "Shard not found for : " << to << std::endl; 
                     }
                     assert(found);
                     break;
             }
         }
         
-              
+        
         
         /** 
-          * Write the shard by sorting the shovel file and compressing the
-          * adjacency information.
-          * To support different shard types, override this function!
-          */
+         * Write the shard by sorting the shovel file and compressing the
+         * adjacency information.
+         * To support different shard types, override this function!
+         */
         virtual void write_shards() {
             for(int shard=0; shard < nshards; shard++) {
                 logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
@@ -526,7 +452,7 @@ namespace graphchi {
                 logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
                 
                 quickSort(shovelbuf, (int)numedges, edge_t_src_less<EdgeDataType>);
-               
+                
                 // Create the final file
                 int f = open(fname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
                 if (f < 0) {
@@ -540,7 +466,7 @@ namespace graphchi {
                 int ef = open(edfname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
                 if (ef < 0) {
                     logstream(LOG_ERROR) << "Could not open " << edfname << " error: " << strerror(errno) << std::endl;
-        
+                    
                 }
                 assert(ef >= 0);
                 
@@ -554,7 +480,7 @@ namespace graphchi {
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                     bwrite<EdgeDataType>(ef, ebuf, ebufptr, EdgeDataType(edge.value));
-                  
+                    
                     if ((edge.src != curvid)) {
                         // New vertex
                         size_t count = i - istart;
@@ -613,10 +539,10 @@ namespace graphchi {
         
         
         typedef char dummy_t;
-
+        
         typedef sliding_shard<int, dummy_t> slidingshard_t;
         typedef memory_shard<int, dummy_t> memshard_t;
-
+        
         
         void create_degree_file() {
             // Initialize IO
@@ -637,10 +563,10 @@ namespace graphchi {
             for(int p=0; p < nshards; p++) {
                 std::cout << "Initialize streaming shard: " << p << std::endl;
                 sliding_shards.push_back(
-                                        new slidingshard_t(iomgr, filename_shard_edata<EdgeDataType>(basefilename, p, nshards), 
-                                                           filename_shard_adj(basefilename, p, nshards), intervals[p].first, 
-                                                           intervals[p].second, 
-                                                           blocksize, m, true));
+                                         new slidingshard_t(iomgr, filename_shard_edata<EdgeDataType>(basefilename, p, nshards), 
+                                                            filename_shard_adj(basefilename, p, nshards), intervals[p].first, 
+                                                            intervals[p].second, 
+                                                            blocksize, m, true));
             }
             for(int p=0; p < nshards; p++) sliding_shards[p]->only_adjacency = true;
             
@@ -670,7 +596,7 @@ namespace graphchi {
                 
                 /* Load shard[window] into memory */
                 memshard_t memshard(iomgr, filename_shard_edata<EdgeDataType>(basefilename, window, nshards), filename_shard_adj(basefilename, window, nshards),
-                                              interval_st, interval_en, m);
+                                    interval_st, interval_en, m);
                 memshard.only_adjacency = true;
                 logstream(LOG_INFO) << "Interval: " << interval_st << " " << interval_en << std::endl;
                 
@@ -678,7 +604,7 @@ namespace graphchi {
                     vid_t subinterval_en = std::min(interval_en, subinterval_st + subwindow);
                     logstream(LOG_INFO) << "(Degree proc.) Sub-window: [" << subinterval_st << " - " << subinterval_en << "]" << std::endl;
                     assert(subinterval_en >= subinterval_st && subinterval_en <= interval_en);
-                                        
+                    
                     /* Preallocate vertices */
                     metrics_entry men = m.start_time();
                     int nvertices = subinterval_en-subinterval_st+1;
@@ -731,16 +657,18 @@ namespace graphchi {
                 }
                 /* Move the offset of the window-shard forward */
                 sliding_shards[window]->set_offset(memshard.offset_for_stream_cont(), memshard.offset_vid_for_stream_cont(),
-                                                  memshard.edata_ptr_for_stream_cont());   
+                                                   memshard.edata_ptr_for_stream_cont());   
             }
             close(degreeOutF);
             m.stop_time("degrees.runtime");
             delete iomgr;
         }
-
-
+        
+        friend class binary_adjacency_list_reader<EdgeDataType>;
     }; // End class sharder
-   
+    
+    
+    
 }; // namespace
 
 
