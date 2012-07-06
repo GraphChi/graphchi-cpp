@@ -125,7 +125,8 @@ namespace graphchi {
     template <typename EdgeDataType>
     void convert_edgelist(std::string inputfile, sharder<EdgeDataType> &sharderobj) {
         FILE * inf = fopen(inputfile.c_str(), "r");
-        
+        size_t bytesread = 0;
+        size_t linenum = 0;
         if (inf == NULL) {
             logstream(LOG_FATAL) << "Could not load :" << inputfile << " error: " << strerror(errno) << std::endl;
         }
@@ -134,7 +135,12 @@ namespace graphchi {
         logstream(LOG_INFO) << "Reading in edge list format!" << std::endl;
         char s[1024];
         while(fgets(s, 1024, inf) != NULL) {
+            linenum++;
+            if (linenum % 10000000 == 0) {
+                logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl; 
+            }
             FIXLINE(s);
+            bytesread += strlen(s);
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             
@@ -176,12 +182,19 @@ namespace graphchi {
         int maxlen = 100000000;
         char * s = (char*) malloc(maxlen); 
         
+        size_t bytesread = 0;
+        
         char delims[] = " \t";
         size_t linenum = 0;
         /*** PHASE 1 - count ***/
         while(fgets(s, maxlen, inf) != NULL) {
             linenum++;
+            if (linenum % 100000 == 0) {
+                logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl;
+            }
             FIXLINE(s);
+            bytesread += strlen(s);
+
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             char * t = strtok(s, delims);
