@@ -267,7 +267,7 @@ namespace graphchi {
                 logstream(LOG_INFO) << " (This can be defined with configuration parameter 'membudget_mb')" << std::endl;
                 
                 binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
-                size_t numedges = reader.get_numedges() / sizeof(edge_t);
+                size_t numedges = reader.get_numedges();
                 
                 double max_shardsize = membudget_mb * 1024. * 1024. / 8;
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
