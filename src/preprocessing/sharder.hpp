@@ -231,7 +231,7 @@ namespace graphchi {
                 binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
                 
                 /* Read max vertex id */
-                max_vertex_id = reader.get_max_vertex_id();
+                max_vertex_id = (vid_t) reader.get_max_vertex_id();
                 logstream(LOG_INFO) << "Max vertex id: " << max_vertex_id << std::endl; 
                 
                 this->start_phase(phase);

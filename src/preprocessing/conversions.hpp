@@ -34,6 +34,7 @@
 #include "graphchi_types.hpp"
 #include "logger/logger.hpp"
 #include "preprocessing/sharder.hpp"
+#include "preprocessing/formats/binary_adjacency_list.hpp"
 
 /**
   * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if 
@@ -306,11 +307,25 @@ namespace graphchi {
       */
     template <typename EdgeDataType>
     class OrderByDegree : public SharderPreprocessor<EdgeDataType> {
-        
+        int phase;
+
     public:
         typedef edge_with_value<EdgeDataType> edge_t;
         vid_t * translate_table;
         vid_t max_vertex_id;
+        vertex_degree * degarray;
+        binary_adjacency_list_writer<EdgeDataType> * writer;
+        OrderByDegree() {
+            degarray = NULL;
+            writer = NULL;
+        }
+        
+        ~OrderByDegree() {
+            if (degarray != NULL) free(degarray);
+            degarray = NULL;
+            if (writer != NULL) delete writer;
+            writer = NULL;
+        }
         
         std::string getSuffix() {
             return "_degord";
@@ -321,45 +336,36 @@ namespace graphchi {
             return translate_table[vid];
         }
         
-        void reprocess(std::string preprocessedFile, std::string baseFilename) {
-            size_t blocksize = 32 * 1024 * 1024;
-            while (blocksize % sizeof(edge_t)) blocksize++;
-            
-            char * block = (char*) malloc(blocksize);
-            size_t total_to_process = get_filesize(preprocessedFile);
-            
-            FILE * inf = fopen(preprocessedFile.c_str(), "r");
-            if (inf == NULL) {
-                logstream(LOG_ERROR) << "Could not open: " << preprocessedFile << " error: " << strerror(errno) << std::endl;
+        /**
+          * Callback function that binary_adjacency_list_reader
+          * invokes. In first phase, the degrees of vertice sare collected.
+          * In the next face, they are written out to the degree-ordered data.
+          * Note: this version does not preserve edge values!
+          */
+        void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
+            if (phase == 0) {
+                degarray[from].deg++;
+                degarray[to].deg++;
+            } else {
+                writer->add_edge(translate(from), translate(to)); // Value is ignored
             }
-            assert(inf != NULL);
-            fread(&max_vertex_id, sizeof(vid_t), 1, inf);;
-            vertex_degree * degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));        
+        }
+        void reprocess(std::string preprocessedFile, std::string baseFilename) {
+            
+            binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
+            max_vertex_id = (vid_t) reader.get_max_vertex_id();
+            
+            
+            
+            degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));        
             vid_t nverts = max_vertex_id + 1;
             for(vid_t i=0; i < nverts; i++) {
                 degarray[i].id = i;
             }
             
-            size_t totread = 0;
-            do {
-                size_t len = 0;
-                while(len < blocksize) {
-                    int a = (int) fread(block + len, 1, blocksize - len, inf);
-                    len += a;
-                    if (a <= 0) break; // eof
-                }
-                totread += len;
-                
-                logstream(LOG_DEBUG) << "Degree ordering -- read:"  << (totread * 1.0 / total_to_process * 100) << "%" << std::endl;
-                len /= sizeof(edge_t);
-                edge_t * ptr = (edge_t*)block;      
-                
-                for(int i=0; i<(int)len; i++) {
-                    degarray[ptr[i].src].deg++;
-                    degarray[ptr[i].dst].deg++;         
-                }
-            } while (!feof(inf));
-            fclose(inf);
+            phase = 0;
+            /* Reader will invoke receive_edge() above */
+            reader.read_edges(this);
             
             /* Now sort */
             quickSort(degarray, nverts, vertex_degree_less);
@@ -384,48 +390,17 @@ namespace graphchi {
             std::string tmpfilename = preprocessedFile + ".old";
             rename(preprocessedFile.c_str(), tmpfilename.c_str());
             
-            inf = fopen(tmpfilename.c_str(), "r");
-            if (inf == NULL) {
-                logstream(LOG_ERROR) << "Could not open: " << tmpfilename << " error: " << strerror(errno) << std::endl;
-            }
-            assert(inf != NULL);
-            fread(&max_vertex_id, sizeof(vid_t), 1, inf);;
-            
-            FILE * outf = fopen(preprocessedFile.c_str(), "w");
-            if (outf == NULL) {
-                logstream(LOG_ERROR) << "Could not open: " << preprocessedFile << " error: " << strerror(errno) << std::endl;
-            }
-            assert(outf != NULL);
-            fwrite(&max_vertex_id, sizeof(vid_t), 1, outf);
-            
-            totread = 0;
-            do {
-                size_t len = 0;
-                while(len < blocksize) {
-                    int a = (int) fread(block + len, 1, blocksize - len, inf);
-                    len += a;
-                    if (a <= 0) break; // eof
-                }
-                totread += len;
-                
-                logstream(LOG_DEBUG) << "Degree ordering -- write/read:"  << (totread * 1.0 / total_to_process * 100) << "%" << std::endl;
-                len /= sizeof(edge_t);
-                edge_t * ptr = (edge_t*)block;      
-                
-                // Todo: use buffered output
-                for(int i=0; i<(int)len; i++) {
-                    ptr[i].src = translate(ptr[i].src);
-                    ptr[i].dst = translate(ptr[i].dst);
+            writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
+            binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
 
-                    fwrite(&ptr[i], sizeof(edge_t), 1, outf);   
-                }
-            } while (!feof(inf));
-           
-            fclose(inf);
-            fclose(outf);
+            phase = 1;
+            reader2.read_edges(this);
+            
+            writer->finish();
+            delete writer;
+            writer = NULL;
                            
             delete translate_table;
-            free(block);
         }
         
     };
