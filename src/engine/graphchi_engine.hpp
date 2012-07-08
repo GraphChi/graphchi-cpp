@@ -387,7 +387,7 @@ namespace graphchi {
             edata = (graphchi_edge<EdgeDataType>*) malloc(num_edges * sizeof(graphchi_edge<EdgeDataType>));
             
             /* Assign vertex edge array pointers */
-            int ecounter = 0;
+            size_t ecounter = 0;
             for(int i=0; i < (int)nvertices; i++) {
                 degree d = degree_handler->get_degree(sub_interval_st + i);
                 int inc = d.indegree;

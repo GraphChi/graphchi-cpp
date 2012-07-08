@@ -87,7 +87,7 @@ namespace graphchi {
         init_plot("ingests");
         init_plot("deltas");
 
-        initial_edges = engine->num_edges();
+        initial_edges = engine->num_edges_safe();
     }
 
     template <typename ENGINE> 
