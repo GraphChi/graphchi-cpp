@@ -62,7 +62,6 @@ namespace graphchi {
         assert(df != NULL);
         fprintf(df, "%lf %lf\n", context.runtime(), val);
         fclose(df);
-        std::cout << "---------- Addvalue ------------" << plotname << " " << val << std::endl;
 
     }
     
@@ -88,7 +87,7 @@ namespace graphchi {
         init_plot("ingests");
         init_plot("deltas");
 
-        initial_edges = engine->num_edges_safe();
+        initial_edges = engine->num_edges();
     }
 
     template <typename ENGINE> 

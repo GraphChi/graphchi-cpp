@@ -208,9 +208,9 @@ bool running = true;
 
 void * plotter_thread(void * info);
 void * plotter_thread(void * info) {
-    init_plots(dyngraph_engine);
 
     usleep(1000000 * 10);
+    init_plots(dyngraph_engine);
 
     while(running) {
        /* Update plots */
