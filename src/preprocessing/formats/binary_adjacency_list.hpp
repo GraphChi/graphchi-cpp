@@ -216,7 +216,7 @@ namespace graphchi {
         
         void write_header() {
             logstream(LOG_DEBUG) << "Write header: max vertex: " << header.max_vertex_id << std::endl;
-            pwrite(fd, &header, sizeof(bin_adj_header), 0);
+            pwritea(fd, &header, sizeof(bin_adj_header), 0);
         }
         
         /** 

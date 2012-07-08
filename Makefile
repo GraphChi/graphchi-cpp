@@ -39,10 +39,6 @@ docs: */**
 	doxygen conf/doxygen/doxygen.config
 
 
-dist: */**
-	@mkdir -p dist
-	tar -czf dist/graphchi_src_vXX.tar.gz src example_apps conf docs README.txt graphchi_xcode Makefile 
-	
 	
 
 	

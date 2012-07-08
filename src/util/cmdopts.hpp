@@ -32,6 +32,7 @@
 
 #include <string>
 #include <iostream>
+#include <stdint.h>
 
 #include "api/chifilenames.hpp"
 #include "util/configfile.hpp"
