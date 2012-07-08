@@ -79,7 +79,6 @@ namespace graphchi {
         /**
          * Concurrency control
          */
-        mutex modification_lock;
         mutex schedulerlock;
         mutex shardlock;
         
@@ -205,6 +204,7 @@ namespace graphchi {
          * Initialize streaming shards in the start of each iteration.
          */
         virtual void initialize_sliding_shards() {
+            state = "initialize-shards";
             shardlock.lock();
             if (this->sliding_shards.empty()) {
                 for(int p=0; p < this->nshards; p++) {
@@ -283,7 +283,7 @@ namespace graphchi {
                 usleep(1000000); // Sleep 1 sec
                 return false;
             }
-            modification_lock.lock();
+            this->modification_lock.lock();
             added_edges++;
             int shard = get_shard_for(dst);
             int srcshard = get_shard_for(src);
@@ -306,15 +306,15 @@ namespace graphchi {
             
             // Add edge to buffers
             new_edge_buffers[shard][srcshard]->add(src, dst, edata);            
-            modification_lock.unlock();
+            this->modification_lock.unlock();
             return true;
         }
         
         void add_task(vid_t vid) {
             if (this->scheduler != NULL) {
-                modification_lock.lock();
+                this->modification_lock.lock();
                 this->scheduler->add_task(vid);                
-                modification_lock.unlock();
+                this->modification_lock.unlock();
             }
         }
        
@@ -442,7 +442,9 @@ namespace graphchi {
         }
         
         
-        virtual void load_before_updates(std::vector<svertex_t> &vertices) {            
+        virtual void load_before_updates(std::vector<svertex_t> &vertices) {  
+            state = "load-edges";
+
             this->base_engine::load_before_updates(vertices);
             
 #ifdef SUPPORT_DELETIONS
@@ -450,15 +452,15 @@ namespace graphchi {
                 deletecounts[this->exec_interval] += vertices[i].deleted_inc;
             }
         #endif
+            
+            state = "execute-updates";
         }
         
         
         virtual void init_vertices(std::vector<svertex_t> &vertices, 
                                    graphchi_edge<EdgeDataType> * &edata) {
-            modification_lock.lock();
             base_engine::init_vertices(vertices, edata);
             incorporate_buffered_edges(this->exec_interval, this->sub_interval_st, this->sub_interval_en, vertices);
-            modification_lock.unlock();
         }
         
         
@@ -539,7 +541,7 @@ namespace graphchi {
             state = "commit-ingests";
             vid_t maxwindow = 4000000; // FIXME: HARDCODE
             size_t mem_budget = this->membudget_mb * 1024 * 1024;
-            modification_lock.lock();
+            this->modification_lock.lock();
             
             // Clean up sliding shards
             // NOTE: there is a problem since this will waste
@@ -858,7 +860,7 @@ namespace graphchi {
                 shardlock.unlock();
             }
             init_buffers();
-            modification_lock.unlock();
+            this->modification_lock.unlock();
         }
         template <typename T>
         void bwrite(int f, char * buf, char * &bufptr, T val) {

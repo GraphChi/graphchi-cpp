@@ -111,6 +111,9 @@ namespace graphchi {
         size_t nedges;
         size_t work; // work is the number of edges processed
         
+        mutex modification_lock;
+
+        
         /* Metrics */
         metrics &m;
         
@@ -613,6 +616,8 @@ namespace graphchi {
                         << sub_interval_st << " -- " << interval_en << std::endl;
                     
                     while (sub_interval_st < interval_en) {
+                        
+                        modification_lock.lock();
                         /* Determine the sub interval */
                         sub_interval_en = determine_next_window(exec_interval,
                                                                 sub_interval_st, 
@@ -642,6 +647,7 @@ namespace graphchi {
                         /* Load data */
                         load_before_updates(vertices);                        
                         
+                        modification_lock.unlock();
                         
                         logstream(LOG_INFO) << "Start updates" << std::endl;
                         /* Execute updates */

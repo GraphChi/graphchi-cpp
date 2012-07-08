@@ -42,6 +42,6 @@ plt.xlim([max(0, lastt - lastsecs), lastt])
 plt.gca().yaxis.set_major_locator( MaxNLocator(nbins = 7, prune = 'lower') )
 
 #plt.gca().yaxis.set_major_formatter(majorFormatter)
-plt.savefig(fname.replace(".dat", ".png"), format="png")
+plt.savefig(fname.replace(".dat", ".png"), format="png", bbox_inches='tight')
 
 
