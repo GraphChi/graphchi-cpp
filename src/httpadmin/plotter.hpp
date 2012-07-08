@@ -112,7 +112,7 @@ namespace graphchi {
             addval(engine, "updates", (engine->num_updates() - last_updates) / rt);
             addval(engine, "deltas", engine->get_context().last_deltasum);
         }
-        if (last_update_time == 0 || rt >= 120.0) {
+        if (last_update_time == 0) {
             last_edges = ingested_edges;
             last_update_time = engine->get_context().runtime();
             last_updates = engine->num_updates();
