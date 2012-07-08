@@ -62,10 +62,12 @@ namespace graphchi {
       * memory, i.e the whole file is not loaded into memory (unless ntop = nvertices).
       * @param basefilename name of the graph
       * @param ntop number of top values to return (if ntop is smaller than the total number of vertices, returns all in sorted order)
+      * @param from first vertex to include (default, 0)
+      * @param to last vertex to include (default, all)
       * @return a vector of top ntop values  
      */
     template <typename VertexDataType>
-    std::vector<vertex_value<VertexDataType> > get_top_vertices(std::string basefilename, int ntop) {
+    std::vector<vertex_value<VertexDataType> > get_top_vertices(std::string basefilename, int ntop, vid_t from=0, vid_t to=0) {
         typedef vertex_value<VertexDataType> vv_t;
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
         int f = open(filename.c_str(), O_RDONLY);
@@ -93,11 +95,13 @@ namespace graphchi {
         
         /* Read the data and maintain the top-list */
         size_t nread = 0;
+        size_t offset = from * sizeof(VertexDataType);
+        size_t endoff = (to > 0 ? to * sizeof(VertexDataType) : sz);
         size_t idx = 0;
         int count = 0;
-        while (nread < sz) {
-            size_t len = std::min(sz - nread, bufsize);
-            preada(f, buffer, len, nread); 
+        while (offset + nread < endoff) {
+            size_t len = std::min(endoff - (offset + nread), bufsize);
+            preada(f, buffer, len, offset + nread); 
             nread += len;
             
             int nt = (int) (len / sizeof(VertexDataType));

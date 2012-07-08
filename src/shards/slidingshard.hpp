@@ -455,6 +455,10 @@ namespace graphchi {
             json << window_start_edataoffset;
             json << ", \"windowEnd\": ";
             json << edataoffset; 
+            json << ", \"intervalStart\": ";
+            json << range_st;
+            json << ", \"intervalEnd\": ";
+            json << range_end;
             return json.str();
         }
         

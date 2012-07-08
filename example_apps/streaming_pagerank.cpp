@@ -100,10 +100,7 @@ struct PagerankProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
             std::stringstream sv;
             sv << vv.vertex << ":" << getname(vv.vertex) << ":" << vv.value<< "";
             dyngraph_engine->set_json(ss.str(), sv.str());
-        }
-        
-    
-         
+        }         
 #endif
     }
     
@@ -168,6 +165,41 @@ struct PagerankProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
             /* Keep track of the progression of the computation */
             ginfo.log_change(delta);
         }
+    }
+    
+};
+
+/* Demo stuff. */
+class IntervalTopRequest : public custom_request_handler {
+public:
+    virtual std::string handle(const char * req) {
+        const char * shardnum_str = &req[strlen("/ajax/shardpagerank")];
+        int shardnum = atoi(shardnum_str);
+        logstream(LOG_DEBUG) << "Requested shard pagerank: " << shardnum_str << std::endl;
+        if (shardnum >= 0 && shardnum < dyngraph_engine->get_nshards()) {
+            vid_t fromvid = dyngraph_engine->get_interval_start(shardnum);
+            vid_t tovid = dyngraph_engine->get_interval_end(shardnum);
+            
+            std::vector< vertex_value<float> > top = 
+            get_top_vertices<float>(dyngraph_engine->get_context().filename, 10,
+                        fromvid, tovid + 1);
+          
+            
+            std::stringstream ss;
+            ss << "{";
+            for(int i=0; i < (int) top.size(); i++) {
+                vertex_value<float> vv = top[i];
+                if (i > 0) ss << ",";
+                ss << "\"rank" << i << "\": \"" <<  vv.vertex << ":" << getname(vv.vertex) << ":" << vv.value<< "\"";
+            }         
+            ss << "}"; 
+            std::cout << ss.str();
+            return ss.str();
+        }
+        return "error";
+    }
+    virtual bool responds_to(const char * req) {
+        return (strncmp(req, "/ajax/shardpagerank", 19) == 0);
     }
     
 };
@@ -296,6 +328,7 @@ int main(int argc, const char ** argv) {
     
     /* Start HTTP admin */
     start_httpadmin< graphchi_dynamicgraph_engine<float, float> >(dyngraph_engine);
+    register_http_request_handler(new IntervalTopRequest());
     
     pthread_t plotterthr;
     ret = pthread_create(&plotterthr, NULL, plotter_thread, NULL);

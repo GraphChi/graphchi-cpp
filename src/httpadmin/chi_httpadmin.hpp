@@ -24,6 +24,7 @@ extern "C" {
 namespace graphchi {
     
     class custom_request_handler {
+        
         public:
             virtual std::string handle(const char * req) = 0;
             virtual bool responds_to(const char * req) = 0;
@@ -72,6 +73,7 @@ namespace graphchi {
     
     static void send(std::string json_info, struct mg_connection * conn,
                      const struct mg_request_info *request_info) {
+        mg_printf(conn, "%s", ajax_reply_start);        
         const char * cstr = json_info.c_str();
         int len = (int)strlen(cstr);
         int is_jsonp = handle_jsonp(conn, request_info);
@@ -97,9 +99,6 @@ namespace graphchi {
     static void ajax_send_message(struct mg_connection *conn,
                                   const struct mg_request_info *request_info) {        
         ENGINE * engine = (ENGINE*) request_info->user_data;
-        
-        mg_printf(conn, "%s", ajax_reply_start);
-        
         
         std::string json_info = engine->get_info_json();
         send(json_info, conn, request_info);

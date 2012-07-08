@@ -36,7 +36,7 @@
 
 <script type="text/javascript">
 
-function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecreated) {
+function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecreated, vSt, vEn) {
     var bgElement = document.getElementById("psw_bg")
     var shardElement = document.createElement("div")
     
@@ -68,17 +68,34 @@ function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecr
     
     shardElement.appendChild(winElement)
     bgElement.appendChild(shardElement)
+    
+    shardElement.onclick = function() {
+        $.getJSON("/ajax/shardpagerank" + num, "",
+        function(data) {
+            var shardprel = document.getElementById("selectshard")
+            shardprel.innerHTML = getPagerankTable(data)
+            var shardheader = document.getElementById("selectshard_header");
+            shardheader.innerHTML = "Shard: " + num + "; vertices: " + vSt + " -- " + vEn;
+        }
+        )
+     };
 }
 
-function updatePageranks(data) {
-	var s = "<table>";
-	for(i=0; i< 20; i++) {
+function getPagerankTable(data) {
+    var s = "<table>";
+	for(i=0; i < 20; i++) {
 		var r;
 		eval("r = data.rank" + i)
-		r = r.split(":")
-		s = s + "<tr><td >" + (i+1) + ". "  +  "</td><td width='150px'>" + r[1] + " </td><td style='text-align: right;'>" + r[2] + "</td></tr>"
+		if (r != undefined) {
+		    r = r.split(":")
+		    s = s + "<tr><td >" + (i+1) + ". "  +  "</td><td width='150px'>" + r[1] + " </td><td style='text-align: right;'>" + r[2] + "</td></tr>"
+	    }
 	}
 	s = s + "</table>"
+	return s;
+}
+function updatePageranks(data) {
+	var s = getPagerankTable(data)
 	document.getElementById("pageranks").innerHTML = s;
 }
 
@@ -126,12 +143,13 @@ function update() {
             $.each(data.shards, function(i, shard) {
 				if (shard.windowStart != undefined) {
                 	createPswWindow(i, data.shards.length, shard.windowStart / shard.size,
-                        shard.windowEnd / shard.size, false);
+                        shard.windowEnd / shard.size, false, shard.intervalStart, shard.intervalEnd);
 				} else {
 						createPswWindow(i, data.shards.length, 0.0,
-	                        1.0, true);
+	                        1.0, true, shard.intervalStart, shard.intervalEnd);
 				}
             });
+            
 
 			updatePageranks(data)
             
@@ -250,9 +268,11 @@ function load() {
           
           <div class="row-fluid">
            <div class="span4">
-              <h2>Chosen Shard</h2>
+              <h2>Selected Shard</h2>
+                            <span id="selectshard_header">---</span>
+
               <div id="selectshard">
-              
+              ---
               </div>
             </div><!--/span-->
             <div class="span4">

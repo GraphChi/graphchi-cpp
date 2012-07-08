@@ -443,10 +443,16 @@ namespace graphchi {
             return intervals[i];
         }
         
+        /**
+          * Returns first vertex of i'th interval.
+          */
         vid_t get_interval_start(int i) {
             return get_interval(i).first;
         }
         
+        /** 
+          * Returns last vertex (inclusive) of i'th interval.
+          */
         vid_t get_interval_end(int i) {
             return get_interval(i).second;
         }
@@ -455,8 +461,12 @@ namespace graphchi {
             return 1 + intervals[nshards - 1].second;
         }
         
-       graphchi_context &get_context() {
+        graphchi_context &get_context() {
             return chicontext;
+        }
+        
+        virtual int get_nshards() {
+            return nshards;
         }
         
         size_t num_updates() {
