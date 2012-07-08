@@ -74,7 +74,7 @@ namespace graphchi {
         std::string state;
         size_t maxshardsize;
         size_t edges_in_shards;
-        
+        size_t orig_edges;
         
         /**
          * Concurrency control
@@ -115,7 +115,7 @@ namespace graphchi {
     public:
         
         size_t num_edges_safe() {
-            return added_edges - last_commit + edges_in_shards;
+            return added_edges + orig_edges;
         }
         
         size_t num_buffered_edges() {
@@ -240,7 +240,7 @@ namespace graphchi {
             }
             shardlock.unlock();
             edges_in_shards = num_edges();
-
+            if (orig_edges == 0) orig_edges = edges_in_shards;
         }
         
         void prepare_clean_slate() {
@@ -496,6 +496,7 @@ namespace graphchi {
             max_vertex_id = (vid_t) (this->num_vertices() - 1);
             
             this->vertex_data_handler->clear(this->num_vertices());
+            orig_edges = 0;
         }
         
         
