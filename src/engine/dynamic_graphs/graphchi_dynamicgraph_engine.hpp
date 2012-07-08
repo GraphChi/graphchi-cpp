@@ -115,11 +115,11 @@ namespace graphchi {
     public:
         
         size_t num_edges_safe() {
-            return added_edges + edges_in_shards;
+            return added_edges - last_commit + edges_in_shards;
         }
         
         size_t num_buffered_edges() {
-            return added_edges;
+            return added_edges - last_commit;
         }
         
     protected:
