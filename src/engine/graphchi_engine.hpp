@@ -408,6 +408,7 @@ namespace graphchi {
                 }
             }                   
             work += ecounter;
+            assert(ecounter <= num_edges);
         }
         
         

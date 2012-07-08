@@ -51,6 +51,7 @@ namespace graphchi {
         std::string dataname = plotdirectory() + plotname + ".dat";
         FILE * df = fopen(dataname.c_str(), "w");
         fclose(df);
+        std::cout << "---------- Initialized ------------" << std::endl;
     }
     
     template <typename ENGINE>
@@ -58,8 +59,10 @@ namespace graphchi {
         graphchi_context &context = engine->get_context();
         std::string dataname = plotdirectory() + plotname + ".dat";
         FILE * df = fopen(dataname.c_str(), "a");
+        assert(df != NULL);
         fprintf(df, "%lf %lf\n", context.runtime(), val);
         fclose(df);
+        std::cout << "---------- Addvalue ------------" << plotname << " " << val << std::endl;
 
     }
     

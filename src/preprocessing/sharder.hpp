@@ -607,7 +607,7 @@ namespace graphchi {
                     
                     /* Preallocate vertices */
                     metrics_entry men = m.start_time();
-                    int nvertices = subinterval_en-subinterval_st+1;
+                    int nvertices = subinterval_en - subinterval_st + 1;
                     std::vector< graphchi_vertex<int, dummy_t> > vertices(nvertices, graphchi_vertex<int, dummy_t>()); // preallocate
                     
                     
@@ -642,7 +642,7 @@ namespace graphchi {
                     metrics_entry mev = m.start_time();
                     // Read first current values
                     
-                    int * vbuf = (int*) malloc(nvertices*sizeof(int)*2);
+                    int * vbuf = (int*) malloc(nvertices * sizeof(int) * 2);
                     
                     for(int i=0; i<nvertices; i++) {
                         vbuf[2 * i] = vertices[i].num_inedges();

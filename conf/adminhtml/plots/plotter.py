@@ -19,11 +19,12 @@ def getArg(param, default=""):
 
 lastsecs = int(getArg("lastsecs", 240))
 
-
-
 fname = sys.argv[1]
-
 tdata = numpy.loadtxt(fname, delimiter=" ")
+if tdata.shape()[0] < 2 or tdata.shape()[1] < 2:
+    print "Too small data - do not try to plot yet."
+    return
+
 times = tdata[:, 0]
 values = tdata[:, 1]
 
@@ -35,7 +36,7 @@ lastt = max(times)
 fig = plt.figure(figsize=(3.5, 2.0))
 plt.plot(times[times > lastt - lastsecs], values[times > lastt - lastsecs])
 plt.gca().xaxis.set_major_locator( MaxNLocator(nbins = 7, prune = 'lower') )
-plt.xlim([lastt - lastsecs, lastt])
+plt.xlim([max(0, lastt - lastsecs), lastt])
 #plt.ylim([lastt - lastsecs, lastt])
 
 plt.gca().yaxis.set_major_locator( MaxNLocator(nbins = 7, prune = 'lower') )

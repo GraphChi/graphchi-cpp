@@ -88,7 +88,7 @@ namespace graphchi {
             if (blockptr + sizeof(U) > block + blocklen) {
                 // Read
                 blocklen = std::min(blocksize, total_to_process - fpos);
-                pread(fd, block, blocklen, fpos);
+                preada(fd, block, blocklen, fpos);
                 blockptr = block;
             }
             U res = *((U*)blockptr);
@@ -203,6 +203,7 @@ namespace graphchi {
             bufptr = buf;
             bwrite<bin_adj_header>(fd, buf, bufptr,  header);
             counter = 0;
+            lastid = 0;
             initialized = false;
             assert(fd >= 0);
         }

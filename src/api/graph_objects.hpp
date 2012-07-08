@@ -172,6 +172,10 @@ namespace graphchi {
             inc++;
 
             assert(src != vertexid);
+            if(inc > outedges_ptr - inedges_ptr) {
+                logstream(LOG_FATAL) << "Tried to add more in-edges as the stored in-degree of this vertex (" << src << "). Perhaps a preprocessing step had failed?" << std::endl;
+                assert(inc <= outedges_ptr - inedges_ptr);
+            }
         }
         
         inline void add_outedge(vid_t dst, EdgeDataType * ptr, bool special_edge) {
