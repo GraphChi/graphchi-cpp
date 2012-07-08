@@ -545,7 +545,7 @@ namespace graphchi {
             /* Print configuration */
             print_config();
             
-
+            unsigned int maxwindow = 40000000; // Currently hard-coded - fix!
             
             /* Main loop */
             for(iter=0; iter < niters; iter++) {
@@ -605,7 +605,7 @@ namespace graphchi {
                         /* Determine the sub interval */
                         sub_interval_en = determine_next_window(exec_interval,
                                                                 sub_interval_st, 
-                                                                interval_en, 
+                                                                std::min(interval_en, sub_interval_st + maxwindow), 
                                                                 size_t(membudget_mb) * 1024 * 1024);
                         assert(sub_interval_en > sub_interval_st);
                         
