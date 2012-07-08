@@ -25,6 +25,9 @@
  * Demonstration for streaming graph updates. This application reads from a file
  * list of edges and adds them into the graph continuously. Simultaneously, pagerank
  * is computed for the evolving graph.
+ *
+ * This code includes a fair amount of code for demo purposes. To be cleaned
+ * eventually.
  */
 
 #include <string>
