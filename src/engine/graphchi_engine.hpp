@@ -556,6 +556,13 @@ namespace graphchi {
             initialize_scheduler();
             omp_set_nested(1);
             
+            /* Install a 'mock'-scheduler to chicontext if scheduler
+               is not used. */
+            chicontext.scheduler = scheduler;
+            if (scheduler == NULL) {
+                chicontext.scheduler = new non_scheduler();
+            }
+            
             /* Print configuration */
             print_config();
             
@@ -575,7 +582,7 @@ namespace graphchi {
                 chicontext.iteration = iter;
                 chicontext.num_iterations = niters;
                 chicontext.nvertices = num_vertices();
-                chicontext.scheduler = scheduler;
+                
                 chicontext.execthreads = exec_threads;
                 chicontext.reset_deltas(exec_threads);
                 

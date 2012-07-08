@@ -31,6 +31,7 @@
 #define DEF_GRAPHCHI_ISCHEDULER
 
 #include "graphchi_types.hpp"
+#include "logger/logger.hpp"
 
 namespace graphchi {
 
@@ -41,6 +42,26 @@ namespace graphchi {
             virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) = 0;
             virtual void add_task_to_all()  = 0;
             virtual bool is_scheduled(vid_t vertex) = 0;
+    };
+    
+    
+    /** 
+      * Implementation of the scheduler which actually does nothing.
+      */
+    class non_scheduler : public ischeduler {
+        int nwarnings;
+    public:
+        non_scheduler() : nwarnings(0) {}
+        virtual ~non_scheduler() {} 
+        virtual void add_task(vid_t vid) {
+            if (nwarnings++ % 10000 == 0) {
+                logstream(LOG_WARNING) << "Tried to add task to scheduler, but scheduling was not enabled!" << std::endl;
+            } 
+        }
+        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) { }
+        virtual void add_task_to_all() { }
+        virtual bool is_scheduled(vid_t vertex) { return true; }
+
     };
 
 }
