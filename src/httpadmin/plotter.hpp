@@ -33,6 +33,8 @@
 
 #include <cstdio>
 #include <stdlib.h>
+#include <string>
+
 #include "graphchi_basic_includes.hpp"
 
 namespace graphchi {
@@ -61,10 +63,16 @@ namespace graphchi {
 
     }
     
-    static void drawplot(std::string plotname);
-    static void drawplot(std::string plotname) {
+    static void drawplot(std::string plotname, size_t lookback_secs);
+    static void drawplot(std::string plotname, size_t lookback_secs) {
         std::string plotfile = plotdirectory() + plotname + ".dat";
-        std::string cmd = plotdirectory() + "plotter.py " + plotfile;
+        
+        std::stringstream ss;
+        ss << "python ";
+        ss <<  plotdirectory() + "plotter.py " + plotfile + " lastsecs ";
+        ss << lookback_secs;
+        
+        std::string cmd = ss.str();
         logstream(LOG_DEBUG) << "Executing: " << cmd << std::endl;
         system(cmd.c_str());
     }
@@ -75,6 +83,8 @@ namespace graphchi {
         init_plot("bufedges");
         init_plot("updates");
         init_plot("ingests");
+        init_plot("deltas");
+
         initial_edges = engine->num_edges_safe();
     }
 
@@ -84,14 +94,18 @@ namespace graphchi {
         addval(engine, "bufedges", (double)engine->num_buffered_edges());
         addval(engine, "ingests", (engine->num_edges_safe() - initial_edges) / engine->get_context().runtime());
         addval(engine, "updates", engine->num_updates() / engine->get_context().runtime());
+        addval(engine, "deltas", engine->get_context().last_deltasum);
+
     }
     
     static void drawplots();
     static void drawplots() {
-        drawplot("edges");
-        drawplot("bufedges");
-        drawplot("updates");
-        drawplot("ingests");
+        drawplot("edges", 1800);
+        drawplot("bufedges", 1800);
+        drawplot("updates", 300);
+        drawplot("ingests", 500);
+        drawplot("deltas", 7200);
+
     }
 
 }

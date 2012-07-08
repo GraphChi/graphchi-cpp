@@ -11,9 +11,17 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import FormatStrFormatter
 
-lastsecs = 240
 
-fname = sys.argv[-1]
+def getArg(param, default=""):
+    if (sys.argv.count(param) == 0): return default
+    i = sys.argv.index(param)
+    return sys.argv[i + 1]
+
+lastsecs = int(getArg("lastsecs", 240))
+
+
+
+fname = sys.argv[1]
 
 tdata = numpy.loadtxt(fname, delimiter=" ")
 times = tdata[:, 0]
@@ -23,7 +31,7 @@ lastt = max(times)
 
 
 #majorFormatter = FormatStrFormatter('%.2f')
- 
+
 fig = plt.figure(figsize=(3.5, 2.0))
 plt.plot(times[times > lastt - lastsecs], values[times > lastt - lastsecs])
 plt.gca().xaxis.set_major_locator( MaxNLocator(nbins = 7, prune = 'lower') )

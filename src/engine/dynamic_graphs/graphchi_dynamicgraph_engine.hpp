@@ -892,7 +892,7 @@ namespace graphchi {
             
             json << "\"updates\": " << this->nupdates << ",\n";
             json << "\"nvertices\": " << this->chicontext.nvertices << ",\n";
-            json << "\"edges\": " << edges_in_shards << ",\n";
+            json << "\"edges\": " << num_edges_safe() << ",\n";
 
             json << "\"edgesInBuffers\": " << added_edges << ",\n";
 

@@ -186,11 +186,13 @@ namespace graphchi {
         
         char delims[] = " \t";
         size_t linenum = 0;
+        size_t lastlog = 0;
         /*** PHASE 1 - count ***/
         while(fgets(s, maxlen, inf) != NULL) {
             linenum++;
-            if (linenum % 100000 == 0) {
+            if (bytesread - lastlog >= 500000000) {
                 logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl;
+                lastlog = bytesread;
             }
             FIXLINE(s);
             bytesread += strlen(s);

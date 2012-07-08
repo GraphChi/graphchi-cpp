@@ -369,7 +369,7 @@ namespace graphchi {
             size_t bufoff = 0;
             std::vector<stripe_chunk> stripelist;
             while(idx<end) {
-                size_t blockoff = idx%stripesize;
+                size_t blockoff = idx % stripesize;
                 size_t blocklen = std::min(stripesize-blockoff, end-idx);
                 
                 int mplex_thread = (int) mplex_for_offset(session, idx) * niothreads + (int) (random() % niothreads);

@@ -53,9 +53,11 @@ namespace graphchi {
         std::vector<double> deltas;
         timeval start;
         std::string filename;
+        double last_deltasum;
         
         graphchi_context() : scheduler(NULL), iteration(0), last_iteration(-1) {
             gettimeofday(&start, NULL);
+            last_deltasum = 0.0;
         }
         
         double runtime() {
@@ -80,6 +82,7 @@ namespace graphchi {
             for(int i=0; i < (int)deltas.size(); i++) {
                 d += deltas[i];
             }
+            last_deltasum = d;
             return d;
         }
         

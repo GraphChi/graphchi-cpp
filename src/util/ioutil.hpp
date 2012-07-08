@@ -43,6 +43,7 @@ void preada(int f, T * tbuf, size_t nbytes, size_t off) {
         ssize_t a = pread(f, buf, nbytes - nread, off + nread);
         if (a == (-1)) {
             std::cout << "Error, could not read: " << strerror(errno) << " file-desc: " << f << std::endl;
+            std::cout << "Pread arguments: " << f << " tbuf: " << tbuf << " nbytes: " << nbytes << " off: " << off << std::endl;
             assert(a != (-1));
         }
         assert(a>0);

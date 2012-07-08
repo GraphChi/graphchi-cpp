@@ -23,7 +23,7 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
+ * Matrix factorization with the Alternative Least Squares (ALS) algorithm.
  * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
  * and Danny Bickson (CMU). A good explanation of the algorithm is 
  * given in the following paper:

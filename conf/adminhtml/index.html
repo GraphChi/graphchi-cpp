@@ -87,6 +87,7 @@ function updatePics() {
     document.getElementById("edgesimg").src = "plots/edges.png?" + Math.random()
     document.getElementById("ingestsimg").src = "plots/ingests.png?" + Math.random()
     document.getElementById("bufedgesimg").src = "plots/bufedges.png?" + Math.random()
+    document.getElementById("deltasimg").src = "plots/deltas.png?" + Math.random()
 
 }
 
@@ -115,6 +116,7 @@ function update() {
             	document.getElementById("ingestspeed").innerHTML =
 						data.ingestspeed;
 			}
+			document.getElementById("nedges").innerHTML = data.edges;
             document.getElementById("updates").innerHTML = data.updates;
             document.getElementById("iteration").innerHTML = data.iteration + " / " + data.numIterations;
             document.getElementById("runtime").innerHTML = data.runTime;
@@ -245,7 +247,14 @@ function load() {
               
               </div>
           </div>
+          
           <div class="row-fluid">
+           <div class="span4">
+              <h2>Chosen Shard</h2>
+              <div id="selectshard">
+              
+              </div>
+            </div><!--/span-->
             <div class="span4">
               <h2>Updates/sec</h2>
               <p>
@@ -258,21 +267,19 @@ function load() {
               <img src="plots/ingests.png" id="ingestsimg" />
               </p>  
             </div><!--/span-->
+         </div><!--/row-->
+          <div class="row-fluid">
+
             <div class="span4">
              <h2>Delta</h2>
-              <p>Image </p>
+              <img src="plots/deltas.png" id="deltasimg" />
             </div><!--/span-->
-          </div><!--/row-->
-          <div class="row-fluid">
             <div class="span4">
             <h2>Edges</h2>
               <p>
               <img src="plots/edges.png" id="edgesimg" />
               </p>            </div><!--/span-->
-            <div class="span4">
-              <h2>Input/Output</h2>
-              <p>Line for reads and writes/sec </p>
-            </div><!--/span-->
+           
             <div class="span4">
               <h2>Buffered Edges</h2>
               <p>

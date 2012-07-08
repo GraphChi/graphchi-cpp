@@ -14,6 +14,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
+#include <string>
 
 #include "external/vpiotr-mongoose-cpp/mongoose.h"
 
@@ -21,7 +22,20 @@ extern "C" {
 #include "external/vpiotr-mongoose-cpp/mongoose.c"
 }
 namespace graphchi {
-
+    
+    class custom_request_handler {
+        public:
+            virtual std::string handle(const char * req) = 0;
+            virtual bool responds_to(const char * req) = 0;
+    };
+    
+    static std::vector<custom_request_handler *> reqhandlers;
+    
+    static void register_http_request_handler(custom_request_handler * rh) {
+        reqhandlers.push_back(rh);
+    }
+    
+    
     static const char *ajax_reply_start =
     "HTTP/1.1 200 OK\r\n"
     "Cache: no-cache\r\n"
@@ -56,21 +70,12 @@ namespace graphchi {
         return cb[0] == '\0' ? 0 : 1;
     }
     
-    template <typename ENGINE>
-    static void ajax_send_message(struct mg_connection *conn,
-                                  const struct mg_request_info *request_info) {
-         int is_jsonp;
-        
-        ENGINE * engine = (ENGINE*) request_info->user_data;
-        
-        mg_printf(conn, "%s", ajax_reply_start);
-        is_jsonp = handle_jsonp(conn, request_info);
-        
-        
-        std::string json_info = engine->get_info_json();
+    static void send(std::string json_info, struct mg_connection * conn,
+                     const struct mg_request_info *request_info) {
         const char * cstr = json_info.c_str();
         int len = (int)strlen(cstr);
-        
+        int is_jsonp = handle_jsonp(conn, request_info);
+
         //mg_printf(conn, "%s", json_info.c_str());
         // Send read bytes to the client, exit the loop on error
         int num_written = 0;
@@ -85,6 +90,19 @@ namespace graphchi {
         if (is_jsonp) {
             mg_printf(conn, "%s", ")");
         }
+
+    }
+    
+    template <typename ENGINE>
+    static void ajax_send_message(struct mg_connection *conn,
+                                  const struct mg_request_info *request_info) {        
+        ENGINE * engine = (ENGINE*) request_info->user_data;
+        
+        mg_printf(conn, "%s", ajax_reply_start);
+        
+        
+        std::string json_info = engine->get_info_json();
+        send(json_info, conn, request_info);
     }
     
 
@@ -99,12 +117,20 @@ namespace graphchi {
         if (event == MG_NEW_REQUEST) {
             if (strcmp(request_info->uri, "/ajax/getinfo") == 0) {
                 ajax_send_message<ENGINE>(conn, request_info);
-            } else if (strcmp(request_info->uri, "/ajax/getinfo2") == 0) {
-            
             } else {
+                bool found = false;
+                for(std::vector<custom_request_handler *>::iterator it=reqhandlers.begin();
+                    it != reqhandlers.end(); ++it) {
+                    custom_request_handler * rh = *it;
+                    if (rh->responds_to(request_info->uri)) {
+                        std::string response = rh->handle(request_info->uri);
+                        send(response, conn, request_info);
+                        found = true;
+                    }
+                }
                 // No suitable handler found, mark as not processed. Mongoose will
                 // try to serve the request.
-                processed = NULL;
+                if (!found) processed = NULL;
             }
         } else {
             processed = NULL;

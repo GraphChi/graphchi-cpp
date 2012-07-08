@@ -272,6 +272,7 @@ namespace graphchi {
                 // Raw data and object cost included
                 memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
                 if (memreq > membudget) {
+                    logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
                     return fromvid + i - 1;  // Previous was enough
                 }
             }
@@ -605,7 +606,7 @@ namespace graphchi {
                         sub_interval_en = determine_next_window(exec_interval,
                                                                 sub_interval_st, 
                                                                 interval_en, 
-                                                                membudget_mb * 1024 * 1024);
+                                                                size_t(membudget_mb) * 1024 * 1024);
                         assert(sub_interval_en > sub_interval_st);
                         
                         logstream(LOG_INFO) << "Iteration " << iter << "/" << (niters - 1) << ", subinterval: " << sub_interval_st << " - " << sub_interval_en << std::endl;
