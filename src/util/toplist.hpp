@@ -112,7 +112,7 @@ namespace graphchi {
             }
             for(int j=0; j < nt; j++) {
                 if (count == 0 || (buffer[j] > minima)) {
-                    buffer_idxs[k] = vv_t((vid_t)idx, buffer[j]);
+                    buffer_idxs[k] = vv_t((vid_t)idx + from, buffer[j]);
                     k++;
                 }
                 idx++;
