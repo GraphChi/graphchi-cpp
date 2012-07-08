@@ -290,7 +290,9 @@ void * dynamic_graph_reader(void * info) {
             logstream(LOG_INFO) << "Stream speed check ended.... Speed now:" << speed << " edges/sec" << std::endl;
             dyngraph_engine->set_json("ingestedges", ingested);
         }
-        
+        if (c % 1000 == 0) {
+            set_ingested_edges(ingested);
+        }
                 
         
     } 

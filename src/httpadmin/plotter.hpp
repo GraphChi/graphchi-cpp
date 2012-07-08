@@ -93,8 +93,14 @@ namespace graphchi {
     static double last_update_time = 0;
     static size_t last_edges = 0;
     static size_t last_updates = 0;
-    
+    static size_t ingested_edges = 0;
+
  
+    static void set_ingested_edges(size_t n);
+    static void set_ingested_edges(size_t n) {
+        ingested_edges = n;
+    }
+    
     template <typename ENGINE> 
     void update_plotdata(ENGINE * engine) {
         addval(engine, "edges", (double)engine->num_edges_safe());
@@ -102,12 +108,12 @@ namespace graphchi {
         double rt = engine->get_context().runtime() - last_update_time;
 
         if (last_update_time > 0) {
-            addval(engine, "ingests", (engine->num_edges_safe() - last_edges) / rt);
+            addval(engine, "ingests", (ingested_edges - last_edges) / rt);
             addval(engine, "updates", (engine->num_updates() - last_updates) / rt);
             addval(engine, "deltas", engine->get_context().last_deltasum);
         }
         if (last_update_time == 0 || rt >= 120.0) {
-            last_edges = engine->num_edges_safe();
+            last_edges = ingested_edges;
             last_update_time = engine->get_context().runtime();
             last_updates = engine->num_updates();
         }
