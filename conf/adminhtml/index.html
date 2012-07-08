@@ -36,6 +36,17 @@
 
 <script type="text/javascript">
 
+var chosenShard = 0;
+
+function updateChosen() {
+$.getJSON("/ajax/shardpagerank" + chosenShard, "",
+        function(data) {
+            var shardprel = document.getElementById("selectshard")
+            shardprel.innerHTML = getPagerankTable(data)
+        }
+    )
+}
+
 function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecreated, vSt, vEn) {
     var bgElement = document.getElementById("psw_bg")
     var shardElement = document.createElement("div")
@@ -70,14 +81,11 @@ function createPswWindow(num, nShards, windowStartFrac, windowEndFrac, beingRecr
     bgElement.appendChild(shardElement)
     
     shardElement.onclick = function() {
-        $.getJSON("/ajax/shardpagerank" + num, "",
-        function(data) {
-            var shardprel = document.getElementById("selectshard")
-            shardprel.innerHTML = getPagerankTable(data)
+            chosenShard = num;
+        
             var shardheader = document.getElementById("selectshard_header");
-            shardheader.innerHTML = "Shard: " + num + "; vertices: " + vSt + " -- " + vEn;
-        }
-        )
+            shardheader.innerHTML = "Shard: " + chosenShard + "; vertices: " + vSt + " -- " + vEn;
+            updateChosen()
      };
 }
 
@@ -167,6 +175,7 @@ function update() {
 function load() {
     setInterval(function(){update()},500);
     setInterval(function(){updatePics()},5000);
+    setInterval(function(){updateChosen()}, 8000);
 }
 </script>
 

@@ -20,8 +20,13 @@ def getArg(param, default=""):
 lastsecs = int(getArg("lastsecs", 240))
 
 fname = sys.argv[1]
-tdata = numpy.loadtxt(fname, delimiter=" ")
-if tdata.shape[0] < 2 or tdata.shape[1] < 2:
+try:
+	tdata = numpy.loadtxt(fname, delimiter=" ")
+except:
+	exit(0)
+
+
+if len(tdata.shape) < 2 or tdata.shape[0] < 2 or tdata.shape[1] < 2:
     print "Too small data - do not try to plot yet."
     exit(0)
 

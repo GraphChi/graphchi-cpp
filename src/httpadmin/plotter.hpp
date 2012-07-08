@@ -89,15 +89,28 @@ namespace graphchi {
 
         initial_edges = engine->num_edges_safe();
     }
-
+    
+    static double last_update_time = 0;
+    static size_t last_edges = 0;
+    static size_t last_updates = 0;
+    
+ 
     template <typename ENGINE> 
     void update_plotdata(ENGINE * engine) {
         addval(engine, "edges", (double)engine->num_edges_safe());
         addval(engine, "bufedges", (double)engine->num_buffered_edges());
-        addval(engine, "ingests", (engine->num_edges_safe() - initial_edges) / engine->get_context().runtime());
-        addval(engine, "updates", engine->num_updates() / engine->get_context().runtime());
-        addval(engine, "deltas", engine->get_context().last_deltasum);
+        double rt = engine->get_context().runtime() - last_update_time;
 
+        if (last_update_time > 0) {
+            addval(engine, "ingests", (engine->num_edges_safe() - last_edges) / rt);
+            addval(engine, "updates", (engine->num_updates() - last_updates) / rt);
+            addval(engine, "deltas", engine->get_context().last_deltasum);
+        }
+        if (last_update_time == 0 || rt >= 120.0) {
+            last_edges = engine->num_edges_safe();
+            last_update_time = engine->get_context().runtime();
+            last_updates = engine->num_updates();
+        }
     }
     
     static void drawplots();
