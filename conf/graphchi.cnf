@@ -1,7 +1,7 @@
 
 # GraphChi configuration.
 # Commandline parameters override values in the configuration file.
-execthreads=2
+# execthreads=2
 loadthreads = 2
 niothreads = 2
 
