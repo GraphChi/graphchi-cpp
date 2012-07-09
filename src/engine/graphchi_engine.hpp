@@ -638,6 +638,7 @@ namespace graphchi {
                         if (!any_vertex_scheduled) {
                             logstream(LOG_INFO) << "No vertices scheduled, skip." << std::endl;
                             sub_interval_st = sub_interval_en + 1;
+                            modification_lock.unlock();
                             continue;
                         }
                         
