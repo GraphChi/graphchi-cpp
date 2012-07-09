@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "io/stripedio.hpp"
 #include "logger/logger.hpp"
 #include "util/merge.hpp"
 #include "util/ioutil.hpp"
@@ -69,14 +70,14 @@ namespace graphchi {
     template <typename VertexDataType>
     std::vector<vertex_value<VertexDataType> > get_top_vertices(std::string basefilename, int ntop, vid_t from=0, vid_t to=0) {
         typedef vertex_value<VertexDataType> vv_t;
+        
+        /* Initialize striped IO manager */
+        metrics m("toplist");
+        stripedio * iomgr = new stripedio(m);
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
-        int f = open(filename.c_str(), O_RDONLY);
-        if (f < 0) {
-            logstream(LOG_ERROR) << "Could not open file: " << filename << 
-               " error: " << strerror(errno) << std::endl;
-            return std::vector<vertex_value<VertexDataType> >();
-        }
-        size_t sz = lseek(f, 0, SEEK_END);
+        int f = iomgr->open_session(filename, true);
+        
+        size_t sz = get_filesize(filename);
         
         /* Setup buffer sizes */
         int nverts = (int) (sz / sizeof(VertexDataType));
@@ -101,7 +102,7 @@ namespace graphchi {
         int count = 0;
         while (offset + nread < endoff) {
             size_t len = std::min(endoff - (offset + nread), bufsize);
-            preada(f, buffer, len, offset + nread); 
+            iomgr->preada_now(f, buffer, len, offset + nread); 
             nread += len;
             
             int nt = (int) (len / sizeof(VertexDataType));
@@ -144,7 +145,9 @@ namespace graphchi {
         free(buffer_idxs);
         free(mergearr);
         free(topbuf);
-        close(f);
+        iomgr->close_session(f);
+        delete iomgr;
+
         return ret;
     }
 

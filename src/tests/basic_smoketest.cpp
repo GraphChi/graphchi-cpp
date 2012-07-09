@@ -110,7 +110,7 @@ public:
 
     VertexDataChecker(int iters) : iters(iters), total(0) {}
     void callback(vid_t vertex_id, VertexDataType &vecvalue) {
-        assert(vecvalue == iters);
+        assert(vecvalue == (VertexDataType)iters);
         total += (size_t) iters;
     }
 };

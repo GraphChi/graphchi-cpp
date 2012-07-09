@@ -398,7 +398,7 @@ namespace graphchi {
             if (df < 0) logstream(LOG_ERROR) << "Could not write vertex map: " << translate_table_file <<
                 " error: " << strerror(errno) << std::endl;
             assert(df >= 0);
-            pwrite(df, translate_table, nverts, 0);
+            pwritea(df, translate_table, nverts, 0);
             close(df);
             
             /* Now recreate the processed file */

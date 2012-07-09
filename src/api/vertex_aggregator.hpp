@@ -39,6 +39,7 @@
 
 #include "graphchi_types.hpp"
 #include "api/chifilenames.hpp"
+#include "io/stripedio.hpp"
 #include "util/ioutil.hpp"
 
 namespace graphchi {
@@ -65,12 +66,9 @@ namespace graphchi {
     template <typename VertexDataType>
     void foreach_vertices(std::string basefilename, vid_t fromv, vid_t tov, VCallback<VertexDataType> &callback) {
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
-        int f = open(filename.c_str(), O_RDONLY);
-        if (f < 0) {
-            logstream(LOG_ERROR) << "Could not open file: " << filename << 
-            " error: " << strerror(errno) << std::endl;
-            assert(false);
-        }
+        metrics m("foreach");
+        stripedio * iomgr = new stripedio(m);
+        int f = iomgr->open_session(filename, true);
         size_t bufsize = 1024 * 1024; // Read one megabyte a time    
         vid_t nbuf = (vid_t) (bufsize / sizeof(VertexDataType));
         bufsize = sizeof(VertexDataType) * nbuf; 
@@ -79,12 +77,15 @@ namespace graphchi {
         
         for(vid_t v=fromv; v < tov; v += nbuf) {
             size_t nelements = std::min(tov, v + nbuf) - v;
-            preada(f, buffer, nelements * sizeof(VertexDataType), v * sizeof(VertexDataType));
+            iomgr->preada_now(f, buffer, nelements * sizeof(VertexDataType), v * sizeof(VertexDataType));
             
             for(int i=0; i < (int)nelements; i++) {
                 callback.callback(i + v, buffer[i]);
             }
         }
+        
+        iomgr->close_session(f);
+        delete iomgr;
     }
     
     /**

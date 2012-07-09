@@ -662,10 +662,18 @@ namespace graphchi {
                     
                     // Create the adj file
                     int f = open(outfile_adj.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                    ftruncate(f, 0);
+                    int err = ftruncate(f, 0);
+                    if (err != 0) {
+                        logstream(LOG_ERROR) << "Error truncating " << outfile_adj << ", error: " << strerror(errno) << std::endl;
+                    }
+                    assert(err == 0);
                     /* Create edge data file */
                     int ef = open(outfile_edata.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                    ftruncate(ef, 0);
+                    err = ftruncate(ef, 0);
+                    if (err != 0) {
+                        logstream(LOG_ERROR) << "Error truncating " << outfile_edata << ", error: " << strerror(errno) << std::endl;
+                    }
+                    assert(err == 0);
                     char * buf = (char*) malloc(BBUF); 
                     char * bufptr = buf;
                     char * ebuf = (char*) malloc(BBUF);

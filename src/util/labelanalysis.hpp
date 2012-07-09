@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "io/stripedio.hpp"
 #include "logger/logger.hpp"
 #include "util/merge.hpp"
 #include "util/ioutil.hpp"
@@ -68,14 +69,10 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
      * memory, and I want to avoid Boost dependency - which would have boost::unordered_map.
      */
     std::string filename = filename_vertex_data<LabelType>(base_filename);
-    int f = open(filename.c_str(), O_RDONLY);
-    
-    if (f < 0) {
-        logstream(LOG_ERROR) << "Could not open file: " << filename << 
-        " error: " << strerror(errno) << std::endl;
-        return;
-    }
-    size_t sz = lseek(f, 0, SEEK_END);
+    metrics m("labelanalysis");
+    stripedio * iomgr = new stripedio(m);
+    int f = iomgr->open_session(filename, true);
+    size_t sz = get_filesize(filename);
     
     /* Setup buffer sizes */    
     size_t bufsize = 1024 * 1024; // Read one megabyte a time
@@ -89,7 +86,7 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
     
     while (nread < sz) {
         size_t len = std::min(sz - nread, bufsize);
-        preada(f, buffer, len, nread); 
+        iomgr->preada_now(f, buffer, len, nread); 
         nread += len;
         
         int nt = len / sizeof(LabelType);
@@ -117,11 +114,6 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
                 }
                 lastlabel = buffer[i];
             }
-            
-            /* Check sorted (sanity check) */
-            //  for(int i=1; i < newlabels.size(); i++) {
-            //      assert(newlabels[i].label > newlabels[i-1].label);
-            //  }
         }
         
         if (first) {
@@ -129,10 +121,6 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
                 curlabels.push_back(newlabels[i]);
             }
             
-            /* Check sorted (sanity check) */
-            //for(int i=1; i < curlabels.size(); i++) {
-            //    assert(curlabels[i].label > curlabels[i-1].label);
-            //}
         } else {
             /* Merge current and new label counts */
             int cl = 0;
@@ -157,11 +145,6 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
             while(nl < (int)newlabels.size()) merged.push_back(newlabels[nl++]);
             
             curlabels = merged;
-            
-            /* Check sorted (sanity check) */
-            // for(int i=1; i < curlabels.size(); i++) {
-            //     assert(curlabels[i].label > curlabels[i-1].label);
-            // }
         }
         
         first = false;
@@ -188,6 +171,9 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
     for(int i=0; i < (int)std::min((size_t)printtop, curlabels.size()); i++) {
         std::cout << (i+1) << ". label: " << curlabels[i].label << ", size: " << curlabels[i].count << std::endl;
     }
+    
+    iomgr->close_session(f);
+    delete iomgr;
 }
 
 #endif
