@@ -50,6 +50,8 @@ namespace graphchi {
 #define VARIABLE_IS_NOT_USED
 #endif
     
+    
+    
     template <typename EdgeDataType>
     class graphchi_edge {
         
@@ -84,6 +86,55 @@ namespace graphchi {
     bool eptr_less(const graphchi_edge<ET> &a, const graphchi_edge<ET> &b) {
         return a.vertexid < b.vertexid;
     }
+    
+    
+#ifdef SUPPORT_DELETIONS
+    
+    /*
+     * Hacky support for edge deletions.
+     * Edges are deleted by setting the value of the edge to a special
+     * value that denotes it was deleted.
+     * In the future, a better system could be designed.
+     */
+    
+    // This is hacky...
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(int val);
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(bool val) {
+        return val;
+    }
+    
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(int val);
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(int val) {
+        return 0xffffffff == (unsigned int)val;
+    }
+    
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(vid_t val);
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(vid_t val) {
+        return 0xffffffffu == val;
+    }
+    
+    
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(float val);
+    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(float val) {
+        return !(val < 0 || val > 0);
+    }
+    
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<bool> * e);
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<bool> * e) {
+        e->set_data(true);
+    }
+    
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<vid_t> * e);
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<vid_t> * e) {
+        e->set_data(0xffffffff);
+    }
+    
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<int> * e);
+    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<int> * e) {
+        e->set_data(0xffffffff);
+    }
+    
+#endif  
     
     
     template <typename VertexDataType, typename EdgeDataType>
@@ -157,6 +208,8 @@ namespace graphchi {
         int num_edges() const { 
             return inc + outc; 
         }
+
+
         
                 
         // Optimization: as only memshard (not streaming shard) creates inedgers,
@@ -310,49 +363,6 @@ namespace graphchi {
         return (rawid & HIGHMASK) != 0;
     }
     
-#ifdef SUPPORT_DELETIONS
-    
-    /*
-     * Hacky support for edge deletions.
-     * Edges are deleted by setting the value of the edge to a special
-     * value that denotes it was deleted.
-     * In the future, a better system could be designed.
-     */
-    
-    // This is hacky...
-    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(bool val) {
-        return val;
-    }
-    
-    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(int val) {
-        return 0xffffffff == (unsigned int)val;
-    }
-    
-    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(vid_t val) {
-        return 0xffffffffu == val;
-    }
-    
-    
-    static inline bool VARIABLE_IS_NOT_USED is_deleted_edge_value(float val) {
-        return !(val < 0 || val > 0);
-    }
-    
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<bool> * e);
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<bool> * e) {
-        e->set_data(true);
-    }
-    
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<vid_t> * e);
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<vid_t> * e) {
-        e->set_data(0xffffffff);
-    }
-    
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<int> * e);
-    static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<int> * e) {
-        e->set_data(0xffffffff);
-    }
-    
-#endif  
     
 
 } // Namespace
