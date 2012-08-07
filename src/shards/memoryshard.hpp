@@ -46,16 +46,16 @@
 
 
 namespace graphchi {
-
-
-    template <typename VT, typename ET, typename svertex_t = graphchi_vertex<VT, ET>, typename ETspecial = ET>
+    
+    
+    template <typename VT, typename ET, typename svertex_t = graphchi_vertex<VT, ET> >
     class memory_shard {
         
         stripedio * iomgr;
         
         std::string filename_edata;
         std::string filename_adj;
-
+        
         vid_t range_st;
         vid_t range_end;
         size_t adjfilesize;
@@ -87,7 +87,7 @@ namespace graphchi {
                      vid_t _range_start, 
                      vid_t _range_end, 
                      metrics &_m) : iomgr(iomgr), filename_edata(_filename_edata),
-                    filename_adj(_filename_adj),
+        filename_adj(_filename_adj),
         range_st(_range_start), range_end(_range_end), m(_m) {
             edgedata = NULL;
             adjdata = NULL;
@@ -98,7 +98,7 @@ namespace graphchi {
         }
         
         ~memory_shard() {
-
+            
             if (edata_iosession >= 0) {
                 if (edgedata != NULL) iomgr->managed_release(edata_iosession, &edgedata);
                 iomgr->close_session(edata_iosession);
@@ -115,11 +115,11 @@ namespace graphchi {
             metrics_entry cm = m.start_time();
             
             /**
-              * This is an optimization that is relevant only if memory shard
-              * has been used in a case where only out-edges are considered.
-              * Out-edges are in a continuous "window", while in-edges are 
-              * scattered all over the shard
-              */
+             * This is an optimization that is relevant only if memory shard
+             * has been used in a case where only out-edges are considered.
+             * Out-edges are in a continuous "window", while in-edges are 
+             * scattered all over the shard
+             */
             if (all) {
                 iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
             } else {
@@ -153,9 +153,9 @@ namespace graphchi {
             
 #ifdef SUPPORT_DELETIONS
             async_inedgedata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),
-                                               // so we need the edge data while loading
+            // so we need the edge data while loading
 #endif
-                        
+            
             //preada(adjf, adjdata, adjfilesize, 0);
             
             adj_session = iomgr->open_session(filename_adj, true);
@@ -187,6 +187,8 @@ namespace graphchi {
         
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
+            
+            std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
             
             m.start_time("memoryshard_create_edges");
             
@@ -249,41 +251,40 @@ namespace graphchi {
                     if (!vertex->scheduled) vertex = NULL;
                 }
                 check_stream_progress(n*4, ptr-adjdata);  
+                bool any_edges = false;
                 while(--n>=0) {
-                    bool special_edge = false;
-                    vid_t target = (sizeof(ET)==sizeof(ETspecial) ? *((vid_t*) ptr) : translate_edge(*((vid_t*) ptr), special_edge));
+                    vid_t target = *((vid_t*) ptr);
                     ptr += sizeof(vid_t);
-                    
-                    
                     if (vertex != NULL && outedges) 
                     {    
-                      vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), special_edge);
+                        vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
                     }
                     
-                    if (target >= window_st)  {
-                        if (target <= window_en) {
-                            /* In edge */
-                            if (inedges) {
-                                svertex_t & dstvertex = prealloc[target-window_st];
-                                if (dstvertex.scheduled) {
-                                    assert(only_adjacency ||  edgeptr < edatafilesize);
-                                    dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), special_edge);
-                                    if (vertex != NULL) {
-                                        dstvertex.parallel_safe = false; 
-                                        vertex->parallel_safe = false;  // This edge is shared with another vertex in the same window - not safe to run in parallel.
-                                    }
-                                }
-                            }
-                        } else if (sizeof(ET) == sizeof(ETspecial)) { // Note, we cannot skip if there can be "special edges". FIXME so dirty.
-                            // This vertex has no edges any more for this window, bail out
-                            if (vertex == NULL) {
-                                ptr += sizeof(vid_t)*n;
-                                edgeptr += (n+1)*sizeof(ET);
-                                break;
+                    if (target >= window_st && target <= window_en) {
+                        /* In edge */
+                        if (inedges) {
+                            svertex_t & dstvertex = prealloc[target - window_st];
+                            if (dstvertex.scheduled) {
+                                any_edges = true;
+                                //  assert(only_adjacency ||  edgeptr < edatafilesize);
+                                dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
+                                dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
                             }
                         }
+                    } else { // Note, we cannot skip if there can be "special edges". FIXME so dirty.
+                        // This vertex has no edges any more for this window, bail out
+                        if (vertex == NULL) {
+                            ptr += sizeof(vid_t) * n;
+                            edgeptr += (n + 1) * sizeof(ET);
+                            break;
+                        }
                     }
-                    edgeptr += sizeof(ET) * !special_edge + sizeof(ETspecial) * special_edge;
+                    edgeptr += sizeof(ET);
+                    
+                }
+                
+                if (any_edges && vertex != NULL) {
+                    vertex->parallel_safe = false;
                 }
                 vid++;
             }
@@ -307,4 +308,4 @@ namespace graphchi {
 };
 
 #endif
-    
+

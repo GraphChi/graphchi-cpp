@@ -317,9 +317,9 @@ namespace graphchi {
       
       
       inline void stop_time(std::string key, bool show = false) {
+          entries[key].timer_stop();
           if (show) 
               std::cout << key << ": " << entries[key].lasttime << " secs." << std::endl;
-          entries[key].timer_stop();
       }
         
     inline metrics_entry get(std::string key) {

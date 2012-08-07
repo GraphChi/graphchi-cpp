@@ -286,24 +286,26 @@ namespace graphchi {
          * Calculates the exact number of edges
          * required to load in the subinterval.
          */
-        size_t num_edges_subinterval(vid_t st, vid_t en) {
-            size_t num_edges = 0;
+        size_t num_edges_subinterval(vid_t st, vid_t en, size_t & num_inedges, size_t & num_outedges) {
+            num_inedges = num_outedges = 0;
             int nvertices = en - st + 1;
             if (scheduler != NULL) {
                 for(int i=0; i < nvertices; i++) {
                     bool is_sched = scheduler->is_scheduled(st + i);
                     if (is_sched) {
                         degree d = degree_handler->get_degree(st + i);
-                        num_edges += d.indegree * store_inedges + d.outdegree;
+                        num_inedges += d.indegree * store_inedges;
+                        num_outedges += d.outdegree;
                     }
                 }
             } else {
                 for(int i=0; i < nvertices; i++) {
                     degree d = degree_handler->get_degree(st + i);
-                    num_edges += d.indegree * store_inedges + d.outdegree;
+                    num_inedges += d.indegree * store_inedges;
+                    num_outedges += d.outdegree;
                 }
             }
-            return num_edges;
+            return num_inedges + num_outedges;
         }
         
         virtual void load_before_updates(std::vector<svertex_t> &vertices) {
@@ -380,38 +382,45 @@ namespace graphchi {
             m.stop_time(me, "execute-updates");
         }
         
-        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &edata) {
+        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &in_edata
+                                                                   , graphchi_edge<EdgeDataType> * &out_edata) {
             size_t nvertices = vertices.size();
             
             /* Compute number of edges */
-            size_t num_edges = num_edges_subinterval(sub_interval_st, sub_interval_en);
+            size_t num_inedges, num_outedges;
+            size_t num_edges = num_edges_subinterval(sub_interval_st, sub_interval_en, num_inedges, num_outedges);
             
             /* Allocate edge buffer */
-            edata = (graphchi_edge<EdgeDataType>*) malloc(num_edges * sizeof(graphchi_edge<EdgeDataType>));
-            
+            in_edata = (graphchi_edge<EdgeDataType>*) malloc(num_inedges * sizeof(graphchi_edge<EdgeDataType>));
+            out_edata = (graphchi_edge<EdgeDataType>*) malloc(num_outedges * sizeof(graphchi_edge<EdgeDataType>));
+
             /* Assign vertex edge array pointers */
-            size_t ecounter = 0;
+            size_t inecounter = 0, outecounter = 0;
             for(int i=0; i < (int)nvertices; i++) {
                 degree d = degree_handler->get_degree(sub_interval_st + i);
                 int inc = d.indegree;
                 int outc = d.outdegree;
-                vertices[i] = svertex_t(sub_interval_st + i, &edata[ecounter], 
-                                        &edata[ecounter + inc * store_inedges], inc, outc);
+                vertices[i] = svertex_t(sub_interval_st + i, &in_edata[inecounter], 
+                                        &out_edata[outecounter], inc, outc);
                 if (scheduler != NULL) {
                     bool is_sched = scheduler->is_scheduled(sub_interval_st + i);
                     if (is_sched) {
                         vertices[i].scheduled =  true;
                         nupdates++;
-                        ecounter += inc * store_inedges + outc;
+                        inecounter += inc * store_inedges;
+                        outecounter += outc;
                     }
                 } else {
                     nupdates++; 
                     vertices[i].scheduled =  true;
-                    ecounter += inc * store_inedges + outc;
+                    inecounter += inc * store_inedges;
+                    outecounter += outc;                
                 }
             }                   
-            work += ecounter;
-            assert(ecounter <= num_edges);
+            work += num_inedges + num_outedges;
+            assert(inecounter <= num_inedges);
+            assert(outecounter <=  num_outedges);
+            assert(num_edges == num_inedges + num_outedges);
         }
         
         
@@ -644,9 +653,11 @@ namespace graphchi {
                         
                         /* Initialize vertices */
                         int nvertices = sub_interval_en - sub_interval_st + 1;
-                        graphchi_edge<EdgeDataType> * edata = NULL;
+                        graphchi_edge<EdgeDataType> * inedge_data = NULL;
+                        graphchi_edge<EdgeDataType> * outedge_data = NULL;
+
                         std::vector<svertex_t> vertices(nvertices, svertex_t());
-                        init_vertices(vertices, edata);                        
+                        init_vertices(vertices, inedge_data, outedge_data);                        
                     
                         /* Now clear scheduler bits for the interval */
                         if (scheduler != NULL)
@@ -671,9 +682,13 @@ namespace graphchi {
                         sub_interval_st = sub_interval_en + 1;
                         
                         /* Delete edge buffer. TODO: reuse. */
-                        if (edata != NULL) {
-                            delete edata;
-                            edata = NULL;
+                        if (inedge_data != NULL) {
+                            delete inedge_data;
+                            inedge_data = NULL;
+                        }
+                        if (outedge_data != NULL) {
+                            delete outedge_data;
+                            outedge_data = NULL;
                         }
                     } // while subintervals
                  
