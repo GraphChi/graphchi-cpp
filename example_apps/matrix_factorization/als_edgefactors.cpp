@@ -1,4 +1,3 @@
-
 /**
  * @file
  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
@@ -114,9 +113,7 @@ struct ALSEdgeFactorsProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
             
             // Compute XtX and Xty (NOTE: unweighted)
             for(int e=0; e < vertex.num_edges(); e++) {
-                float observation = vertex.edge(e)->get_data().weight;
-                assert(observation >= 0 && observation <= 5);
-                
+                float observation = vertex.edge(e)->get_data().weight;                
                 latentvec_t nbr_latent = vertex.edge(e)->get_data().factor;
                 for(int i=0; i<NLATENT; i++) {
                     Xty(i) += nbr_latent[i] * observation;
