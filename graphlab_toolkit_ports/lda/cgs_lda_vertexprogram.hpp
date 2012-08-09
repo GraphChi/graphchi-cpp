@@ -34,6 +34,7 @@
  */
 
 #include <vector>
+#include <set>
 #include <algorithm>
 
 #include "util/atomic.hpp"
@@ -41,12 +42,15 @@
 #include <boost/math/special_functions/gamma.hpp>
 #include <vector>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <boost/config/warning_disable.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
-
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/input_sequence.hpp>
 
 
 // Global Types
@@ -479,10 +483,6 @@ public:
   topk_aggregator(size_t nchanges = 0, size_t nupdates = 0) :
     nchanges(nchanges), nupdates(nupdates) { }
 
-  void save(graphlab::oarchive& arc) const { arc << top_words << nchanges; }
-  void load(graphlab::iarchive& arc) { arc >> top_words >> nchanges; }
-
-
   topk_aggregator& operator+=(const topk_aggregator& other) {
     nchanges += other.nchanges;
     nupdates += other.nupdates;
@@ -520,33 +520,17 @@ public:
   static void finalize(icontext_type& context,
                        const topk_aggregator& total) {
     if(context.procid() != 0) return;
-    std::string json = "{\n"+ TOP_WORDS.json_header_string() +
-      "\t\"values\": [\n";
-    for(size_t i = 0; i < total.top_words.size(); ++i) {
+     for(size_t i = 0; i < total.top_words.size(); ++i) {
       std::cout << "Topic " << i << ": ";
-      json += "\t[\n";
-      size_t counter = 0;
       rev_foreach(cw_pair_type pair, total.top_words[i])  {
-      ASSERT_LT(pair.second, DICTIONARY.size());
-        json += "\t\t[\"" + DICTIONARY[pair.second] + "\", " +
-          graphlab::tostr(pair.first) + "]";
-        if(++counter < total.top_words[i].size()) json += ", ";
-        json += '\n';
+    
         std::cout << DICTIONARY[pair.second]
                   << "(" << pair.first << ")" << ", ";
-        // std::cout << DICTIONARY[pair.second] << ",  ";
       }
-      json += "\t]";
-      if(i+1 < total.top_words.size()) json += ", ";
-      json += '\n';
+      
       std::cout << std::endl;
     }
-    json += "]}";
-    // Post the change to the global variable
-    TOP_WORDS.lock.lock();
-    TOP_WORDS.json_string.swap(json);
-    TOP_WORDS.lock.unlock();
-
+   
     std::cout << "\nNumber of token changes: " << total.nchanges << std::endl;
     std::cout << "\nNumber of updates:       " << total.nupdates << std::endl;
   } // end of finalize
@@ -682,93 +666,6 @@ struct signal_only {
 
 
 
-/**
- * \brief This function is used to load and then initialize the data
- * graph (corpus) from a folder or file.
- * 
- * The graph can be in either json form constructed using the graph
- * builder tools or in raw text form.  The raw text format contains a
- * token on each line of each file in the format:
- *
- \verbatim
- <docid> <wordid> <count>
-          ...
- \endverbatim
- *
- * for example:
- \verbatim
-    0    0     2
-    0    4     1
-    0    2     3
- \endverbatim
- * 
- * implies that document zero contains word zero twice, word 4 once,
- * and word two three times.
- *
- * If a dictionary is used it is important that each word id
- * correspond to the index in the dictionary file (starting at zero).
- *
- * Once loaded the total number of words, documents, and tokens is
- * counted and saved to global variables which are read during the
- * execution of the sampler.
- *
- * \param [in] dc The distributed control object used to coordinate
- * between machines.
- *
- * \param [in,out] graph The graph object that is initialized.
- * 
- * \param [in] corpus_dir The directory or file containing the graph
- * data.  The corpus directory can reside on hdfs in which case the
- * path should begin with "hdfs://namenode".  In addition the file(s)
- * may be gzipped and therefore must end in ".gz".
- *
- * \param [in] load_json Whether the graph data is in text format or
- * preprocessed json format using the graph builder tools.
- */
-bool load_and_initialize_graph(graphlab::distributed_control& dc,
-                               graph_type& graph,
-                               const std::string& corpus_dir,
-                               const std::string& format			       
-			       ) {
-  dc.cout() << "Loading graph." << std::endl;
-  graphlab::timer timer; timer.start();
-
-  if(format=="matrix"){
-      dc.cout() << "matrix format" << std::endl;
-      graph.load(corpus_dir, graph_loader);
-  }else if(format=="json"){
-      dc.cout() << "json format" << std::endl;
-      graph.load_json(corpus_dir, false, eparser, vparser);
-  }else if(format=="json-gzip"){
-      dc.cout() <<"json gzip format" << std::endl;
-      graph.load_json(corpus_dir, true, eparser, vparser);
-  }else{
-      dc.cout() << "Non supported format. See --help" << std::endl;
-      return false;
-  }
-
-  dc.cout() << "Finalizing graph." << std::endl;
-  timer.start();
-  graph.finalize();
-  dc.cout() << "Finalizing graph. Finished in "
-            << timer.current_time() << " seconds." << std::endl;
-
-  dc.cout() << "Computing number of words and documents." << std::endl;
-  NWORDS = graph.map_reduce_vertices<size_t>(is_word);
-  NDOCS = graph.map_reduce_vertices<size_t>(is_doc);
-  NTOKENS = graph.map_reduce_edges<size_t>(count_tokens);
-  dc.cout() << "Number of words:     " << NWORDS  << std::endl;
-  dc.cout() << "Number of docs:      " << NDOCS   << std::endl;
-  dc.cout() << "Number of tokens:    " << NTOKENS << std::endl;
-  // Prepare the json struct with the word counts
-  TOP_WORDS.lock.lock();
-  TOP_WORDS.json_string = "{\n" + TOP_WORDS.json_header_string() +
-    "\t\"values\": [] \n }";
-  TOP_WORDS.lock.unlock();
-  return true;
-} // end of load and initialize graph
-
-
 
 /**
  * \brief Load the dictionary global variable from the file containing
@@ -789,29 +686,11 @@ bool load_dictionary(const std::string& fname)  {
   //           << graphlab::get_local_ip_as_str() << std::endl;
   const bool gzip = boost::ends_with(fname, ".gz");
   // test to see if the graph_dir is an hadoop path
-  if(boost::starts_with(fname, "hdfs://")) {
-    graphlab::hdfs hdfs;
-    graphlab::hdfs::fstream in_file(hdfs, fname);
-    boost::iostreams::filtering_stream<boost::iostreams::input> fin;
-    fin.set_auto_close(false);
-    if(gzip) fin.push(boost::iostreams::gzip_decompressor());
-    fin.push(in_file);
-    if(!fin.good()) {
-      logstream(LOG_ERROR) << "Error loading dictionary: "
-                           << fname << std::endl;
-      return false;
-    }
-    std::string term;
-    while(std::getline(fin,term).good()) DICTIONARY.push_back(term);
-    if (gzip) fin.pop();
-    fin.pop();
-    in_file.close();
-  } else {
+ 
     std::cout << "opening: " << fname << std::endl;
     std::ifstream in_file(fname.c_str(),
                           std::ios_base::in | std::ios_base::binary);
     boost::iostreams::filtering_stream<boost::iostreams::input> fin;
-    if (gzip) fin.push(boost::iostreams::gzip_decompressor());
     fin.push(in_file);
     if(!fin.good() || !fin.good()) {
       logstream(LOG_ERROR) << "Error loading dictionary: "
@@ -821,11 +700,9 @@ bool load_dictionary(const std::string& fname)  {
     std::string term;
     std::cout << "Loooping" << std::endl;
     while(std::getline(fin, term).good()) DICTIONARY.push_back(term);
-    if (gzip) fin.pop();
     fin.pop();
     in_file.close();
-  } // end of else
-  // std::cout << "Finished load on: "
+    // std::cout << "Finished load on: "
   //           << graphlab::get_local_ip_as_str() << std::endl;
   std::cout << "Dictionary Size: " << DICTIONARY.size() << std::endl;
   return true;

@@ -33,7 +33,7 @@ int main(int argc, const char ** argv) {
     int niters           = get_option_int("niters", 4);  // Number of iterations
     
     /* Preprocess data if needed, or discover preprocess files */
-    int nshards = convert_if_notexists<EdgeData>(filename, get_option_string("nshards", "auto"));
+    int nshards = convert_if_notexists<edge_data>(filename, get_option_string("nshards", "auto"));
     
     /* Run */
     std::vector<vertex_data> * vertices =
