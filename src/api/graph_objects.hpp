@@ -221,8 +221,8 @@ namespace graphchi {
                 return;
             }
 #endif
-            if (inedges_ptr != NULL) inedges_ptr[inc] = graphchi_edge<EdgeDataType>(src, ptr);
-            inc++;
+            if (inedges_ptr != NULL) 
+                inedges_ptr[inc++] = graphchi_edge<EdgeDataType>(src, ptr);
 
             assert(src != vertexid);
           /*  if(inedges_ptr != NULL && inc > outedges_ptr - inedges_ptr) {

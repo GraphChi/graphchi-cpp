@@ -124,8 +124,8 @@ namespace graphchi {
     }
     
     
-    bool shard_file_exists(std::string sname);
-    bool shard_file_exists(std::string sname) {
+    static bool shard_file_exists(std::string sname);
+    static bool shard_file_exists(std::string sname) {
         int tryf = open(sname.c_str(), O_RDONLY);
         if (tryf < 0) {
             return false;

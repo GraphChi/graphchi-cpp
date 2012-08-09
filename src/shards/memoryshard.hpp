@@ -260,23 +260,24 @@ namespace graphchi {
                         vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
                     }
                     
-                    if (target >= window_st && target <= window_en) {
-                        /* In edge */
-                        if (inedges) {
-                            svertex_t & dstvertex = prealloc[target - window_st];
-                            if (dstvertex.scheduled) {
-                                any_edges = true;
-                                //  assert(only_adjacency ||  edgeptr < edatafilesize);
-                                dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
-                                dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
+                    if (target >= window_st)  {
+                        if (target <= window_en) {                        /* In edge */
+                            if (inedges) {
+                                svertex_t & dstvertex = prealloc[target - window_st];
+                                if (dstvertex.scheduled) {
+                                    any_edges = true;
+                                    //  assert(only_adjacency ||  edgeptr < edatafilesize);
+                                    dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
+                                    dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
+                                }
                             }
-                        }
-                    } else { // Note, we cannot skip if there can be "special edges". FIXME so dirty.
-                        // This vertex has no edges any more for this window, bail out
-                        if (vertex == NULL) {
-                            ptr += sizeof(vid_t) * n;
-                            edgeptr += (n + 1) * sizeof(ET);
-                            break;
+                        } else { // Note, we cannot skip if there can be "special edges". FIXME so dirty.
+                            // This vertex has no edges any more for this window, bail out
+                            if (vertex == NULL) {
+                                ptr += sizeof(vid_t) * n;
+                                edgeptr += (n + 1) * sizeof(ET);
+                                break;
+                            }
                         }
                     }
                     edgeptr += sizeof(ET);

@@ -17,8 +17,50 @@ namespace graphchi {
         atomic(const T& value = 0) : value(value) { }
         T inc() { return __sync_add_and_fetch(&value, 1);  }
         T dec() { return __sync_sub_and_fetch(&value, 1);  }
-        T inc(T val) { return __sync_add_and_fetch(&value, val);  }
-        T dec(T val) { return __sync_sub_and_fetch(&value, val);  }
+        
+        
+        //! Lvalue implicit cast
+        operator T() const { return value; }
+        
+        //! Performs an atomic increment by 1, returning the new value
+        T operator++() { return inc(); }
+        
+        //! Performs an atomic decrement by 1, returning the new value
+        T operator--() { return dec(); }
+        
+        //! Performs an atomic increment by 'val', returning the new value
+        T inc(const T val) { return __sync_add_and_fetch(&value, val);  }
+        
+        //! Performs an atomic decrement by 'val', returning the new value
+        T dec(const T val) { return __sync_sub_and_fetch(&value, val);  }
+        
+        //! Performs an atomic increment by 'val', returning the new value
+        T operator+=(const T val) { return inc(val); }
+        
+        //! Performs an atomic decrement by 'val', returning the new value
+        T operator-=(const T val) { return dec(val); }
+        
+        //! Performs an atomic increment by 1, returning the old value
+        T inc_ret_last() { return __sync_fetch_and_add(&value, 1);  }
+        
+        //! Performs an atomic decrement by 1, returning the old value
+        T dec_ret_last() { return __sync_fetch_and_sub(&value, 1);  }
+        
+        //! Performs an atomic increment by 1, returning the old value
+        T operator++(int) { return inc_ret_last(); }
+        
+        //! Performs an atomic decrement by 1, returning the old value
+        T operator--(int) { return dec_ret_last(); }
+        
+        //! Performs an atomic increment by 'val', returning the old value
+        T inc_ret_last(const T val) { return __sync_fetch_and_add(&value, val);  }
+        
+        //! Performs an atomic decrement by 'val', returning the new value
+        T dec_ret_last(const T val) { return __sync_fetch_and_sub(&value, val);  }
+        
+        //! Performs an atomic exchange with 'val', returning the previous value
+        T exchange(const T val) { return __sync_lock_test_and_set(&value, val);  }
+
     };
     
     

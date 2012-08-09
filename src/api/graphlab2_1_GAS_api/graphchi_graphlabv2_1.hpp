@@ -66,6 +66,8 @@ namespace graphlab {
     };
     
     
+    typedef vid_t vertex_id_type;
+    
     template<typename GraphType,
     typename GatherType, 
     typename MessageType>

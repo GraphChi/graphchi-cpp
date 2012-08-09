@@ -59,8 +59,8 @@ namespace graphchi {
     /**
       * Helper for metrics.
       */
-    void metrics_report(metrics &m);
-    void metrics_report(metrics &m) {
+    static void metrics_report(metrics &m);
+    static void metrics_report(metrics &m) {
         std::string reporters = get_option_string("metrics.reporter", "console");
         char * creps = (char*)reporters.c_str();
         const char * delims = ",";
