@@ -230,7 +230,6 @@ namespace graphchi {
             
         }
         
-        /* NOTE: here is a subtle bug because two blocks can overlap */
         inline void check_curblock(size_t toread) {
             if (curblock == NULL || curblock->end < edataoffset+toread) {
                 if (curblock != NULL) {
@@ -356,7 +355,7 @@ namespace graphchi {
                     
                     if (vertex.scheduled) {
                         
-                        while(--n>=0) {
+                        while(--n >= 0) {
                             bool special_edge = false;
                             vid_t target = (sizeof(ET) == sizeof(ETspecial) ? read_val<vid_t>() : translate_edge(read_val<vid_t>(), special_edge));
                             ET * evalue = (special_edge ? (ET*)read_edgeptr<ETspecial>(): read_edgeptr<ET>());
