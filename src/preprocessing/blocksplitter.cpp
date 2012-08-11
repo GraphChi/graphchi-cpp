@@ -30,6 +30,7 @@
 #include <string>
 #include <assert.h>
 #include <unistd.h>
+#include <fstream>
 #include <sys/stat.h>
 
 #include "api/chifilenames.hpp"
@@ -81,5 +82,10 @@ int main(int argc, const char ** argv) {
             idx += blocksize;
         }
         close(f);
+        
+        std::string sizefilename = shard_filename + ".size";
+        std::ofstream ofs(sizefilename.c_str());
+        ofs << fsize;
+        ofs.close();
     }
 }

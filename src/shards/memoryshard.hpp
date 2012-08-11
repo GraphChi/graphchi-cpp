@@ -169,7 +169,6 @@ namespace graphchi {
                 std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                 if (shard_file_exists(block_filename)) {
                     size_t fsize = get_filesize(block_filename);
-                    edatafilesize += fsize;
                     int blocksession = iomgr->open_session(block_filename);
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
@@ -197,8 +196,7 @@ namespace graphchi {
         void load() {
             is_loaded = true;
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = 0;
-            
+            edatafilesize = get_shard_edata_filesize<ET>(filename_edata);            
             
 #ifdef SUPPORT_DELETIONS
             async_inedgedata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),

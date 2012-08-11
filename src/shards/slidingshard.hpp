@@ -181,13 +181,12 @@ namespace graphchi {
             assert(blocksize % sizeof(ET)==0);
                         
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = 0;
+            edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
             if (!only_adjacency) {
                 int blockid = 0;
                 while(true) {
                     std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                     if (shard_file_exists(block_filename)) {
-                        edatafilesize += get_filesize(block_filename);
                         block_edatasessions.push_back(iomgr->open_session(block_filename));
                         blockid++;
                     } else {

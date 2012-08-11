@@ -33,6 +33,7 @@
 #ifndef GRAPHCHI_FILENAMES_DEF
 #define GRAPHCHI_FILENAMES_DEF
 
+#include <fstream>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
@@ -99,6 +100,15 @@ namespace graphchi {
         return ss.str();
     }
     
+    template <typename EdgeDataType>
+    static size_t get_shard_edata_filesize(std::string edata_shardname) {
+        size_t fsize;
+        std::string fname = edata_shardname + ".size";
+        std::ifstream ifs(fname.c_str());
+        ifs >> fsize;
+        ifs.close();
+        return fsize;
+    }
 
     
     template <typename EdgeDataType>
