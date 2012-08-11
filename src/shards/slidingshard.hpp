@@ -48,6 +48,10 @@
 
 
 namespace graphchi {
+    
+
+#define EDATA_FILE_BLOCK_SIZE (1024 * 1024)
+    
 
     /**
      * A streaming block. 
@@ -61,13 +65,19 @@ namespace graphchi {
         uint8_t * data;
         uint8_t * ptr;
         bool active;
+        bool is_edata_block;
         
         sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; } 
-        sblock(int wdesc, int rdesc) : writedesc(wdesc), readdesc(rdesc), active(false) { data = NULL; }
+        sblock(int wdesc, int rdesc, bool is_edata_block=false) : writedesc(wdesc), readdesc(rdesc), active(false),
+            is_edata_block(is_edata_block){ data = NULL; }
         
         void commit_async(stripedio * iomgr) {
             if (active && data != NULL && writedesc >= 0) {
-                iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
+                if (is_edata_block) {
+                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true);
+                } else {
+                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
+                }
             }
         }
         
@@ -75,14 +85,29 @@ namespace graphchi {
             if (active && data != NULL && writedesc >= 0) {
                 size_t len = ptr-data;
                 if (len> end-offset) len = end-offset;
-                iomgr->managed_pwritea_now(writedesc, &data, len, offset);
+                if (is_edata_block) {
+                    iomgr->managed_pwritea_now(writedesc, &data, len, 0);
+                } else {
+                    iomgr->managed_pwritea_now(writedesc, &data, len, offset);
+                }
             }
         }
         void read_async(stripedio * iomgr) {
-            iomgr->managed_preada_async(readdesc, &data, end-offset, offset);
+            if (is_edata_block) {
+                assert(offset % EDATA_FILE_BLOCK_SIZE == 0);
+                iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
+
+            } else {
+                iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
+            }
         }
         void read_now(stripedio * iomgr) {
-            iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+            if (is_edata_block) {
+                assert(offset % EDATA_FILE_BLOCK_SIZE == 0);
+                iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
+            } else {
+                iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+            }
         }
         
         void release(stripedio * iomgr) {
@@ -116,7 +141,7 @@ namespace graphchi {
         size_t window_start_edataoffset;
         
         std::vector<sblock> activeblocks;
-        int edata_session;
+        std::vector<int> block_edatasessions;
         int adjfile_session;
         int writedesc;
         sblock * curblock;
@@ -151,18 +176,30 @@ namespace graphchi {
             curadjblock = NULL;
             window_start_edataoffset = 0;
             
+            
             while(blocksize % sizeof(ET) != 0) blocksize++;
             assert(blocksize % sizeof(ET)==0);
                         
-            edatafilesize = get_filesize(filename_edata);
             adjfilesize = get_filesize(filename_adj);
-            
-            if (!only_adjacency)
-                edata_session = iomgr->open_session(filename_edata);
-            else edata_session = -1;
+            edatafilesize = 0;
+            if (!only_adjacency) {
+                int blockid = 0;
+                while(true) {
+                    std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
+                    if (shard_file_exists(block_filename)) {
+                        edatafilesize += get_filesize(block_filename);
+                        block_edatasessions.push_back(iomgr->open_session(block_filename));
+                        blockid++;
+                    } else {
+                        break;
+                    }
+                }
+                logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize << std::endl;
+            } else {
+                // Nothing
+            }
             
             adjfile_session = iomgr->open_session(filename_adj, true);
-            
             save_offset();
             
             async_edata_loading = !svertex_t().computational_edges();
@@ -185,7 +222,10 @@ namespace graphchi {
                 curadjblock = NULL;
             }
             
-            if (edata_session>=0) iomgr->close_session(edata_session);
+            for(std::vector<int>::iterator sesit=block_edatasessions.begin();
+                sesit != block_edatasessions.end(); ++sesit) {
+               iomgr->close_session(*sesit);
+            }
             iomgr->close_session(adjfile_session);
         }
         
@@ -239,13 +279,17 @@ namespace graphchi {
                     }
                 }
                 // Load next
-                sblock newblock(edata_session, edata_session);
-                newblock.offset = edataoffset;
-                newblock.end = std::min(edatafilesize, edataoffset+blocksize);
-                assert(newblock.end >= newblock.offset );
+                int edata_session = block_edatasessions[edataoffset / blocksize];
+                sblock newblock(edata_session, edata_session, true);
                 
+                // We align blocks always to the blocksize, even if that requires
+                // allocating and reading some unnecessary data.
+                newblock.offset = (edataoffset / blocksize) * blocksize; // Align
+                size_t correction = edataoffset - newblock.offset;
+                newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
+                assert(newblock.end >= newblock.offset);                
                 iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
-                newblock.ptr = newblock.data;
+                newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
                 curblock = &activeblocks[activeblocks.size()-1];
             }

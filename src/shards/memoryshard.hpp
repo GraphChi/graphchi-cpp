@@ -7,13 +7,13 @@
  * @section LICENSE
  *
  * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,40 +68,41 @@ namespace graphchi {
         size_t range_start_edge_ptr;
         size_t streaming_offset_edge_ptr;
         uint8_t * adjdata;
-        ET * edgedata;
+        std::vector<char *> edgedata;
+        std::vector<size_t> blocksizes;
         metrics &m;
         uint64_t chunkid;
         
-        int edata_iosession;
+        std::vector<int> block_edatasessions;
         int adj_session;
         streaming_task adj_stream_session;
         
         bool is_loaded;
+        size_t blocksize;
         
     public:
         bool only_adjacency;
         
-        memory_shard(stripedio * iomgr, 
+        memory_shard(stripedio * iomgr,
                      std::string _filename_edata,
                      std::string _filename_adj,
-                     vid_t _range_start, 
-                     vid_t _range_end, 
+                     vid_t _range_start,
+                     vid_t _range_end,
+                     size_t _blocksize,
                      metrics &_m) : iomgr(iomgr), filename_edata(_filename_edata),
         filename_adj(_filename_adj),
-        range_st(_range_start), range_end(_range_end), m(_m) {
-            edgedata = NULL;
+        range_st(_range_start), range_end(_range_end), blocksize(_blocksize),  m(_m) {
             adjdata = NULL;
             only_adjacency = false;
             is_loaded = false;
             adj_session = -1;
-            edata_iosession = -1;
         }
         
         ~memory_shard() {
             
-            if (edata_iosession >= 0) {
-                if (edgedata != NULL) iomgr->managed_release(edata_iosession, &edgedata);
-                iomgr->close_session(edata_iosession);
+            for(int i=0; i < block_edatasessions.size(); i++) {
+                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                iomgr->close_session(block_edatasessions[i]);
             }
             if (adj_session >= 0) {
                 if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
@@ -110,32 +111,45 @@ namespace graphchi {
         }
         
         void commit(bool all) {
-            if (edgedata == NULL || only_adjacency) return; 
+            if (edgedata.size() == 0 || only_adjacency) return;
             assert(is_loaded);
             metrics_entry cm = m.start_time();
             
             /**
              * This is an optimization that is relevant only if memory shard
              * has been used in a case where only out-edges are considered.
-             * Out-edges are in a continuous "window", while in-edges are 
+             * Out-edges are in a continuous "window", while in-edges are
              * scattered all over the shard
              */
+            int nblocks = block_edatasessions.size();
+
             if (all) {
-                iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
+                //iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
+                for(int i=0; i < nblocks; i++) {
+                    iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                }
             } else {
                 size_t last = streaming_offset_edge_ptr;
                 if (last == 0){
                     // rollback
                     last = edatafilesize;
-                }   
-                char * bufp = ((char*)edgedata + range_start_edge_ptr);
-                iomgr->managed_pwritea_now(edata_iosession, &bufp, last - range_start_edge_ptr, range_start_edge_ptr);
-                
+                }
+                //char * bufp = ((char*)edgedata + range_start_edge_ptr);
+                int startblock = range_start_edge_ptr / blocksize;
+                int endblock = last / blocksize;
+                for(int i=startblock; i <= endblock; i++) {
+                    iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                }
             }
             m.stop_time(cm, "memshard_commit");
             
             iomgr->managed_release(adj_session, &adjdata);
-            iomgr->managed_release(edata_iosession, &edgedata);
+            for(int i=0; i < nblocks; i++) {
+                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                iomgr->close_session(block_edatasessions[i]);
+            }
+            block_edatasessions.clear();
+            edgedata.clear();
             is_loaded = false;
         }
         
@@ -143,13 +157,48 @@ namespace graphchi {
             return is_loaded;
         }
         
+    private:
+        
+        void load_edata() {
+            bool async_inedgedata_loading = !svertex_t().computational_edges();
+            assert(blocksize % sizeof(ET) == 0);
+            
+            
+            int blockid = 0;
+            while(true) {
+                std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
+                if (shard_file_exists(block_filename)) {
+                    size_t fsize = get_filesize(block_filename);
+                    edatafilesize += fsize;
+                    int blocksession = iomgr->open_session(block_filename);
+                    block_edatasessions.push_back(blocksession);
+                    blocksizes.push_back(fsize);
+                    blockid++;
+                    
+                    char * ptr = NULL;
+                    iomgr->managed_malloc(blocksession, &ptr, fsize, 0);
+                    edgedata.push_back(ptr);
+                    if (async_inedgedata_loading) {
+                        iomgr->managed_preada_async(blocksession, &ptr, fsize, 0);
+                    } else {
+                        iomgr->managed_preada_now(blocksession, &ptr, fsize, 0);
+                    }
+                } else {
+                    break;
+                }
+            }
+
+        }
+        
+        
+    public:
+        
         // TODO: recycle ptr!
         void load() {
             is_loaded = true;
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = get_filesize(filename_edata);
+            edatafilesize = 0;
             
-            bool async_inedgedata_loading = !svertex_t().computational_edges();
             
 #ifdef SUPPORT_DELETIONS
             async_inedgedata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),
@@ -162,19 +211,14 @@ namespace graphchi {
             iomgr->managed_malloc(adj_session, &adjdata, adjfilesize, 0);
             adj_stream_session = streaming_task(iomgr, adj_session, adjfilesize, (char**) &adjdata);
             
-            iomgr->launch_stream_reader(&adj_stream_session);            
+            iomgr->launch_stream_reader(&adj_stream_session);
             /* Initialize edge data asynchonous reading */
             if (!only_adjacency) {
-                edata_iosession = iomgr->open_session(filename_edata, false);
-                
-                iomgr->managed_malloc(edata_iosession, &edgedata, edatafilesize, 0);
-                if (async_inedgedata_loading) {
-                    iomgr->managed_preada_async(edata_iosession, &edgedata, edatafilesize, 0);
-                } else {
-                    iomgr->managed_preada_now(edata_iosession, &edgedata, edatafilesize, 0);
-                }
+                load_edata();
             }
         }
+        
+        
         
         inline void check_stream_progress(int toread, size_t pos) {
             if (adj_stream_session.curpos == adjfilesize) return;
@@ -250,14 +294,15 @@ namespace graphchi {
                     vertex = &prealloc[vid-window_st];
                     if (!vertex->scheduled) vertex = NULL;
                 }
-                check_stream_progress(n*4, ptr-adjdata);  
+                check_stream_progress(n*4, ptr-adjdata);
                 bool any_edges = false;
                 while(--n>=0) {
                     vid_t target = *((vid_t*) ptr);
                     ptr += sizeof(vid_t);
-                    if (vertex != NULL && outedges) 
-                    {    
-                        vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
+                    if (vertex != NULL && outedges)
+                    {
+                        char * eptr = &(edgedata[edgeptr / blocksize][edgeptr % blocksize]);
+                        vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) eptr), false);
                     }
                     
                     if (target >= window_st)  {
@@ -267,7 +312,9 @@ namespace graphchi {
                                 if (dstvertex.scheduled) {
                                     any_edges = true;
                                     //  assert(only_adjacency ||  edgeptr < edatafilesize);
-                                    dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) &((char*)edgedata)[edgeptr]), false);
+                                    char * eptr = &(edgedata[edgeptr / blocksize][edgeptr % blocksize]);
+
+                                    dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) eptr), false);
                                     dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
                                 }
                             }

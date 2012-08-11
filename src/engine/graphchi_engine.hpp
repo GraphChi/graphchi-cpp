@@ -157,7 +157,7 @@ namespace graphchi {
             modifies_outedges = true;
             modifies_inedges = true;
             only_adjacency = false;
-            blocksize = get_option_long("blocksize", 1024 * 1024);
+            blocksize = get_option_long("blocksize", 4096 * 1024);
             membudget_mb = get_option_int("membudget_mb", 1024);
             nupdates = 0;
             iter = 0;
@@ -538,6 +538,7 @@ namespace graphchi {
                            filename_shard_adj(base_filename, exec_interval, nshards),  
                            interval_st, 
                            interval_en,
+                           blocksize,
                            m);
         }
         

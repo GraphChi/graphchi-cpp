@@ -584,7 +584,6 @@ namespace graphchi {
             assert(degreeOutF >= 0);
             int trerr = ftruncate(degreeOutF, ginfo.nvertices * sizeof(int) * 2);
             assert(trerr == 0);
-            
             for(int window=0; window<nshards; window++) {
                 metrics_entry mwi = m.start_time();
                 
@@ -596,7 +595,7 @@ namespace graphchi {
                 
                 /* Load shard[window] into memory */
                 memshard_t memshard(iomgr, filename_shard_edata<EdgeDataType>(basefilename, window, nshards), filename_shard_adj(basefilename, window, nshards),
-                                    interval_st, interval_en, m);
+                                    interval_st, interval_en, blocksize, m);
                 memshard.only_adjacency = true;
                 logstream(LOG_INFO) << "Interval: " << interval_st << " " << interval_en << std::endl;
                 

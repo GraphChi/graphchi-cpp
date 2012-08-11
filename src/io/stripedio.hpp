@@ -727,7 +727,6 @@ namespace graphchi {
         return NULL;
     }
     
-    
     static size_t get_filesize(std::string filename) {
         std::string fname = filename;
         int f = open(fname.c_str(), O_RDONLY);

@@ -102,6 +102,7 @@ typedef uint16_t topic_id_type;
 // tokens that have not yet been assigned.
 #define NULL_TOPIC (topic_id_type(-1))
 
+#define NTOPICS 20
 
 
 /**
@@ -110,7 +111,7 @@ typedef uint16_t topic_id_type;
  * same word in a given document and so a vector is used to store the
  * assignments of each occurrence.
  */
-typedef std::vector< topic_id_type > assignment_type;
+typedef uint16_t assignment_type[NTOPICS];
 
 
 // Global Variables
@@ -131,7 +132,6 @@ double BETA = 0.1;
 /**
  * \brief the total number of topics to uses
  */
-size_t NTOPICS = 50;
 
 /**
  * \brief The total number of words in the dataset.
@@ -217,11 +217,18 @@ struct edge_data {
   uint16_t nchanges;
   ///! The assignment of all tokens
   assignment_type assignment;
-  edge_data(size_t ntokens = 0) : nchanges(0), assignment(ntokens, NULL_TOPIC) { }
+  edge_data(size_t ntokens = 0) : nchanges(0) {
+      for(int i=0; i<NTOPICS; i++) assignment[i] = 0;
+  }
 }; // end of edge_data
 
 typedef graphlab::distributed_graph<vertex_data, edge_data> graph_type;
 
+static void parse(edge_data &x, const char * s) {
+    size_t count = atol(s);
+    count = std::min(count, MAX_COUNT);
+    x = (edge_data(count));
+}
 
 /**
  * \brief Edge data parser used in graph.load_json

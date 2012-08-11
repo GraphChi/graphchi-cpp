@@ -88,6 +88,29 @@ namespace graphchi {
         return ss.str();
     }
     
+    
+    
+    
+    template <typename EdgeDataType>
+    static std::string dirname_shard_edata_block(std::string edata_shardname, size_t blocksize) {
+        std::stringstream ss;
+        ss << edata_shardname;
+        ss << "_blockdir_" << blocksize;
+        return ss.str();
+    }
+    
+
+    
+    template <typename EdgeDataType>
+    static std::string filename_shard_edata_block(std::string edata_shardname, int blockid, size_t blocksize) {
+        std::stringstream ss;
+        ss << dirname_shard_edata_block<EdgeDataType>(edata_shardname, blocksize);
+        ss << "/";
+        ss << blockid;
+        return ss.str();
+    }
+
+    
     static std::string filename_shard_adj(std::string basefilename, int p, int nshards) {
         std::stringstream ss;
         ss << basefilename;

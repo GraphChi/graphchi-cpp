@@ -8,6 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
+		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
+		5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
+		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
+		5F74B05115D6CEE200ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
+		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
 		5FCC1D18159501840003D0E9 /* sharder_basic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */; };
@@ -22,6 +27,24 @@
 		5F56F711159B78BF00423ECE /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		5F74B03E15D3532600ED3EA9 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		5F74B05615D6CF4F00ED3EA9 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
@@ -178,6 +201,13 @@
 		5F56F703159B771900423ECE /* bulksync_functional_test.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bulksync_functional_test.cpp; sourceTree = "<group>"; };
 		5F56F713159B78BF00423ECE /* test_bulksync_functional */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_bulksync_functional; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F56F71E159B918100423ECE /* basic_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = basic_smoketest.cpp; sourceTree = "<group>"; };
+		5F74B03715D349EF00ED3EA9 /* cgs_lda_vertexprogram.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = cgs_lda_vertexprogram.hpp; sourceTree = "<group>"; };
+		5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = cgs_lda.cpp; sourceTree = "<group>"; };
+		5F74B04215D3532600ED3EA9 /* graphlab_lda */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphlab_lda; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F74B04515D3576800ED3EA9 /* random.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = random.hpp; sourceTree = "<group>"; };
+		5F74B04615D35B6400ED3EA9 /* random.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = random.cpp; sourceTree = "<group>"; };
+		5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = blocksplitter.cpp; sourceTree = "<group>"; };
+		5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "sharder_basic copy"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F7A0FFB1589163E00748D0D /* graphchi_xcode */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphchi_xcode; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F7A0FFF1589165D00748D0D /* graphchi_types.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = graphchi_types.hpp; sourceTree = "<group>"; };
 		5F7A102F1589266800748D0D /* graph_objects.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = graph_objects.hpp; sourceTree = "<group>"; };
@@ -248,6 +278,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5F74B03D15D3532600ED3EA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F74B05515D6CF4F00ED3EA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5F8DD03E159DDABC0034C889 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -311,6 +355,7 @@
 			isa = PBXGroup;
 			children = (
 				5FCC1EBC1599F59A0003D0E9 /* example_apps */,
+				5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */,
 				5F7A0FE31589162F00748D0D /* src */,
 				5F7A0FFC1589163E00748D0D /* Products */,
 			);
@@ -494,6 +539,24 @@
 			path = tests;
 			sourceTree = "<group>";
 		};
+		5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */ = {
+			isa = PBXGroup;
+			children = (
+				5F74B03615D349EF00ED3EA9 /* lda */,
+			);
+			name = graphlab_toolkit_ports;
+			path = ../graphlab_toolkit_ports;
+			sourceTree = "<group>";
+		};
+		5F74B03615D349EF00ED3EA9 /* lda */ = {
+			isa = PBXGroup;
+			children = (
+				5F74B03715D349EF00ED3EA9 /* cgs_lda_vertexprogram.hpp */,
+				5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */,
+			);
+			path = lda;
+			sourceTree = "<group>";
+		};
 		5F7A0FE31589162F00748D0D /* src */ = {
 			isa = PBXGroup;
 			children = (
@@ -527,6 +590,8 @@
 				5FCC2130159DF1F20003D0E9 /* trianglecounting */,
 				5FCC22A815A1EFA30003D0E9 /* graphchi_xcode */,
 				5FCC243415A378E70003D0E9 /* streaming_pagerank */,
+				5F74B04215D3532600ED3EA9 /* graphlab_lda */,
+				5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -600,6 +665,7 @@
 				5F3AA7AB15A632A300B467C1 /* formats */,
 				5FCC1CD81594F1890003D0E9 /* sharder.hpp */,
 				5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */,
+				5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */,
 			);
 			path = preprocessing;
 			sourceTree = "<group>";
@@ -711,6 +777,8 @@
 				5FCC229515A1EC4F0003D0E9 /* assertions.hpp */,
 				5FCC229715A1EC5A0003D0E9 /* graphlab.hpp */,
 				5FCC229815A1ECB40003D0E9 /* graphchi_graphlabv2_1.hpp */,
+				5F74B04515D3576800ED3EA9 /* random.hpp */,
+				5F74B04615D35B6400ED3EA9 /* random.cpp */,
 			);
 			path = graphlab2_1_GAS_api;
 			sourceTree = "<group>";
@@ -733,6 +801,42 @@
 			name = test_bulksync_functional;
 			productName = test_bulksync_functional;
 			productReference = 5F56F713159B78BF00423ECE /* test_bulksync_functional */;
+			productType = "com.apple.product-type.tool";
+		};
+		5F74B03A15D3532600ED3EA9 /* graphlab_lda */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F74B03F15D3532600ED3EA9 /* Build configuration list for PBXNativeTarget "graphlab_lda" */;
+			buildPhases = (
+				5F74B03B15D3532600ED3EA9 /* Sources */,
+				5F74B03D15D3532600ED3EA9 /* Frameworks */,
+				5F74B03E15D3532600ED3EA9 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = graphlab_lda;
+			productInstallPath = "$(HOME)/bin";
+			productName = graphchi_xcode;
+			productReference = 5F74B04215D3532600ED3EA9 /* graphlab_lda */;
+			productType = "com.apple.product-type.tool";
+		};
+		5F74B05215D6CF4F00ED3EA9 /* blocksplitter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F74B05715D6CF4F00ED3EA9 /* Build configuration list for PBXNativeTarget "blocksplitter" */;
+			buildPhases = (
+				5F74B05315D6CF4F00ED3EA9 /* Sources */,
+				5F74B05515D6CF4F00ED3EA9 /* Frameworks */,
+				5F74B05615D6CF4F00ED3EA9 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = blocksplitter;
+			productInstallPath = "$(HOME)/bin";
+			productName = graphchi_xcode;
+			productReference = 5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */;
 			productType = "com.apple.product-type.tool";
 		};
 		5F8DD040159DDABC0034C889 /* connectedcomponents */ = {
@@ -907,6 +1011,8 @@
 				5FCC2128159DF1F20003D0E9 /* trianglecounting */,
 				5FCC22A015A1EFA30003D0E9 /* graphlab_als */,
 				5FCC242C15A378E70003D0E9 /* streaming_pagerank */,
+				5F74B03A15D3532600ED3EA9 /* graphlab_lda */,
+				5F74B05215D6CF4F00ED3EA9 /* blocksplitter */,
 			);
 		};
 /* End PBXProject section */
@@ -920,11 +1026,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5F74B03B15D3532600ED3EA9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */,
+				5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F74B05315D6CF4F00ED3EA9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5F8DD03D159DDABC0034C889 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
+				5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */,
+				5F74B05115D6CEE200ED3EA9 /* blocksplitter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1034,7 +1159,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				OTHER_LDFLAGS = "-fopenmp";
-				SDKROOT = macosx;
+				SDKROOT = macosx10.7;
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Debug;
@@ -1060,7 +1185,7 @@
 				);
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				OTHER_LDFLAGS = "-fopenmp";
-				SDKROOT = macosx;
+				SDKROOT = macosx10.7;
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Release;
@@ -1099,6 +1224,56 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		5F74B04015D3532600ED3EA9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = graphlab_lda;
+				SDKROOT = macosx10.7;
+			};
+			name = Debug;
+		};
+		5F74B04115D3532600ED3EA9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = graphlab_lda;
+				SDKROOT = macosx10.7;
+			};
+			name = Release;
+		};
+		5F74B05815D6CF4F00ED3EA9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "sharder_basic copy";
+			};
+			name = Debug;
+		};
+		5F74B05915D6CF4F00ED3EA9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "sharder_basic copy";
 			};
 			name = Release;
 		};
@@ -1157,6 +1332,7 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				PRODUCT_NAME = "test_bulksync_functional copy";
+				SDKROOT = macosx10.7;
 			};
 			name = Debug;
 		};
@@ -1173,6 +1349,7 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				PRODUCT_NAME = "test_bulksync_functional copy";
+				SDKROOT = macosx10.7;
 			};
 			name = Release;
 		};
@@ -1348,6 +1525,24 @@
 			buildConfigurations = (
 				5F56F71B159B78BF00423ECE /* Debug */,
 				5F56F71C159B78BF00423ECE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5F74B03F15D3532600ED3EA9 /* Build configuration list for PBXNativeTarget "graphlab_lda" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F74B04015D3532600ED3EA9 /* Debug */,
+				5F74B04115D3532600ED3EA9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5F74B05715D6CF4F00ED3EA9 /* Build configuration list for PBXNativeTarget "blocksplitter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F74B05815D6CF4F00ED3EA9 /* Debug */,
+				5F74B05915D6CF4F00ED3EA9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
