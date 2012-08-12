@@ -134,6 +134,11 @@ namespace graphchi {
                        this iteration. */
                     if (i >= start_stream_block) {
                         iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                        iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                        iomgr->close_session(block_edatasessions[i]);
+
+                        edgedata[i] = NULL;
+
                     } else {
                         iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
                         edgedata[i] = NULL;
@@ -148,8 +153,13 @@ namespace graphchi {
                 //char * bufp = ((char*)edgedata + range_start_edge_ptr);
                 int startblock = range_start_edge_ptr / blocksize;
                 int endblock = last / blocksize;
-                for(int i=startblock; i <= endblock; i++) {
-                    iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                for(int i=0; i < nblocks; i++) {
+                    if (i >= startblock && i <= endblock) {
+                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                    }
+                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                    edgedata[i] = NULL;
+                    iomgr->close_session(block_edatasessions[i]);
                 }
             }
             m.stop_time(cm, "memshard_commit");
@@ -159,7 +169,6 @@ namespace graphchi {
             for(int i=0; i < nblocks; i++) {
                 if (edgedata[i] != NULL) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                    iomgr->close_session(block_edatasessions[i]);
                 }
             }
             block_edatasessions.clear();
@@ -177,12 +186,13 @@ namespace graphchi {
             bool async_inedgedata_loading = !svertex_t().computational_edges();
             assert(blocksize % sizeof(ET) == 0);
             
-            
+            size_t compressedsize = 0;
             int blockid = 0;
             while(true) {
                 std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                 if (shard_file_exists(block_filename)) {
                     size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
+                    compressedsize += get_filesize(block_filename);
                     int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
@@ -200,7 +210,7 @@ namespace graphchi {
                     break;
                 }
             }
-
+            std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize << std::endl;
         }
         
         

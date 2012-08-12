@@ -64,33 +64,44 @@ namespace graphchi {
             this->iomgr->wait_for_reads();
         }
         
-        
+
         /* Override - do not allocate edge data */
-        virtual void init_vertices(std::vector<fvertex_t> &vertices, 
-                                   graphchi_edge<EdgeDataType> * &edata) {
-            int nvertices = vertices.size();
-                      /* Assign vertex edge array pointers */
-            int ecounter = 0;
-            for(int i=0; i < nvertices; i++) {
+        virtual void init_vertices(std::vector<fvertex_t> &vertices, graphchi_edge<EdgeDataType> * &in_edata,
+                                    graphchi_edge<EdgeDataType> * &out_edata) {
+            size_t nvertices = vertices.size();
+            
+            /* Compute number of edges */
+            size_t num_inedges, num_outedges;
+            size_t num_edges = num_edges_subinterval(this->sub_interval_st, this->sub_interval_en, num_inedges, num_outedges);
+            
+             /* Assign vertex edge array pointers */
+            size_t inecounter = 0, outecounter = 0;
+            for(int i=0; i < (int)nvertices; i++) {
                 degree d = this->degree_handler->get_degree(this->sub_interval_st + i);
                 int inc = d.indegree;
                 int outc = d.outdegree;
                 vertices[i] = fvertex_t(this->chicontext, this->sub_interval_st + i, inc, outc);
+
                 if (this->scheduler != NULL) {
                     bool is_sched = this->scheduler->is_scheduled(this->sub_interval_st + i);
                     if (is_sched) {
                         vertices[i].scheduled =  true;
                         this->nupdates++;
-                        ecounter += inc + outc;
+                        inecounter += inc;
+                        outecounter += outc;
                     }
                 } else {
-                    this->nupdates++; 
+                    this->nupdates++;
                     vertices[i].scheduled =  true;
-                    ecounter += inc + outc;
+                    inecounter += inc;
+                    outecounter += outc;
                 }
-            }                   
-            this->work += ecounter;
-        }
+            }
+            this->work += num_inedges + num_outedges;
+            assert(inecounter <= num_inedges);
+            assert(outecounter <=  num_outedges);
+            assert(num_edges == num_inedges + num_outedges);
+        }        
 
         
         /* Override - now load sliding shards, to write (broadcast) to out vertices */

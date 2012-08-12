@@ -105,6 +105,10 @@ namespace graphchi {
         size_t fsize;
         std::string fname = edata_shardname + ".size";
         std::ifstream ifs(fname.c_str());
+        if (!ifs.good()) {
+            logstream(LOG_FATAL) << "Could not load " << fname << ". Preprocessing forgotten?" << std::endl;
+            assert(ifs.good());
+        }
         ifs >> fsize;
         ifs.close();
         return fsize;

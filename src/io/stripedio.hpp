@@ -85,7 +85,7 @@ namespace graphchi {
     struct iotask {
         BLOCK_ACTION action;
         int fd;
-        
+        int session;
         refcountptr * ptr;
         size_t length;
         size_t offset;
@@ -96,8 +96,10 @@ namespace graphchi {
         bool closefd;
         
         iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false) {}
-        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
-        action(act), fd(fd), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {}
+        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd, int session,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
+        action(act), fd(fd), session(session), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {
+            if (closefd) assert(free_after);
+        }
     };
     
     struct thrinfo {
@@ -306,7 +308,7 @@ namespace graphchi {
             for(int i=0; i<multiplex; i++) {
                 std::string fname = multiplexprefix(i) + filename;
                 for(int j=0; j<niothreads+(multiplex == 1 ? 1 : 0); j++) { // Hack to have one fd for synchronous
-                    int rddesc = open(fname.c_str(), O_RDONLY);
+                    int rddesc = open(fname.c_str(), (readonly ? O_RDONLY : O_RDWR));
                     if (rddesc < 0) logstream(LOG_ERROR)  << "Could not open: " << fname << " session: " << session_id 
                         << " error: " << strerror(errno) << std::endl;
                     assert(rddesc>=0);
@@ -316,7 +318,7 @@ namespace graphchi {
                         fcntl(rddesc, F_NOCACHE, 1);
 #endif
                     if (!readonly) {
-                        int wrdesc = open(fname.c_str(), O_RDWR);
+                        int wrdesc = rddesc; // Change by Aapo: Aug 11, 2012. I don't think we need separate wrdesc?
 
                         if (wrdesc < 0) logstream(LOG_ERROR)  << "Could not open for writing: " << fname << " session: " << session_id
                             << " error: " << strerror(errno) << std::endl;
@@ -331,7 +333,7 @@ namespace graphchi {
             }
             iodesc->filename = filename;
             if (iodesc->writedescs.size() > 0)  {
-          //      logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
+           //     logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
             } else {
            //     logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
             }
@@ -349,12 +351,13 @@ namespace graphchi {
             iodesc->open = false;
             mlock.unlock();
             if (wasopen) {
+              //  std::cout << "Closing: " << iodesc->filename << " " << iodesc->readdescs[0] << std::endl;
                 for(std::vector<int>::iterator it=iodesc->readdescs.begin(); it!=iodesc->readdescs.end(); ++it) {
                     close(*it);
                 }
-                for(std::vector<int>::iterator it=iodesc->writedescs.begin(); it!=iodesc->writedescs.end(); ++it) {
-                    close(*it);
-                }
+ //               for(std::vector<int>::iterator it=iodesc->writedescs.begin(); it!=iodesc->writedescs.end(); ++it) {
+  //                  close(*it);
+  //              }
             }
         }
         
@@ -392,7 +395,8 @@ namespace graphchi {
             for(int i=0; i<(int)stripelist.size(); i++) {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_reads, 1);
-                mplex_readtasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], 
+                mplex_readtasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread],
+                                                                    session,
                                                                 refptr, chunk.len, chunk.offset+off, chunk.offset, false,
                                                                     compressed_session(session)));
             }
@@ -501,7 +505,7 @@ namespace graphchi {
             for(int i=0; i<(int)stripelist.size(); i++) {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_writes, 1);
-                mplex_writetasks[chunk.mplex_thread].push(iotask(this, WRITE, sessions[session]->writedescs[chunk.mplex_thread], 
+                mplex_writetasks[chunk.mplex_thread].push(iotask(this, WRITE, sessions[session]->writedescs[chunk.mplex_thread], session,
                                                                  refptr, chunk.len, chunk.offset+off, chunk.offset, free_after, compressed_session(session),
                                                                         close_fd));
             }
@@ -528,7 +532,7 @@ namespace graphchi {
                     __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_reads, 1);
                     
                     // Use prioritized task queue
-                    mplex_priotasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], 
+                    mplex_priotasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], session,
                                                                     refptr, chunk.len, chunk.offset+off, chunk.offset, false,
                                                                         false));
                     checklen += chunk.len;
@@ -716,11 +720,12 @@ namespace graphchi {
                         if (__sync_sub_and_fetch(&task.ptr->count, 1) == 0) {
                             free(task.ptr->ptr);
                             free(task.ptr);
+                            if (task.closefd) {
+                                task.iomgr->close_session(task.session);
+                            }
                         }
                     }
-                    if (task.closefd) {
-                        close(task.fd);
-                    }
+                   
                     __sync_sub_and_fetch(&info->pending_writes, 1);
                     info->m->stop_time(me, "commit_thr");
                 } else {
@@ -734,6 +739,9 @@ namespace graphchi {
                     __sync_sub_and_fetch(&info->pending_reads, 1);
                     if (__sync_sub_and_fetch(&task.ptr->count, 1) == 0) {
                         free(task.ptr);
+                        if (task.closefd) {
+                            task.iomgr->close_session(task.session);
+                        }
                     }
                 }
             } else {

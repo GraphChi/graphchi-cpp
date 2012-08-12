@@ -15,6 +15,9 @@ tests: tests/basic_smoketest tests/bulksync_functional_test
 clean:
 	@rm -rf bin/*
 
+blocksplitter: src/preprocessing/blocksplitter.cpp $(HEADERS)
+	$(CPP) $(CPPFLAGS) src/preprocessing/blocksplitter.cpp -o bin/blocksplitter
+
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
 	$(CPP) $(CPPFLAGS) src/preprocessing/sharder_basic.cpp -o bin/sharder_basic
 
