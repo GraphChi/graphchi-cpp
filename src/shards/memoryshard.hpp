@@ -70,7 +70,6 @@ namespace graphchi {
         uint8_t * adjdata;
         std::vector<char *> edgedata;
         std::vector<size_t> blocksizes;
-        metrics &m;
         uint64_t chunkid;
         
         std::vector<int> block_edatasessions;
@@ -79,7 +78,8 @@ namespace graphchi {
         
         bool is_loaded;
         size_t blocksize;
-        
+        metrics &m;
+
     public:
         bool only_adjacency;
         
@@ -100,7 +100,7 @@ namespace graphchi {
         
         ~memory_shard() {
             
-            for(int i=0; i < block_edatasessions.size(); i++) {
+            for(int i=0; i < (int)block_edatasessions.size(); i++) {
                 iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                 iomgr->close_session(block_edatasessions[i]);
             }
@@ -121,7 +121,7 @@ namespace graphchi {
              * Out-edges are in a continuous "window", while in-edges are
              * scattered all over the shard
              */
-            int nblocks = block_edatasessions.size();
+            int nblocks = (int) block_edatasessions.size();
 
             if (all) {
                 //iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
@@ -168,8 +168,8 @@ namespace graphchi {
             while(true) {
                 std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                 if (shard_file_exists(block_filename)) {
-                    size_t fsize = get_filesize(block_filename);
-                    int blocksession = iomgr->open_session(block_filename);
+                    size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
+                    int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
                     blockid++;

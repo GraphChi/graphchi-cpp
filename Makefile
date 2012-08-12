@@ -1,7 +1,7 @@
 INCFLAGS = -I/usr/local/include/ -I./src/
 
 CPP = g++
-CPPFLAGS = -O3 -g $(INCFLAGS) -m64 -fopenmp -Wall -Wno-strict-aliasing
+CPPFLAGS = -O3 -g $(INCFLAGS) -m64 -fopenmp -Wall -Wno-strict-aliasing -lz
 DEBUGFLAGS = -g -ggdb $(INCFLAGS)
 HEADERS=$(wildcard *.h**)
 

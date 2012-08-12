@@ -77,8 +77,9 @@ int main(int argc, const char ** argv) {
            
             std::string block_filename = filename_shard_edata_block<EdgeDataType>(shard_filename, i, blocksize);
             int bf = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            pwritea(bf, buf, len, 0);
+            write_compressed(bf, buf, len);
             close(bf);
+            
             idx += blocksize;
         }
         close(f);

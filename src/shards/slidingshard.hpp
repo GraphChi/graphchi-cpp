@@ -86,7 +86,7 @@ namespace graphchi {
                 size_t len = ptr-data;
                 if (len> end-offset) len = end-offset;
                 if (is_edata_block) {
-                    iomgr->managed_pwritea_now(writedesc, &data, len, 0);
+                    iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
                 } else {
                     iomgr->managed_pwritea_now(writedesc, &data, len, offset);
                 }
@@ -187,7 +187,7 @@ namespace graphchi {
                 while(true) {
                     std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                     if (shard_file_exists(block_filename)) {
-                        block_edatasessions.push_back(iomgr->open_session(block_filename));
+                        block_edatasessions.push_back(iomgr->open_session(block_filename, false, true));
                         blockid++;
                     } else {
                         break;
@@ -287,7 +287,7 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);                
-                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
+                iomgr->managed_malloc(edata_session, &newblock.data, blocksize, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
                 curblock = &activeblocks[activeblocks.size()-1];

@@ -1158,7 +1158,10 @@
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				OTHER_LDFLAGS = "-fopenmp";
+				OTHER_LDFLAGS = (
+					"-fopenmp",
+					"-lz",
+				);
 				SDKROOT = macosx10.7;
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
@@ -1184,7 +1187,10 @@
 					/usr/local/include/,
 				);
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				OTHER_LDFLAGS = "-fopenmp";
+				OTHER_LDFLAGS = (
+					"-fopenmp",
+					"-lz",
+				);
 				SDKROOT = macosx10.7;
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
