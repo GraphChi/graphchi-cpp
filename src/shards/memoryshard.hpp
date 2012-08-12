@@ -68,7 +68,7 @@ namespace graphchi {
         size_t range_start_edge_ptr;
         size_t streaming_offset_edge_ptr;
         uint8_t * adjdata;
-        std::vector<char *> edgedata;
+        char ** edgedata;
         std::vector<size_t> blocksizes;
         uint64_t chunkid;
         
@@ -110,10 +110,11 @@ namespace graphchi {
                 if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
                 iomgr->close_session(adj_session);
             }
+            delete edgedata;
         }
         
         void commit(bool all) {
-            if (edgedata.size() == 0 || only_adjacency) return;
+            if (block_edatasessions.size() == 0 || only_adjacency) return;
             assert(is_loaded);
             metrics_entry cm = m.start_time();
             
@@ -172,7 +173,6 @@ namespace graphchi {
                 }
             }
             block_edatasessions.clear();
-            edgedata.clear();
             is_loaded = false;
         }
         
@@ -185,7 +185,8 @@ namespace graphchi {
         void load_edata() {
             bool async_inedgedata_loading = !svertex_t().computational_edges();
             assert(blocksize % sizeof(ET) == 0);
-            
+            int nblocks = edatafilesize / blocksize + (edatafilesize % blocksize != 0);
+            edgedata = (char **) calloc(nblocks, sizeof(char*));
             size_t compressedsize = 0;
             int blockid = 0;
             while(true) {
@@ -196,20 +197,22 @@ namespace graphchi {
                     int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
-                    blockid++;
                     
                     char * ptr = NULL;
                     iomgr->managed_malloc(blocksession, &ptr, fsize, 0);
-                    edgedata.push_back(ptr);
+                    edgedata[blockid] = ptr;
                     if (async_inedgedata_loading) {
                         iomgr->managed_preada_async(blocksession, &ptr, fsize, 0);
                     } else {
                         iomgr->managed_preada_now(blocksession, &ptr, fsize, 0);
                     }
+                    blockid++;
+
                 } else {
                     break;
                 }
             }
+            assert(blockid == nblocks);
             std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize << std::endl;
         }
         
