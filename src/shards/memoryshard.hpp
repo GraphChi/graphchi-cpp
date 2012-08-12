@@ -96,6 +96,7 @@ namespace graphchi {
             only_adjacency = false;
             is_loaded = false;
             adj_session = -1;
+            edgedata = NULL;
         }
         
         ~memory_shard() {
@@ -110,7 +111,9 @@ namespace graphchi {
                 if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
                 iomgr->close_session(adj_session);
             }
-            delete edgedata;
+            if (edgedata != NULL)
+                free(edgedata);
+            edgedata = NULL;
         }
         
         void commit(bool all) {
@@ -198,9 +201,8 @@ namespace graphchi {
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
                     
-                    char * ptr = NULL;
-                    iomgr->managed_malloc(blocksession, &ptr, fsize, 0);
                     edgedata[blockid] = ptr;
+                    iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
                     if (async_inedgedata_loading) {
                         iomgr->managed_preada_async(blocksession, &ptr, fsize, 0);
                     } else {

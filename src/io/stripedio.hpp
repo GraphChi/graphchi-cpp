@@ -719,7 +719,7 @@ namespace graphchi {
                         // Threead-safe method of memory managment - ugly!
                         if (__sync_sub_and_fetch(&task.ptr->count, 1) == 0) {
                             free(task.ptr->ptr);
-                            free(task.ptr);
+                            delete task.ptr;
                             if (task.closefd) {
                                 task.iomgr->close_session(task.session);
                             }

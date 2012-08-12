@@ -144,7 +144,7 @@ void writea(int f, T * tbuf, size_t nbytes) {
 template <typename T>
 void write_compressed(int f, T * tbuf, size_t nbytes) {
     unsigned char * buf = (unsigned char*)tbuf;
-    int ret, flush;
+    int ret;
     unsigned have;
     z_stream strm;
     unsigned char * out = (unsigned char *) malloc(CHUNK);
@@ -160,7 +160,6 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     
     /* compress until end of file */
     strm.avail_in = nbytes;
-    flush = Z_FINISH;
     strm.next_in = buf;
     
     int trerr = ftruncate(f, 0);
@@ -171,7 +170,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     do {
         strm.avail_out = CHUNK;
         strm.next_out = out;
-        ret = deflate(&strm, flush);    /* no bad return value */
+        ret = deflate(&strm, Z_FINISH);    /* no bad return value */
         assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
         have = CHUNK - strm.avail_out;
         if (write(f, out, have) != have) {
