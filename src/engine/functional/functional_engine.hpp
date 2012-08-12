@@ -72,7 +72,7 @@ namespace graphchi {
             
             /* Compute number of edges */
             size_t num_inedges, num_outedges;
-            size_t num_edges = num_edges_subinterval(this->sub_interval_st, this->sub_interval_en, num_inedges, num_outedges);
+            size_t num_edges = this->num_edges_subinterval(this->sub_interval_st, this->sub_interval_en, num_inedges, num_outedges);
             
              /* Assign vertex edge array pointers */
             size_t inecounter = 0, outecounter = 0;
