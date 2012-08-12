@@ -93,11 +93,11 @@ namespace graphchi {
         bool free_after;
         stripedio * iomgr;
         bool compressed;
-        
+        bool closefd;
         
         iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false) {}
-        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed) :
-        action(act), fd(fd), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed) {}
+        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
+        action(act), fd(fd), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {}
     };
     
     struct thrinfo {
@@ -331,10 +331,9 @@ namespace graphchi {
             }
             iodesc->filename = filename;
             if (iodesc->writedescs.size() > 0)  {
-                logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
+          //      logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
             } else {
-                logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
-
+           //     logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
             }
             return session_id;
         }
@@ -492,7 +491,7 @@ namespace graphchi {
         
         // Note: data is freed after write!
         template <typename T>
-        void pwritea_async(int session, T * tbuf, size_t nbytes, size_t off, bool free_after) {
+        void pwritea_async(int session, T * tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
             std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
             refcountptr * refptr = new refcountptr((char*)tbuf, (int) stripelist.size());
             if (compressed_session(session)) {
@@ -503,7 +502,8 @@ namespace graphchi {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_writes, 1);
                 mplex_writetasks[chunk.mplex_thread].push(iotask(this, WRITE, sessions[session]->writedescs[chunk.mplex_thread], 
-                                                                 refptr, chunk.len, chunk.offset+off, chunk.offset, free_after, compressed_session(session)));
+                                                                 refptr, chunk.len, chunk.offset+off, chunk.offset, free_after, compressed_session(session),
+                                                                        close_fd));
             }
         }
         
@@ -578,9 +578,9 @@ namespace graphchi {
          */
         
         template <typename T>
-        void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after) {
+        void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
             if (!pinned_session(session)) {
-                pwritea_async(session, *tbuf, nbytes, off, free_after);
+                pwritea_async(session, *tbuf, nbytes, off, free_after, close_fd);
             } else {
                 // Do nothing but mark the descriptor as 'dirty'
                 sessions[session]->pinned_to_memory->touched = true;
@@ -717,6 +717,9 @@ namespace graphchi {
                             free(task.ptr->ptr);
                             free(task.ptr);
                         }
+                    }
+                    if (task.closefd) {
+                        close(task.fd);
                     }
                     __sync_sub_and_fetch(&info->pending_writes, 1);
                     info->m->stop_time(me, "commit_thr");

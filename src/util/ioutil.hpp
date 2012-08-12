@@ -138,7 +138,7 @@ void writea(int f, T * tbuf, size_t nbytes) {
  * COMPRESSED
  */
 
-#define CHUNK (256*1024)
+#define CHUNK (2048 * 1024)
 
 
 template <typename T>
@@ -147,14 +147,14 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     int ret, flush;
     unsigned have;
     z_stream strm;
-    unsigned char out[CHUNK];
+    unsigned char * out = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 
     /* allocate deflate state */
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
-    ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+    ret = deflateInit(&strm, Z_BEST_SPEED);
     if (ret != Z_OK)
         assert(false);
     
@@ -185,6 +185,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     
     /* clean up and return */
     (void)deflateEnd(&strm);
+    free(out);
 }
 
 
@@ -195,7 +196,7 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
-    unsigned char in[CHUNK];
+    unsigned char * in = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 
     /* allocate inflate state */
@@ -240,6 +241,7 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     
     /* clean up and return */
     (void)inflateEnd(&strm);
+    free(in);
 }
 
 

@@ -101,8 +101,10 @@ namespace graphchi {
         ~memory_shard() {
             
             for(int i=0; i < (int)block_edatasessions.size(); i++) {
-                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                iomgr->close_session(block_edatasessions[i]);
+                if (edgedata[i] != NULL) {
+                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                    iomgr->close_session(block_edatasessions[i]);
+                }
             }
             if (adj_session >= 0) {
                 if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
@@ -125,8 +127,17 @@ namespace graphchi {
 
             if (all) {
                 //iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
+                int start_stream_block = range_start_edge_ptr / blocksize;
+
                 for(int i=0; i < nblocks; i++) {
-                    iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                    /* Write asynchronously blocks that will not be needed by the sliding windows on
+                       this iteration. */
+                    if (i >= start_stream_block) {
+                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                    } else {
+                        iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
+                        edgedata[i] = NULL;
+                    }
                 }
             } else {
                 size_t last = streaming_offset_edge_ptr;
@@ -144,9 +155,12 @@ namespace graphchi {
             m.stop_time(cm, "memshard_commit");
             
             iomgr->managed_release(adj_session, &adjdata);
+            // FIXME: this is duplicated code from destructor
             for(int i=0; i < nblocks; i++) {
-                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                iomgr->close_session(block_edatasessions[i]);
+                if (edgedata[i] != NULL) {
+                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                    iomgr->close_session(block_edatasessions[i]);
+                }
             }
             block_edatasessions.clear();
             edgedata.clear();
