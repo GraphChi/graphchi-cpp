@@ -201,12 +201,12 @@ namespace graphchi {
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
                     
-                    edgedata[blockid] = ptr;
+                    edgedata[blockid] = NULL;
                     iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
                     if (async_inedgedata_loading) {
-                        iomgr->managed_preada_async(blocksession, &ptr, fsize, 0);
+                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
                     } else {
-                        iomgr->managed_preada_now(blocksession, &ptr, fsize, 0);
+                        iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
                     }
                     blockid++;
 
