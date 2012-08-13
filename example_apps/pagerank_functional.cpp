@@ -108,8 +108,7 @@ int main(int argc, const char ** argv) {
             assert(false);
         }
         /* Output metrics */
-        basic_reporter basicrep;
-        m.report(basicrep);
+        metrics_report(m);   
     }
     
     /* Write Top 20 */
