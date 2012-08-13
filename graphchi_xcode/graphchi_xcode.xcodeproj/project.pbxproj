@@ -21,6 +21,7 @@
 		5FCC2132159DF2080003D0E9 /* trianglecounting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */; };
 		5FCC22AE15A1EFC60003D0E9 /* als_graphlab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC229215A1EC330003D0E9 /* als_graphlab.cpp */; };
 		5FCC243A15A379050003D0E9 /* streaming_pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */; };
+		5FEC749A15D884560050EC64 /* filechecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FEC749815D884560050EC64 /* filechecker.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -268,6 +269,7 @@
 		5FCC23FE15A2395B0003D0E9 /* als_vertices_inmem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = als_vertices_inmem.cpp; sourceTree = "<group>"; };
 		5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = streaming_pagerank.cpp; sourceTree = "<group>"; };
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FEC749815D884560050EC64 /* filechecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = filechecker.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -693,6 +695,7 @@
 				5F7A10511589266800748D0D /* qsort.hpp */,
 				5F7A10521589266800748D0D /* synchronized_queue.hpp */,
 				5FC142831593B51B0093542A /* toplist.hpp */,
+				5FEC749815D884560050EC64 /* filechecker.cpp */,
 			);
 			path = util;
 			sourceTree = "<group>";
@@ -1050,6 +1053,7 @@
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
 				5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */,
 				5F74B05115D6CEE200ED3EA9 /* blocksplitter.cpp in Sources */,
+				5FEC749A15D884560050EC64 /* filechecker.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

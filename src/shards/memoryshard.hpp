@@ -321,7 +321,7 @@ namespace graphchi {
                     vertex = &prealloc[vid-window_st];
                     if (!vertex->scheduled) vertex = NULL;
                 }
-                check_stream_progress(n*4, ptr-adjdata);
+                check_stream_progress(n * 4, ptr - adjdata);
                 bool any_edges = false;
                 while(--n>=0) {
                     vid_t target = *((vid_t*) ptr);

@@ -138,7 +138,7 @@ void writea(int f, T * tbuf, size_t nbytes) {
  * COMPRESSED
  */
 
-#define CHUNK (2048 * 1024)
+#define CHUNK (4096 * 1024)
 
 
 template <typename T>

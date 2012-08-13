@@ -85,7 +85,7 @@ namespace graphchi {
         void commit_now(stripedio * iomgr) {
             if (active && data != NULL && writedesc >= 0) {
                 size_t len = ptr-data;
-                if (len> end-offset) len = end-offset;
+                if (len > end-offset) len = end-offset;
                 if (is_edata_block) {
                     iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
                 } else {
@@ -157,7 +157,7 @@ namespace graphchi {
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
         bool disable_writes;
         bool async_edata_loading;
-        bool need_read_outedges; // In this model, we need not to read edgedata but must be careful when commiting it
+        // bool need_read_outedges; // Disabled - does not work with compressed data: whole block needs to be read.
         
         
     public:
@@ -201,7 +201,6 @@ namespace graphchi {
 #ifdef SUPPORT_DELETIONS
             async_edata_loading = false; // See comment above for memshard, async_edata_loading = false;
 #endif
-            need_read_outedges = svertex_t().read_outedges();
         }
         
         ~sliding_shard() {
@@ -281,7 +280,7 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);
-                iomgr->managed_malloc(edata_session, &newblock.data, blocksize, newblock.offset);
+                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
                 curblock = &activeblocks[activeblocks.size()-1];
@@ -403,7 +402,7 @@ namespace graphchi {
                                     if (async_edata_loading) {
                                         curblock->read_async(iomgr);
                                     } else {
-                                        if (need_read_outedges) curblock->read_now(iomgr);
+                                        curblock->read_now(iomgr);
                                     }
                                 }
                                 // Note: this needs to be set always because curblock might change during this loop.
