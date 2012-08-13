@@ -94,11 +94,13 @@ namespace graphchi {
         stripedio * iomgr;
         bool compressed;
         bool closefd;
+        volatile int * doneptr;
         
-        iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false) {}
+        iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false), doneptr(NULL) {}
         iotask(stripedio * iomgr, BLOCK_ACTION act, int fd, int session,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
         action(act), fd(fd), session(session), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {
             if (closefd) assert(free_after);
+            doneptr = NULL;
         }
     };
     
@@ -385,7 +387,7 @@ namespace graphchi {
         }
         
         template <typename T>
-        void preada_async(int session,  T * tbuf, size_t nbytes, size_t off) {
+        void preada_async(int session,  T * tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
             std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
             if (compressed_session(session)) {
                 assert(stripelist.size() == 1);
@@ -395,10 +397,12 @@ namespace graphchi {
             for(int i=0; i<(int)stripelist.size(); i++) {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_reads, 1);
-                mplex_readtasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread],
-                                                                    session,
-                                                                refptr, chunk.len, chunk.offset+off, chunk.offset, false,
-                                                                    compressed_session(session)));
+                iotask task = iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread],
+                                     session,
+                                     refptr, chunk.len, chunk.offset+off, chunk.offset, false,
+                                     compressed_session(session));
+                task.doneptr = doneptr;
+                mplex_readtasks[chunk.mplex_thread].push(task);
             }
         }
         
@@ -621,13 +625,19 @@ namespace graphchi {
             }
         }
         
+        /**
+          * @param doneptr is decremented to zero when task is ready
+          */
         template <typename T>
-        void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off) {
+        void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
             if (!pinned_session(session)) {
-                preada_async(session, *tbuf, nbytes,  off);
+                preada_async(session, *tbuf, nbytes,  off, doneptr);
             } else {
                 io_descriptor * iodesc = sessions[session];
                 *tbuf = (T*) (iodesc->pinned_to_memory->data + off);
+                if (doneptr != NULL) {
+                    __sync_sub_and_fetch(doneptr, 1);
+                }
             }
         }
         
@@ -694,6 +704,7 @@ namespace graphchi {
     static void * io_thread_loop(void * _info) {
         iotask task;
         thrinfo * info = (thrinfo*)_info;
+        int ntasks = 0;
         logstream(LOG_INFO) << "Thread for multiplex :" << info->mplex << " starting." << std::endl;
         while(info->running) {
             bool success;
@@ -706,6 +717,7 @@ namespace graphchi {
                 success = info->commitqueue->safepop(&task);
             }
             if (success) {
+                ++ntasks;
                 if (task.action == WRITE) {  // Write
                     metrics_entry me = info->m->start_time();
                     
@@ -744,10 +756,14 @@ namespace graphchi {
                         }
                     }
                 }
+                if (task.doneptr != NULL) {
+                    __sync_sub_and_fetch(task.doneptr, 1);
+                }
             } else {
                 usleep(50000); // 50 ms
             }
         }
+        logstream(LOG_INFO) << "I/O thread exists. Handled " << ntasks << " i/o tasks." << std::endl;
         return NULL;
     }
     

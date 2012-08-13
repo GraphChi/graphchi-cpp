@@ -69,6 +69,7 @@ namespace graphchi {
         size_t streaming_offset_edge_ptr;
         uint8_t * adjdata;
         char ** edgedata;
+        int * doneptr;
         std::vector<size_t> blocksizes;
         uint64_t chunkid;
         
@@ -97,11 +98,13 @@ namespace graphchi {
             is_loaded = false;
             adj_session = -1;
             edgedata = NULL;
+            doneptr = NULL;
         }
         
         ~memory_shard() {
-            
-            for(int i=0; i < (int)block_edatasessions.size(); i++) {
+            int nblocks = (int) block_edatasessions.size();
+
+            for(int i=0; i < nblocks; i++) {
                 if (edgedata[i] != NULL) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     iomgr->close_session(block_edatasessions[i]);
@@ -114,6 +117,9 @@ namespace graphchi {
             if (edgedata != NULL)
                 free(edgedata);
             edgedata = NULL;
+            if (doneptr != NULL) {
+                free(doneptr);
+            }
         }
         
         void commit(bool all) {
@@ -192,6 +198,12 @@ namespace graphchi {
             edgedata = (char **) calloc(nblocks, sizeof(char*));
             size_t compressedsize = 0;
             int blockid = 0;
+            
+            if (!async_inedgedata_loading) {
+                doneptr = (int *) malloc(nblocks * sizeof(int));
+                for(int i=0; i < nblocks; i++) doneptr[i] = 1;
+            }
+            
             while(true) {
                 std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
                 if (shard_file_exists(block_filename)) {
@@ -206,7 +218,7 @@ namespace graphchi {
                     if (async_inedgedata_loading) {
                         iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
                     } else {
-                        iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
+                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
                     }
                     blockid++;
 
@@ -258,7 +270,8 @@ namespace graphchi {
         
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
-            
+            bool async_edata_loading = !svertex_t().computational_edges();
+
             std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
             
             m.start_time("memoryshard_create_edges");
@@ -324,11 +337,17 @@ namespace graphchi {
                 check_stream_progress(n * 4, ptr - adjdata);
                 bool any_edges = false;
                 while(--n>=0) {
+                    int blockid = edgeptr / blocksize;
+                    if (!async_edata_loading) {
+                        /* Wait until blocks loaded (non-asynchronous version) */
+                        while(doneptr[edgeptr / blocksize] != 0) { usleep(10); }
+                    }
+                    
                     vid_t target = *((vid_t*) ptr);
                     ptr += sizeof(vid_t);
                     if (vertex != NULL && outedges)
                     {
-                        char * eptr = &(edgedata[edgeptr / blocksize][edgeptr % blocksize]);
+                        char * eptr = &(edgedata[blockid][edgeptr % blocksize]);
                         vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) eptr), false);
                     }
                     
@@ -339,7 +358,7 @@ namespace graphchi {
                                 if (dstvertex.scheduled) {
                                     any_edges = true;
                                     //  assert(only_adjacency ||  edgeptr < edatafilesize);
-                                    char * eptr = &(edgedata[edgeptr / blocksize][edgeptr % blocksize]);
+                                    char * eptr = &(edgedata[blockid][edgeptr % blocksize]);
 
                                     dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) eptr), false);
                                     dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
