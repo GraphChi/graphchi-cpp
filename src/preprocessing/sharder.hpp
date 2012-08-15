@@ -227,11 +227,7 @@ namespace graphchi {
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             write_compressed(f, buf, len);
-            
-            // Test:
-            read_compressed(f, buf, len);
             close(f);
-
         }
         
         template <typename T>
