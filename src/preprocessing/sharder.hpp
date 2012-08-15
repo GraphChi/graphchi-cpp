@@ -121,7 +121,7 @@ namespace graphchi {
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
             edgedatasize = sizeof(EdgeDataType);
-            compressed_block_size = 4096;
+            compressed_block_size = 4096 * 1024;
             while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
         }
         
