@@ -138,7 +138,6 @@ void writea(int f, T * tbuf, size_t nbytes) {
  * COMPRESSED
  */
 
-#define CHUNK (4096 * 1024)
 
 
 template <typename T>
@@ -147,6 +146,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
+    int CHUNK = std::max((size_t)4096 * 1024, nbytes);
     unsigned char * out = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 
@@ -195,6 +195,8 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
+    int CHUNK = std::max((size_t)4096 * 1024, nbytes);
+
     unsigned char * in = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 

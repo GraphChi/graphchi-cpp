@@ -589,7 +589,7 @@ namespace graphchi {
             m.start_time("degrees.runtime");
             
             /* Initialize streaming shards */
-            int blocksize = get_option_int("blocksize", 1024 * 1024);
+            int blocksize = compressed_block_size;
             
             for(int p=0; p < nshards; p++) {
                 std::cout << "Initialize streaming shard: " << p << std::endl;
