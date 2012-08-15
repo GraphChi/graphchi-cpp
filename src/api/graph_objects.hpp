@@ -222,8 +222,8 @@ namespace graphchi {
             }
 #endif
             if (inedges_ptr != NULL) 
-                inedges_ptr[inc++] = graphchi_edge<EdgeDataType>(src, ptr);
-
+                inedges_ptr[inc] = graphchi_edge<EdgeDataType>(src, ptr);
+            inc++;  // Note: do not move inside the brackets, since we need to still keep track of inc even if inedgeptr is null!
             assert(src != vertexid);
           /*  if(inedges_ptr != NULL && inc > outedges_ptr - inedges_ptr) {
                 logstream(LOG_FATAL) << "Tried to add more in-edges as the stored in-degree of this vertex (" << src << "). Perhaps a preprocessing step had failed?" << std::endl;

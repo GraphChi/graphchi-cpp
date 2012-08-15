@@ -205,7 +205,7 @@ namespace graphchi {
             }
             
             while(true) {
-                std::string block_filename = filename_shard_edata_block<ET>(filename_edata, blockid, blocksize);
+                std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
                 if (shard_file_exists(block_filename)) {
                     size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
                     compressedsize += get_filesize(block_filename);
@@ -227,7 +227,8 @@ namespace graphchi {
                 }
             }
             assert(blockid == nblocks);
-            std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize << std::endl;
+            std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
+                            " number of blocks: " << nblocks << std::endl;
         }
         
         
@@ -338,7 +339,7 @@ namespace graphchi {
                 bool any_edges = false;
                 while(--n>=0) {
                     int blockid = edgeptr / blocksize;
-                    if (!async_edata_loading) {
+                    if (!async_edata_loading && !only_adjacency) {
                         /* Wait until blocks loaded (non-asynchronous version) */
                         while(doneptr[edgeptr / blocksize] != 0) { usleep(10); }
                     }
@@ -347,7 +348,7 @@ namespace graphchi {
                     ptr += sizeof(vid_t);
                     if (vertex != NULL && outedges)
                     {
-                        char * eptr = &(edgedata[blockid][edgeptr % blocksize]);
+                        char * eptr = (only_adjacency ? NULL  : &(edgedata[blockid][edgeptr % blocksize]));
                         vertex->add_outedge(target, (only_adjacency ? NULL : (ET*) eptr), false);
                     }
                     
@@ -358,7 +359,7 @@ namespace graphchi {
                                 if (dstvertex.scheduled) {
                                     any_edges = true;
                                     //  assert(only_adjacency ||  edgeptr < edatafilesize);
-                                    char * eptr = &(edgedata[blockid][edgeptr % blocksize]);
+                                    char * eptr = (only_adjacency ? NULL  : &(edgedata[blockid][edgeptr % blocksize]));
 
                                     dstvertex.add_inedge(vid,  (only_adjacency ? NULL : (ET*) eptr), false);
                                     dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
