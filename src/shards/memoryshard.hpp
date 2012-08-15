@@ -223,6 +223,9 @@ namespace graphchi {
                     blockid++;
 
                 } else {
+                    if (blockid == 0) {
+                        logstream(LOG_ERROR) << "Shard block file did not exists:" << block_filename << std::endl;
+                    }
                     break;
                 }
             }

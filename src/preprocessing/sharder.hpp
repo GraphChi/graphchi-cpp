@@ -220,17 +220,23 @@ namespace graphchi {
         
         template <typename T>
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
-            int blockid = totbytes / compressed_block_size;
+            int blockid = (totbytes - sizeof(T)) / compressed_block_size;
+            int len = bufptr - buf;
+            assert(len <= compressed_block_size);
+
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            write_compressed(f, buf, bufptr - buf);
+            write_compressed(f, buf, len);
+            
+            // Test:
+            read_compressed(f, buf, len);
             close(f);
 
         }
         
         template <typename T>
         void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {
-            if (bufptr + sizeof(T) - buf >= compressed_block_size) {
+            if (bufptr + sizeof(T) - buf > compressed_block_size) {
                 edata_flush<T>(buf, bufptr, shard_filename, totbytes);
                 bufptr = buf;
             }
@@ -504,7 +510,10 @@ namespace graphchi {
                 size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                    bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
+                    
+                    
+                    if (!edge.stopper())
+                        bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
                     
                     if ((edge.src != curvid)) {
                         // New vertex

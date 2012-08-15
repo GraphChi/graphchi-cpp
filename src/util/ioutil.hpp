@@ -146,7 +146,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
-    int CHUNK = std::max((size_t)4096 * 1024, nbytes);
+    int CHUNK = (int) std::max((size_t)4096 * 1024, nbytes);
     unsigned char * out = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 
@@ -195,9 +195,11 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
-    int CHUNK = std::max((size_t)4096 * 1024, nbytes);
+    int CHUNK = (int) std::max((size_t)4096 * 1024, nbytes);
 
-    unsigned char * in = (unsigned char *) malloc(CHUNK);
+    size_t fsize = lseek(f, 0, SEEK_END);
+    
+    unsigned char * in = (unsigned char *) malloc(fsize);
     lseek(f, 0, SEEK_SET);
 
     /* allocate inflate state */
@@ -212,10 +214,13 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     
     /* decompress until deflate stream ends or end of file */
     do {
-        strm.avail_in = read(f, in, CHUNK); //fread(in, 1, CHUNK, source);
-        if (strm.avail_in == (unsigned int)(-1)) {
-            assert(false);
-        }
+        ssize_t a = 0;
+        do {
+            a = read(f, in + strm.avail_in, fsize - strm.avail_in); //fread(in, 1, CHUNK, source);
+            strm.avail_in += a;
+            assert(a != (ssize_t)(-1));
+        } while (a > 0);
+       
         if (strm.avail_in == 0)
             break;
         strm.next_in = in;
@@ -239,7 +244,7 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
         
         /* done when inflate() says it's done */
     } while (ret != Z_STREAM_END);
-    
+   // std::cout << "Read: " << (buf - (unsigned char*)tbuf) << std::endl;
     /* clean up and return */
     (void)inflateEnd(&strm);
     free(in);
