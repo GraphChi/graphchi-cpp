@@ -436,7 +436,8 @@ namespace graphchi {
                 return;
             }
             preload_lock.lock();
-            size_t filesize = get_filesize(filename);
+            assert(max_preload_bytes == 0);
+           /* size_t filesize = get_filesize(filename);
             if (preloaded_bytes + filesize <= max_preload_bytes) {
                 preloaded_bytes += filesize;
                 m.set("preload_bytes", preloaded_bytes);
@@ -454,12 +455,12 @@ namespace graphchi {
                     << " error: " << strerror(errno) << std::endl;
                 }
                 assert(fid >= 0);
-                /* Preload the file */
+                
                 logstream(LOG_INFO) << "Preloading: " << filename << std::endl;
                 preada(fid, pfile->data, filesize, 0);    
                 close(fid);
                 preloaded_files.push_back(pfile);
-            }
+            }*/
             preload_lock.unlock();
         }
         

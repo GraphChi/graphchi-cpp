@@ -92,7 +92,6 @@ namespace graphchi {
     
     
     
-    template <typename EdgeDataType>
     static std::string dirname_shard_edata_block(std::string edata_shardname, size_t blocksize) {
         std::stringstream ss;
         ss << edata_shardname;
@@ -115,10 +114,9 @@ namespace graphchi {
     }
 
     
-    template <typename EdgeDataType>
     static std::string filename_shard_edata_block(std::string edata_shardname, int blockid, size_t blocksize) {
         std::stringstream ss;
-        ss << dirname_shard_edata_block<EdgeDataType>(edata_shardname, blocksize);
+        ss << dirname_shard_edata_block(edata_shardname, blocksize);
         ss << "/";
         ss << blockid;
         return ss.str();
@@ -190,11 +188,12 @@ namespace graphchi {
         if (start_num > 0) {
             last_shard_num = start_num;
         }
+        size_t blocksize = 4096 * 1024;
         
         for(try_shard_num=start_num; try_shard_num <= last_shard_num; try_shard_num++) {
             std::string last_shard_name = filename_shard_edata<EdgeDataType>(base_filename, try_shard_num - 1, try_shard_num);
-            
-            int tryf = open(last_shard_name.c_str(), O_RDONLY);
+            std::string last_block_name = filename_shard_edata_block(last_shard_name, 0, blocksize);
+            int tryf = open(last_block_name.c_str(), O_RDONLY);
             if (tryf >= 0) {
                 // Found!
                 close(tryf);
@@ -204,9 +203,10 @@ namespace graphchi {
                 
                 // Validate all relevant files exists
                 for(int p=0; p < nshards_candidate; p++) {
-                    std::string sname = filename_shard_edata<EdgeDataType>(base_filename, p, nshards_candidate);
+                    std::string sname = filename_shard_edata_block(
+                            filename_shard_edata<EdgeDataType>(base_filename, p, nshards_candidate), 0, blocksize);
                     if (!shard_file_exists(sname)) {
-                        logstream(LOG_DEBUG) << "Missing shard file: " << sname << std::endl;
+                        logstream(LOG_DEBUG) << "Missing directory file: " << sname << std::endl;
                         success = false;
                         break;
                     }

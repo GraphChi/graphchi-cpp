@@ -40,6 +40,8 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
+
 #include <vector>
 #include <omp.h>
 #include <errno.h>
@@ -62,6 +64,7 @@
 namespace graphchi {
     
 #define SHARDER_BUFSIZE (64 * 1024 * 1024)
+#define COMPRESSED_BLOCK_SIZE (4096 * 1024)
     
     enum ProcPhase  { COMPUTE_INTERVALS=1, SHOVEL=2 };
     
@@ -213,6 +216,26 @@ namespace graphchi {
             bufptr += sizeof(T);
         }
         
+        template <typename T>
+        void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
+            int blockid = totbytes / COMPRESSED_BLOCK_SIZE;
+            std::string block_filename = filename_shard_edata_block(shard_filename, blockid, COMPRESSED_BLOCK_SIZE);
+            int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+            write_compressed(f, buf, bufptr - buf);
+            close(f);
+
+        }
+        
+        template <typename T>
+        void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {
+            if (bufptr + sizeof(T) - buf >= COMPRESSED_BLOCK_SIZE) {
+                edata_flush<T>(buf, bufptr, shard_filename, totbytes);
+                bufptr = buf;
+            }
+            totbytes += sizeof(T);
+            *((T*)bufptr) = val;
+            bufptr += sizeof(T);
+        }
         
         
         
@@ -392,8 +415,9 @@ namespace graphchi {
                 writea(shovelfs[shard], bufs[shard], sizeof(edge_t) * bufptrs[shard]);
                 bufptrs[shard] = 0;
             }
-            
         }
+        
+                 
     
         void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
             if (to == from) {
@@ -443,6 +467,10 @@ namespace graphchi {
                 std::string shovelfname = shovel_filename(shard);
                 std::string fname = filename_shard_adj(basefilename, shard, nshards);
                 std::string edfname = filename_shard_edata<EdgeDataType>(basefilename, shard, nshards);
+                std::string edblockdirname = dirname_shard_edata_block(edfname, COMPRESSED_BLOCK_SIZE);
+                
+                /* Make the block directory */
+                mkdir(edblockdirname.c_str(), 0777);
                 
                 edge_t * shovelbuf;
                 int shovelf = open(shovelfname.c_str(), O_RDONLY);
@@ -462,24 +490,19 @@ namespace graphchi {
                 int trerr = ftruncate(f, 0);
                 assert(trerr == 0);
                 
-                /* Create edge data file */
-                int ef = open(edfname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                if (ef < 0) {
-                    logstream(LOG_ERROR) << "Could not open " << edfname << " error: " << strerror(errno) << std::endl;
-                    
-                }
-                assert(ef >= 0);
+               
                 
                 char * buf = (char*) malloc(SHARDER_BUFSIZE); 
                 char * bufptr = buf;
-                char * ebuf = (char*) malloc(SHARDER_BUFSIZE);
+                char * ebuf = (char*) malloc(COMPRESSED_BLOCK_SIZE);
                 char * ebufptr = ebuf;
                 
                 vid_t curvid=0;
                 size_t istart = 0;
+                size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                    bwrite<EdgeDataType>(ef, ebuf, ebufptr, EdgeDataType(edge.value));
+                    bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
                     
                     if ((edge.src != curvid)) {
                         // New vertex
@@ -491,7 +514,7 @@ namespace graphchi {
                                 bwrite<uint8_t>(f, buf, bufptr, x);
                             } else {
                                 bwrite<uint8_t>(f, buf, bufptr, 0xff);
-                                bwrite<uint32_t>(f, buf, bufptr,(uint32_t)count);
+                                bwrite<uint32_t>(f, buf, bufptr, (uint32_t)count);
                             }
                         }
                         
@@ -526,8 +549,14 @@ namespace graphchi {
                 close(f);
                 close(shovelf);
                 
-                writea(ef, ebuf, ebufptr - ebuf);
-                close(ef);
+            
+                edata_flush<EdgeDataType>(ebuf, ebufptr, edfname, tot_edatabytes);
+                
+                /* Write edata size file */
+                std::string sizefilename = edfname + ".size";
+                std::ofstream ofs(sizefilename.c_str());
+                ofs << tot_edatabytes;
+                ofs.close();
                 
                 free(ebuf);
                 remove(shovelfname.c_str()); 
