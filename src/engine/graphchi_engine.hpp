@@ -158,6 +158,8 @@ namespace graphchi {
             modifies_inedges = true;
             only_adjacency = false;
             blocksize = get_option_long("blocksize", 4096 * 1024);
+            while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
+
             membudget_mb = get_option_int("membudget_mb", 1024);
             nupdates = 0;
             iter = 0;

@@ -1168,7 +1168,7 @@
 					"-fopenmp",
 					"-lz",
 				);
-				SDKROOT = macosx;
+				SDKROOT = "";
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Debug;
@@ -1197,7 +1197,7 @@
 					"-fopenmp",
 					"-lz",
 				);
-				SDKROOT = macosx;
+				SDKROOT = "";
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Release;
@@ -1403,7 +1403,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /usr/local/bin;
 				PRODUCT_NAME = graphchi_xcode;
 			};
@@ -1415,7 +1415,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_MODEL_TUNING = G5;
-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /usr/local/bin;
 				PRODUCT_NAME = graphchi_xcode;
 			};

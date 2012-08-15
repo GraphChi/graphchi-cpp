@@ -177,6 +177,7 @@ namespace graphchi {
         stripedio( metrics &_m) : m(_m) {
             disable_preloading = false;
             stripesize = get_option_int("io.stripesize", 4096 * 1024 / 2);
+
             preloaded_bytes = 0;
             max_preload_bytes = 1024 * 1024 * get_option_long("preload.max_megabytes", 0);
             
