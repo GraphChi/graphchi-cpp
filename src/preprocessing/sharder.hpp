@@ -64,7 +64,6 @@
 namespace graphchi {
     
 #define SHARDER_BUFSIZE (64 * 1024 * 1024)
-#define COMPRESSED_BLOCK_SIZE (4096 * 1024)
     
     enum ProcPhase  { COMPUTE_INTERVALS=1, SHOVEL=2 };
     
@@ -107,6 +106,7 @@ namespace graphchi {
         std::string prefix;
         
         int * shovelfs;
+        int compressed_block_size;
         
         edge_t ** bufs;
         int * bufptrs;
@@ -121,6 +121,8 @@ namespace graphchi {
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
             edgedatasize = sizeof(EdgeDataType);
+            compressed_block_size = 4096 * 1024;
+            while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
         }
         
         
@@ -218,17 +220,23 @@ namespace graphchi {
         
         template <typename T>
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
-            int blockid = totbytes / COMPRESSED_BLOCK_SIZE;
-            std::string block_filename = filename_shard_edata_block(shard_filename, blockid, COMPRESSED_BLOCK_SIZE);
+            int blockid = (int) (totbytes - sizeof(T)) / compressed_block_size;
+            int len = (int) (bufptr - buf);
+            assert(len <= compressed_block_size);
+
+            std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            write_compressed(f, buf, bufptr - buf);
+            write_compressed(f, buf, len);
+            
+            // Test:
+            read_compressed(f, buf, len);
             close(f);
 
         }
         
         template <typename T>
         void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {
-            if (bufptr + sizeof(T) - buf >= COMPRESSED_BLOCK_SIZE) {
+            if (bufptr + sizeof(T) - buf > compressed_block_size) {
                 edata_flush<T>(buf, bufptr, shard_filename, totbytes);
                 bufptr = buf;
             }
@@ -296,12 +304,12 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                 
                 nshards = (int) ( 2 + (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5); 
+                assert(nshards > 1);
             } else {
                 nshards = atoi(nshards_string.c_str());
             }
-            
+            assert(nshards > 0);
             logstream(LOG_INFO) << "Number of shards to be created: " << nshards << std::endl;
-            assert(nshards > 1);
         }
         
         void compute_partitionintervals() {
@@ -467,7 +475,7 @@ namespace graphchi {
                 std::string shovelfname = shovel_filename(shard);
                 std::string fname = filename_shard_adj(basefilename, shard, nshards);
                 std::string edfname = filename_shard_edata<EdgeDataType>(basefilename, shard, nshards);
-                std::string edblockdirname = dirname_shard_edata_block(edfname, COMPRESSED_BLOCK_SIZE);
+                std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
                 
                 /* Make the block directory */
                 mkdir(edblockdirname.c_str(), 0777);
@@ -494,7 +502,7 @@ namespace graphchi {
                 
                 char * buf = (char*) malloc(SHARDER_BUFSIZE); 
                 char * bufptr = buf;
-                char * ebuf = (char*) malloc(COMPRESSED_BLOCK_SIZE);
+                char * ebuf = (char*) malloc(compressed_block_size);
                 char * ebufptr = ebuf;
                 
                 vid_t curvid=0;
@@ -502,7 +510,10 @@ namespace graphchi {
                 size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                    bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
+                    
+                    
+                    if (!edge.stopper())
+                        bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
                     
                     if ((edge.src != curvid)) {
                         // New vertex
@@ -587,7 +598,7 @@ namespace graphchi {
             m.start_time("degrees.runtime");
             
             /* Initialize streaming shards */
-            int blocksize = get_option_int("blocksize", 1024 * 1024);
+            int blocksize = compressed_block_size;
             
             for(int p=0; p < nshards; p++) {
                 std::cout << "Initialize streaming shard: " << p << std::endl;

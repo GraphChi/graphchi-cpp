@@ -138,7 +138,6 @@ void writea(int f, T * tbuf, size_t nbytes) {
  * COMPRESSED
  */
 
-#define CHUNK (4096 * 1024)
 
 
 template <typename T>
@@ -147,6 +146,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
+    int CHUNK = (int) std::max((size_t)4096 * 1024, nbytes);
     unsigned char * out = (unsigned char *) malloc(CHUNK);
     lseek(f, 0, SEEK_SET);
 
@@ -159,7 +159,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
         assert(false);
     
     /* compress until end of file */
-    strm.avail_in = nbytes;
+    strm.avail_in = (int) nbytes;
     strm.next_in = buf;
     
     int trerr = ftruncate(f, 0);
@@ -195,7 +195,11 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     int ret;
     unsigned have;
     z_stream strm;
-    unsigned char * in = (unsigned char *) malloc(CHUNK);
+    int CHUNK = (int) std::max((size_t)4096 * 1024, nbytes);
+
+    size_t fsize = lseek(f, 0, SEEK_END);
+    
+    unsigned char * in = (unsigned char *) malloc(fsize);
     lseek(f, 0, SEEK_SET);
 
     /* allocate inflate state */
@@ -210,10 +214,13 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     
     /* decompress until deflate stream ends or end of file */
     do {
-        strm.avail_in = read(f, in, CHUNK); //fread(in, 1, CHUNK, source);
-        if (strm.avail_in == (unsigned int)(-1)) {
-            assert(false);
-        }
+        ssize_t a = 0;
+        do {
+            a = read(f, in + strm.avail_in, fsize - strm.avail_in); //fread(in, 1, CHUNK, source);
+            strm.avail_in += (int) a;
+            assert(a != (ssize_t)(-1));
+        } while (a > 0);
+       
         if (strm.avail_in == 0)
             break;
         strm.next_in = in;
@@ -237,7 +244,7 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
         
         /* done when inflate() says it's done */
     } while (ret != Z_STREAM_END);
-    
+   // std::cout << "Read: " << (buf - (unsigned char*)tbuf) << std::endl;
     /* clean up and return */
     (void)inflateEnd(&strm);
     free(in);

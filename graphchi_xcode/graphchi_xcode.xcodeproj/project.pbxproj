@@ -11,7 +11,6 @@
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
 		5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
-		5F74B05115D6CEE200ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
@@ -21,7 +20,6 @@
 		5FCC2132159DF2080003D0E9 /* trianglecounting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */; };
 		5FCC22AE15A1EFC60003D0E9 /* als_graphlab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC229215A1EC330003D0E9 /* als_graphlab.cpp */; };
 		5FCC243A15A379050003D0E9 /* streaming_pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */; };
-		5FEC749A15D884560050EC64 /* filechecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FEC749815D884560050EC64 /* filechecker.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1052,8 +1050,6 @@
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
 				5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */,
-				5F74B05115D6CEE200ED3EA9 /* blocksplitter.cpp in Sources */,
-				5FEC749A15D884560050EC64 /* filechecker.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1168,7 +1164,7 @@
 					"-fopenmp",
 					"-lz",
 				);
-				SDKROOT = macosx;
+				SDKROOT = "";
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Debug;
@@ -1197,7 +1193,7 @@
 					"-fopenmp",
 					"-lz",
 				);
-				SDKROOT = macosx;
+				SDKROOT = "";
 				USER_HEADER_SEARCH_PATHS = "../src/**";
 			};
 			name = Release;
@@ -1403,7 +1399,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /usr/local/bin;
 				PRODUCT_NAME = graphchi_xcode;
 			};
@@ -1415,7 +1411,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_MODEL_TUNING = G5;
-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /usr/local/bin;
 				PRODUCT_NAME = graphchi_xcode;
 			};

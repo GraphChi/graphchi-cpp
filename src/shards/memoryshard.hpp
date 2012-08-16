@@ -137,7 +137,7 @@ namespace graphchi {
 
             if (all) {
                 //iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
-                int start_stream_block = range_start_edge_ptr / blocksize;
+                int start_stream_block = (int) (range_start_edge_ptr / blocksize);
 
                 for(int i=0; i < nblocks; i++) {
                     /* Write asynchronously blocks that will not be needed by the sliding windows on
@@ -161,8 +161,8 @@ namespace graphchi {
                     last = edatafilesize;
                 }
                 //char * bufp = ((char*)edgedata + range_start_edge_ptr);
-                int startblock = range_start_edge_ptr / blocksize;
-                int endblock = last / blocksize;
+                int startblock = (int) (range_start_edge_ptr / blocksize);
+                int endblock = (int) (last / blocksize);
                 for(int i=0; i < nblocks; i++) {
                     if (i >= startblock && i <= endblock) {
                         iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
@@ -194,7 +194,7 @@ namespace graphchi {
         void load_edata() {
             bool async_inedgedata_loading = !svertex_t().computational_edges();
             assert(blocksize % sizeof(ET) == 0);
-            int nblocks = edatafilesize / blocksize + (edatafilesize % blocksize != 0);
+            int nblocks = (int) (edatafilesize / blocksize + (edatafilesize % blocksize != 0));
             edgedata = (char **) calloc(nblocks, sizeof(char*));
             size_t compressedsize = 0;
             int blockid = 0;
@@ -223,6 +223,9 @@ namespace graphchi {
                     blockid++;
 
                 } else {
+                    if (blockid == 0) {
+                        logstream(LOG_ERROR) << "Shard block file did not exists:" << block_filename << std::endl;
+                    }
                     break;
                 }
             }
@@ -338,7 +341,7 @@ namespace graphchi {
                 check_stream_progress(n * 4, ptr - adjdata);
                 bool any_edges = false;
                 while(--n>=0) {
-                    int blockid = edgeptr / blocksize;
+                    int blockid = (int) (edgeptr / blocksize);
                     if (!async_edata_loading && !only_adjacency) {
                         /* Wait until blocks loaded (non-asynchronous version) */
                         while(doneptr[edgeptr / blocksize] != 0) { usleep(10); }

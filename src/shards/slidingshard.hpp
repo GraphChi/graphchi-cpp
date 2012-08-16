@@ -50,7 +50,6 @@
 namespace graphchi {
     
     
-#define EDATA_FILE_BLOCK_SIZE (1024 * 1024)
     
     
     /**
@@ -95,7 +94,6 @@ namespace graphchi {
         }
         void read_async(stripedio * iomgr) {
             if (is_edata_block) {
-                assert(offset % EDATA_FILE_BLOCK_SIZE == 0);
                 iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
                 
             } else {
@@ -104,7 +102,6 @@ namespace graphchi {
         }
         void read_now(stripedio * iomgr) {
             if (is_edata_block) {
-                assert(offset % EDATA_FILE_BLOCK_SIZE == 0);
                 iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
             } else {
                 iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
@@ -270,7 +267,7 @@ namespace graphchi {
                     }
                 }
                 // Load next
-                std::string blockfilename = filename_shard_edata_block(filename_edata, edataoffset / blocksize, blocksize);
+                std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
                 int edata_session = iomgr->open_session(blockfilename, false, true);
                 sblock newblock(edata_session, edata_session, true);
                 

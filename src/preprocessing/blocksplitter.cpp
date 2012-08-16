@@ -64,7 +64,7 @@ int main(int argc, const char ** argv) {
         
         size_t nblocks = fsize / blocksize + (fsize % blocksize != 0);
         size_t idx = 0;
-        std::string block_dirname = dirname_shard_edata_block<EdgeDataType>(shard_filename, blocksize);
+        std::string block_dirname = dirname_shard_edata_block(shard_filename, blocksize);
         logstream(LOG_INFO) << "Going to create: " << block_dirname << std::endl;
         int err = mkdir(block_dirname.c_str(), 0777);
         if (err != 0) {
@@ -75,7 +75,7 @@ int main(int argc, const char ** argv) {
             size_t len = std::min(blocksize, fsize - idx);
             preada(f, buf, len, idx);
            
-            std::string block_filename = filename_shard_edata_block<EdgeDataType>(shard_filename, i, blocksize);
+            std::string block_filename = filename_shard_edata_block(shard_filename, i, blocksize);
             int bf = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             write_compressed(bf, buf, len);
             close(bf);
