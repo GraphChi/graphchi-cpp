@@ -76,7 +76,7 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
     
     /* Setup buffer sizes */    
     size_t bufsize = 1024 * 1024; // Read one megabyte a time
-    int nbuf = bufsize / sizeof(LabelType);
+    int nbuf = (int) (bufsize / sizeof(LabelType));
     
     std::vector<labelcount_t> curlabels;
     size_t nread = 0;
@@ -89,7 +89,7 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
         iomgr->preada_now(f, buffer, len, nread); 
         nread += len;
         
-        int nt = len / sizeof(LabelType);
+        int nt = (int) (len / sizeof(LabelType));
         
         /* Mark vertices with its own label with 0xffffffff so they will be ignored */
         for(int i=0; i < nt; i++) { 

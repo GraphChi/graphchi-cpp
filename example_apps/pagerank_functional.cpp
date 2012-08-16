@@ -39,6 +39,11 @@
 
 #include "graphchi_basic_includes.hpp"
 #include "api/functional/functional_api.hpp"
+<<<<<<< local
+=======
+#include "graphchi_basic_includes.hpp"
+
+>>>>>>> other
 #include "util/toplist.hpp"
 
 using namespace graphchi;
@@ -103,7 +108,7 @@ int main(int argc, const char ** argv) {
             assert(false);
         }
         /* Output metrics */
-        metrics_report(m);   
+        metrics_report(m);
     }
     
     /* Write Top 20 */

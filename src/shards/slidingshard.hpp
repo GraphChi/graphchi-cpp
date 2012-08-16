@@ -258,7 +258,6 @@ namespace graphchi {
             
         }
         
-        /* NOTE: here is a subtle bug because two blocks can overlap */
         inline void check_curblock(size_t toread) {
             if (curblock == NULL || curblock->end < edataoffset+toread) {
                 if (curblock != NULL) {
@@ -267,7 +266,7 @@ namespace graphchi {
                     }
                 }
                 // Load next
-                std::string blockfilename = filename_shard_edata_block(filename_edata, edataoffset / blocksize, blocksize);
+                std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
                 int edata_session = iomgr->open_session(blockfilename, false, true);
                 sblock newblock(edata_session, edata_session, true);
                 
@@ -389,7 +388,7 @@ namespace graphchi {
                     
                     if (vertex.scheduled) {
                         
-                        while(--n>=0) {
+                        while(--n >= 0) {
                             bool special_edge = false;
                             vid_t target = (sizeof(ET) == sizeof(ETspecial) ? read_val<vid_t>() : translate_edge(read_val<vid_t>(), special_edge));
                             ET * evalue = (special_edge ? (ET*)read_edgeptr<ETspecial>(): read_edgeptr<ET>());

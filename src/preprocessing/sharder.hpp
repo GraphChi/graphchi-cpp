@@ -220,8 +220,8 @@ namespace graphchi {
         
         template <typename T>
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
-            int blockid = (totbytes - sizeof(T)) / compressed_block_size;
-            int len = bufptr - buf;
+            int blockid = (int) (totbytes - sizeof(T)) / compressed_block_size;
+            int len = (int) (bufptr - buf);
             assert(len <= compressed_block_size);
 
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
@@ -300,12 +300,12 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                 
                 nshards = (int) ( 2 + (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5); 
+                assert(nshards > 1);
             } else {
                 nshards = atoi(nshards_string.c_str());
             }
-            
+            assert(nshards > 0);
             logstream(LOG_INFO) << "Number of shards to be created: " << nshards << std::endl;
-            assert(nshards > 1);
         }
         
         void compute_partitionintervals() {

@@ -107,7 +107,6 @@ namespace graphchi {
         /* Override - now load sliding shards, to write (broadcast) to out vertices */
         virtual void load_after_updates(std::vector<fvertex_t> &vertices) {
             logstream(LOG_DEBUG) << "Processing out-edges (broadcast)." << std::endl;
-            
             omp_set_num_threads(this->load_threads);
 #pragma omp parallel for schedule(dynamic, 1)
             for(int p=0; p < this->nshards; p++)  {

@@ -1,4 +1,3 @@
-
 /**
  * @file
  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
@@ -119,9 +118,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
             
             // Compute XtX and Xty (NOTE: unweighted)
             for(int e=0; e < vertex.num_edges(); e++) {
-                float observation = vertex.edge(e)->get_data();
-                assert(observation >= 0 && observation <= 5);
-                
+                float observation = vertex.edge(e)->get_data();                
                 latentvec_t & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
                 for(int i=0; i<NLATENT; i++) {
                     Xty(i) += nbr_latent[i] * observation;
