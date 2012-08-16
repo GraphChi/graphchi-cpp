@@ -228,6 +228,8 @@ int main(int argc, const char ** argv) {
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, scheduler, m); 
     engine.set_modifies_inedges(false);
     engine.set_modifies_outedges(false);
+    engine.set_enable_deterministic_parallelism(false);
+
     engine.run(program, niters);
         
     /* Report result (train RMSE) */
