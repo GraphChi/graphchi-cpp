@@ -400,7 +400,11 @@ namespace graphchi {
         }
         
         /** Special method for running all iteration with the same vertex-vector. 
-         This is a hacky solution. **/
+         This is a hacky solution.
+            FIXME:  this does not work well with deterministic parallelism. Needs a 
+            a separate analysis phase to check which vertices can be run in parallel, and
+            then run it in chunks. Not difficult.
+         **/
         void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                                         std::vector<svertex_t> &vertices) {
             for(iter=0; iter<niters; iter++) {
