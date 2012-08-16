@@ -589,7 +589,7 @@ namespace graphchi {
         
         template <typename T>
         void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
-            assert (nbytes != 4096 * 1024); // TEMP
+
             if (!pinned_session(session)) {
                 pwritea_async(session, *tbuf, nbytes, off, free_after, close_fd);
             } else {
