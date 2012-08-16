@@ -42,8 +42,8 @@
 #include "api/graph_objects.hpp"
 #include "api/ischeduler.hpp"
 #include "api/functional/functional_api.hpp"
-#include "metrics/metrics.hpp"
-#include "metrics/reps/basic_reporter.hpp"
+#include "graphchi_basic_includes.hpp"
+
 #include "util/toplist.hpp"
 
 using namespace graphchi;
@@ -108,8 +108,7 @@ int main(int argc, const char ** argv) {
             assert(false);
         }
         /* Output metrics */
-        basic_reporter basicrep;
-        m.report(basicrep);
+        metrics_report(m);
     }
     
     /* Write Top 20 */

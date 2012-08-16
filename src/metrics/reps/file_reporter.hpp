@@ -34,7 +34,7 @@
 #include <cstdio>
 
 #include "metrics/metrics.hpp"
-
+#include "util/cmdopts.hpp"
 
  
 
@@ -94,6 +94,12 @@ namespace graphchi {
           
           fflush(f);        
           fclose(f);
+          
+          std::cout << "Db prop: " << get_option_int("metrics.insert_to_db", 0) << std::endl;
+          if (get_option_int("metrics.insert_to_db", 0) == 1) {
+              std::string cmd = "python2.7 benchtodb.py " + filename;
+              system(cmd.c_str());
+          }
       };
         
   };
