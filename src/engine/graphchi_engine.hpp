@@ -407,35 +407,35 @@ namespace graphchi {
          **/
         void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                                         std::vector<svertex_t> &vertices) {
+            work = nupdates = 0;
             for(iter=0; iter<niters; iter++) {
                 logstream(LOG_INFO) << "In-memory mode: Iteration " << iter << " starts." << std::endl;
                 chicontext.iteration = iter;
                 userprogram.before_iteration(iter, chicontext);
                 userprogram.before_exec_interval(0, (int)num_vertices(), chicontext);
-                
-                if (iter > 0) { // Hack
-                    if (use_selective_scheduling) {
-                        if (!scheduler->has_new_tasks) {
-                            logstream(LOG_INFO) << "No new tasks to run!" << std::endl;
-                            break;
-                        }
-                        for(int i=0; i < (int)vertices.size(); i++) {
-                            if (scheduler->is_scheduled(i)) {
-                                vertices[i].scheduled =  true;
-                                nupdates++;
-                                work += vertices[i].inc + vertices[i].outc;
-                            } else {
-                                vertices[i].scheduled = false;
-                            }
-                        }
-                        
-                        scheduler->has_new_tasks = false; // Kind of misleading since scheduler may still have tasks - but no new tasks.
-                        scheduler->remove_tasks(0, (int)num_vertices());
-                    } else {
-                        nupdates += num_vertices();
-                        work += num_edges();
+            
+                if (use_selective_scheduling) {
+                    if (iter > 0 && !scheduler->has_new_tasks) {
+                        logstream(LOG_INFO) << "No new tasks to run!" << std::endl;
+                        break;
                     }
+                    for(int i=0; i < (int)vertices.size(); i++) { // Could, should parallelize
+                        if (iter == 0 || scheduler->is_scheduled(i)) {
+                            vertices[i].scheduled =  true;
+                            nupdates++;
+                            work += vertices[i].inc + vertices[i].outc;
+                        } else {
+                            vertices[i].scheduled = false;
+                        }
+                    }
+                    
+                    scheduler->has_new_tasks = false; // Kind of misleading since scheduler may still have tasks - but no new tasks.
+                    scheduler->remove_tasks(0, (int)num_vertices());
+                } else {
+                    nupdates += num_vertices();
+                    work += num_edges();
                 }
+                
                 exec_updates(userprogram, vertices);
                 load_after_updates(vertices);
                 
@@ -465,7 +465,7 @@ namespace graphchi {
                 vertices[i] = svertex_t(sub_interval_st + i, &in_edata[inecounter], 
                                         &out_edata[outecounter], inc, outc);
                 if (scheduler != NULL) {
-                    bool is_sched = scheduler->is_scheduled(sub_interval_st + i);
+                    bool is_sched = ( scheduler->is_scheduled(sub_interval_st + i));
                     if (is_sched) {
                         vertices[i].scheduled =  true;
                         nupdates++;
