@@ -418,8 +418,7 @@ int main(int argc, const char ** argv) {
     
     /* Metrics object for keeping track of performance counters
        and other information. Currently required. */
-    metrics m("triangle-counting");
-    
+    metrics m("triangle-counting");    
     /* Basic arguments for application */
     std::string filename = get_option_string("file");  // Base filename
     int niters           = 100000; // Automatically determined during running

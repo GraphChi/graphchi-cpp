@@ -170,6 +170,7 @@ namespace graphchi {
         
   public: 
     inline metrics(std::string _name = "", std::string _id = "") : name(_name), ident (_id) {
+        this->set("app", _name);
     }
 
     inline void clear() {

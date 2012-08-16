@@ -174,7 +174,9 @@ namespace graphchi {
             /* Load graph shard interval information */
             load_vertex_intervals();
             
+            _m.set("file", _base_filename);
             _m.set("engine", "default");
+            _m.set("P", (size_t)nshards);
         }
         
         virtual ~graphchi_engine() {
