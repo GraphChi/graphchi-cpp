@@ -267,7 +267,7 @@ namespace graphchi {
                     }
                 }
                 // Load next
-                std::string blockfilename = filename_shard_edata_block(filename_edata, edataoffset / blocksize, blocksize);
+                std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
                 int edata_session = iomgr->open_session(blockfilename, false, true);
                 sblock newblock(edata_session, edata_session, true);
                 

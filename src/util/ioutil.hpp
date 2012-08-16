@@ -159,7 +159,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
         assert(false);
     
     /* compress until end of file */
-    strm.avail_in = nbytes;
+    strm.avail_in = (int) nbytes;
     strm.next_in = buf;
     
     int trerr = ftruncate(f, 0);
@@ -217,7 +217,7 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
         ssize_t a = 0;
         do {
             a = read(f, in + strm.avail_in, fsize - strm.avail_in); //fread(in, 1, CHUNK, source);
-            strm.avail_in += a;
+            strm.avail_in += (int) a;
             assert(a != (ssize_t)(-1));
         } while (a > 0);
        

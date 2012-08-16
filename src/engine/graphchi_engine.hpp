@@ -258,6 +258,14 @@ namespace graphchi {
             }
         }
         
+        /**
+          * If the data is only in one shard, we can just
+          * keep running from memory.
+          */
+        bool is_inmemory_mode() {
+            return nshards == 1;
+        }
+        
   
         
         /**
@@ -267,21 +275,26 @@ namespace graphchi {
             /* Load degrees */
             degree_handler->load(fromvid, maxvid);
             
-            size_t memreq = 0;
-            int max_interval = maxvid - fromvid;
-            for(int i=0; i < max_interval; i++) {
-                degree deg = degree_handler->get_degree(fromvid + i);
-                int inc = deg.indegree;
-                int outc = deg.outdegree;
-                
-                // Raw data and object cost included
-                memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
-                if (memreq > membudget) {
-                    logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
-                    return fromvid + i - 1;  // Previous was enough
+            /* If is in-memory-mode, memory budget is not considered. */
+            if (is_inmemory_mode()) {
+                return maxvid;
+            } else {
+                size_t memreq = 0;
+                int max_interval = maxvid - fromvid;
+                for(int i=0; i < max_interval; i++) {
+                    degree deg = degree_handler->get_degree(fromvid + i);
+                    int inc = deg.indegree;
+                    int outc = deg.outdegree;
+                    
+                    // Raw data and object cost included
+                    memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
+                    if (memreq > membudget) {
+                        logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
+                        return fromvid + i - 1;  // Previous was enough
+                    }
                 }
+                return maxvid;
             }
-            return maxvid;
         }
         
         /** 
@@ -619,16 +632,17 @@ namespace graphchi {
                     vid_t interval_en = get_interval_end(exec_interval);
                     
                     userprogram.before_exec_interval(interval_st, interval_en, chicontext);
-
-                    /* Flush stream shard for the exec interval */
-                    sliding_shards[exec_interval]->flush();
-                    iomgr->wait_for_writes(); // Actually we would need to only wait for         writes of given shard. TODO.
-                    
-                    /* Initialize memory shard */
-                    if (memoryshard != NULL) delete memoryshard;
-                    memoryshard = create_memshard(interval_st, interval_en);
-                    memoryshard->only_adjacency = only_adjacency;
-                    
+                       
+                    if (!is_inmemory_mode() || iter == 0) {
+                        /* Flush stream shard for the exec interval */
+                        sliding_shards[exec_interval]->flush();
+                        iomgr->wait_for_writes(); // Actually we would need to only wait for         writes of given shard. TODO.
+                 
+                        /* Initialize memory shard */
+                        if (memoryshard != NULL) delete memoryshard;
+                        memoryshard = create_memshard(interval_st, interval_en);
+                        memoryshard->only_adjacency = only_adjacency;
+                    }
                     
                     sub_interval_st = interval_st;
                     logstream(LOG_INFO) << chicontext.runtime() << "s: Starting: " 
@@ -680,22 +694,25 @@ namespace graphchi {
                         load_after_updates(vertices);
                         
                         /* Save vertices */
-                        save_vertices(vertices);
-                        
+                        if (!is_inmemory_mode() || iter == niters) {
+                            save_vertices(vertices);
+                        }
                         sub_interval_st = sub_interval_en + 1;
                         
-                        /* Delete edge buffer. TODO: reuse. */
-                        if (inedge_data != NULL) {
-                            delete inedge_data;
-                            inedge_data = NULL;
-                        }
-                        if (outedge_data != NULL) {
-                            delete outedge_data;
-                            outedge_data = NULL;
+                        if (!is_inmemory_mode() || iter == niters) {
+                            /* Delete edge buffer. TODO: reuse. */
+                            if (inedge_data != NULL) {
+                                delete inedge_data;
+                                inedge_data = NULL;
+                            }
+                            if (outedge_data != NULL) {
+                                delete outedge_data;
+                                outedge_data = NULL;
+                            }
                         }
                     } // while subintervals
                  
-                    if (memoryshard->loaded()) {
+                    if (memoryshard->loaded() && !is_inmemory_mode()) {
                         logstream(LOG_INFO) << "Commit memshard" << std::endl;
 
                         memoryshard->commit(modifies_inedges);
