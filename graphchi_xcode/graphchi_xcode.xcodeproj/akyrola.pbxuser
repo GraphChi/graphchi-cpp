@@ -122,6 +122,15 @@
 			5F78368715DD71DD00954509 /* PBXTextBookmark */ = 5F78368715DD71DD00954509 /* PBXTextBookmark */;
 			5F78368815DD71DD00954509 /* XCBuildMessageTextBookmark */ = 5F78368815DD71DD00954509 /* XCBuildMessageTextBookmark */;
 			5F78368A15DD71DD00954509 /* PBXTextBookmark */ = 5F78368A15DD71DD00954509 /* PBXTextBookmark */;
+			5F78368D15DD721600954509 /* PBXTextBookmark */ = 5F78368D15DD721600954509 /* PBXTextBookmark */;
+			5F78369815DD757400954509 /* PBXTextBookmark */ = 5F78369815DD757400954509 /* PBXTextBookmark */;
+			5F78369915DD757400954509 /* PBXTextBookmark */ = 5F78369915DD757400954509 /* PBXTextBookmark */;
+			5F78369A15DD758200954509 /* PBXTextBookmark */ = 5F78369A15DD758200954509 /* PBXTextBookmark */;
+			5F78369B15DD758200954509 /* XCBuildMessageTextBookmark */ = 5F78369B15DD758200954509 /* XCBuildMessageTextBookmark */;
+			5F78369C15DD758200954509 /* PBXTextBookmark */ = 5F78369C15DD758200954509 /* PBXTextBookmark */;
+			5F7836A315DD768500954509 /* PBXTextBookmark */ = 5F7836A315DD768500954509 /* PBXTextBookmark */;
+			5F7836A415DD768500954509 /* PBXTextBookmark */ = 5F7836A415DD768500954509 /* PBXTextBookmark */;
+			5F7836A515DD768500954509 /* PBXTextBookmark */ = 5F7836A515DD768500954509 /* PBXTextBookmark */;
 			5F7A102115891F6900748D0D = 5F7A102115891F6900748D0D /* PBXTextBookmark */;
 			5F7A1058158A32F600748D0D = 5F7A1058158A32F600748D0D /* PBXTextBookmark */;
 			5F7A105A158A32F600748D0D = 5F7A105A158A32F600748D0D /* PBXTextBookmark */;
@@ -1021,9 +1030,9 @@
 	};
 	5F74B04615D35B6400ED3EA9 /* random.cpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {938, 3874}}";
-			sepNavSelRange = "{0, 0}";
-			sepNavVisRange = "{0, 2232}";
+			sepNavIntBoundsRect = "{{0, 0}, {893, 3848}}";
+			sepNavSelRange = "{6012, 0}";
+			sepNavVisRange = "{4337, 2140}";
 			sepNavWindowFrame = "{{130, 92}, {999, 976}}";
 		};
 	};
@@ -1172,7 +1181,7 @@
 		fRef = 5F78362815DD706900954509 /* graphchi_engine.hpp */;
 		fallbackIsa = XCBuildMessageTextBookmark;
 		rLen = 1;
-		rLoc = 696;
+		rLoc = 741;
 		rType = 1;
 	};
 	5F78362815DD706900954509 /* graphchi_engine.hpp */ = {
@@ -1192,7 +1201,7 @@
 		fRef = 5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28174;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 1071;
 		vrLoc = 29581;
@@ -1223,7 +1232,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		fallbackIsa = XCBuildMessageTextBookmark;
 		rLen = 1;
-		rLoc = 696;
+		rLoc = 741;
 		rType = 1;
 	};
 	5F78362F15DD706D00954509 /* graphchi_engine.hpp */ = {
@@ -1233,9 +1242,9 @@
 		path = /Users/akyrola/Projects/GraphCHI/graphchi_research/graphchi/graphchi_xcode/../src/engine/graphchi_engine.hpp;
 		sourceTree = "<absolute>";
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1216, 11336}}";
-			sepNavSelRange = "{28116, 0}";
-			sepNavVisRange = "{26684, 3672}";
+			sepNavIntBoundsRect = "{{0, 0}, {992, 12272}}";
+			sepNavSelRange = "{15454, 0}";
+			sepNavVisRange = "{14278, 3642}";
 		};
 	};
 	5F78363015DD706D00954509 /* PBXTextBookmark */ = {
@@ -1243,7 +1252,7 @@
 		fRef = 5F78362815DD706900954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 3672;
 		vrLoc = 26684;
@@ -1272,7 +1281,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 3672;
 		vrLoc = 26684;
@@ -1302,7 +1311,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 3672;
 		vrLoc = 26684;
@@ -1348,7 +1357,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28174;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 1071;
 		vrLoc = 29581;
@@ -1429,7 +1438,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 3672;
 		vrLoc = 26684;
@@ -1475,7 +1484,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 1278;
 		vrLoc = 27617;
@@ -1526,7 +1535,7 @@
 		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 697";
 		rLen = 0;
-		rLoc = 28116;
+		rLoc = 30694;
 		rType = 0;
 		vrLen = 3672;
 		vrLoc = 26684;
@@ -1542,9 +1551,15 @@
 	};
 	5F78368915DD71DD00954509 /* memoryshard.hpp */ = {
 		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.cpp.h;
 		name = memoryshard.hpp;
 		path = ../src/shards/memoryshard.hpp;
 		sourceTree = "<group>";
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {859, 5317}}";
+			sepNavSelRange = "{4397, 83}";
+			sepNavVisRange = "{3858, 1205}";
+		};
 	};
 	5F78368A15DD71DD00954509 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
@@ -1555,6 +1570,95 @@
 		rType = 0;
 		vrLen = 3205;
 		vrLoc = 4087;
+	};
+	5F78368D15DD721600954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78368915DD71DD00954509 /* memoryshard.hpp */;
+		name = "memoryshard.hpp: 164";
+		rLen = 75;
+		rLoc = 5545;
+		rType = 0;
+		vrLen = 3205;
+		vrLoc = 4087;
+	};
+	5F78369815DD757400954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78368915DD71DD00954509 /* memoryshard.hpp */;
+		name = "memoryshard.hpp: 164";
+		rLen = 75;
+		rLoc = 5545;
+		rType = 0;
+		vrLen = 2969;
+		vrLoc = 9945;
+	};
+	5F78369915DD757400954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
+		name = "graphchi_engine.hpp: 419";
+		rLen = 0;
+		rLoc = 16677;
+		rType = 0;
+		vrLen = 3727;
+		vrLoc = 15204;
+	};
+	5F78369A15DD758200954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78368915DD71DD00954509 /* memoryshard.hpp */;
+		name = "memoryshard.hpp: 140";
+		rLen = 83;
+		rLoc = 4397;
+		rType = 0;
+		vrLen = 1205;
+		vrLoc = 3858;
+	};
+	5F78369B15DD758200954509 /* XCBuildMessageTextBookmark */ = {
+		isa = PBXTextBookmark;
+		comments = "No previous prototype for 'void graphlab::random::destroy_tls_data(void*)'";
+		fRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */;
+		fallbackIsa = XCBuildMessageTextBookmark;
+		rLen = 1;
+		rLoc = 193;
+		rType = 1;
+	};
+	5F78369C15DD758200954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */;
+		name = "random.cpp: 194";
+		rLen = 0;
+		rLoc = 6012;
+		rType = 0;
+		vrLen = 647;
+		vrLoc = 5664;
+	};
+	5F7836A315DD768500954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */;
+		name = "random.cpp: 194";
+		rLen = 0;
+		rLoc = 6012;
+		rType = 0;
+		vrLen = 2140;
+		vrLoc = 4337;
+	};
+	5F7836A415DD768500954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
+		name = "graphchi_engine.hpp: 419";
+		rLen = 0;
+		rLoc = 16677;
+		rType = 0;
+		vrLen = 3727;
+		vrLoc = 15204;
+	};
+	5F7836A515DD768500954509 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5F78362F15DD706D00954509 /* graphchi_engine.hpp */;
+		name = "graphchi_engine.hpp: 400";
+		rLen = 0;
+		rLoc = 15454;
+		rType = 0;
+		vrLen = 3642;
+		vrLoc = 14278;
 	};
 	5F7A0FE11589160900748D0D /* Source Control */ = {
 		isa = PBXSourceControlManager;
@@ -5765,7 +5869,7 @@
 		fRef = 5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 624";
 		rLen = 0;
-		rLoc = 26521;
+		rLoc = 28844;
 		rType = 0;
 		vrLen = 2966;
 		vrLoc = 17297;
@@ -5939,7 +6043,7 @@
 		fRef = 5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 311";
 		rLen = 0;
-		rLoc = 12154;
+		rLoc = 12336;
 		rType = 0;
 		vrLen = 2547;
 		vrLoc = 11209;
@@ -6218,7 +6322,7 @@
 		fRef = 5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */;
 		name = "graphchi_engine.hpp: 624";
 		rLen = 0;
-		rLoc = 26521;
+		rLoc = 28844;
 		rType = 0;
 		vrLen = 3376;
 		vrLoc = 22802;
@@ -10635,7 +10739,7 @@
 		hitCount = 0;
 		ignoreCount = 0;
 		lineNumber = 267;
-		modificationTime = 366833275.875155;
+		modificationTime = 366835416.068673;
 		originalNumberOfMultipleMatches = 1;
 		state = 0;
 	};
