@@ -176,7 +176,7 @@ namespace graphchi {
             
             _m.set("file", _base_filename);
             _m.set("engine", "default");
-            _m.set("P", (size_t)nshards);
+            _m.set("nshards", (size_t)nshards);
         }
         
         virtual ~graphchi_engine() {
@@ -802,8 +802,9 @@ namespace graphchi {
             m.set("nvertices", num_vertices());
             m.set("execthreads", (size_t)exec_threads);
             m.set("loadthreads", (size_t)load_threads);
+            m.set("compression", 1);
             m.set("scheduler", (size_t)use_selective_scheduling);
-            
+            m.set("niters", niters);
             // Stop HTTP admin
         }
         
