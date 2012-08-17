@@ -95,10 +95,13 @@ namespace graphchi {
           fflush(f);        
           fclose(f);
           
-          std::cout << "Db prop: " << get_option_int("metrics.insert_to_db", 0) << std::endl;
+        // Following code used only for research purposes.
           if (get_option_int("metrics.insert_to_db", 0) == 1) {
               std::string cmd = "python2.7 benchtodb.py " + filename;
-              system(cmd.c_str());
+              int err = system(cmd.c_str());
+              if (err != 0) {
+                std::cout << "Error running the python script." << std::endl;
+              }
           }
       };
         
