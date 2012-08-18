@@ -84,12 +84,14 @@ vid_t max_right_vertex = 0;
 
 struct latentvec_t {
     double d[NLATENT];
+    double rmse;
     
     latentvec_t() {
     }
     
     void init() {
         for(int k=0; k < NLATENT; k++) d[k] =  drand48(); 
+        rmse = 0;
     }
     
     double & operator[] (int idx) {

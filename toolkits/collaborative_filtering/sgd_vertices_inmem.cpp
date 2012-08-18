@@ -39,12 +39,17 @@
 
 using namespace graphchi;
 
+
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
 typedef latentvec_t VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+
+
+
+double num_edges = 0;
                                         
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -67,6 +72,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         if (iteration == 0) {
             latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
         }
+        rmse = 0;
     }
 
   /**
@@ -74,8 +80,9 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
      */
     void after_iteration(int iteration, graphchi_context &gcontext) {
        sgd_lambda *= sgd_step_dec;
+       logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/num_edges) << std::endl;
     }
-        
+         
     /**
      *  Vertex update function.
      */
@@ -98,34 +105,10 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
                 for (int i=0; i< NLATENT; i++){
                    movie.d[i] += sgd_gamma*(err*user.d[i] - sgd_lambda*movie.d[i]);
                    user.d[i] += sgd_gamma*(err*movie.d[i] - sgd_lambda*user.d[i]);
-                } 
+                }
+		rmse +=  err*err;
             }
 
-            
-            
-            
-            /*double sqerror = 0;
-            bool compute_rmse = (gcontext.iteration == gcontext.num_iterations-1 && vertex.num_outedges() == 0);
-            if (compute_rmse) { // Compute RMSE only on "right side" of bipartite graph
-                for(int e=0; e < vertex.num_edges(); e++) {        
-                    // Compute RMSE
-                    float observation = vertex.edge(e)->get_data();
-                    latentvec_t & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
-                    double prediction = nbr_latent.dot(newlatent);
-                    sqerror += (prediction - observation) * (prediction - observation);                
-                    
-                }
-                rmselock.lock();
-                rmse += sqerror;
-                rmselock.unlock();
-                
-                if (vertex.id() % 5000 == 1) {
-                    logstream(LOG_DEBUG) << "Computed RMSE for : " << vertex.id() << std::endl;
-                }
-            }*/
-            
-            //set_latent_factor(vertex, newlatent); 
-            
             if (vertex.id() % 100000 == 1) {
                 std::cout <<  gcontext.iteration << ": " << vertex.id() << std::endl;
             }
@@ -185,14 +168,10 @@ int main(int argc, const char ** argv) {
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, false, m); 
     engine.set_modifies_inedges(false);
     engine.set_modifies_outedges(false);
+    
+    num_edges = engine.num_edges();
     engine.run(program, niters);
         
-    /* Report result (train RMSE) */
-    double trainRMSE = sqrt(rmse / (1.0 * engine.num_edges()));
-    m.set("train_rmse", trainRMSE);
-    m.set("latent_dimension", NLATENT);
-    std::cout << "Latent factor dimension: " << NLATENT << " - train RMSE: " << trainRMSE << std::endl;
-    
     /* Output latent factor matrices in matrix-market format */
     vid_t numvertices = engine.num_vertices();
     assert(numvertices == max_right_vertex + 1); // Sanity check
