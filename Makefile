@@ -9,7 +9,6 @@ HEADERS=$(wildcard *.h**)
 all: apps tests sharder_basic 
 apps: example_apps/connectedcomponents example_apps/pagerank example_apps/pagerank_functional example_apps/communitydetection example_apps/trianglecounting
 als: example_apps/matrix_factorization/als_edgefactors  example_apps/matrix_factorization/als_vertices_inmem
-cf: toolkits/collaborative_filtering/sgd_vertices_inmem toolkits/collaborative_filtering/als_vertices_inmem
 tests: tests/basic_smoketest tests/bulksync_functional_test
 
 
@@ -35,6 +34,10 @@ tests/%: src/tests/%.cpp $(HEADERS)
 
 graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 	$(CPP) $(CPPFLAGS) example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp -o bin/graphlab_als
+
+cf: toolkits/collaborative_filtering/als.cpp toolkits/collaborative_filtering/sgd.hpp
+	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/als.cpp  -o bin/als
+	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/sgd.cpp  -o bin/sgd
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config
