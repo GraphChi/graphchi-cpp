@@ -48,6 +48,71 @@ typedef latentvec_t VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
     
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+std::vector<latentvec_t> latent_factors_inmem;
+ /**
+  compute validation rmse
+ */
+void validation_rmse() {
+    int ret_code;
+    MM_typecode matcode;
+    FILE *f;
+    int M, N, nz;   
+    
+    if ((f = fopen(validation.c_str(), "r")) == NULL) {
+       return; //missing validaiton data, nothing to compute
+    }
+    
+    
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        logstream(LOG_ERROR) << "Could not process Matrix Market banner. File: " << validation << std::endl;
+        logstream(LOG_ERROR) << "Matrix must be in the Matrix Market format. " << std::endl;
+        exit(1);
+    }
+    
+    
+    /*  This is how one can screen matrix types if their application */
+    /*  only supports a subset of the Matrix Market data types.      */
+    
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+    {
+        logstream(LOG_ERROR) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+        logstream(LOG_ERROR) << "Market Market type: " << mm_typecode_to_str(matcode) << std::endl;
+        exit(1);
+    }
+    
+    /* find out size of sparse matrix .... */
+    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
+        logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
+        exit(1);
+    }
+    
+    double validation_rmse = 0;   
+ 
+    for (int i=0; i<nz; i++)
+    {
+            int I, J;
+            double val;
+            int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+	   
+            if (rc != 3)
+              logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+            if (val < minval || val > maxval)
+              logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
+            I--;  /* adjust from 1-based to 0-based */
+            J--;
+            
+    	    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
+            prediction = std::max(prediction, minval);
+            prediction = std::min(prediction, maxval);
+            validation_rmse += (prediction - val)*(prediction-val);
+    }
+    fclose(f);
+
+    logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
+}
+
+
 
                                         
 /**
@@ -55,9 +120,6 @@ graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL;
  * class. The main logic is usually in the update function.
  */
 struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
-    
-    std::vector<latentvec_t> latent_factors_inmem;
-    mutex lock;
     
     // Helper
     virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
@@ -80,6 +142,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
      */
     void after_iteration(int iteration, graphchi_context &gcontext) {
        sgd_lambda *= sgd_step_dec;
+       validation_rmse();
        rmse = 0;
 #pragma omp parallel for reduction(+:rmse)
        for (uint i=0; i< max_left_vertex; i++){
@@ -100,6 +163,25 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
             latentvec_t latentfac;
             latentfac.init();
             set_latent_factor(vertex, latentfac);
+        /* Hack: we need to count ourselves the number of vertices on left
+           and right side of the bipartite graph.
+           TODO: maybe there should be specialized support for bipartite graphs in GraphChi?
+        */
+        if (vertex.num_outedges() > 0) {
+            // Left side on the bipartite graph
+            if (vertex.id() > max_left_vertex) {
+                //lock.lock();
+                max_left_vertex = std::max(vertex.id(), max_left_vertex);
+                //lock.unlock();
+            }
+        } else {
+            if (vertex.id() > max_right_vertex) {
+                //lock.lock();
+                max_right_vertex = std::max(vertex.id(), max_right_vertex);
+                //lock.unlock();
+            }
+        }
+
         } else {
 	    if ( vertex.num_edges() > 0){
             latentvec_t & user = latent_factors_inmem[vertex.id()]; 
@@ -123,25 +205,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
             }
         }
         
-        /* Hack: we need to count ourselves the number of vertices on left
-           and right side of the bipartite graph.
-           TODO: maybe there should be specialized support for bipartite graphs in GraphChi?
-        */
-        if (vertex.num_outedges() > 0) {
-            // Left side on the bipartite graph
-            if (vertex.id() > max_left_vertex) {
-                lock.lock();
-                max_left_vertex = std::max(vertex.id(), max_left_vertex);
-                lock.unlock();
-            }
-        } else {
-            if (vertex.id() > max_right_vertex) {
-                lock.lock();
-                max_right_vertex = std::max(vertex.id(), max_right_vertex);
-                lock.unlock();
-            }
-        }
-
     }
     
     
@@ -171,7 +234,15 @@ int main(int argc, const char ** argv) {
     metrics m("sgd-inmemory-factors");
     
     /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-    std::string filename = get_option_string("file");    // Base filename
+    training = get_option_string("training");    // Base training
+    validation = get_option_string("validation", "");
+    test = get_option_string("test", "");
+
+    if (validation == "")
+       validation += training + "e";  
+    if (test == "")
+       test += training + "t";
+
     int niters           = get_option_int("niters", 6);  // Number of iterations
     sgd_lambda    = get_option_float("sgd_lambda", 1e-3);
     sgd_gamma     = get_option_float("sgd_gamma", 1e-3);
@@ -180,11 +251,11 @@ int main(int argc, const char ** argv) {
     minval        = get_option_float("minval", -1e100);
 
     /* Preprocess data if needed, or discover preprocess files */
-    int nshards = convert_matrixmarket_for_SGD<float>(filename);
+    int nshards = convert_matrixmarket_for_SGD<float>(training);
     
     /* Run */
     SGDVerticesInMemProgram program;
-    graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, false, m); 
+    graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
     engine.set_modifies_inedges(false);
     engine.set_modifies_outedges(false);
     pengine = &engine;
@@ -193,7 +264,7 @@ int main(int argc, const char ** argv) {
     /* Output latent factor matrices in matrix-market format */
     vid_t numvertices = engine.num_vertices();
     assert(numvertices == max_right_vertex + 1); // Sanity check
-    output_sgd_result(filename, numvertices, max_left_vertex);
+    output_sgd_result(training, numvertices, max_left_vertex);
     
     
     /* Report execution metrics */

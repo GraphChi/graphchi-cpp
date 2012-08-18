@@ -68,7 +68,12 @@ using namespace graphchi;
 #define NLATENT 5   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double LAMBDA = 0.065;
+double lambda = 0.065;
+double minval = -1e100;
+double maxval = 1e100;
+std::string training;
+std::string validation;
+std::string test;
 
 /// RMSE computation
 double rmse=0.0;
@@ -82,6 +87,7 @@ vid_t max_right_vertex = 0;
 
 struct latentvec_t {
     double d[NLATENT];
+    double rmse;
     
     latentvec_t() {
     }
@@ -119,7 +125,6 @@ struct als_factor_and_weight {
         factor.init();
     }
 };
-
 
  
  /**
