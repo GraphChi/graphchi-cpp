@@ -78,6 +78,58 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<latentvec_t> latent_factors_inmem;
+ /**
+  compute validation rmse
+ */
+void test_predictions() {
+    int ret_code;
+    MM_typecode matcode;
+    FILE *f;
+    int M, N, nz;   
+    
+    if ((f = fopen(test.c_str(), "r")) == NULL) {
+       return; //missing validaiton data, nothing to compute
+    }
+    FILE * fout = fopen((test + ".predict").c_str(),"w");
+    if (fout == NULL)
+       logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
+    
+    if (mm_read_banner(f, &matcode) != 0)
+        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+    
+    /*  This is how one can screen matrix types if their application */
+    /*  only supports a subset of the Matrix Market data types.      */
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+    
+    /* find out size of sparse matrix .... */
+    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
+        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
+
+    mm_write_banner(fout, matcode);
+    mm_write_mtx_crd_size(fout ,M,N,nz); 
+ 
+    for (int i=0; i<nz; i++)
+    {
+            int I, J;
+            double val;
+            int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+            if (rc != 3)
+              logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+            I--;  /* adjust from 1-based to 0-based */
+            J--;
+    	    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
+            prediction = std::max(prediction, minval);
+            prediction = std::min(prediction, maxval);
+            fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
+    }
+    fclose(f);
+    fclose(fout);
+
+    logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+}
+
  
  /**
   compute validation rmse
@@ -92,29 +144,19 @@ void validation_rmse() {
        return; //missing validaiton data, nothing to compute
     }
     
-    
     if (mm_read_banner(f, &matcode) != 0)
-    {
-        logstream(LOG_ERROR) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-        logstream(LOG_ERROR) << "Matrix must be in the Matrix Market format. " << std::endl;
-        exit(1);
-    }
+        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
     
     
     /*  This is how one can screen matrix types if their application */
     /*  only supports a subset of the Matrix Market data types.      */
     
     if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    {
-        logstream(LOG_ERROR) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-        logstream(LOG_ERROR) << "Market Market type: " << mm_typecode_to_str(matcode) << std::endl;
-        exit(1);
-    }
+        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
     
     /* find out size of sparse matrix .... */
     if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
-        logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
-        exit(1);
+        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
     
     double validation_rmse = 0;   
@@ -320,7 +362,7 @@ int main(int argc, const char ** argv) {
     vid_t numvertices = engine.num_vertices();
     assert(numvertices == max_right_vertex + 1); // Sanity check
     output_als_result(training, numvertices, max_left_vertex);
-    
+    test_predictions();    
     
     /* Report execution metrics */
     metrics_report(m);
