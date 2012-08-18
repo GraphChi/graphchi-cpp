@@ -494,6 +494,10 @@ namespace graphchi {
           * Counts the number of edges from shard sizes.
           */
         virtual size_t num_edges() {
+            if (sliding_shards.size() == 0) {
+                logstream(LOG_ERROR) << "engine.num_edges() can be called only after engine has been started. To be fixed later. As a workaround, put the engine into a global variable, and query the number afterwards in begin_iteration(), for example." << std::endl;
+                assert(false);
+            }
             if (only_adjacency) {
                 // TODO: fix.
                 logstream(LOG_ERROR) << "Asked number of edges, but engine was run without edge-data." << std::endl; 
