@@ -76,6 +76,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
+int M, N;
 
 
 /// RMSE computation
@@ -143,7 +144,7 @@ int convert_matrixmarket_for_SGD(std::string base_filename) {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    int nz;   
     
     /**
      * Create sharder object

@@ -85,7 +85,7 @@ void test_predictions() {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    int vM, vN, nz;   
     
     if ((f = fopen(test.c_str(), "r")) == NULL) {
        return; //missing validaiton data, nothing to compute
@@ -103,9 +103,12 @@ void test_predictions() {
         logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
     
     /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
+    if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
         logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
+
+    if (vM != M || vN != N)
+      logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
     mm_write_banner(fout, matcode);
     mm_write_mtx_crd_size(fout ,M,N,nz); 
@@ -138,7 +141,7 @@ void validation_rmse() {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    int vM, vN, nz;   
     
     if ((f = fopen(validation.c_str(), "r")) == NULL) {
        return; //missing validaiton data, nothing to compute
@@ -155,9 +158,12 @@ void validation_rmse() {
         logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
     
     /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
+    if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
         logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
+    if (vM != M || vN != N)
+      logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
+
     
     double validation_rmse = 0;   
  
