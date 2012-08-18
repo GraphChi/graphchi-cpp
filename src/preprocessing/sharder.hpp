@@ -304,9 +304,9 @@ namespace graphchi {
                 i += vertexchunk;
                 edgecounter += edgecounts[i / vertexchunk];
                 if (edgecounter >= edges_per_part || (i >= max_vertex_id)) {
-                    intervals.push_back(std::pair<vid_t,vid_t>(cur_st, i + (i >= max_vertex_id)));
+                    intervals.push_back(std::pair<vid_t,vid_t>(cur_st, std::min(i, max_vertex_id)));
                     logstream(LOG_INFO) << "Interval: " << cur_st << " - " << i << std::endl;
-                    fprintf(f, "%u\n", i + (i == max_vertex_id));
+                    fprintf(f, "%u\n", std::min(i, max_vertex_id));
                     cur_st = i + 1;
                     edgecounter = 0;
                 }
