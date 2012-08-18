@@ -202,6 +202,10 @@
 		5F7B653C1594D17E0032CE47 /* html_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = html_reporter.hpp; sourceTree = "<group>"; };
 		5F7B653D1594D17E0032CE47 /* null_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = null_reporter.hpp; sourceTree = "<group>"; };
 		5F7B65C41594D8860032CE47 /* logger.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = logger.hpp; sourceTree = "<group>"; };
+		5F87A76B15DFE6DA008C8337 /* als.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = als.hpp; sourceTree = "<group>"; };
+		5F87A76C15DFE6DA008C8337 /* als_vertices_inmem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = als_vertices_inmem.cpp; sourceTree = "<group>"; };
+		5F87A76D15DFE6DA008C8337 /* sgd.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sgd.hpp; sourceTree = "<group>"; };
+		5F87A76E15DFE6DA008C8337 /* sgd_vertices_inmem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sgd_vertices_inmem.cpp; sourceTree = "<group>"; };
 		5F8DD041159DDABC0034C889 /* connectedcomponents */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = connectedcomponents; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8DD06C15A4DDF80034C889 /* plotter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = plotter.hpp; sourceTree = "<group>"; };
 		5F9EBAAC1593F87D0092F7E2 /* chifilenames.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chifilenames.hpp; sourceTree = "<group>"; };
@@ -313,6 +317,7 @@
 				5FCC1EBC1599F59A0003D0E9 /* example_apps */,
 				5F7A0FE31589162F00748D0D /* src */,
 				5F7A0FFC1589163E00748D0D /* Products */,
+				5F87A76915DFE6DA008C8337 /* toolkits */,
 			);
 			name = graphchi_xcode;
 			sourceTree = "<group>";
@@ -648,6 +653,26 @@
 				5F7B65C41594D8860032CE47 /* logger.hpp */,
 			);
 			path = logger;
+			sourceTree = "<group>";
+		};
+		5F87A76915DFE6DA008C8337 /* toolkits */ = {
+			isa = PBXGroup;
+			children = (
+				5F87A76A15DFE6DA008C8337 /* collaborative_filtering */,
+			);
+			name = toolkits;
+			path = ../toolkits;
+			sourceTree = "<group>";
+		};
+		5F87A76A15DFE6DA008C8337 /* collaborative_filtering */ = {
+			isa = PBXGroup;
+			children = (
+				5F87A76B15DFE6DA008C8337 /* als.hpp */,
+				5F87A76C15DFE6DA008C8337 /* als_vertices_inmem.cpp */,
+				5F87A76D15DFE6DA008C8337 /* sgd.hpp */,
+				5F87A76E15DFE6DA008C8337 /* sgd_vertices_inmem.cpp */,
+			);
+			path = collaborative_filtering;
 			sourceTree = "<group>";
 		};
 		5FB782F4159E22B300816BDE /* dynamic_graphs */ = {

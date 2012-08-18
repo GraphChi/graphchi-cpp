@@ -81,6 +81,7 @@ typedef als_factor_and_weight EdgeDataType;  // Edges store the "rating" of user
  * class. The main logic is usually in the update function.
  */
 struct ALSEdgeFactorsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+    mutex lock;
     
     // Helper
     virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
@@ -172,9 +173,17 @@ struct ALSEdgeFactorsProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
         */
         if (vertex.num_outedges() > 0) {
             // Left side on the bipartite graph
-            max_left_vertex = std::max(vertex.id(), max_left_vertex);
+            if (vertex.id() > max_left_vertex) {
+                lock.lock();
+                max_left_vertex = std::max(vertex.id(), max_left_vertex);
+                lock.unlock();
+            }
         } else {
-            max_right_vertex = std::max(vertex.id(), max_right_vertex);
+            if (vertex.id() > max_right_vertex) {
+                lock.lock();
+                max_right_vertex = std::max(vertex.id(), max_right_vertex);
+                lock.unlock();
+            }
         }
 
     }

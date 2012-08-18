@@ -1,6 +1,6 @@
 /**
  * @file
- * @author  Danny Bickson (based on code template by Aapo Kyorla)
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE
@@ -22,7 +22,7 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (SGD) algorithm.
+ * Matrix factorization with the Stochastic Gradient Descent (SGD) algorithm.
  *
  * 
  */
@@ -34,7 +34,7 @@
 
 #include "graphchi_basic_includes.hpp"
 
-/* SGD-related classes are contained in als.hpp */
+/* SGD-related classes are contained in sgd.hpp */
 #include "sgd.hpp"
 
 using namespace graphchi;
@@ -57,6 +57,7 @@ graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL;
 struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     std::vector<latentvec_t> latent_factors_inmem;
+    mutex lock;
     
     // Helper
     virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
@@ -116,7 +117,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
                    movie.d[i] += sgd_gamma*(err*user.d[i] - sgd_lambda*movie.d[i]);
                    user.d[i] += sgd_gamma*(err*movie.d[i] - sgd_lambda*user.d[i]);
                 }
-		user.rmse +=  err*err;
+                user.rmse +=  err*err;
             }
 
             }
@@ -128,9 +129,17 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         */
         if (vertex.num_outedges() > 0) {
             // Left side on the bipartite graph
-            max_left_vertex = std::max(vertex.id(), max_left_vertex);
+            if (vertex.id() > max_left_vertex) {
+                lock.lock();
+                max_left_vertex = std::max(vertex.id(), max_left_vertex);
+                lock.unlock();
+            }
         } else {
-            max_right_vertex = std::max(vertex.id(), max_right_vertex);
+            if (vertex.id() > max_right_vertex) {
+                lock.lock();
+                max_right_vertex = std::max(vertex.id(), max_right_vertex);
+                lock.unlock();
+            }
         }
 
     }

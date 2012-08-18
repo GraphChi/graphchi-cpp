@@ -80,7 +80,7 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
  * class. The main logic is usually in the update function.
  */
 struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
-    
+    mutex lock;
     std::vector<latentvec_t> latent_factors_inmem;
     
     // Helper
@@ -177,9 +177,17 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         */
         if (vertex.num_outedges() > 0) {
             // Left side on the bipartite graph
-            max_left_vertex = std::max(vertex.id(), max_left_vertex);
+            if (vertex.id() > max_left_vertex) {
+                lock.lock();
+                max_left_vertex = std::max(vertex.id(), max_left_vertex);
+                lock.unlock();
+            }
         } else {
-            max_right_vertex = std::max(vertex.id(), max_right_vertex);
+            if (vertex.id() > max_right_vertex) {
+                lock.lock();
+                max_right_vertex = std::max(vertex.id(), max_right_vertex);
+                lock.unlock();
+            }
         }
 
     }
