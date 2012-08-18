@@ -46,10 +46,9 @@ using namespace graphchi;
  */
 typedef latentvec_t VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+    
+graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 
-
-
-double num_edges = 0;
                                         
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -80,7 +79,12 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
      */
     void after_iteration(int iteration, graphchi_context &gcontext) {
        sgd_lambda *= sgd_step_dec;
-       logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/num_edges) << std::endl;
+       rmse = 0;
+#pragma omp parallel for reduction(+:rmse)
+       for (uint i=0; i< max_left_vertex; i++){
+         rmse += latent_factors_inmem[i].rmse;
+       }
+       logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
     }
          
     /**
@@ -96,21 +100,25 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
             latentfac.init();
             set_latent_factor(vertex, latentfac);
         } else {
+	    if ( vertex.num_edges() > 0){
             latentvec_t & user = latent_factors_inmem[vertex.id()]; 
+            user.rmse = 0; 
             for(int e=0; e < vertex.num_edges(); e++) {
                 float observation = vertex.edge(e)->get_data();                
                 latentvec_t & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-                float estScore = user.dot(movie);
-                float err = observation - estScore;
+                double estScore = user.dot(movie);
+                estScore = std::max(estScore, minval);
+                estScore = std::min(estScore, maxval);
+                double err = observation - estScore;
+                if (isnan(err) || isinf(err))
+                  logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
                 for (int i=0; i< NLATENT; i++){
                    movie.d[i] += sgd_gamma*(err*user.d[i] - sgd_lambda*movie.d[i]);
                    user.d[i] += sgd_gamma*(err*movie.d[i] - sgd_lambda*user.d[i]);
                 }
-		rmse +=  err*err;
+		user.rmse +=  err*err;
             }
 
-            if (vertex.id() % 100000 == 1) {
-                std::cout <<  gcontext.iteration << ": " << vertex.id() << std::endl;
             }
         }
         
@@ -159,6 +167,8 @@ int main(int argc, const char ** argv) {
     sgd_lambda    = get_option_float("sgd_lambda", 1e-3);
     sgd_gamma     = get_option_float("sgd_gamma", 1e-3);
     sgd_step_dec  = get_option_float("sgd_step_dec", 0.9);
+    maxval        = get_option_float("maxval", 1e100);
+    minval        = get_option_float("minval", -1e100);
 
     /* Preprocess data if needed, or discover preprocess files */
     int nshards = convert_matrixmarket_for_SGD<float>(filename);
@@ -168,8 +178,7 @@ int main(int argc, const char ** argv) {
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, false, m); 
     engine.set_modifies_inedges(false);
     engine.set_modifies_outedges(false);
-    
-    num_edges = engine.num_edges();
+    pengine = &engine;
     engine.run(program, niters);
         
     /* Output latent factor matrices in matrix-market format */

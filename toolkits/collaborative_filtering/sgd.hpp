@@ -71,6 +71,8 @@ using namespace graphchi;
 double sgd_lambda = 1e-3;
 double sgd_gamma = 1e-3;
 double sgd_step_dec = 0.9;
+double minval = -1e100;
+double maxval = 1e100;
 
 /// RMSE computation
 double rmse=0.0;
