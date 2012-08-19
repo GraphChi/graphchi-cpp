@@ -292,8 +292,10 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 };
 
 int main(int argc, const char ** argv) {
-    /* GraphChi initialization will read the command line 
-     arguments and the configuration file. */
+    logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
+     " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+    
+    //* GraphChi initialization will read the command line arguments and the configuration file. */
     graphchi_init(argc, argv);
     
     /* Metrics object for keeping track of performance counters
