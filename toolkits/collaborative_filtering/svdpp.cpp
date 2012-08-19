@@ -1,6 +1,6 @@
 /**
  * @file
- * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE
@@ -18,40 +18,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-
+ 
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
- * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
- * and Danny Bickson (CMU). A good explanation of the algorithm is 
- * given in the following paper:
- *    Large-Scale Parallel Collaborative Filtering for the Netflix Prize
- *    Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan
- *    http://www.springerlink.com/content/j1076u0h14586183/
- *
- * Faster version of ALS, which stores latent factors of vertices in-memory.
- * Thus, this version requires more memory. See the version "als_edgefactors"
- * for a low-memory implementation.
- *
- *
- * In the code, we use movie-rating terminology for clarity. This code has been
- * tested with the Netflix movie rating challenge, where the task is to predict
- * how user rates movies in range from 1 to 5.
- *
- * This code is has integrated preprocessing, 'sharding', so it is not necessary
- * to run sharder prior to running the matrix factorization algorithm. Input
- * data must be provided in the Matrix Market format (http://math.nist.gov/MatrixMarket/formats.html).
- *
- * ALS uses free linear algebra library 'Eigen'. See Readme_Eigen.txt for instructions
- * how to obtain it.
- *
- * At the end of the processing, the two latent factor matrices are written into files in 
- * the matrix market format. 
- *
- * @section USAGE
- *
- * bin/example_apps/matrix_factorization/als_edgefactors file <matrix-market-input> niters 5
+ * Matrix factorization with the Stochastic Gradient Descent (SVDPP) algorithm.
  *
  * 
  */
@@ -63,8 +34,8 @@
 
 #include "graphchi_basic_includes.hpp"
 
-/* ALS-related classes are contained in als.hpp */
-#include "als.hpp"
+/* SVDPP-related classes are contained in svdpp.hpp */
+#include "svdpp.hpp"
 
 using namespace graphchi;
 
@@ -73,14 +44,33 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
-typedef latentvec_t VertexDataType;
+typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
-
+    
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
-std::vector<latentvec_t> latent_factors_inmem;
-/**
-  compute validation rmse
-  */
+std::vector<vertex_data> latent_factors_inmem;
+
+/** compute a missing value based on SVD++ algorithm */
+float svdpp_predict(const vertex_data& user, const vertex_data& movie, const float rating, double & prediction){
+  //\hat(r_ui) = \mu + 
+  prediction = globalMean;
+  // + b_u  +    b_i +
+  prediction += user.bias + movie.bias;
+  // + q_i^T   *(p_u      +sqrt(|N(u)|)\sum y_j)
+  //prediction += dot_prod(movie.pvec,(user.pvec+user.weight));
+  for (int j=0; j< NLATENT; j++)
+    prediction += movie.pvec[j] * (user.pvec[j] + user.weight[j]);
+
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  float err = rating - prediction;
+  if (std::isnan(err))
+    logstream(LOG_FATAL)<<"Got into numerical errors. Try to decrease step size using svdpp)" << std::endl;
+  return err*err; 
+}
+
+
+
 void test_predictions() {
   int ret_code;
   MM_typecode matcode;
@@ -110,6 +100,7 @@ void test_predictions() {
   if ((M > 0 && N > 0 ) && (vM != M || vN != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
+
   mm_write_banner(fout, matcode);
   mm_write_mtx_crd_size(fout ,M,N,nz); 
 
@@ -122,9 +113,8 @@ void test_predictions() {
       logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
     I--;  /* adjust from 1-based to 0-based */
     J--;
-    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-    prediction = std::max(prediction, minval);
-    prediction = std::min(prediction, maxval);
+    double prediction = 0;
+    svdpp_predict(latent_factors_inmem[I], latent_factors_inmem[J], 0, prediction);        
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
   }
   fclose(f);
@@ -132,7 +122,6 @@ void test_predictions() {
 
   logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
-
 
 /**
   compute validation rmse
@@ -147,6 +136,7 @@ void validation_rmse() {
     return; //missing validaiton data, nothing to compute
   }
 
+
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
 
@@ -159,10 +149,10 @@ void validation_rmse() {
 
   /* find out size of sparse matrix .... */
   if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
-  if ((M > 0 && N > 0) && (vM != M || vN != N))
-    logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
+  //if (vM != M || vN != N) //TODO
+  //  logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
 
   double validation_rmse = 0;   
@@ -180,27 +170,22 @@ void validation_rmse() {
     I--;  /* adjust from 1-based to 0-based */
     J--;
 
-    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-    prediction = std::max(prediction, minval);
-    prediction = std::min(prediction, maxval);
-    validation_rmse += (prediction - val)*(prediction-val);
+    double prediction = 0;
+    validation_rmse += svdpp_predict(latent_factors_inmem[I], latent_factors_inmem[J], val, prediction);
   }
   fclose(f);
 
   logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
 }
 
-
-
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
  */
-struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
-
+struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
   // Helper
-  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
+  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
     vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
     latent_factors_inmem[vertex.id()] = fact;
   }
@@ -212,6 +197,26 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if (iteration == 0) {
       latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
     }
+    rmse = 0;
+  }
+
+  /**
+   * Called after an iteration has finished.
+   */
+  void after_iteration(int iteration, graphchi_context &gcontext) {
+    svdpp.itmFctrStep *= svdpp.step_dec;
+    svdpp.itmFctr2Step *= svdpp.step_dec;
+    svdpp.usrFctrStep *= svdpp.step_dec;
+    svdpp.itmBiasStep *= svdpp.step_dec;
+    svdpp.usrBiasStep *= svdpp.step_dec;
+
+    validation_rmse();
+    rmse = 0;
+#pragma omp parallel for reduction(+:rmse)
+    for (uint i=0; i< max_left_vertex; i++){
+      rmse += latent_factors_inmem[i].rmse;
+    }
+    logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
   }
 
   /**
@@ -223,7 +228,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
          on each run, GraphChi will modify the data files. To start from scratch, it is easiest
          do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
 
-      latentvec_t latentfac;
+      vertex_data latentfac;
       latentfac.init();
       set_latent_factor(vertex, latentfac);
       /* Hack: we need to count ourselves the number of vertices on left
@@ -232,64 +237,76 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
 */
       if (vertex.num_outedges() > 0) {
         // Left side on the bipartite graph
-        max_left_vertex = std::max(vertex.id(), max_left_vertex);
+        if (vertex.id() > max_left_vertex) {
+          //lock.lock();
+          max_left_vertex = std::max(vertex.id(), max_left_vertex);
+          //lock.unlock();
+        }
       } else {
-        max_right_vertex = std::max(vertex.id(), max_right_vertex);
+        if (vertex.id() > max_right_vertex) {
+          //lock.lock();
+          max_right_vertex = std::max(vertex.id(), max_right_vertex);
+          //lock.unlock();
+        }
       }
 
     } else {
-      mat XtX(NLATENT, NLATENT); 
-      XtX.setZero();
-      vec Xty(NLATENT);
-      Xty.setZero();
+      if ( vertex.num_outedges() > 0){
+        vertex_data & user = latent_factors_inmem[vertex.id()]; 
 
-      // Compute XtX and Xty (NOTE: unweighted)
-      for(int e=0; e < vertex.num_edges(); e++) {
-        float observation = vertex.edge(e)->get_data();                
-        latentvec_t & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        for(int i=0; i<NLATENT; i++) {
-          Xty(i) += nbr_latent[i] * observation;
-          for(int j=i; j < NLATENT; j++) {
-            XtX(j,i) += nbr_latent[i] * nbr_latent[j];
-          }
-        }
-      }
-
-      // Symmetrize
-      for(int i=0; i <NLATENT; i++)
-        for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
-
-      // Diagonal
-      for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
-
-      // Solve the least squares problem with eigen using Cholesky decomposition
-      vec veclatent = XtX.ldlt().solve(Xty);
-
-      // Convert to plain doubles (this is useful because now the output data by GraphCHI
-      // is plain binary double matrix that can be read, for example, by Matlab).
-      latentvec_t newlatent;
-      for(int i=0; i < NLATENT; i++) newlatent[i] = veclatent[i];
-      newlatent.rmse = 0; 
-
-      bool compute_rmse = (vertex.num_outedges() > 0);
-      if (compute_rmse) { // Compute RMSE only on "right side" of bipartite graph
-        for(int e=0; e < vertex.num_edges(); e++) {        
-          // Compute RMSE
-          double observation = vertex.edge(e)->get_data();
-          latentvec_t & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
-          double prediction = nbr_latent.dot(newlatent);
-          prediction = std::min(maxval, prediction);
-          prediction = std::max(minval, prediction);
-          newlatent.rmse += (prediction - observation) * (prediction - observation);                
+        user.rmse = 0; 
+        memset(user.weight, 0, sizeof(double)*NLATENT);
+        for(int e=0; e < vertex.num_edges(); e++) {
+          vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()]; 
+          for (int i=0; i< NLATENT; i++)
+            user.weight[i] += movie.weight[i];
 
         }
+        // sqrt(|N(u)|) 
+        float usrNorm = double(1.0/sqrt(vertex.num_outedges()));
+        //sqrt(|N(u)| * sum_j y_j
+        for (int j=0; j< NLATENT; j++)
+          user.weight[j] *= usrNorm;
 
-      }
+        vec step = zeros(NLATENT);
 
-      set_latent_factor(vertex, newlatent); 
+        // main algorithm, see Koren's paper, just below below equation (16)
+        for(int e=0; e < vertex.num_edges(); e++) {
+          vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()]; 
+          float observation = vertex.edge(e)->get_data();                
+          double estScore;
+          user.rmse += svdpp_predict(user, movie,observation, estScore); 
+          // e_ui = r_ui - \hat{r_ui}
+          float err = observation - estScore;
+          assert(!std::isnan(user.rmse));
+          vec itmFctr = init_vec(movie.pvec, NLATENT);
+          vec usrFctr = init_vec(user.pvec, NLATENT);
 
-      if (vertex.id() % 100000 == 1) {
-        std::cout <<  gcontext.iteration << ": " << vertex.id() << std::endl;
+          //q_i = q_i + gamma2     *(e_ui*(p_u      +  sqrt(N(U))\sum_j y_j) - gamma7    *q_i)
+          for (int j=0; j< NLATENT; j++)
+            movie.pvec[j] += svdpp.itmFctrStep*(err*(usrFctr[j] +  user.weight[j])             - svdpp.itmFctrReg*itmFctr[j]);
+          //p_u = p_u + gamma2    *(e_ui*q_i   -gamma7     *p_u)
+          for (int j=0; j< NLATENT; j++)
+            user.pvec[j] += svdpp.usrFctrStep*(err *itmFctr[j] - svdpp.usrFctrReg*usrFctr[j]);
+          step += err*itmFctr;
+
+          //b_i = b_i + gamma1*(e_ui - gmma6 * b_i) 
+          movie.bias += svdpp.itmBiasStep*(err-svdpp.itmBiasReg* movie.bias);
+          //b_u = b_u + gamma1*(e_ui - gamma6 * b_u)
+          user.bias += svdpp.usrBiasStep*(err-svdpp.usrBiasReg* user.bias);
+        }
+
+        step *= float(svdpp.itmFctr2Step*usrNorm);
+        //gamma7 
+        double mult = svdpp.itmFctr2Step*svdpp.itmFctr2Reg;
+        for(int e=0; e < vertex.num_edges(); e++) {
+          vertex_data&  movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+          //y_j = y_j  +   gamma2*sqrt|N(u)| * q_i - gamma7 * y_j
+          for (int j=0; j< NLATENT; j++)
+            movie.weight[j] +=  step[j]                    -  mult  * movie.weight[j];
+        }
+
+
       }
     }
 
@@ -297,18 +314,6 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
 
 
 
-  /**
-   * Called after an iteration has finished.
-   */
-  void after_iteration(int iteration, graphchi_context &gcontext) {
-    rmse = 0;
-#pragma omp parallel for reduction(+:rmse)
-    for (uint i=0; i< max_left_vertex; i++){
-      rmse += latent_factors_inmem[i].rmse;
-    }
-    logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
-    validation_rmse();
-  }
 
   /**
    * Called before an execution interval is started.
@@ -325,19 +330,18 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
 };
 
 int main(int argc, const char ** argv) {
-
   logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
     " comments or bug reports to danny.bickson@gmail.com " << std::endl;
-  /* GraphChi initialization will read the command line 
-     arguments and the configuration file. */
+
+  //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("als-inmemory-factors");
+  metrics m("svdpp-inmemory-factors");
 
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
+  training = get_option_string("training");    // Base training
   validation = get_option_string("validation", "");
   test = get_option_string("test", "");
 
@@ -346,32 +350,37 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters    = get_option_int("niters", 6);  // Number of iterations
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  lambda        = get_option_float("lambda", 0.065);
+  int niters        = get_option_int("niters", 6);  // Number of iterations
+  svdpp.step_dec  =   get_option_float("svdpp_step_dec", 0.9);
+  svdpp.itmBiasStep  =   get_option_float("svdpp_item_bias_step", 1e-3);
+  svdpp.itmBiasReg =   get_option_float("svdpp_item_bias_reg", 1e-3);
+  svdpp.usrBiasStep  =   get_option_float("svdpp_user_bias_step", 1e-3);
+  svdpp.usrBiasReg  =   get_option_float("svdpp_user_bias_reg", 1e-3);
+  svdpp.usrFctrStep  =   get_option_float("svdpp_user_factor_step", 1e-3);
+  svdpp.usrFctrReg  =   get_option_float("svdpp_user_factor_reg", 1e-3);
+  svdpp.itmFctr2Reg =   get_option_float("svdpp_user_factor2_reg", 1e-3);
+  svdpp.itmFctr2Step =   get_option_float("svdpp_user_factor2_step", 1e-3);
 
-  bool scheduler       = false;                        // Selective scheduling not supported for now.
+  maxval            = get_option_float("maxval", 1e100);
+  minval            = get_option_float("minval", -1e100);
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket_for_ALS<float>(training);
+  int nshards = convert_matrixmarket_for_SVDPP<float>(training);
 
   /* Run */
-  ALSVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
+  SVDPPVerticesInMemProgram program;
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
   pengine = &engine;
   engine.run(program, niters);
 
-  m.set("train_rmse", rmse);
-  m.set("latent_dimension", NLATENT);
-
   /* Output latent factor matrices in matrix-market format */
   vid_t numvertices = engine.num_vertices();
   assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_als_result(training, numvertices, max_left_vertex);
+  output_svdpp_result(training, numvertices, max_left_vertex);
   test_predictions();    
+
 
   /* Report execution metrics */
   metrics_report(m);

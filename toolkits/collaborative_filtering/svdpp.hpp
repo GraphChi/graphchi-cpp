@@ -24,13 +24,13 @@
  *
  * @section DESCRIPTION
  *
- * Common code for BIASSGD implementations.
+ * Common code for SVDPPPP implementations.
  */
 
 
 
-#ifndef DEF_BIASSGDHPP
-#define DEF_BIASSGDHPP
+#ifndef DEF_SVDPPPPHPP
+#define DEF_SVDPPPPHPP
 
 #include <assert.h>
 #include <cmath>
@@ -46,15 +46,45 @@
 #include "preprocessing/sharder.hpp"
 
 #include "eigen_wrapper.hpp"
+
 using namespace graphchi;
 
 #ifndef NLATENT
 #define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double biassgd_lambda = 1e-3;
-double biassgd_gamma = 1e-3;
-double biassgd_step_dec = 0.9;
+
+
+struct svdpp_params{
+ float itmBiasStep;
+ float itmBiasReg;
+ float usrBiasStep;
+ float usrBiasReg;
+ float usrFctrStep;
+ float usrFctrReg;
+ float itmFctrStep;
+ float itmFctrReg; //gamma7
+ float itmFctr2Step;
+ float itmFctr2Reg;
+ float step_dec;
+
+  svdpp_params(){
+  itmBiasStep = 1e-1f;
+  itmBiasReg = 1e-3f;
+  usrBiasStep = 1e-1f;
+  usrBiasReg = 5e-3f;
+  usrFctrStep = 1e-1f;
+  usrFctrReg = 2e-2f;
+  itmFctrStep = 1e-1f;
+  itmFctrReg = 1e-2f; //gamma7
+  itmFctr2Step = 1e-1f;
+  itmFctr2Reg = 1e-3f;
+  step_dec = 0.9;
+ }
+};
+
+svdpp_params svdpp;
+
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
@@ -69,11 +99,12 @@ double globalMean = 0;
 
 // Hackish: we need to count the number of left
 // and right vertices in the bipartite graph ourselves.
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
+uint max_left_vertex =0 ;
+uint max_right_vertex = 0;
 
 struct vertex_data {
-    double d[NLATENT];
+    double pvec[NLATENT];
+    double weight[NLATENT];
     double rmse;
     double bias;
  
@@ -81,23 +112,21 @@ struct vertex_data {
     }
     
     void init() {
-        for(int k=0; k < NLATENT; k++) 
-           d[k] =  drand48(); 
+        for(int k=0; k < NLATENT; k++) {
+           pvec[k] =  drand48(); 
+           weight[k] = drand48();
+        }
         rmse = 0;
         bias = 0;
     }
     
     double & operator[] (int idx) {
-        return d[idx];
-    }
-    bool operator!=(const vertex_data &oth) const {
-        for(int i=0; i<NLATENT; i++) { if (d[i] != oth.d[i]) return true; }
-        return false;
+        return pvec[idx];
     }
     
     double dot(vertex_data &oth) const {
         double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
+        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
         return x;
     }
     
@@ -105,13 +134,13 @@ struct vertex_data {
 
 
 
-struct biassgd_factor_and_weight {
+struct svdpp_factor_and_weight {
     vertex_data factor;
     float weight;
     
-    biassgd_factor_and_weight() {}
+    svdpp_factor_and_weight() {}
     
-    biassgd_factor_and_weight(float obs) {
+    svdpp_factor_and_weight(float obs) {
         weight = obs;
         factor.init();
     }
@@ -124,8 +153,8 @@ struct biassgd_factor_and_weight {
  * with the same id as the row number (0-based), but vertices correponsing to columns
  * have id + num-rows.
  */
-template <typename biassgd_edge_type>
-int convert_matrixmarket_for_BIASSGD(std::string base_filename) {
+template <typename svdpp_edge_type>
+int convert_matrixmarket_for_SVDPP(std::string base_filename) {
     // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
     int ret_code;
     MM_typecode matcode;
@@ -136,15 +165,14 @@ int convert_matrixmarket_for_BIASSGD(std::string base_filename) {
      * Create sharder object
      */
     int nshards;
-    if ((nshards = find_shards<biassgd_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+    if ((nshards = find_shards<svdpp_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
         logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
         logstream(LOG_INFO) << "If this is not intended, please delete the shard files and try again. " << std::endl;
         return nshards;
     }   
     
-    sharder<biassgd_edge_type> sharderobj(base_filename);
+    sharder<svdpp_edge_type> sharderobj(base_filename);
     sharderobj.start_preprocessing();
-    
     
     if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
         logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
@@ -182,7 +210,7 @@ int convert_matrixmarket_for_BIASSGD(std::string base_filename) {
             I--;  /* adjust from 1-based to 0-based */
             J--;
             globalMean += val; 
-            sharderobj.preprocessing_add_edge(I, M + J, biassgd_edge_type((float)val));
+            sharderobj.preprocessing_add_edge(I, M + J, svdpp_edge_type((float)val));
         }
         sharderobj.end_preprocessing();
         
@@ -218,7 +246,7 @@ struct  MMOutputter : public VCallback<vertex_data> {
     
     void callback(vid_t vertex_id, vertex_data &vec) {
         for(int i=0; i < NLATENT; i++) {
-            fprintf(outf, "%lf\n", vec.d[i]);
+            fprintf(outf, "%lf\n", vec.pvec[i]);
         }
     }
     
@@ -228,14 +256,14 @@ struct  MMOutputter : public VCallback<vertex_data> {
     
 };
 
-void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+void output_svdpp_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
     MMOutputter mmoutput_left(filename + "_U.mm", max_left_vertex + 1);
     foreach_vertices<vertex_data>(filename, 0, max_left_vertex + 1, mmoutput_left);
     
     
     MMOutputter mmoutput_right(filename + "_V.mm", numvertices - max_left_vertex - 2);
     foreach_vertices<vertex_data>(filename, max_left_vertex + 1, numvertices-1, mmoutput_right);
-    logstream(LOG_INFO) << "BIASSGD output files (in matrix market format): " << filename + "_U.mm" <<
+    logstream(LOG_INFO) << "SVDPPPP output files (in matrix market format): " << filename + "_U.mm" <<
     ", " << filename + "_V.mm" << std::endl;
 }
 
