@@ -214,43 +214,14 @@ int convert_matrixmarket_for_SGD(std::string base_filename) {
     return nshards;
 }
 
-struct  MMOutputter : public VCallback<vertex_data> {
-    FILE * outf;
-    MMOutputter(std::string fname, vid_t nvertices)  {
-        MM_typecode matcode;
-        mm_initialize_typecode(&matcode);
-        mm_set_matrix(&matcode);
-        mm_set_array(&matcode);
-        mm_set_real(&matcode);
-        
-        outf = fopen(fname.c_str(), "w");
-        assert(outf != NULL);
-        mm_write_banner(outf, matcode);
-        mm_write_mtx_array_size(outf, nvertices, NLATENT); 
-    }
-    
-    void callback(vid_t vertex_id, vertex_data &vec) {
-        for(int i=0; i < NLATENT; i++) {
-            fprintf(outf, "%lf\n", vec.d[i]);
-        }
-    }
-    
-    ~MMOutputter() {
-        if (outf != NULL) fclose(outf);
-    }
-    
-};
-
-void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-    MMOutputter mmoutput_left(filename + "_U.mm", max_left_vertex + 1);
-    foreach_vertices<vertex_data>(filename, 0, max_left_vertex + 1, mmoutput_left);
-    
-    
-    MMOutputter mmoutput_right(filename + "_V.mm", numvertices - max_left_vertex - 2);
-    foreach_vertices<vertex_data>(filename, max_left_vertex + 1, numvertices-1, mmoutput_right);
-    logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename + "_U.mm" <<
-    ", " << filename + "_V.mm" << std::endl;
+void set_matcode(MM_typecode & matcode){
+  mm_initialize_typecode(&matcode);
+  mm_set_matrix(&matcode);
+  mm_set_array(&matcode);
+  mm_set_real(&matcode);
 }
+
+
 
 
 

@@ -291,6 +291,37 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     
 };
 
+struct  MMOutputter{
+  FILE * outf;
+  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+    MM_typecode matcode;
+    set_matcode(matcode);     
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    for (uint i=start; i < end; i++)
+      for(int j=0; j < NLATENT; j++) {
+        fprintf(outf, "%lf\n", latent_factors_inmem[i].d[j]);
+    }
+  }
+
+  ~MMOutputter() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices - max_left_vertex - 1, "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
+
+  logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                             ", " << filename + "_V.mm " << std::endl;
+}
+
+
 int main(int argc, const char ** argv) {
     logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
      " comments or bug reports to danny.bickson@gmail.com " << std::endl;
