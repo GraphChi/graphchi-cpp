@@ -290,6 +290,84 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
 
 };
 
+struct  MMOutputter{
+  FILE * outf;
+  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+    MM_typecode matcode;
+    set_matcode(matcode);     
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    for (uint i=start; i < end; i++)
+      for(int j=0; j < NLATENT; j++) {
+        fprintf(outf, "%lf\n", latent_factors_inmem[i].d[j]);
+    }
+  }
+
+  ~MMOutputter() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+struct  MMOutputter_bias{
+  FILE * outf;
+  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
+    MM_typecode matcode;
+    set_matcode(matcode);
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, 1); 
+    for (uint i=start; i< end; i++)
+       fprintf(outf, "%lg\n", latent_factors_inmem[i].bias);
+  }
+
+
+  ~MMOutputter_bias() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+
+struct  MMOutputter_global_mean {
+  FILE * outf;
+  MMOutputter_global_mean(std::string fname, std::string comment)  {
+    MM_typecode matcode;
+    set_matcode(matcode);
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, 1, 1); 
+    fprintf(outf, "%lg\n", globalMean);
+  }
+
+  ~MMOutputter_global_mean() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+
+
+
+void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains bias-SGD output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices - max_left_vertex - 1, "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, max_left_vertex + 1, "This file contains bias-SGD output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", max_left_vertex +1 ,numvertices - max_left_vertex - 1, "This file contains bias-SGD output bias vector. In each row a single item bias.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
+
+  logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                             ", " << filename + "_V.mm, " << filename << "_U_bias.mm, " << filename << "_V_bias.mm, " << filename << "_global_mean.mm" << std::endl;
+}
+
+
 int main(int argc, const char ** argv) {
   logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
     " comments or bug reports to danny.bickson@gmail.com " << std::endl;
