@@ -44,11 +44,33 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
-typedef latentvec_t VertexDataType;
+typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
     
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
-std::vector<latentvec_t> latent_factors_inmem;
+std::vector<vertex_data> latent_factors_inmem;
+
+/** compute a missing value based on SGD algorithm */
+float sgd_predict(const vertex_data& user, 
+                const vertex_data& movie, 
+                const float rating, 
+                double & prediction){
+ 
+
+  prediction = 0;
+  for (int j=0; j< NLATENT; j++)
+    prediction += user.d[j]* movie.d[j];  
+
+  //truncate prediction to allowed values
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  //return the squared error
+  float err = rating - prediction;
+  assert(!std::isnan(err));
+  return err*err; 
+ 
+}
+
 
 void test_predictions() {
     int ret_code;
@@ -75,11 +97,12 @@ void test_predictions() {
     if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
         logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
-   
-    if (vM != M || vN != N)
+    
+    if ((M > 0 && N > 0 ) && (vM != M || vN != N))
       logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
 
+ 
     mm_write_banner(fout, matcode);
     mm_write_mtx_crd_size(fout ,M,N,nz); 
  
@@ -92,9 +115,8 @@ void test_predictions() {
               logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
             I--;  /* adjust from 1-based to 0-based */
             J--;
-    	    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-            prediction = std::max(prediction, minval);
-            prediction = std::min(prediction, maxval);
+	    double prediction;
+            sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], 0, prediction);        
             fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
     }
     fclose(f);
@@ -131,7 +153,7 @@ void validation_rmse() {
     if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
         logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
-    if (vM != M || vN != N)
+    if ((M > 0 && N > 0 ) && (vM != M || vN != N))
       logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
  
@@ -150,10 +172,8 @@ void validation_rmse() {
             I--;  /* adjust from 1-based to 0-based */
             J--;
             
-    	    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-            prediction = std::max(prediction, minval);
-            prediction = std::min(prediction, maxval);
-            validation_rmse += (prediction - val)*(prediction-val);
+    	    double prediction;
+            validation_rmse += sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], val, prediction);
     }
     fclose(f);
 
@@ -170,7 +190,7 @@ void validation_rmse() {
 struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     // Helper
-    virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
+    virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
         vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
         latent_factors_inmem[vertex.id()] = fact;
     }
@@ -208,7 +228,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
              on each run, GraphChi will modify the data files. To start from scratch, it is easiest
              do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
 
-            latentvec_t latentfac;
+            vertex_data latentfac;
             latentfac.init();
             set_latent_factor(vertex, latentfac);
         /* Hack: we need to count ourselves the number of vertices on left
@@ -232,14 +252,13 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
         } else {
 	    if ( vertex.num_edges() > 0){
-            latentvec_t & user = latent_factors_inmem[vertex.id()]; 
+            vertex_data & user = latent_factors_inmem[vertex.id()]; 
             user.rmse = 0; 
             for(int e=0; e < vertex.num_edges(); e++) {
                 float observation = vertex.edge(e)->get_data();                
-                latentvec_t & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-                double estScore = user.dot(movie);
-                estScore = std::max(estScore, minval);
-                estScore = std::min(estScore, maxval);
+                vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+                double estScore;
+                user.rmse += sgd_predict(user, movie, observation, estScore);
                 double err = observation - estScore;
                 if (isnan(err) || isinf(err))
                   logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
@@ -291,7 +310,7 @@ int main(int argc, const char ** argv) {
     if (test == "")
        test += training + "t";
 
-    int niters           = get_option_int("niters", 6);  // Number of iterations
+    int niters    = get_option_int("niters", 6);  // Number of iterations
     sgd_lambda    = get_option_float("sgd_lambda", 1e-3);
     sgd_gamma     = get_option_float("sgd_gamma", 1e-3);
     sgd_step_dec  = get_option_float("sgd_step_dec", 0.9);

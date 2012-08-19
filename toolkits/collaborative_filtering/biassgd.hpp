@@ -24,13 +24,13 @@
  *
  * @section DESCRIPTION
  *
- * Common code for SGD implementations.
+ * Common code for BIASSGD implementations.
  */
 
 
 
-#ifndef DEF_SGDHPP
-#define DEF_SGDHPP
+#ifndef DEF_BIASSGDHPP
+#define DEF_BIASSGDHPP
 
 #include <assert.h>
 #include <cmath>
@@ -68,9 +68,9 @@ using namespace graphchi;
 #define NLATENT 5   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double sgd_lambda = 1e-3;
-double sgd_gamma = 1e-3;
-double sgd_step_dec = 0.9;
+double biassgd_lambda = 1e-3;
+double biassgd_gamma = 1e-3;
+double biassgd_step_dec = 0.9;
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
@@ -81,7 +81,7 @@ int M, N;
 
 /// RMSE computation
 double rmse=0.0;
-
+double globalMean = 0;
 
 // Hackish: we need to count the number of left
 // and right vertices in the bipartite graph ourselves.
@@ -91,7 +91,8 @@ vid_t max_right_vertex = 0;
 struct vertex_data {
     double d[NLATENT];
     double rmse;
-    
+    double bias;
+ 
     vertex_data() {
     }
     
@@ -99,6 +100,7 @@ struct vertex_data {
         for(int k=0; k < NLATENT; k++) 
            d[k] =  drand48(); 
         rmse = 0;
+        bias = 0;
     }
     
     double & operator[] (int idx) {
@@ -119,13 +121,13 @@ struct vertex_data {
 
 
 
-struct sgd_factor_and_weight {
+struct biassgd_factor_and_weight {
     vertex_data factor;
     float weight;
     
-    sgd_factor_and_weight() {}
+    biassgd_factor_and_weight() {}
     
-    sgd_factor_and_weight(float obs) {
+    biassgd_factor_and_weight(float obs) {
         weight = obs;
         factor.init();
     }
@@ -138,8 +140,8 @@ struct sgd_factor_and_weight {
  * with the same id as the row number (0-based), but vertices correponsing to columns
  * have id + num-rows.
  */
-template <typename sgd_edge_type>
-int convert_matrixmarket_for_SGD(std::string base_filename) {
+template <typename biassgd_edge_type>
+int convert_matrixmarket_for_BIASSGD(std::string base_filename) {
     // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
     int ret_code;
     MM_typecode matcode;
@@ -150,13 +152,13 @@ int convert_matrixmarket_for_SGD(std::string base_filename) {
      * Create sharder object
      */
     int nshards;
-    if ((nshards = find_shards<sgd_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+    if ((nshards = find_shards<biassgd_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
         logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
         logstream(LOG_INFO) << "If this is not intended, please delete the shard files and try again. " << std::endl;
         return nshards;
     }   
     
-    sharder<sgd_edge_type> sharderobj(base_filename);
+    sharder<biassgd_edge_type> sharderobj(base_filename);
     sharderobj.start_preprocessing();
     
     
@@ -195,18 +197,19 @@ int convert_matrixmarket_for_SGD(std::string base_filename) {
               logstream(LOG_FATAL)<<"Error processing input file " << base_filename << " at data row " << i <<std::endl;
             I--;  /* adjust from 1-based to 0-based */
             J--;
-            
-            sharderobj.preprocessing_add_edge(I, M + J, sgd_edge_type((float)val));
+            globalMean += val; 
+            sharderobj.preprocessing_add_edge(I, M + J, biassgd_edge_type((float)val));
         }
         sharderobj.end_preprocessing();
         
     } else {
         logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
     }
-    if (f !=stdin) fclose(f);
     
+    fclose(f);
+    globalMean /= nz;
     
-    logstream(LOG_INFO) << "Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
     
     // Shard with a specified number of shards, or determine automatically if not defined
     nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
@@ -241,14 +244,14 @@ struct  MMOutputter : public VCallback<vertex_data> {
     
 };
 
-void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
     MMOutputter mmoutput_left(filename + "_U.mm", max_left_vertex + 1);
     foreach_vertices<vertex_data>(filename, 0, max_left_vertex + 1, mmoutput_left);
     
     
     MMOutputter mmoutput_right(filename + "_V.mm", numvertices - max_left_vertex - 2);
     foreach_vertices<vertex_data>(filename, max_left_vertex + 1, numvertices-1, mmoutput_right);
-    logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename + "_U.mm" <<
+    logstream(LOG_INFO) << "BIASSGD output files (in matrix market format): " << filename + "_U.mm" <<
     ", " << filename + "_V.mm" << std::endl;
 }
 

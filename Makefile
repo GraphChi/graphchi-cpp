@@ -38,6 +38,7 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 cf: toolkits/collaborative_filtering/als.cpp toolkits/collaborative_filtering/sgd.hpp
 	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/als.cpp  -o bin/als
 	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/sgd.cpp  -o bin/sgd
+	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/biassgd.cpp  -o bin/biassgd
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config
