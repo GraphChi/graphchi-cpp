@@ -69,16 +69,16 @@ struct svdpp_params{
  float step_dec;
 
   svdpp_params(){
-  itmBiasStep = 1e-1f;
-  itmBiasReg = 1e-3f;
-  usrBiasStep = 1e-1f;
-  usrBiasReg = 5e-3f;
-  usrFctrStep = 1e-1f;
-  usrFctrReg = 2e-2f;
-  itmFctrStep = 1e-1f;
-  itmFctrReg = 1e-2f; //gamma7
-  itmFctr2Step = 1e-1f;
-  itmFctr2Reg = 1e-3f;
+  itmBiasStep = 1e-4f;
+  itmBiasReg = 1e-4f;
+  usrBiasStep = 1e-4f;
+  usrBiasReg = 2e-4f;
+  usrFctrStep = 1e-4f;
+  usrFctrReg = 2e-4f;
+  itmFctrStep = 1e-4f;
+  itmFctrReg = 1e-4f; //gamma7
+  itmFctr2Step = 1e-4f;
+  itmFctr2Reg = 1e-4f;
   step_dec = 0.9;
  }
 };

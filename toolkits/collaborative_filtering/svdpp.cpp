@@ -197,7 +197,6 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     if (iteration == 0) {
       latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
     }
-    rmse = 0;
   }
 
   /**
