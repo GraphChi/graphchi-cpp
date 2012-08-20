@@ -126,7 +126,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
           double estScore = 0;
           user.rmse += bias_sgd_predict(user, movie, observation, estScore);
           double err = observation - estScore;
-          if (isnan(err) || isinf(err))
+          if (std::isnan(err) || std::isinf(err))
             logstream(LOG_FATAL)<<"BIASSGD got into numerical error. Please tune step size using --biassgd_gamma and biassgd_lambda" << std::endl;
 
           user.bias += biassgd_gamma*(err - biassgd_lambda* user.bias);

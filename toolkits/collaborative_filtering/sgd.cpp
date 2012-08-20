@@ -138,7 +138,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
                 double estScore;
                 user.rmse += sgd_predict(user, movie, observation, estScore);
                 double err = observation - estScore;
-                if (isnan(err) || isinf(err))
+                if (std::isnan(err) || std::isinf(err))
                   logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
                 for (int i=0; i< NLATENT; i++){
                    movie.d[i] += sgd_gamma*(err*user.d[i] - sgd_lambda*movie.d[i]);
