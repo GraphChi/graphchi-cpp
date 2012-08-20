@@ -81,6 +81,15 @@ namespace graphchi {
         }
     }
     
+    static int VARIABLE_IS_NOT_USED get_config_option_int(const char *option_name) {
+        if (conf.find(option_name) != conf.end()) {
+            return atoi(conf[option_name].c_str());
+        } else {
+            std::cout << "ERROR: could not find option " << option_name << " from config.";
+            assert(false);
+        }
+    }
+    
     static uint64_t VARIABLE_IS_NOT_USED get_config_option_long(const char *option_name, uint64_t default_value) {
         if (conf.find(option_name) != conf.end()) {
             return atol(conf[option_name].c_str());
@@ -102,12 +111,31 @@ namespace graphchi {
         _argv = (char**)argv;
         _cmd_configured = true;
         conf = loadconfig(filename_config_local(), filename_config());
+        
+        /* Load --key=value type arguments into the conf map */
+        std::string prefix = "--";
+        for (int i = 1; i < argc; i++) {
+            std::string arg = std::string(_argv[i]);
+            
+            if (arg.substr(0, prefix.size()) == prefix) {
+                arg = arg.substr(prefix.size());
+                size_t a = arg.find_first_of("=", 0);
+                if (a != arg.npos) {
+                    std::string key = arg.substr(0, a);
+                    std::string val = arg.substr(a + 1);
+                    
+                    std::cout << "[" << key << "]" << " => " << "[" << val << "]" << std::endl;
+                    conf[key] = val;
+                }
+            }
+        }
+
     }
     
     static void graphchi_init(int argc, const char ** argv);
     static void graphchi_init(int argc, const char ** argv) {
         set_argc(argc, argv);
-    }
+            }
     
     static void check_cmd_init() {
         if (!_cmd_configured) {
@@ -116,13 +144,16 @@ namespace graphchi {
         }
     }
     
+    
+
+    
     static std::string VARIABLE_IS_NOT_USED get_option_string(const char *option_name,
                                          std::string default_value)
     {
         check_cmd_init();
         int i;
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return std::string(_argv[i + 1]);
         return get_config_option_string(option_name, default_value);
@@ -133,12 +164,10 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return std::string(_argv[i + 1]);
-        
-        std::cout << "Error: command line argument [" << std::string(option_name) << "] is required!" << std::endl;
-        assert(false);
+        return get_config_option_string(option_name);
     }
     
     static std::string VARIABLE_IS_NOT_USED get_option_string_interactive(const char *option_name, std::string options)
@@ -146,7 +175,7 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return std::string(_argv[i + 1]);
         
@@ -168,7 +197,7 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return atoi(_argv[i + 1]);
         
@@ -180,12 +209,12 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return atoi(_argv[i + 1]);
         
-        std::cout << "Error: command line argument [" << std::string(option_name) << "] is required!" << std::endl;
-        assert(false);
+        return get_config_option_int(option_name);
+
     }
 
     
@@ -195,7 +224,7 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return atol(_argv[i + 1]);
         return get_config_option_long(option_name, default_value);
@@ -206,7 +235,7 @@ namespace graphchi {
         int i;
         check_cmd_init();
         
-        for (i = _argc - 2; i >= 0; i -= 2)
+        for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return (float)atof(_argv[i + 1]);
         return (float) get_config_option_double(option_name, default_value);
