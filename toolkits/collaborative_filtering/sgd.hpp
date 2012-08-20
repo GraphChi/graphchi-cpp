@@ -65,7 +65,7 @@ using namespace graphchi;
 
 
 #ifndef NLATENT
-#define NLATENT 5   // Dimension of the latent factors. You can specify this in compile time as well (in make).
+#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
 double sgd_lambda = 1e-3;
