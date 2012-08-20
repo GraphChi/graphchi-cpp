@@ -122,6 +122,9 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void before_iteration(int iteration, graphchi_context &gcontext) {
     if (iteration == 0) {
       latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
+      assert(M > 0 && N > 0);
+      max_left_vertex = M-1;
+      max_right_vertex = M+N-1;
     }
   }
 
@@ -130,22 +133,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     if (gcontext.iteration == 0) {
-      /* On first iteration, initialize vertex (and its edges). This is usually required, because
-         on each run, GraphChi will modify the data files. To start from scratch, it is easiest
-         do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
-
-      vertex_data latentfac;
-      set_latent_factor(vertex, latentfac);
-      /* Hack: we need to count ourselves the number of vertices on left
-         and right side of the bipartite graph.
-TODO: maybe there should be specialized support for bipartite graphs in GraphChi?
-*/
-      if (vertex.num_outedges() > 0) {
-        // Left side on the bipartite graph
-        max_left_vertex = std::max(vertex.id(), max_left_vertex);
-      } else {
-        max_right_vertex = std::max(vertex.id(), max_right_vertex);
-      }
 
     } else {
       mat XtX(NLATENT, NLATENT); 

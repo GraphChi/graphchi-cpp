@@ -95,6 +95,9 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     void before_iteration(int iteration, graphchi_context &gcontext) {
         if (iteration == 0) {
             latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
+            assert(M > 0 && N > 0);
+            max_left_vertex = M-1;
+            max_right_vertex = M+N-1;
         }
         rmse = 0;
     }
@@ -125,25 +128,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
             vertex_data latentfac;
             latentfac.init();
             set_latent_factor(vertex, latentfac);
-        /* Hack: we need to count ourselves the number of vertices on left
-           and right side of the bipartite graph.
-           TODO: maybe there should be specialized support for bipartite graphs in GraphChi?
-        */
-        if (vertex.num_outedges() > 0) {
-            // Left side on the bipartite graph
-            if (vertex.id() > max_left_vertex) {
-                //lock.lock();
-                max_left_vertex = std::max(vertex.id(), max_left_vertex);
-                //lock.unlock();
-            }
-        } else {
-            if (vertex.id() > max_right_vertex) {
-                //lock.lock();
-                max_right_vertex = std::max(vertex.id(), max_right_vertex);
-                //lock.unlock();
-            }
-        }
-
         } else {
 	    if ( vertex.num_outedges() > 0){
             vertex_data & user = latent_factors_inmem[vertex.id()]; 

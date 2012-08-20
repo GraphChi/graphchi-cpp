@@ -43,10 +43,9 @@ int convert_matrixmarket(std::string base_filename) {
   int nshards;
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-    logstream(LOG_INFO) << "If this is not intended, please delete the shard files and try again. " << std::endl;    logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
     int rc = fscanf(inf,"%d\n%d\n%lg",&M, &N, &globalMean);
-    if (rc != 1)
+    if (rc != 3)
        logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
     fclose(inf);
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
@@ -105,7 +104,7 @@ int convert_matrixmarket(std::string base_filename) {
     globalMean /= nz;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%lg\n", globalMean);
+    fprintf(outf, "%d\n%d\n%lg\n", M, N, globalMean);
     fclose(outf);
 
 
