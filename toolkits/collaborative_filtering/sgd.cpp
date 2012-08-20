@@ -50,6 +50,8 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
+#include "rmse.hpp"
+
 /** compute a missing value based on SGD algorithm */
 float sgd_predict(const vertex_data& user, 
                 const vertex_data& movie, 
@@ -71,114 +73,6 @@ float sgd_predict(const vertex_data& user,
  
 }
 
-
-void test_predictions() {
-    int ret_code;
-    MM_typecode matcode;
-    FILE *f;
-    int vM, vN, nz;   
-    
-    if ((f = fopen(test.c_str(), "r")) == NULL) {
-       return; //missing validaiton data, nothing to compute
-    }
-    FILE * fout = fopen((test + ".predict").c_str(),"w");
-    if (fout == NULL)
-       logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
-    
-    if (mm_read_banner(f, &matcode) != 0)
-        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-    
-    /*  This is how one can screen matrix types if their application */
-    /*  only supports a subset of the Matrix Market data types.      */
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-    
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
-    
-    if ((M > 0 && N > 0 ) && (vM != M || vN != N))
-      logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
-
- 
-    mm_write_banner(fout, matcode);
-    mm_write_mtx_crd_size(fout ,M,N,nz); 
- 
-    for (int i=0; i<nz; i++)
-    {
-            int I, J;
-            double val;
-            int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-            if (rc != 3)
-              logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-            I--;  /* adjust from 1-based to 0-based */
-            J--;
-	    double prediction;
-            sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], 0, prediction);        
-            fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
-    }
-    fclose(f);
-    fclose(fout);
-
-    logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
-}
-
-  /**
-  compute validation rmse
- */
-void validation_rmse() {
-    int ret_code;
-    MM_typecode matcode;
-    FILE *f;
-    int vM, vN, nz;   
-    
-    if ((f = fopen(validation.c_str(), "r")) == NULL) {
-       return; //missing validaiton data, nothing to compute
-    }
-    
-    
-    if (mm_read_banner(f, &matcode) != 0)
-        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-    
-    
-    /*  This is how one can screen matrix types if their application */
-    /*  only supports a subset of the Matrix Market data types.      */
-    
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-    
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-        logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
-    if ((M > 0 && N > 0 ) && (vM != M || vN != N))
-      logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
- 
-    double validation_rmse = 0;   
- 
-    for (int i=0; i<nz; i++)
-    {
-            int I, J;
-            double val;
-            int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-	   
-            if (rc != 3)
-              logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-            if (val < minval || val > maxval)
-              logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
-            I--;  /* adjust from 1-based to 0-based */
-            J--;
-            
-    	    double prediction;
-            validation_rmse += sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], val, prediction);
-    }
-    fclose(f);
-
-    logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
-}
 
 
 
@@ -210,7 +104,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
      */
     void after_iteration(int iteration, graphchi_context &gcontext) {
        sgd_lambda *= sgd_step_dec;
-       validation_rmse();
+       validation_rmse(&sgd_predict);
        rmse = 0;
 #pragma omp parallel for reduction(+:rmse)
        for (uint i=0; i< max_left_vertex; i++){
@@ -251,7 +145,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         }
 
         } else {
-	    if ( vertex.num_edges() > 0){
+	    if ( vertex.num_outedges() > 0){
             vertex_data & user = latent_factors_inmem[vertex.id()]; 
             user.rmse = 0; 
             for(int e=0; e < vertex.num_edges(); e++) {
@@ -268,7 +162,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
                 }
                 user.rmse +=  err*err;
             }
-
+            set_latent_factor(vertex, user);
             }
         }
         
@@ -351,7 +245,7 @@ int main(int argc, const char ** argv) {
     minval        = get_option_float("minval", -1e100);
 
     /* Preprocess data if needed, or discover preprocess files */
-    int nshards = convert_matrixmarket_for_SGD<float>(training);
+    int nshards = convert_matrixmarket<float>(training);
     
     /* Run */
     SGDVerticesInMemProgram program;
@@ -365,7 +259,7 @@ int main(int argc, const char ** argv) {
     vid_t numvertices = engine.num_vertices();
     assert(numvertices == max_right_vertex + 1); // Sanity check
     output_sgd_result(training, numvertices, max_left_vertex);
-    test_predictions();    
+    test_predictions(&sgd_predict);    
     
     
     /* Report execution metrics */

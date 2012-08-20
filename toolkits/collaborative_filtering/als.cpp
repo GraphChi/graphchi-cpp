@@ -73,122 +73,33 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
-typedef latentvec_t VertexDataType;
+typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
-std::vector<latentvec_t> latent_factors_inmem;
-/**
-  compute validation rmse
-  */
-void test_predictions() {
-  int ret_code;
-  MM_typecode matcode;
-  FILE *f;
-  int vM, vN, nz;   
+std::vector<vertex_data> latent_factors_inmem;
 
-  if ((f = fopen(test.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
-  }
-  FILE * fout = fopen((test + ".predict").c_str(),"w");
-  if (fout == NULL)
-    logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
 
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+#include "rmse.hpp"
 
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+/** compute a missing value based on ALS algorithm */
+float als_predict(const vertex_data& user, 
+                const vertex_data& movie, 
+                const float rating, 
+                double & prediction){
+ 
 
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-
-  if ((M > 0 && N > 0 ) && (vM != M || vN != N))
-    logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
-  mm_write_banner(fout, matcode);
-  mm_write_mtx_crd_size(fout ,M,N,nz); 
-
-  for (int i=0; i<nz; i++)
-  {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-    I--;  /* adjust from 1-based to 0-based */
-    J--;
-    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-    prediction = std::max(prediction, minval);
-    prediction = std::min(prediction, maxval);
-    fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
-  }
-  fclose(f);
-  fclose(fout);
-
-  logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+  prediction = user.dot(movie);
+  //truncate prediction to allowed values
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  //return the squared error
+  float err = rating - prediction;
+  assert(!std::isnan(err));
+  return err*err; 
+ 
 }
 
-
-/**
-  compute validation rmse
-  */
-void validation_rmse() {
-  int ret_code;
-  MM_typecode matcode;
-  FILE *f;
-  int vM, vN, nz;   
-
-  if ((f = fopen(validation.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
-  }
-
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-  if ((M > 0 && N > 0) && (vM != M || vN != N))
-    logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
-
-  double validation_rmse = 0;   
-
-  for (int i=0; i<nz; i++)
-  {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-    if (val < minval || val > maxval)
-      logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
-    I--;  /* adjust from 1-based to 0-based */
-    J--;
-
-    double prediction = latent_factors_inmem[I].dot(latent_factors_inmem[J]);        
-    prediction = std::max(prediction, minval);
-    prediction = std::min(prediction, maxval);
-    validation_rmse += (prediction - val)*(prediction-val);
-  }
-  fclose(f);
-
-  logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
-}
 
 
 
@@ -200,7 +111,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 
   // Helper
-  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, latentvec_t &fact) {
+  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
     vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
     latent_factors_inmem[vertex.id()] = fact;
   }
@@ -223,8 +134,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
          on each run, GraphChi will modify the data files. To start from scratch, it is easiest
          do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
 
-      latentvec_t latentfac;
-      latentfac.init();
+      vertex_data latentfac;
       set_latent_factor(vertex, latentfac);
       /* Hack: we need to count ourselves the number of vertices on left
          and right side of the bipartite graph.
@@ -246,11 +156,11 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
       // Compute XtX and Xty (NOTE: unweighted)
       for(int e=0; e < vertex.num_edges(); e++) {
         float observation = vertex.edge(e)->get_data();                
-        latentvec_t & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         for(int i=0; i<NLATENT; i++) {
-          Xty(i) += nbr_latent[i] * observation;
+          Xty(i) += nbr_latent.d[i] * observation;
           for(int j=i; j < NLATENT; j++) {
-            XtX(j,i) += nbr_latent[i] * nbr_latent[j];
+            XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j];
           }
         }
       }
@@ -267,8 +177,8 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
 
       // Convert to plain doubles (this is useful because now the output data by GraphCHI
       // is plain binary double matrix that can be read, for example, by Matlab).
-      latentvec_t newlatent;
-      for(int i=0; i < NLATENT; i++) newlatent[i] = veclatent[i];
+      vertex_data newlatent;
+      memcpy(newlatent.d, &veclatent[0], sizeof(double)*NLATENT);
       newlatent.rmse = 0; 
 
       bool compute_rmse = (vertex.num_outedges() > 0);
@@ -276,7 +186,7 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
         for(int e=0; e < vertex.num_edges(); e++) {        
           // Compute RMSE
           double observation = vertex.edge(e)->get_data();
-          latentvec_t & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
+          vertex_data & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
           double prediction = nbr_latent.dot(newlatent);
           prediction = std::min(maxval, prediction);
           prediction = std::max(minval, prediction);
@@ -287,10 +197,6 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
       }
 
       set_latent_factor(vertex, newlatent); 
-
-      if (vertex.id() % 100000 == 1) {
-        std::cout <<  gcontext.iteration << ": " << vertex.id() << std::endl;
-      }
     }
 
   }
@@ -307,7 +213,7 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
       rmse += latent_factors_inmem[i].rmse;
     }
     logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
-    validation_rmse();
+    validation_rmse(&als_predict);
   }
 
   /**
@@ -347,6 +253,7 @@ struct  MMOutputter{
 
 };
 
+
 void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
   MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices - max_left_vertex - 1, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
@@ -385,7 +292,7 @@ int main(int argc, const char ** argv) {
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket_for_ALS<float>(training);
+  int nshards = convert_matrixmarket<float>(training);
 
   /* Run */
   ALSVerticesInMemProgram program;
@@ -402,7 +309,7 @@ int main(int argc, const char ** argv) {
   vid_t numvertices = engine.num_vertices();
   assert(numvertices == max_right_vertex + 1); // Sanity check
   output_als_result(training, numvertices, max_left_vertex);
-  test_predictions();    
+  test_predictions(&als_predict);    
 
   /* Report execution metrics */
   metrics_report(m);
