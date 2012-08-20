@@ -49,6 +49,7 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
+#include "rmse.hpp"
 
 /** compute a missing value based on bias-SGD algorithm */
 float bias_sgd_predict(const vertex_data& user, 
@@ -57,9 +58,7 @@ float bias_sgd_predict(const vertex_data& user,
     double & prediction){
 
 
-  for (int j=0; j< NLATENT; j++)
-    prediction += user.d[j]* movie.d[j];  
-
+  prediction = globalMean + user.bias + movie.bias + user.dot(movie);  
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -72,112 +71,6 @@ float bias_sgd_predict(const vertex_data& user,
 }
 
 
-void test_predictions() {
-  int ret_code;
-  MM_typecode matcode;
-  FILE *f;
-  int vM, vN, nz;   
-
-  if ((f = fopen(test.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
-  }
-  FILE * fout = fopen((test + ".predict").c_str(),"w");
-  if (fout == NULL)
-    logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
-
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-
-  if ((M > 0 && N > 0 ) && (vM != M || vN != N))
-    logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
-
-  mm_write_banner(fout, matcode);
-  mm_write_mtx_crd_size(fout ,M,N,nz); 
-
-  for (int i=0; i<nz; i++)
-  {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-    I--;  /* adjust from 1-based to 0-based */
-    J--;
-    double prediction = 0;
-    bias_sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], 0, prediction);        
-    fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
-  }
-  fclose(f);
-  fclose(fout);
-
-  logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
-}
-
-/**
-  compute validation rmse
-  */
-void validation_rmse() {
-  int ret_code;
-  MM_typecode matcode;
-  FILE *f;
-  int vM, vN, nz;   
-
-  if ((f = fopen(validation.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
-  }
-
-
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
-    logstream(LOG_ERROR) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-  //if (vM != M || vN != N) //TODO
-  //  logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
-
-
-  double validation_rmse = 0;   
-
-  for (int i=0; i<nz; i++)
-  {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-    if (val < minval || val > maxval)
-      logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
-    I--;  /* adjust from 1-based to 0-based */
-    J--;
-
-    double prediction = 0;
-    validation_rmse += bias_sgd_predict(latent_factors_inmem[I], latent_factors_inmem[J], val, prediction);
-  }
-  fclose(f);
-
-  logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
-}
 
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -197,6 +90,9 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
   void before_iteration(int iteration, graphchi_context &gcontext) {
     if (iteration == 0) {
       latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
+      assert(M > 0 && N > 0);
+      max_left_vertex = M-1;
+      max_right_vertex = M+N-1;
     }
     rmse = 0;
   }
@@ -206,7 +102,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     biassgd_lambda *= biassgd_step_dec;
-    validation_rmse();
+    validation_rmse(&bias_sgd_predict);
     rmse = 0;
 #pragma omp parallel for reduction(+:rmse)
     for (uint i=0; i< max_left_vertex; i++){
@@ -220,34 +116,8 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     if (gcontext.iteration == 0) {
-      /* On first iteration, initialize vertex (and its edges). This is usually required, because
-         on each run, GraphChi will modify the data files. To start from scratch, it is easiest
-         do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
-
-      vertex_data latentfac;
-      latentfac.init();
-      set_latent_factor(vertex, latentfac);
-      /* Hack: we need to count ourselves the number of vertices on left
-         and right side of the bipartite graph.
-TODO: maybe there should be specialized support for bipartite graphs in GraphChi?
-*/
-      if (vertex.num_outedges() > 0) {
-        // Left side on the bipartite graph
-        if (vertex.id() > max_left_vertex) {
-          //lock.lock();
-          max_left_vertex = std::max(vertex.id(), max_left_vertex);
-          //lock.unlock();
-        }
-      } else {
-        if (vertex.id() > max_right_vertex) {
-          //lock.lock();
-          max_right_vertex = std::max(vertex.id(), max_right_vertex);
-          //lock.unlock();
-        }
-      }
-
     } else {
-      if ( vertex.num_edges() > 0){
+      if ( vertex.num_outedges() > 0){
         vertex_data & user = latent_factors_inmem[vertex.id()]; 
         user.rmse = 0; 
         for(int e=0; e < vertex.num_edges(); e++) {
@@ -267,6 +137,7 @@ TODO: maybe there should be specialized support for bipartite graphs in GraphChi
             user.d[i] += biassgd_gamma*(err*movie.d[i] - biassgd_lambda*user.d[i]);
           }
         }
+        set_latent_factor(vertex, user);
 
       }
     }
@@ -397,7 +268,7 @@ int main(int argc, const char ** argv) {
   minval            = get_option_float("minval", -1e100);
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket_for_BIASSGD<float>(training);
+  int nshards = convert_matrixmarket<float>(training);
 
   /* Run */
   BIASSGDVerticesInMemProgram program;
@@ -411,7 +282,7 @@ int main(int argc, const char ** argv) {
   vid_t numvertices = engine.num_vertices();
   assert(numvertices == max_right_vertex + 1); // Sanity check
   output_biassgd_result(training, numvertices, max_left_vertex);
-  test_predictions();    
+  test_predictions(&bias_sgd_predict);    
 
 
   /* Report execution metrics */
