@@ -126,7 +126,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
              do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
 
             vertex_data latentfac;
-            latentfac.init();
             set_latent_factor(vertex, latentfac);
         } else {
 	    if ( vertex.num_outedges() > 0){

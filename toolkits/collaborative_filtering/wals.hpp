@@ -2,12 +2,12 @@
 
 /**
  * @file
- * @author  Danny Bickson, Based on Code of Aapo Kyrola
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] Carnegie Mellon University
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,17 +20,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- 
+
  *
  * @section DESCRIPTION
  *
- * Common code for SGD implementations.
+ * Common code for WALS implementations.
  */
 
 
 
-#ifndef DEF_SGDHPP
-#define DEF_SGDHPP
+#ifndef DEF_WALSHPP
+#define DEF_WALSHPP
 
 #include <assert.h>
 #include <cmath>
@@ -45,32 +45,14 @@
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
 
-// See note above about Eigen
-#include "Eigen/Dense"
-#define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
-#include "Eigen/Sparse"
-#include "Eigen/Cholesky"
-#include "Eigen/Eigenvalues"
-#include "Eigen/SVD"
-using namespace Eigen;
-  
-
-typedef MatrixXd mat;
-typedef VectorXd vec;
-typedef VectorXi ivec;
-typedef MatrixXi imat;
-typedef SparseVector<double> sparse_vec;
-
+#include "eigen_wrapper.hpp"
 using namespace graphchi;
-
 
 #ifndef NLATENT
 #define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double sgd_lambda = 1e-3;
-double sgd_gamma = 1e-3;
-double sgd_step_dec = 0.9;
+double lambda = 0.065;
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
@@ -78,38 +60,37 @@ std::string validation;
 std::string test;
 int M, N;
 double globalMean = 0;
-
-/// RMSE computation
 double rmse=0.0;
-
-
-// Hackish: we need to count the number of left
-// and right vertices in the bipartite graph ourselves.
 vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
 
 struct vertex_data {
-    double d[NLATENT];
-    double rmse;
-    
-    vertex_data() {
-        for(int k=0; k < NLATENT; k++) 
-           d[k] =  drand48(); 
-        rmse = 0;
-    }
-    
-    double dot(vertex_data &oth) const {
-        double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
-        return x;
-    }
-    
+  double d[NLATENT];
+  double rmse;
+
+  vertex_data() {
+    for(int k=0; k < NLATENT; k++) d[k] =  drand48(); 
+    rmse = 0;
+  }
+
+  double dot(const vertex_data &oth) const {
+    double x=0;
+    for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
+    return x;
+  }
+
 };
 
+struct edge_data {
+  double weight;
+  double time;
+
+  edge_data() { weight = time = 0; }
+
+  edge_data(double weight, double time) : weight(weight), time(time) { }
+};
 
 #include "io.hpp"
-
-
 
 
 #endif
