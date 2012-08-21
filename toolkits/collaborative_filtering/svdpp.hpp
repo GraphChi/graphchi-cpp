@@ -90,7 +90,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N;
+int M, N, L, Me, Ne, Le;
 
 
 /// RMSE computation

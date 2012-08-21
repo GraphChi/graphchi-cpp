@@ -78,7 +78,6 @@ int convert_matrixmarket4(std::string base_filename) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
 
-
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
@@ -173,6 +172,7 @@ int convert_matrixmarket(std::string base_filename) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
 
+  L=nz;
 
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;

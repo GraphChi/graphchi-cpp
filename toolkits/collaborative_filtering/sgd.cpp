@@ -181,7 +181,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%lf\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
     }
   }
 
@@ -192,7 +192,7 @@ struct  MMOutputter{
 };
 void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices - max_left_vertex - 1, "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
 
   logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
                                                                              ", " << filename + "_V.mm " << std::endl;
