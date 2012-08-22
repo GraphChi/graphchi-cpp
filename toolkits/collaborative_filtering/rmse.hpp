@@ -1,5 +1,7 @@
 #ifndef DEF_RMSEHPP
 #define DEF_RMSEHPP
+#include <iostream>
+#include <iomanip>
 /**
  * @file
  * @author  Danny Bickson
@@ -114,14 +116,14 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
 
   double validation_rmse = 0;   
   int I, J;
-  double val, time;
+  double val, time = 1.0;
  
   for (int i=0; i<nz; i++)
   {
    int rc;
     if (tokens_per_row == 3)
       rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
-    else rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &val, &time);
+    else rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
 
     if (rc != tokens_per_row)
       logstream(LOG_FATAL)<<"Error when reading input file on line: " << i << " . should have" << tokens_per_row << std::endl;
@@ -130,13 +132,13 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J], val, prediction);
-    validation_rmse += (prediction - val)*(prediction-val);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction);
+    validation_rmse += time * pow(prediction - val, 2);
   }
   fclose(f);
 
   assert(Le > 0);
-  std::cout<<"  Validation RMSE: " << sqrt(validation_rmse/(double)Le)<< std::endl;
+  std::cout<<"  Validation RMSE: " << std::setw(10) << sqrt(validation_rmse/(double)Le)<< std::endl;
 }
 
 void training_rmse(int iteration){
@@ -145,6 +147,6 @@ void training_rmse(int iteration){
     for (uint i=0; i< max_left_vertex; i++){
       rmse += latent_factors_inmem[i].rmse;
     }
-    std::cout<<iteration<<") Training RMSE: " << sqrt(rmse/pengine->num_edges());
+    std::cout<< std::setw(3) <<iteration<<") Training RMSE: " << std::setw(10)<< sqrt(rmse/pengine->num_edges());
 }
 #endif //DEF_RMSEHPP
