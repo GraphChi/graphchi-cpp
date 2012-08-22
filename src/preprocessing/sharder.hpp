@@ -601,7 +601,7 @@ namespace graphchi {
                 memshard.only_adjacency = true;
                 logstream(LOG_INFO) << "Interval: " << interval_st << " " << interval_en << std::endl;
                 
-                for(vid_t subinterval_st=interval_st; subinterval_st < interval_en; ) {
+                for(vid_t subinterval_st=interval_st; subinterval_st <= interval_en; ) {
                     vid_t subinterval_en = std::min(interval_en, subinterval_st + subwindow);
                     logstream(LOG_INFO) << "(Degree proc.) Sub-window: [" << subinterval_st << " - " << subinterval_en << "]" << std::endl;
                     assert(subinterval_en >= subinterval_st && subinterval_en <= interval_en);
