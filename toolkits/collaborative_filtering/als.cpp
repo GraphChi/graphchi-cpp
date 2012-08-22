@@ -84,10 +84,10 @@ std::vector<vertex_data> latent_factors_inmem;
 
 /** compute a missing value based on ALS algorithm */
 float als_predict(const vertex_data& user, 
-                const vertex_data& movie, 
-                const float rating, 
-                double & prediction){
- 
+    const vertex_data& movie, 
+    const float rating, 
+    double & prediction){
+
 
   prediction = user.dot(movie);
   //truncate prediction to allowed values
@@ -97,7 +97,7 @@ float als_predict(const vertex_data& user,
   float err = rating - prediction;
   assert(!std::isnan(err));
   return err*err; 
- 
+
 }
 
 
@@ -132,64 +132,33 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-    if (gcontext.iteration == 0) {
+    vertex_data & vdata = latent_factors_inmem[vertex.id()];
+    vdata.rmse = 0;
+    mat XtX(NLATENT, NLATENT); 
+    XtX.setZero();
+    vec Xty(NLATENT);
+    Xty.setZero();
 
-    } else {
-      mat XtX(NLATENT, NLATENT); 
-      XtX.setZero();
-      vec Xty(NLATENT);
-      Xty.setZero();
-
-      // Compute XtX and Xty (NOTE: unweighted)
-      for(int e=0; e < vertex.num_edges(); e++) {
-        float observation = vertex.edge(e)->get_data();                
-        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        Map<vec> X(nbr_latent.d, NLATENT);
-        //for(int i=0; i<NLATENT; i++) {
-        Xty += X * observation;
-           //Xty(i) += nbr_latent.d[i] * observation;
-        XtX.triangularView<Eigen::Upper>() += X * X.transpose();
-          //for(int j=i; j < NLATENT; j++) {
-            //XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j];
-          //}
-        //}
+    bool compute_rmse = (vertex.num_outedges() > 0);
+    // Compute XtX and Xty (NOTE: unweighted)
+    for(int e=0; e < vertex.num_edges(); e++) {
+      float observation = vertex.edge(e)->get_data();                
+      vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+      Map<vec> X(nbr_latent.d, NLATENT);
+      Xty += X * observation;
+      XtX.triangularView<Eigen::Upper>() += X * X.transpose();
+      if (compute_rmse) {
+        double prediction;
+        vdata.rmse += als_predict(vdata, nbr_latent, observation, prediction);
       }
-
-      // Symmetrize
-      //for(int i=0; i <NLATENT; i++)
-      //  for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
-
-      // Diagonal
-      for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
-
-      // Solve the least squares problem with eigen using Cholesky decomposition
-      //vec veclatent = XtX.ldlt().solve(Xty);
-      vec veclatent = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
-
-      // Convert to plain doubles (this is useful because now the output data by GraphCHI
-      // is plain binary double matrix that can be read, for example, by Matlab).
-      vertex_data newlatent;
-      memcpy(newlatent.d, &veclatent[0], sizeof(double)*NLATENT);
-      newlatent.rmse = 0; 
-
-      bool compute_rmse = (vertex.num_outedges() > 0);
-      if (compute_rmse) { // Compute RMSE only on "right side" of bipartite graph
-        for(int e=0; e < vertex.num_edges(); e++) {        
-          // Compute RMSE
-          double observation = vertex.edge(e)->get_data();
-          vertex_data & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
-          double prediction = nbr_latent.dot(newlatent);
-          prediction = std::min(maxval, prediction);
-          prediction = std::max(minval, prediction);
-          newlatent.rmse += (prediction - observation) * (prediction - observation);                
-
-        }
-
-      }
-
-      set_latent_factor(vertex, newlatent); 
     }
 
+    for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+
+    // Solve the least squares problem with eigen using Cholesky decomposition
+    //vec veclatent = XtX.ldlt().solve(Xty);
+    Map<vec> vdata_vec(vdata.d, NLATENT);
+    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
@@ -236,7 +205,7 @@ struct  MMOutputter{
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
-    }
+      }
   }
 
   ~MMOutputter() {
@@ -250,7 +219,7 @@ void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_v
   MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
   MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "ALS output files (in matrix market format): " << filename << "_U.mm" <<
-                                                                             ", " << filename + "_V.mm " << std::endl;
+                                                                           ", " << filename + "_V.mm " << std::endl;
 }
 
 int main(int argc, const char ** argv) {
