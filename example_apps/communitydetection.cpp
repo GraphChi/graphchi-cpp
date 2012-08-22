@@ -124,18 +124,28 @@ struct CommunityDetectionProgram : public GraphChiProgram<VertexDataType, EdgeDa
             std::map<vid_t, int> counts;
             int maxcount=0;
             vid_t maxlabel=0;
+            /* Iterate over all the edges */
             for(int i=0; i < vertex.num_edges(); i++) {
+                /* Extract neighbor's current label. The edge contains the labels of
+                   both vertices it connects, so we need to use the right one. 
+                   (See comment for bidirectional_label above) */
                 bidirectional_label edgelabel = vertex.edge(i)->get_data();
                 vid_t nblabel = neighbor_label(edgelabel, vertex.id(), vertex.edge(i)->vertex_id());
+                
+                /* Check if this label (nblabel) has been encountered before ... */
                 std::map<vid_t, int>::iterator existing = counts.find(nblabel);
                 int newcount = 0;
                 if(existing == counts.end()) {
+                    /* ... if not, we add this label with count of one to the map */
                     counts.insert(std::pair<vid_t,int>(nblabel, 1));
                     newcount = 1;
                 } else {
+                    /* ... if yes, we increment the counter for this label by 1 */
                     existing->second++;
                     newcount = existing->second;
                 }
+                
+                /* Finally, we keep track of the most frequent label */
                 if (newcount > maxcount || (maxcount == newcount && nblabel > maxlabel)) {
                     maxlabel = nblabel;
                     maxcount = newcount;
