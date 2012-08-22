@@ -91,7 +91,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         }
         
         /* Check if label changed */
-        vertex.set_data(curmin);      
+        vertex.set_data(curmin);
         
         /** 
          * Broadcast new label to neighbors by writing the value

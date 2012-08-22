@@ -628,7 +628,7 @@ namespace graphchi {
                     logstream(LOG_INFO) << chicontext.runtime() << "s: Starting: " 
                         << sub_interval_st << " -- " << interval_en << std::endl;
                     
-                    while (sub_interval_st < interval_en) {
+                    while (sub_interval_st <= interval_en) {
                         
                         modification_lock.lock();
                         /* Determine the sub interval */
@@ -636,7 +636,7 @@ namespace graphchi {
                                                                 sub_interval_st, 
                                                                 std::min(interval_en, sub_interval_st + maxwindow), 
                                                                 size_t(membudget_mb) * 1024 * 1024);
-                        assert(sub_interval_en > sub_interval_st);
+                        assert(sub_interval_en >= sub_interval_st);
                         
                         logstream(LOG_INFO) << "Iteration " << iter << "/" << (niters - 1) << ", subinterval: " << sub_interval_st << " - " << sub_interval_en << std::endl;
                         
