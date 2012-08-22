@@ -272,13 +272,14 @@ namespace graphchi {
                 double max_shardsize = membudget_mb * 1024. * 1024. / 8;
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                 
-                nshards = (int) ( 2 + (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5); 
+                nshards = (int) ( 2 + (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5);
+                assert(nshards > 1);
+
             } else {
                 nshards = atoi(nshards_string.c_str());
             }
             
             logstream(LOG_INFO) << "Number of shards to be created: " << nshards << std::endl;
-            assert(nshards > 1);
         }
         
         void compute_partitionintervals() {
