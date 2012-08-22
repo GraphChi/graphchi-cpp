@@ -129,15 +129,13 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   }
 
   /**
-   *  Vertex update function.
+   *  Vertex update function - computes the least square step
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     vdata.rmse = 0;
-    mat XtX(NLATENT, NLATENT); 
-    XtX.setZero();
-    vec Xty(NLATENT);
-    Xty.setZero();
+    mat XtX = mat::Zero(NLATENT, NLATENT); 
+    vec Xty = vec::Zero(NLATENT);
 
     bool compute_rmse = (vertex.num_outedges() > 0);
     // Compute XtX and Xty (NOTE: unweighted)
@@ -156,7 +154,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     // Solve the least squares problem with eigen using Cholesky decomposition
-    //vec veclatent = XtX.ldlt().solve(Xty);
     Map<vec> vdata_vec(vdata.d, NLATENT);
     vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
@@ -167,12 +164,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    * Called after an iteration has finished.
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
-    rmse = 0;
-#pragma omp parallel for reduction(+:rmse)
-    for (uint i=0; i< max_left_vertex; i++){
-      rmse += latent_factors_inmem[i].rmse;
-    }
-    logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
+    training_rmse(iteration);
     validation_rmse(&als_predict);
   }
 
@@ -245,10 +237,13 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters    = get_option_int("niters", 6);  // Number of iterations
+  int niters    = get_option_int("max_iter", 6);  // Number of iterations
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
+  bool quiet    = get_option_int("quiet", 0);
+  if (quiet)
+    global_logger().set_log_level(LOG_ERROR);
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 
