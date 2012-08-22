@@ -87,7 +87,7 @@ int convert_matrixmarket4(std::string base_filename) {
   if (!sharderobj.preprocessed_file_exists()) {
     for (int i=0; i<nz; i++)
     {
-     int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &val, &time);
+     int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
     if (rc != 4)
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
       I--;  /* adjust from 1-based to 0-based */

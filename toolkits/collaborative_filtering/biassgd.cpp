@@ -243,7 +243,7 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters        = get_option_int("max_ier", 6);  // Number of iterations
+  int niters        = get_option_int("max_iter", 6);  // Number of iterations
   biassgd_lambda    = get_option_float("biassgd_lambda", 1e-3);
   biassgd_gamma     = get_option_float("biassgd_gamma", 1e-3);
   biassgd_step_dec  = get_option_float("biassgd_step_dec", 0.9);
