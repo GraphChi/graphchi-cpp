@@ -85,11 +85,6 @@ vid_t & my_label(bidirectional_label & bidir, vid_t myid, vid_t nbid) {
 }
 
  
-
-/**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
 typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef bidirectional_label EdgeDataType;  // Note, 8-byte edge data
 
@@ -119,7 +114,9 @@ struct CommunityDetectionProgram : public GraphChiProgram<VertexDataType, EdgeDa
         } else {
             if (vertex.num_edges() == 0) return; // trivial
             
-            // Find majority of neighbors' labels.
+            /* The basic idea is to find the label that is most popular among
+               this vertex's neighbors. This label will be chosen as the new label
+               of this vertex. */
             // This part could be optimized: STL map is quite slow.
             std::map<vid_t, int> counts;
             int maxcount=0;
