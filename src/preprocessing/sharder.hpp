@@ -551,7 +551,6 @@ namespace graphchi {
             std::vector<slidingshard_t * > sliding_shards;
             
             int subwindow = 5000000;
-            std::cout << "Subwindow : " << subwindow << std::endl;
             m.set("subwindow", (size_t)subwindow);
             
             int loadthreads = 4;
@@ -562,7 +561,7 @@ namespace graphchi {
             int blocksize = get_option_int("blocksize", 1024 * 1024);
             
             for(int p=0; p < nshards; p++) {
-                std::cout << "Initialize streaming shard: " << p << std::endl;
+                logstream(LOG_INFO) << "Initialize streaming shard: " << p << std::endl;
                 sliding_shards.push_back(
                                          new slidingshard_t(iomgr, filename_shard_edata<EdgeDataType>(basefilename, p, nshards), 
                                                             filename_shard_adj(basefilename, p, nshards), intervals[p].first, 
@@ -601,7 +600,7 @@ namespace graphchi {
                 memshard.only_adjacency = true;
                 logstream(LOG_INFO) << "Interval: " << interval_st << " " << interval_en << std::endl;
                 
-                for(vid_t subinterval_st=interval_st; subinterval_st < interval_en; ) {
+                for(vid_t subinterval_st=interval_st; subinterval_st <= interval_en; ) {
                     vid_t subinterval_en = std::min(interval_en, subinterval_st + subwindow);
                     logstream(LOG_INFO) << "(Degree proc.) Sub-window: [" << subinterval_st << " - " << subinterval_en << "]" << std::endl;
                     assert(subinterval_en >= subinterval_st && subinterval_en <= interval_en);
@@ -637,7 +636,7 @@ namespace graphchi {
                         }
                     }
                     
-                    m.stop_time(me, "stream_ahead", window,  true);  
+                    m.stop_time(me, "stream_ahead", window);  
                     
                     
                     metrics_entry mev = m.start_time();
