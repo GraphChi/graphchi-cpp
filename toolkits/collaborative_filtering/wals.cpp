@@ -1,11 +1,11 @@
 /**
  * @file
- * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] Carnegie Mellon University]
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,36 +22,9 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
- * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
- * and Danny Bickson (CMU). A good explanation of the algorithm is 
- * given in the following paper:
- *    Large-Scale Parallel Collaborative Filtering for the Netflix Prize
- *    Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan
- *    http://www.springerlink.com/content/j1076u0h14586183/
- *
- * Faster version of ALS, which stores latent factors of vertices in-memory.
- * Thus, this version requires more memory. See the version "als_edgefactors"
- * for a low-memory implementation.
- *
- *
- * In the code, we use movie-rating terminology for clarity. This code has been
- * tested with the Netflix movie rating challenge, where the task is to predict
- * how user rates movies in range from 1 to 5.
- *
- * This code is has integrated preprocessing, 'sharding', so it is not necessary
- * to run sharder prior to running the matrix factorization algorithm. Input
- * data must be provided in the Matrix Market format (http://math.nist.gov/MatrixMarket/formats.html).
- *
- * ALS uses free linear algebra library 'Eigen'. See Readme_Eigen.txt for instructions
- * how to obtain it.
- *
- * At the end of the processing, the two latent factor matrices are written into files in 
- * the matrix market format. 
  *
  * @section USAGE
  *
- * bin/example_apps/matrix_factorization/als_edgefactors file <matrix-market-input> niters 5
  *
  * 
  */
@@ -62,9 +35,7 @@
 #include <algorithm>
 
 #include "graphchi_basic_includes.hpp"
-
-/* ALS-related classes are contained in als.hpp */
-#include "als.hpp"
+#include "wals.hpp"
 
 using namespace graphchi;
 
@@ -74,7 +45,7 @@ using namespace graphchi;
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
@@ -82,12 +53,12 @@ std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
 
-/** compute a missing value based on ALS algorithm */
-float als_predict(const vertex_data& user, 
-    const vertex_data& movie, 
-    const float rating, 
-    double & prediction){
-
+/** compute a missing value based on WALS algorithm */
+float wals_predict(const vertex_data& user, 
+                const vertex_data& movie, 
+                const float rating, 
+                double & prediction){
+ 
 
   prediction = user.dot(movie);
   //truncate prediction to allowed values
@@ -97,7 +68,7 @@ float als_predict(const vertex_data& user,
   float err = rating - prediction;
   assert(!std::isnan(err));
   return err*err; 
-
+ 
 }
 
 
@@ -107,7 +78,7 @@ float als_predict(const vertex_data& user,
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
  */
-struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
   // Helper
@@ -132,33 +103,58 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-    vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    vdata.rmse = 0;
-    mat XtX(NLATENT, NLATENT); 
-    XtX.setZero();
-    vec Xty(NLATENT);
-    Xty.setZero();
+    if (gcontext.iteration == 0) {
 
-    bool compute_rmse = (vertex.num_outedges() > 0);
-    // Compute XtX and Xty (NOTE: unweighted)
-    for(int e=0; e < vertex.num_edges(); e++) {
-      float observation = vertex.edge(e)->get_data();                
-      vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.d, NLATENT);
-      Xty += X * observation;
-      XtX.triangularView<Eigen::Upper>() += X * X.transpose();
-      if (compute_rmse) {
-        double prediction;
-        vdata.rmse += als_predict(vdata, nbr_latent, observation, prediction);
+    } else {
+      mat XtX(NLATENT, NLATENT); 
+      XtX.setZero();
+      vec Xty(NLATENT);
+      Xty.setZero();
+
+      // Compute XtX and Xty (NOTE: unweighted)
+      for(int e=0; e < vertex.num_edges(); e++) {
+        const edge_data & edge = vertex.edge(e)->get_data();                
+        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        Map<vec> X(nbr_latent.d, NLATENT);
+        //for(int i=0; i<NLATENT; i++) {
+        Xty += X * edge.weight * edge.time;
+        //  Xty(i) += nbr_latent.d[i] * edge.weight * edge.time;
+        XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
+        //  for(int j=i; j < NLATENT; j++) {
+        //    XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j] * edge.time;
+        //  }
+        //}
       }
+
+      // Symmetrize
+      //for(int i=0; i <NLATENT; i++)
+      //  for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
+
+      // Diagonal
+      for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
+
+      // Solve the least squares problem with eigen using Cholesky decomposition
+      vec veclatent = XtX.ldlt().solve(Xty);
+
+      // Convert to plain doubles (this is useful because now the output data by GraphCHI
+      // is plain binary double matrix that can be read, for example, by Matlab).
+      vertex_data newlatent;
+      memcpy(newlatent.d, &veclatent[0], sizeof(double)*NLATENT);
+      newlatent.rmse = 0; 
+
+      bool compute_rmse = (vertex.num_outedges() > 0);
+      if (compute_rmse) { // Compute RMSE only on "right side" of bipartite graph
+        for(int e=0; e < vertex.num_edges(); e++) {        
+          // Compute RMSE
+          const edge_data & edge = vertex.edge(e)->get_data();
+          vertex_data & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
+           double prediction;
+          newlatent.rmse += wals_predict(newlatent, nbr_latent, edge.weight, prediction) * edge.time;
+        }
+      }
+      set_latent_factor(vertex, newlatent); 
     }
 
-    for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
-
-    // Solve the least squares problem with eigen using Cholesky decomposition
-    //vec veclatent = XtX.ldlt().solve(Xty);
-    Map<vec> vdata_vec(vdata.d, NLATENT);
-    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
@@ -173,7 +169,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       rmse += latent_factors_inmem[i].rmse;
     }
     logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
-    validation_rmse(&als_predict);
+    validation_rmse(&wals_predict, 4);
   }
 
   /**
@@ -193,7 +189,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 struct  MMOutputter{
   FILE * outf;
   MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
     MM_typecode matcode;
     set_matcode(matcode);     
     outf = fopen(fname.c_str(), "w");
@@ -205,7 +200,7 @@ struct  MMOutputter{
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
-      }
+    }
   }
 
   ~MMOutputter() {
@@ -216,10 +211,10 @@ struct  MMOutputter{
 
 
 void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
-  logstream(LOG_INFO) << "ALS output files (in matrix market format): " << filename << "_U.mm" <<
-                                                                           ", " << filename + "_V.mm " << std::endl;
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains WALS output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains WALS  output matrix V. In each row NLATENT factors of a single item node.");
+  logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                             ", " << filename + "_V.mm " << std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -253,10 +248,10 @@ int main(int argc, const char ** argv) {
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket4<edge_data>(training);
 
   /* Run */
-  ALSVerticesInMemProgram program;
+  WALSVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
@@ -270,7 +265,7 @@ int main(int argc, const char ** argv) {
   vid_t numvertices = engine.num_vertices();
   assert(numvertices == max_right_vertex + 1); // Sanity check
   output_als_result(training, numvertices, max_left_vertex);
-  test_predictions(&als_predict);    
+  test_predictions(&wals_predict);    
 
   /* Report execution metrics */
   metrics_report(m);

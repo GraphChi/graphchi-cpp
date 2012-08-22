@@ -65,7 +65,7 @@ using namespace graphchi;
 
 
 #ifndef NLATENT
-#define NLATENT 5   // Dimension of the latent factors. You can specify this in compile time as well (in make).
+#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
 double sgd_lambda = 1e-3;
@@ -76,7 +76,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N;
+int M, N, L, Me, Ne, Le;
 double globalMean = 0;
 
 /// RMSE computation
@@ -93,9 +93,6 @@ struct vertex_data {
     double rmse;
     
     vertex_data() {
-    }
-    
-    void init() {
         for(int k=0; k < NLATENT; k++) 
            d[k] =  drand48(); 
         rmse = 0;

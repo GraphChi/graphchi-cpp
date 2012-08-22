@@ -7,7 +7,7 @@
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] Carnegie Mellon University
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,17 +20,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- 
+
  *
  * @section DESCRIPTION
  *
- * Common code for BIASSGD implementations.
+ * Common code for WALS implementations.
  */
 
 
 
-#ifndef DEF_BIASSGDHPP
-#define DEF_BIASSGDHPP
+#ifndef DEF_WALSHPP
+#define DEF_WALSHPP
 
 #include <assert.h>
 #include <cmath>
@@ -52,48 +52,43 @@ using namespace graphchi;
 #define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double biassgd_lambda = 1e-3;
-double biassgd_gamma = 1e-3;
-double biassgd_step_dec = 0.9;
+double lambda = 0.065;
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
 int M, N, L, Me, Ne, Le;
-
-
-/// RMSE computation
-double rmse=0.0;
 double globalMean = 0;
-
-// Hackish: we need to count the number of left
-// and right vertices in the bipartite graph ourselves.
+double rmse=0.0;
 vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
 
 struct vertex_data {
-    double d[NLATENT];
-    double rmse;
-    double bias;
- 
-    vertex_data() {
-        for(int k=0; k < NLATENT; k++) 
-           d[k] =  drand48(); 
-        rmse = 0;
-        bias = 0;
-    }
-    
-    double dot(const vertex_data &oth) const {
-        double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
-        return x;
-    }
-    
+  double d[NLATENT];
+  double rmse;
+
+  vertex_data() {
+    for(int k=0; k < NLATENT; k++) d[k] =  drand48(); 
+    rmse = 0;
+  }
+
+  double dot(const vertex_data &oth) const {
+    double x=0;
+    for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
+    return x;
+  }
+
 };
 
+struct edge_data {
+  double weight;
+  double time;
 
+  edge_data() { weight = time = 0; }
 
+  edge_data(double weight, double time) : weight(weight), time(time) { }
+};
 
 #include "io.hpp"
 

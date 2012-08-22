@@ -26,13 +26,13 @@
 
 
 /**
-  compute validation rmse
+  compute predictions on test data
   */
 void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
-  int vM, vN, nz;   
+  int Me, Ne, nz;   
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
@@ -50,11 +50,11 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
   /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
+  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
 
-  if ((M > 0 && N > 0 ) && (vM != M || vN != N))
+  if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
   mm_write_banner(fout, matcode);
@@ -83,11 +83,12 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
 /**
   compute validation rmse
   */
-void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)) {
+void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)
+    ,int tokens_per_row = 3) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
-  int vM, vN, nz;   
+  int nz;   
 
   if ((f = fopen(validation.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
@@ -104,23 +105,27 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
   /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &vM, &vN, &nz)) !=0) {
+  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
-  if ((M > 0 && N > 0) && (vM != M || vN != N))
+  if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
+  Le = nz;
 
   double validation_rmse = 0;   
-
+  int I, J;
+  double val, time;
+ 
   for (int i=0; i<nz; i++)
   {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+   int rc;
+    if (tokens_per_row == 3)
+      rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+    else rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &val, &time);
 
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+    if (rc != tokens_per_row)
+      logstream(LOG_FATAL)<<"Error when reading input file on line: " << i << " . should have" << tokens_per_row << std::endl;
     if (val < minval || val > maxval)
       logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
     I--;  /* adjust from 1-based to 0-based */
@@ -131,7 +136,8 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   }
   fclose(f);
 
-  logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/pengine->num_edges())<< std::endl;
+  assert(Le > 0);
+  logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/Le)<< std::endl;
 }
 
 #endif //DEF_RMSEHPP
