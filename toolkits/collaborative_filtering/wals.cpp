@@ -55,10 +55,10 @@ std::vector<vertex_data> latent_factors_inmem;
 
 /** compute a missing value based on WALS algorithm */
 float wals_predict(const vertex_data& user, 
-                const vertex_data& movie, 
-                const float rating, 
-                double & prediction){
- 
+    const vertex_data& movie, 
+    const float rating, 
+    double & prediction){
+
 
   prediction = user.dot(movie);
   //truncate prediction to allowed values
@@ -68,7 +68,7 @@ float wals_predict(const vertex_data& user,
   float err = rating - prediction;
   assert(!std::isnan(err));
   return err*err; 
- 
+
 }
 
 
@@ -103,58 +103,29 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-    if (gcontext.iteration == 0) {
+    vertex_data & vdata = latent_factors_inmem[vertex.id()];
+    vdata.rmse = 0;
+    mat XtX = mat::Zero(NLATENT, NLATENT); 
+    vec Xty = vec::Zero(NLATENT);
 
-    } else {
-      mat XtX(NLATENT, NLATENT); 
-      XtX.setZero();
-      vec Xty(NLATENT);
-      Xty.setZero();
-
-      // Compute XtX and Xty (NOTE: unweighted)
-      for(int e=0; e < vertex.num_edges(); e++) {
-        const edge_data & edge = vertex.edge(e)->get_data();                
-        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        Map<vec> X(nbr_latent.d, NLATENT);
-        //for(int i=0; i<NLATENT; i++) {
-        Xty += X * edge.weight * edge.time;
-        //  Xty(i) += nbr_latent.d[i] * edge.weight * edge.time;
-        XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
-        //  for(int j=i; j < NLATENT; j++) {
-        //    XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j] * edge.time;
-        //  }
-        //}
+    bool compute_rmse = (vertex.num_outedges() > 0);
+    // Compute XtX and Xty (NOTE: unweighted)
+    for(int e=0; e < vertex.num_edges(); e++) {
+      const edge_data & edge = vertex.edge(e)->get_data();                
+      vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+      Map<vec> X(nbr_latent.d, NLATENT);
+      Xty += X * edge.weight * edge.time;
+      XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
+      if (compute_rmse) {
+        double prediction;
+        vdata.rmse += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;
       }
-
-      // Symmetrize
-      //for(int i=0; i <NLATENT; i++)
-      //  for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
-
-      // Diagonal
-      for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
-
-      // Solve the least squares problem with eigen using Cholesky decomposition
-      vec veclatent = XtX.ldlt().solve(Xty);
-
-      // Convert to plain doubles (this is useful because now the output data by GraphCHI
-      // is plain binary double matrix that can be read, for example, by Matlab).
-      vertex_data newlatent;
-      memcpy(newlatent.d, &veclatent[0], sizeof(double)*NLATENT);
-      newlatent.rmse = 0; 
-
-      bool compute_rmse = (vertex.num_outedges() > 0);
-      if (compute_rmse) { // Compute RMSE only on "right side" of bipartite graph
-        for(int e=0; e < vertex.num_edges(); e++) {        
-          // Compute RMSE
-          const edge_data & edge = vertex.edge(e)->get_data();
-          vertex_data & nbr_latent =  latent_factors_inmem[vertex.edge(e)->vertex_id()];
-           double prediction;
-          newlatent.rmse += wals_predict(newlatent, nbr_latent, edge.weight, prediction) * edge.time;
-        }
-      }
-      set_latent_factor(vertex, newlatent); 
     }
-
+    // Diagonal
+    for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    // Solve the least squares problem with eigen using Cholesky decomposition
+    Map<vec> vdata_vec(vdata.d, NLATENT);
+    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
@@ -163,12 +134,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
    * Called after an iteration has finished.
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
-    rmse = 0;
-#pragma omp parallel for reduction(+:rmse)
-    for (uint i=0; i< max_left_vertex; i++){
-      rmse += latent_factors_inmem[i].rmse;
-    }
-    logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
+    training_rmse(iteration);
     validation_rmse(&wals_predict, 4);
   }
 
@@ -200,7 +166,7 @@ struct  MMOutputter{
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
-    }
+      }
   }
 
   ~MMOutputter() {
@@ -214,7 +180,7 @@ void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_v
   MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains WALS output matrix U. In each row NLATENT factors of a single user node.");
   MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains WALS  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
-                                                                             ", " << filename + "_V.mm " << std::endl;
+                                                                            ", " << filename + "_V.mm " << std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -240,10 +206,14 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters    = get_option_int("niters", 6);  // Number of iterations
+  int niters    = get_option_int("max_iter", 6);  // Number of iterations
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
+  bool quiet    = get_option_int("quiet", 0);
+  if (quiet)
+    global_logger().set_log_level(LOG_ERROR);
+
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 

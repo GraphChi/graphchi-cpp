@@ -24,7 +24,6 @@
  */
 
 
-
 /**
   compute predictions on test data
   */
@@ -137,7 +136,15 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   fclose(f);
 
   assert(Le > 0);
-  logstream(LOG_INFO)<<"Validation RMSE: " << sqrt(validation_rmse/Le)<< std::endl;
+  std::cout<<"  Validation RMSE: " << sqrt(validation_rmse/(double)Le)<< std::endl;
 }
 
+void training_rmse(int iteration){
+    double rmse = 0;
+#pragma omp parallel for reduction(+:rmse)
+    for (uint i=0; i< max_left_vertex; i++){
+      rmse += latent_factors_inmem[i].rmse;
+    }
+    std::cout<<iteration<<") Training RMSE: " << sqrt(rmse/pengine->num_edges());
+}
 #endif //DEF_RMSEHPP

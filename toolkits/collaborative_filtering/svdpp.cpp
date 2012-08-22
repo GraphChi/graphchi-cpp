@@ -77,11 +77,6 @@ float svdpp_predict(const vertex_data& user, const vertex_data& movie, const flo
  */
 struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
-    // Helper
-    virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
-        vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
-        latent_factors_inmem[vertex.id()] = fact;
-    }
  
   /**
    * Called before an iteration starts.
@@ -105,21 +100,14 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     svdpp.itmBiasStep *= svdpp.step_dec;
     svdpp.usrBiasStep *= svdpp.step_dec;
 
+    training_rmse(iteration);
     validation_rmse(&svdpp_predict);
-    rmse = 0;
-#pragma omp parallel for reduction(+:rmse)
-    for (uint i=0; i< max_left_vertex; i++){
-      rmse += latent_factors_inmem[i].rmse;
-    }
-    logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
   }
 
   /**
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-    if (gcontext.iteration == 0) {
-    } else {
       if ( vertex.num_outedges() > 0){
         vertex_data & user = latent_factors_inmem[vertex.id()]; 
 
@@ -174,11 +162,7 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           for (int j=0; j< NLATENT; j++)
             movie.weight[j] +=  step[j]                    -  mult  * movie.weight[j];
         }
-
-        set_latent_factor(vertex, user);
       }
-    }
-
   }
 
 
@@ -298,7 +282,7 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters        = get_option_int("niters", 6);  // Number of iterations
+  int niters        = get_option_int("max_iter", 6);  // Number of iterations
   svdpp.step_dec  =   get_option_float("svdpp_step_dec", 0.9);
   svdpp.itmBiasStep  =   get_option_float("svdpp_item_bias_step", 1e-3);
   svdpp.itmBiasReg =   get_option_float("svdpp_item_bias_reg", 1e-3);
@@ -311,6 +295,10 @@ int main(int argc, const char ** argv) {
 
   maxval            = get_option_float("maxval", 1e100);
   minval            = get_option_float("minval", -1e100);
+  bool quiet    = get_option_int("quiet", 0);
+  if (quiet)
+    global_logger().set_log_level(LOG_ERROR);
+
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
