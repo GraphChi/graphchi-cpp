@@ -83,7 +83,8 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
 /**
   compute validation rmse
   */
-void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)) {
+void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)
+    ,int tokens_per_row = 3) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -113,15 +114,18 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   Le = nz;
 
   double validation_rmse = 0;   
-
+  int I, J;
+  double val, time;
+ 
   for (int i=0; i<nz; i++)
   {
-    int I, J;
-    double val;
-    int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+   int rc;
+    if (tokens_per_row == 3)
+      rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+    else rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &val, &time);
 
-    if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+    if (rc != tokens_per_row)
+      logstream(LOG_FATAL)<<"Error when reading input file on line: " << i << " . should have" << tokens_per_row << std::endl;
     if (val < minval || val > maxval)
       logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
     I--;  /* adjust from 1-based to 0-based */

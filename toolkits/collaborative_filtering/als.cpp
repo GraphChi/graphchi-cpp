@@ -144,23 +144,27 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       for(int e=0; e < vertex.num_edges(); e++) {
         float observation = vertex.edge(e)->get_data();                
         vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        for(int i=0; i<NLATENT; i++) {
-          Xty(i) += nbr_latent.d[i] * observation;
-          for(int j=i; j < NLATENT; j++) {
-            XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j];
-          }
-        }
+        Map<vec> X(nbr_latent.d, NLATENT);
+        //for(int i=0; i<NLATENT; i++) {
+        Xty += X * observation;
+           //Xty(i) += nbr_latent.d[i] * observation;
+        XtX.triangularView<Eigen::Upper>() += X * X.transpose();
+          //for(int j=i; j < NLATENT; j++) {
+            //XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j];
+          //}
+        //}
       }
 
       // Symmetrize
-      for(int i=0; i <NLATENT; i++)
-        for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
+      //for(int i=0; i <NLATENT; i++)
+      //  for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
 
       // Diagonal
       for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
 
       // Solve the least squares problem with eigen using Cholesky decomposition
-      vec veclatent = XtX.ldlt().solve(Xty);
+      //vec veclatent = XtX.ldlt().solve(Xty);
+      vec veclatent = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
 
       // Convert to plain doubles (this is useful because now the output data by GraphCHI
       // is plain binary double matrix that can be read, for example, by Matlab).

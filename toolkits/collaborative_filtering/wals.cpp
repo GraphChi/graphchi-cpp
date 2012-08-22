@@ -115,17 +115,20 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       for(int e=0; e < vertex.num_edges(); e++) {
         const edge_data & edge = vertex.edge(e)->get_data();                
         vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        for(int i=0; i<NLATENT; i++) {
-          Xty(i) += nbr_latent.d[i] * edge.weight;
-          for(int j=i; j < NLATENT; j++) {
-            XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j] * edge.time;
-          }
-        }
+        Map<vec> X(nbr_latent.d, NLATENT);
+        //for(int i=0; i<NLATENT; i++) {
+        Xty += X * edge.weight * edge.time;
+        //  Xty(i) += nbr_latent.d[i] * edge.weight * edge.time;
+        XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
+        //  for(int j=i; j < NLATENT; j++) {
+        //    XtX(j,i) += nbr_latent.d[i] * nbr_latent.d[j] * edge.time;
+        //  }
+        //}
       }
 
       // Symmetrize
-      for(int i=0; i <NLATENT; i++)
-        for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
+      //for(int i=0; i <NLATENT; i++)
+      //  for(int j=i + 1; j< NLATENT; j++) XtX(i,j) = XtX(j,i);
 
       // Diagonal
       for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda) * vertex.num_edges();
@@ -166,7 +169,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       rmse += latent_factors_inmem[i].rmse;
     }
     logstream(LOG_INFO)<<"Training RMSE: " << sqrt(rmse/pengine->num_edges()) << std::endl;
-    validation_rmse(&wals_predict);
+    validation_rmse(&wals_predict, 4);
   }
 
   /**
