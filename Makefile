@@ -37,6 +37,7 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 
 cf: toolkits/collaborative_filtering/*
 	@mkdir -p bin/$(@D)
+	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/sparse_als.cpp  -o bin/sparse_als.cpp
 	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/wals.cpp  -o bin/wals
 	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/svdpp.cpp  -o bin/svdpp
 	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/als.cpp  -o bin/als
