@@ -206,6 +206,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       int pos = vertex.edge(e)->vertex_id();
       if (isuser) 
         pos -= M; 
+      buf[pos] = observation / prediction;
     }
     for(int e=0; e < vertex.num_edges(); e++) {
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
@@ -329,6 +330,8 @@ int main(int argc, const char ** argv) {
 
   x1 = zeros(NLATENT);
   x2 = zeros(NLATENT);
+
+  srand(time(NULL));
 
   /* Run */
   NMFVerticesInMemProgram program;
