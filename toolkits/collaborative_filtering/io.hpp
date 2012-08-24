@@ -49,7 +49,7 @@ int convert_matrixmarket4(std::string base_filename) {
     if (rc != 3)
        logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
     return nshards;
   }   
 
@@ -142,7 +142,7 @@ int convert_matrixmarket(std::string base_filename) {
     if (rc != 3)
        logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
     return nshards;
   }   
 
