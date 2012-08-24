@@ -227,14 +227,6 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       if (pvec[i] < epsilon)
         pvec[i] = epsilon;
     }
-
-    for (int i=0; i< NLATENT; i++){
-      assert(px[i] != 0);
-      pvec[i] *= ret[i] / px[i];
-      if (pvec[i] < epsilon)
-        pvec[i] = epsilon;
-    }
-
   }
 
 
