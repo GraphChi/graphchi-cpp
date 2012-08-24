@@ -120,7 +120,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       Map<vec> X(nbr_latent.d, NLATENT);
       Xty += X * observation;
-      XtX.triangularView<Eigen::Upper>() += X * X.transpose();
+      XtX += X * X.transpose();
       if (compute_rmse) {
         double prediction;
         vdata.rmse += sparse_als_predict(vdata, nbr_latent, observation, prediction);
