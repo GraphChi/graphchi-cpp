@@ -92,6 +92,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   int nz;   
 
   if ((f = fopen(validation.c_str(), "r")) == NULL) {
+    std::cout<<std::endl;
     return; //missing validaiton data, nothing to compute
   }
 
