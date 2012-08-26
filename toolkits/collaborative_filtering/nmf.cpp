@@ -59,9 +59,9 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N;
+uint M, N;
 size_t L;
-int Me, Ne, Le;
+uint Me, Ne, Le;
 double globalMean = 0;
 const double epsilon = 1e-16;
 
@@ -121,7 +121,7 @@ float nmf_predict(const vertex_data& user,
 
 void pre_user_iter(){
   x1 = zeros(NLATENT);
-  for (int i=M; i<M+N; i++){
+  for (uint i=M; i<M+N; i++){
     vertex_data & data = latent_factors_inmem[i];
     Map<vec> pvec(data.pvec, NLATENT);
     x1 += pvec;
@@ -130,7 +130,7 @@ void pre_user_iter(){
 void pre_movie_iter(){
 
   x2 = zeros(NLATENT);
-  for (int i=0; i<M; i++){
+  for (uint i=0; i<M; i++){
     vertex_data & data = latent_factors_inmem[i];
     Map<vec> pvec(data.pvec, NLATENT);
     x2 += pvec;
@@ -172,7 +172,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     if (gcontext.iteration == 0){
-      if (vertex.num_outedges() == 0 && (int)vertex.id() < M)
+      if (vertex.num_outedges() == 0 && vertex.id() < M)
         logstream(LOG_FATAL)<<"NMF algorithm can not work when the row " << vertex.id() << " of the matrix contains all zeros" << std::endl;
       for(int e=0; e < vertex.num_edges(); e++) {
         float observation = vertex.edge(e)->get_data();                
@@ -183,7 +183,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       return;   
     }
 
-    bool isuser = ((int)vertex.id() < M);
+    bool isuser = (vertex.id() < M);
     if ((iter % 2 == 1 && !isuser) ||
         (iter % 2 == 0 && isuser))
       return;

@@ -133,7 +133,8 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    uint M, N;
+    size_t nz;   
     
     /**
      * Create sharder object
@@ -191,11 +192,13 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
     
     
     if (!sharderobj.preprocessed_file_exists()) {
-        for (int i=0; i<nz; i++)
+        for (size_t i=0; i<nz; i++)
         {
-            int I, J;
+            uint I, J;
             double val;
-            fscanf(f, "%d %d %lg\n", &I, &J, &val);
+            int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+            if (rc != 3)
+              logstream(LOG_FATAL)<<"Error reading line: " << i << std::endl;
             I--;  /* adjust from 1-based to 0-based */
             J--;
             

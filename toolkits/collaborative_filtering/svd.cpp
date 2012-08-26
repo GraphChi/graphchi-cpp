@@ -46,7 +46,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N, Me, Ne, Le;
+uint M, N, Me, Ne, Le;
 size_t L;
 double globalMean = 0;
 
@@ -67,7 +67,7 @@ struct vertex_data {
 }; // end of vertex_data
 
 struct edge_data {
-  double weight;
+  float weight;
   edge_data(double weight = 0) : weight(weight) { }
   //void set_field(int pos, double val){ weight = val; }
   //double get_field(int pos){ return weight; }
@@ -150,8 +150,8 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
     
     int ret_code;
     MM_typecode matcode;
-    int M, N; 
-    int i,nz;  
+    uint M, N; 
+    size_t i,nz;  
 
     logstream(LOG_INFO) <<"Going to read matrix market vector from input file: " << filename << std::endl;
   
@@ -189,13 +189,13 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
     }
 
 
-    int row,col; 
+    uint row,col; 
     double val;
 
     for (i=0; i<nz; i++)
     {
         if (mm_is_sparse(matcode)){
-          int rc = fscanf(f, "%d %d %lg\n", &row, &col, &val);
+          int rc = fscanf(f, "%u %u %lg\n", &row, &col, &val);
           if (rc != 3){
 	    logstream(LOG_FATAL) << "Failed reading input file: " << filename << "Problm at data row " << i << " (not including header and comment lines)" << std::endl;
           }

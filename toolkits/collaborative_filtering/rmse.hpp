@@ -33,7 +33,8 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   int ret_code;
   MM_typecode matcode;
   FILE *f;
-  int Me, Ne, nz;   
+  uint Me, Ne;
+  size_t nz;   
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
@@ -61,7 +62,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   mm_write_banner(fout, matcode);
   mm_write_mtx_crd_size(fout ,M,N,nz); 
 
-  for (int i=0; i<nz; i++)
+  for (uint i=0; i<nz; i++)
   {
     int I, J;
     double val;
@@ -89,7 +90,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   int ret_code;
   MM_typecode matcode;
   FILE *f;
-  int nz;   
+  size_t nz;   
 
   if ((f = fopen(validation.c_str(), "r")) == NULL) {
     std::cout<<std::endl;
@@ -119,7 +120,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   int I, J;
   double val, time = 1.0;
  
-  for (int i=0; i<nz; i++)
+  for (size_t i=0; i<nz; i++)
   {
    int rc;
     if (tokens_per_row == 3)

@@ -58,9 +58,9 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N;
+uint M, N;
 size_t L;
-int Me, Ne, Le;
+uint Me, Ne, Le;
 double globalMean = 0;
 /// RMSE computation
 double rmse=0.0;

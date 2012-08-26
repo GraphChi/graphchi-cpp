@@ -23,36 +23,6 @@
  * 
  */
 
-int mm_read_mtx_crd_size64(FILE *f, int *M, int *N, size_t *nz )
-{
-    char line[MM_MAX_LINE_LENGTH];
-    int num_items_read;
-
-    /* set return null parameter values, in case we exit with errors */
-    *M = *N = *nz = 0;
-
-    /* now continue scanning until you reach the end-of-comments */
-    do 
-    {
-        if (fgets(line,MM_MAX_LINE_LENGTH,f) == NULL) 
-            return MM_PREMATURE_EOF;
-    }while (line[0] == '%');
-
-    /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d %ld", M, N, nz) == 3)
-        return 0;
-        
-    else
-    do
-    { 
-        num_items_read = fscanf(f, "%d %d %ld", M, N, nz); 
-        if (num_items_read == EOF) return MM_PREMATURE_EOF;
-    }
-    while (num_items_read != 3);
-
-    return 0;
-}
-
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
@@ -75,8 +45,8 @@ int convert_matrixmarket4(std::string base_filename) {
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%lg",&M, &N, &globalMean);
-    if (rc != 3)
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
+    if (rc != 4)
        logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
     fclose(inf);
     logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
@@ -104,7 +74,7 @@ int convert_matrixmarket4(std::string base_filename) {
 
   /* find out size of sparse matrix .... */
 
-  if ((ret_code = mm_read_mtx_crd_size64(f, &M, &N, &nz)) !=0) {
+  if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
 
@@ -160,7 +130,7 @@ int convert_matrixmarket(std::string base_filename) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
-  int nz;   
+  size_t nz;   
 
   /**
    * Create sharder object
@@ -170,7 +140,7 @@ int convert_matrixmarket(std::string base_filename) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
     int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
-    if (rc != 3)
+    if (rc != 4)
        logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
     fclose(inf);
     logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
@@ -210,7 +180,7 @@ int convert_matrixmarket(std::string base_filename) {
 
 
   if (!sharderobj.preprocessed_file_exists()) {
-    for (int i=0; i<nz; i++)
+    for (size_t i=0; i<nz; i++)
     {
       int I, J;
       double val;
@@ -226,7 +196,7 @@ int convert_matrixmarket(std::string base_filename) {
     globalMean /= nz;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%lg\n", M, N, globalMean);
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
     fclose(outf);
 
 
