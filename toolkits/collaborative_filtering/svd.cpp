@@ -576,7 +576,7 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Load matrix " << datafile << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket<edge_data>(training);
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
   latent_factors_inmem.resize(info.total());
