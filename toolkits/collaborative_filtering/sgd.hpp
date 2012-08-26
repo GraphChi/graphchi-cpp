@@ -45,22 +45,7 @@
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
 
-// See note above about Eigen
-#include "Eigen/Dense"
-#define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
-#include "Eigen/Sparse"
-#include "Eigen/Cholesky"
-#include "Eigen/Eigenvalues"
-#include "Eigen/SVD"
-using namespace Eigen;
-  
-
-typedef MatrixXd mat;
-typedef VectorXd vec;
-typedef VectorXi ivec;
-typedef MatrixXi imat;
-typedef SparseVector<double> sparse_vec;
-
+#include "eigen_wrapper.hpp"
 using namespace graphchi;
 
 
@@ -76,7 +61,8 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-int M, N, L, Me, Ne, Le;
+int M, N, Me, Ne, Le;
+size_t L;
 double globalMean = 0;
 
 /// RMSE computation
