@@ -186,7 +186,8 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if ((iter % 2 == 1 && !isuser) ||
         (iter % 2 == 0 && isuser))
       return;
-    vec buf = zeros(isuser ? N: M);
+    //vec buf = zeros(isuser ? N: M);
+    vec buf = zeros(vertex.num_edges());
     vec ret = zeros(NLATENT);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
@@ -196,25 +197,27 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     vec Xty = vec::Zero(NLATENT);
 
     bool compute_rmse = true;
-    // Compute XtX and Xty (NOTE: unweighted)
+    
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
       if (compute_rmse)
         vdata.rmse += nmf_predict(vdata, nbr_latent, observation, prediction);
-      int pos = vertex.edge(e)->vertex_id();
-      if (isuser) 
-        pos -= M; 
-      buf[pos] = observation / prediction;
+      //int pos = vertex.edge(e)->vertex_id();
+      //if (isuser) 
+      //  pos -= M; 
+      //buf[pos] = observation / prediction;
+      buf[e] = observation / prediction;
     }
     for(int e=0; e < vertex.num_edges(); e++) {
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      int pos = vertex.edge(e)->vertex_id();
-      if (isuser) 
-        pos -= M; 
+      //int pos = vertex.edge(e)->vertex_id();
+      //if (isuser) 
+      //  pos -= M; 
       Map<vec> nbr_pvec(nbr_latent.pvec, NLATENT);
-      ret += pvec * buf[pos];
+      //ret += pvec * buf[pos];
+      ret += nbr_pvec * buf[e];
     }
     vec px;
     if (isuser)
@@ -235,8 +238,12 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    * Called after an iteration has finished.
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
-    training_rmse(iteration);
-    validation_rmse(&nmf_predict);
+    //print rmse every other iteration, since 2 iterations are considered one NMF round
+    int now = iteration % 2;
+    if (now == 0){
+      training_rmse(iteration/2);
+      validation_rmse(&nmf_predict);
+    }
   }
 
   /**
@@ -314,6 +321,8 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+
+  niters *= 2; //each NMF iteration is composed of two sub iters
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 
