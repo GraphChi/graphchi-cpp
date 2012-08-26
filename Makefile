@@ -14,6 +14,7 @@ tests: tests/basic_smoketest tests/bulksync_functional_test
 
 clean:
 	@rm -rf bin/*
+	cd toolkits/collaborative_filtering/; make clean; cd ../../
 
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
 	$(CPP) $(CPPFLAGS) src/preprocessing/sharder_basic.cpp -o bin/sharder_basic
@@ -35,16 +36,9 @@ tests/%: src/tests/%.cpp $(HEADERS)
 graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 	$(CPP) $(CPPFLAGS) example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp -o bin/graphlab_als
 
-cf: toolkits/collaborative_filtering/*
+cf:
 	@mkdir -p bin/$(@D)
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/svd.cpp  -o bin/svd
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/nmf.cpp  -o bin/nmf
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/sparse_als.cpp  -o bin/sparse_als
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/wals.cpp  -o bin/wals
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/svdpp.cpp  -o bin/svdpp
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/als.cpp  -o bin/als
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/sgd.cpp  -o bin/sgd
-	$(CPP) $(CPPFLAGS) -Itoolkits/collaborative_filtering/ toolkits/collaborative_filtering/biassgd.cpp  -o bin/biassgd
+	cd toolkits/collaborative_filtering/; make ; cd ../../
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config
