@@ -49,9 +49,13 @@ std::string test;
 uint M, N, Me, Ne, Le;
 size_t L;
 double globalMean = 0;
-
+int nshards;
 vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
+/* Metrics object for keeping track of performance counters
+     and other information. Currently required. */
+  metrics m("svd-inmemory-factors");
+
 
 struct vertex_data {
   double pvec[NLATENT];
@@ -508,11 +512,7 @@ int main(int argc,  const char *argv[]) {
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
 
-  /* Metrics object for keeping track of performance counters
-     and other information. Currently required. */
-  metrics m("svd-inmemory-factors");
-
-  
+    
 
   std::string vecfile;
   int unittest = 0;
@@ -576,7 +576,7 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Load matrix " << datafile << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<edge_data>(training);
+  nshards = convert_matrixmarket<edge_data>(training);
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
   latent_factors_inmem.resize(info.total());
@@ -588,11 +588,6 @@ int main(int argc,  const char *argv[]) {
     load_matrix_market_vector(vecfile, info, 0, true, false);
   }  
 
-  Axb program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
-  pengine = &engine;
   
   vec errest;
   vec singular_values = lanczos(info, errest, vecfile);

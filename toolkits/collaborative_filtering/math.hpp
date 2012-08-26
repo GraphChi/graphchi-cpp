@@ -293,7 +293,10 @@ class DistVec{
       start = vec.start;
       mi.start = start;
       mi.end = end;
-      pengine->run(program, 1);
+      graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+      engine.set_modifies_inedges(false);
+      engine.set_modifies_outedges(false);
+      engine.run(program, 1);
       debug_print(name);
       mi.reset_offsets();
       return *this;
@@ -517,7 +520,10 @@ DistVec& DistVec::operator=(DistMat &mat){
   transpose = mat.transpose;
   mi.start = info.get_start_node(!transpose);
   mi.end = info.get_end_node(!transpose);
-  pengine->run(program, 1);
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  engine.set_modifies_inedges(false);
+  engine.set_modifies_outedges(false);
+  engine.run(program, 1);
   debug_print(name);
   mi.reset_offsets();
   mat.transpose = false;
