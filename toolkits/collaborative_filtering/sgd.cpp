@@ -51,6 +51,7 @@ graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL;
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
+#include "io.hpp"
 
 /** compute a missing value based on SGD algorithm */
 float sgd_predict(const vertex_data& user, 
@@ -61,7 +62,7 @@ float sgd_predict(const vertex_data& user,
 
   prediction = 0;
   for (int j=0; j< NLATENT; j++)
-    prediction += user.d[j]* movie.d[j];  
+    prediction += user.pvec[j]* movie.pvec[j];  
 
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
@@ -120,8 +121,8 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         double err = observation - estScore;
         if (std::isnan(err) || std::isinf(err))
           logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
-        Map<vec> movie_vec(movie.d, NLATENT);
-        Map<vec> user_vec(user.d, NLATENT);
+        Map<vec> movie_vec(movie.pvec, NLATENT);
+        Map<vec> user_vec(user.pvec, NLATENT);
         movie_vec += sgd_gamma*(err*user_vec - sgd_lambda*movie_vec);
         user_vec += sgd_gamma*(err*movie_vec - sgd_lambda*user_vec);
       }
@@ -159,7 +160,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
 

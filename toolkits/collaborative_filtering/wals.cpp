@@ -52,6 +52,7 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 #include "rmse.hpp"
+#include "io.hpp"
 
 /** compute a missing value based on WALS algorithm */
 float wals_predict(const vertex_data& user, 
@@ -113,7 +114,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     for(int e=0; e < vertex.num_edges(); e++) {
       const edge_data & edge = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.d, NLATENT);
+      Map<vec> X(nbr_latent.pvec, NLATENT);
       Xty += X * edge.weight * edge.time;
       XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
       if (compute_rmse) {
@@ -124,7 +125,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     // Diagonal
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
     // Solve the least squares problem with eigen using Cholesky decomposition
-    Map<vec> vdata_vec(vdata.d, NLATENT);
+    Map<vec> vdata_vec(vdata.pvec, NLATENT);
     vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
@@ -165,7 +166,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
 

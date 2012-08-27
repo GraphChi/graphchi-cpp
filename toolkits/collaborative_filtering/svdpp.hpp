@@ -120,10 +120,4 @@ struct vertex_data {
 
 };
 
-
-
-
-
-#include "io.hpp"
-
 #endif

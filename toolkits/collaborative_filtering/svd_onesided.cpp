@@ -18,8 +18,6 @@
  *
  *      http://graphchi.org
  *
- * Written by Danny Bickson
- *
  */
 
 
@@ -52,7 +50,7 @@ vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("svd-inmemory-factors");
+metrics m("svd-onesided-inmemory-factors");
 
 
 struct vertex_data {
@@ -76,6 +74,7 @@ struct edge_data {
 };
 
 
+
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
@@ -88,7 +87,6 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 #include "io.hpp"
-
 
 
 /**
@@ -119,25 +117,38 @@ int data_size = max_iter;
 #include "math.hpp"
 #include "printouts.hpp"
 
+
+
+
 void init_lanczos(bipartite_graph_descriptor & info){
   data_size = nsv + nv+1 + max_iter;
   actual_vector_len = data_size;
+  if (info.is_square())
+     actual_vector_len = data_size + 3;
 #pragma omp parallel for
   for (int i=0; i< info.total(); i++){
+     if (i < info.get_start_node(false) || info.is_square())
       latent_factors_inmem[i].pvec = zeros(actual_vector_len);
-  } 
-  logstream(LOG_INFO)<<"Allocated a total of: " << ((double)actual_vector_len * info.total() * sizeof(double)/ 1e6) << " MB for storing vectors." << std::endl;
+     else latent_factors_inmem[i].pvec = zeros(3);
+   }
+   logstream(LOG_INFO)<<"Allocated a total of: " << 
+     ((double)(data_size * info.num_nodes(true) +3.0*info.num_nodes(false)) * sizeof(double)/ 1e6) << " MB for storing vectors." << " rows: " << info.num_nodes(true) << std::endl;
 }
 
-vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest, 
+vec one_sided_lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest, 
             const std::string & vecfile){
    
 
    int nconv = 0;
    int its = 1;
    DistMat A(info);
-   DistSlicedMat U(info.is_square() ? data_size : 0, info.is_square() ? 2*data_size : data_size, true, info, "U");
+   int other_size_offset = info.is_square() ? data_size : 0;
+   DistSlicedMat U(other_size_offset, other_size_offset + 3, true, info, "U");
    DistSlicedMat V(0, data_size, false, info, "V");
+   DistVec v(info, 1, false, "v");
+   DistVec u(info, other_size_offset+ 0, true, "u");
+   DistVec u_1(info, other_size_offset+ 1, true, "u_1");
+   DistVec tmp(info, other_size_offset + 2, true, "tmp");
    vec alpha, beta, b;
    vec sigma = zeros(data_size);
    errest = zeros(nv);
@@ -156,38 +167,49 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
      int n = nv;
      PRINT_INT(k);
      PRINT_INT(n);
+     PRINT_VEC2("v", v);
+     PRINT_VEC2("u", u);
 
      alpha = zeros(n);
      beta = zeros(n);
 
-     U[k] = V[k]*A._transpose();
-     orthogonalize_vs_all(U, k, alpha(0));
-     //alpha(0)=norm(U[k]).toDouble(); 
-     PRINT_VEC3("alpha", alpha, 0);
-     //U[k] = U[k]/alpha(0);
+     u = V[k]*A._transpose();
+     PRINT_VEC2("u",u);
 
      for (int i=k+1; i<n; i++){
-       logstream(LOG_INFO) <<"Starting step: " << i << " at time: " << mytimer.current_time() <<  std::endl;
+       logstream(LOG_INFO) <<"Starting step: " << i << " at time: " << mytimer.current_time() << std::endl;
        PRINT_INT(i);
 
-       V[i]=U[i-1]*A;
-       orthogonalize_vs_all(V, i, beta(i-k-1));
-      
-       //beta(i-k-1)=norm(V[i]).toDouble();
-       //V[i] = V[i]/beta(i-k-1);
-       PRINT_VEC3("beta", beta, i-k-1); 
-      
-       U[i] = V[i]*A._transpose();
-       orthogonalize_vs_all(U, i, alpha(i-k));
-       //alpha(i-k)=norm(U[i]).toDouble();
-
-       //U[i] = U[i]/alpha(i-k);
-       PRINT_VEC3("alpha", alpha, i-k);
+       V[i]=u*A;
+       double a = norm(u).toDouble();
+       u = u / a;
+       multiply(V, i, a);
+       PRINT_DBL(a);     
+ 
+       double b;
+       orthogonalize_vs_all(V, i, b);
+       PRINT_DBL(b);
+       u_1 = V[i]*A._transpose();  
+       u_1 = u_1 - u*b;
+       alpha(i-k-1) = a;
+       beta(i-k-1) = b;
+       PRINT_VEC3("alpha", alpha, i-k-1);
+       PRINT_VEC3("beta", beta, i-k-1);
+       tmp = u;
+       u = u_1;
+       u_1 = tmp;
      }
 
-     V[n]= U[n-1]*A;
-     orthogonalize_vs_all(V, n, beta(n-k-1));
-     //beta(n-k-1)=norm(V[n]).toDouble();
+     V[n]= u*A;
+     double a = norm(u).toDouble();
+     PRINT_DBL(a);
+     u = u/a;
+     double b;
+     multiply(V, n, a);
+     orthogonalize_vs_all(V, n, b);
+     alpha(n-k-1)= a;
+     beta(n-k-1) = b;
+     PRINT_VEC3("alpha", alpha, n-k-1);
      PRINT_VEC3("beta", beta, n-k-1);
 
   //compute svd of bidiagonal matrix
@@ -207,10 +229,11 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
   for (int i=0; i<n-1; i++)
     set_val(T, i, i+1, beta(i));
   PRINT_MAT2("T", T);
-  mat a,PT;
-  svd(T, a, PT, b);
-  PRINT_MAT2("Q", a);
-  alpha=b.transpose();
+  mat aa,PT;
+  vec bb;
+  svd(T, aa, PT, bb);
+  PRINT_MAT2("Q", aa);
+  alpha=bb.transpose();
   PRINT_MAT2("alpha", alpha);
   for (int t=0; t< n-1; t++)
      beta(t) = 0;
@@ -224,9 +247,9 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
     PRINT_INT(j);
     sigma(i) = alpha(j);
     PRINT_NAMED_DBL("svd->sigma[i]", sigma(i));
-    PRINT_NAMED_DBL("Q[j*n+n-1]",a(n-1,j));
+    PRINT_NAMED_DBL("Q[j*n+n-1]",aa(n-1,j));
     PRINT_NAMED_DBL("beta[n-1]",beta(n-1));
-    errest(i) = abs(a(n-1,j)*beta(n-1));
+    errest(i) = abs(aa(n-1,j)*beta(n-1));
     PRINT_NAMED_DBL("svd->errest[i]", errest(i));
     if (alpha(j) >  tol){
       errest(i) = errest(i) / alpha(j);
@@ -265,10 +288,6 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
     mat tmp= V.get_cols(nconv,nconv+n)*PT;
     V.set_cols(nconv, nconv+kk, get_cols(tmp, 0, kk));
     PRINT_VEC2("svd->V", V[nconv]);
-    PRINT_VEC2("svd->U", U[nconv]);
-    tmp= U.get_cols(nconv, nconv+n)*a;
-    U.set_cols(nconv, nconv+kk,get_cols(tmp,0,kk));
-    PRINT_VEC2("svd->U", U[nconv]);
   }
 
   nconv=nconv+kk;
@@ -291,13 +310,21 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
 
 printf(" Number of computed signular values %d",nconv);
 printf("\n");
-  DistVec normret(info, nconv, false, "normret");
-  DistVec normret_tranpose(info, nconv, true, "normret_tranpose");
+  DistVec normret(info, other_size_offset + 1, true, "normret");
+  DistVec normret_tranpose(info, nconv, false, "normret_tranpose");
   for (int i=0; i < nconv; i++){
-    normret = V[i]*A._transpose() -U[i]*sigma(i);
+    u = V[i]*A._transpose();
+    double a = norm(u).toDouble();
+    u = u / a;
+    if (save_vectors){
+       char output_filename[256];
+       sprintf(output_filename, "%s.U.%d", datafile.c_str(), i);
+        write_output_vector(output_filename, u.to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
+    }
+    normret = V[i]*A._transpose() - u*sigma(i);
     double n1 = norm(normret).toDouble();
     PRINT_DBL(n1);
-    normret_tranpose = U[i]*A -V[i]*sigma(i);
+    normret_tranpose = u*A -V[i]*sigma(i);
     double n2 = norm(normret_tranpose).toDouble();
     PRINT_DBL(n2);
     double err=sqrt(n1*n1+n2*n2);
@@ -312,12 +339,10 @@ printf("\n");
   }
 
   if (save_vectors){
-     if (nconv == 0)
+    if (nconv == 0)
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
-     char output_filename[256];
-     for (int i=0; i< nconv; i++){
-        sprintf(output_filename, "%s.U.%d", datafile.c_str(), i);
-        write_output_vector(output_filename, U[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
+    char output_filename[256];
+    for (int i=0; i< nconv; i++){
         sprintf(output_filename, "%s.V.%d", datafile.c_str(), i);
         write_output_vector(output_filename, V[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix V'");
      }
@@ -331,8 +356,6 @@ int main(int argc,  const char *argv[]) {
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
-
-    
 
   std::string vecfile;
   int unittest = 0;
@@ -370,6 +393,7 @@ int main(int argc,  const char *argv[]) {
   }
 
 
+
   //unit testing
   if (unittest == 1){
     datafile = "gklanczos_testA"; 
@@ -388,7 +412,7 @@ int main(int argc,  const char *argv[]) {
   else if (unittest == 3){
     datafile = "gklanczos_testC";
     vecfile = "gklanczos_testC_v0";
-    nsv = 4; nv = 10;
+    nsv = 25; nv = 25;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
   }
@@ -400,19 +424,19 @@ int main(int argc,  const char *argv[]) {
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
   latent_factors_inmem.resize(info.total());
 
-  timer mytimer; mytimer.start();
+  timer mytimer; mytimer.start(); 
   init_lanczos(info);
   init_math(info, ortho_repeats);
+
   if (vecfile.size() > 0){
     std::cout << "Load inital vector from file" << vecfile << std::endl;
     load_matrix_market_vector(vecfile, info, 0, true, false);
   }  
-
-  
-  vec errest;
-  vec singular_values = lanczos(info, mytimer, errest, vecfile);
  
-  std::cout << "Lanczos finished " << mytimer.current_time() << std::endl;
+  vec errest;
+  vec singular_values = one_sided_lanczos(info, mytimer, errest, vecfile);
+ 
+  std::cout << "Lanczos finished in " << mytimer.current_time() << std::endl;
 
   write_output_vector(datafile + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
 
@@ -431,6 +455,7 @@ int main(int argc,  const char *argv[]) {
   metrics_report(m);
  
   return 0;
+
 }
 
 

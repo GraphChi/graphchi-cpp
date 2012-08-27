@@ -50,6 +50,7 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 #include "rmse.hpp"
+#include "io.hpp"
 
 /** compute a missing value based on bias-SGD algorithm */
 float bias_sgd_predict(const vertex_data& user, 
@@ -118,8 +119,8 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
         user.bias += biassgd_gamma*(err - biassgd_lambda* user.bias);
         movie.bias += biassgd_gamma*(err - biassgd_lambda* movie.bias); 
 
-        Map<vec> movie_vec(movie.d, NLATENT);
-        Map<vec> user_vec(user.d, NLATENT);
+        Map<vec> movie_vec(movie.pvec, NLATENT);
+        Map<vec> user_vec(user.pvec, NLATENT);
         movie_vec += biassgd_gamma*(err*user_vec - biassgd_lambda*movie_vec);
         user_vec += biassgd_gamma*(err*movie_vec - biassgd_lambda*user_vec);
       }
@@ -157,7 +158,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
 

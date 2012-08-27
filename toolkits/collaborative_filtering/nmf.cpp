@@ -85,7 +85,6 @@ struct vertex_data {
 
 };
 
-#include "io.hpp"
 
 
 /**
@@ -101,6 +100,7 @@ vec x1, x2;
 int iter;
 
 #include "rmse.hpp"
+#include "io.hpp"
 
 /** compute a missing value based on NMF algorithm */
 float nmf_predict(const vertex_data& user, 

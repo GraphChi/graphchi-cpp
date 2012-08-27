@@ -48,7 +48,6 @@ struct math_info{
   bool use_diag;
   int ortho_repeats;
   int start, end;
-  bool update_function;
 
   //for backslash operation
   bool dist_sliced_mat_backslash;
@@ -68,7 +67,6 @@ struct math_info{
     A_transpose = false;
     use_diag = true;
     start = end = -1;
-    update_function = false;
     dist_sliced_mat_backslash = false;
   }
   int increment_offset(){
@@ -180,13 +178,10 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 }; //end Axb
 
-extern Axb program;
 
-void init_math(bipartite_graph_descriptor & _info, double ortho_repeats = 3, 
-    bool update_function = false){
+void init_math(bipartite_graph_descriptor & _info, double ortho_repeats = 3){
   info = _info;
   mi.reset_offsets();
-  mi.update_function = update_function;
   mi.ortho_repeats = ortho_repeats;
 }
 
@@ -296,6 +291,7 @@ class DistVec{
       graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
       engine.set_modifies_inedges(false);
       engine.set_modifies_outedges(false);
+      Axb program;
       engine.run(program, 1);
       debug_print(name);
       mi.reset_offsets();
@@ -382,7 +378,7 @@ class DistSlicedMat{
     bool transpose;
 
     DistSlicedMat(int _start_offset, int _end_offset, bool _transpose, const bipartite_graph_descriptor &_info, std::string _name){
-      assert(_start_offset < _end_offset);
+      //assert(_start_offset < _end_offset);
       assert(_start_offset >= 0);
       assert(_info.total() > 0);
       transpose = _transpose;
@@ -521,6 +517,7 @@ DistVec& DistVec::operator=(DistMat &mat){
   mi.start = info.get_start_node(!transpose);
   mi.end = info.get_end_node(!transpose);
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  Axb program;
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
   engine.run(program, 1);

@@ -75,27 +75,23 @@ vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
 
 struct vertex_data {
-    double d[NLATENT];
+    double pvec[NLATENT];
     double rmse;
-    
+    double bias;
+ 
     vertex_data() {
         for(int k=0; k < NLATENT; k++) 
-           d[k] =  drand48(); 
+           pvec[k] =  drand48(); 
         rmse = 0;
+        bias = 0;
     }
     
-    double dot(vertex_data &oth) const {
+    double dot(const vertex_data &oth) const {
         double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.d[i]*d[i];
+        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
         return x;
     }
     
 };
-
-
-#include "io.hpp"
-
-
-
 
 #endif

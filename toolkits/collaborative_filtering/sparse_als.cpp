@@ -52,6 +52,8 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
+#include "io.hpp"
+
 //algorithm run mode
 enum {
   SPARSE_USR_FACTOR = 1, SPARSE_ITM_FACTOR = 2, SPARSE_BOTH_FACTORS = 3
@@ -118,7 +120,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.d, NLATENT);
+      Map<vec> X(nbr_latent.pvec, NLATENT);
       Xty += X * observation;
       XtX += X * X.transpose();
       if (compute_rmse) {
@@ -130,7 +132,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     bool isuser = vertex.id() < (uint)M;
-    Map<vec> vdata_vec(vdata.d, NLATENT);
+    Map<vec> vdata_vec(vdata.pvec, NLATENT);
     if (algorithm == SPARSE_BOTH_FACTORS || (algorithm == SPARSE_USR_FACTOR && isuser) || 
         (algorithm == SPARSE_ITM_FACTOR && !isuser)){ 
       double sparsity_level = 1.0;
@@ -180,7 +182,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
 

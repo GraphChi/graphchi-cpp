@@ -50,6 +50,7 @@ graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL;
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
+#include "io.hpp"
 
 /** compute a missing value based on SVD++ algorithm */
 float svdpp_predict(const vertex_data& user, const vertex_data& movie, const float rating, double & prediction){

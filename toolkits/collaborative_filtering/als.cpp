@@ -79,7 +79,7 @@ typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
-
+#include "io.hpp"
 #include "rmse.hpp"
 
 /** compute a missing value based on ALS algorithm */
@@ -142,7 +142,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.d, NLATENT);
+      Map<vec> X(nbr_latent.pvec, NLATENT);
       Xty += X * observation;
       XtX.triangularView<Eigen::Upper>() += X * X.transpose();
       if (compute_rmse) {
@@ -154,7 +154,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     // Solve the least squares problem with eigen using Cholesky decomposition
-    Map<vec> vdata_vec(vdata.d, NLATENT);
+    Map<vec> vdata_vec(vdata.pvec, NLATENT);
     vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
@@ -196,7 +196,7 @@ struct  MMOutputter{
     mm_write_mtx_array_size(outf, end-start, NLATENT); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].d[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
 

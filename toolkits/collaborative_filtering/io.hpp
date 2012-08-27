@@ -23,6 +23,7 @@
  * 
  */
 
+#include "types.hpp"
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
@@ -31,6 +32,7 @@
  * Line format of the type
  * [user] [item] [rating] [time/weight]
  */
+
 template <typename als_edge_type>
 int convert_matrixmarket4(std::string base_filename) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
@@ -219,6 +221,170 @@ void set_matcode(MM_typecode & matcode){
   mm_set_matrix(&matcode);
   mm_set_array(&matcode);
   mm_set_real(&matcode);
+}
+
+
+/*
+ * open a file and verify open success
+ */
+FILE * open_file(const char * name, const char * mode, bool optional = false){
+  FILE * f = fopen(name, mode);
+  if (f == NULL && !optional){
+      perror("fopen failed");
+      logstream(LOG_FATAL) <<" Failed to open file" << name << std::endl;
+   }
+  return f;
+}
+
+
+void load_matrix_market_vector(const std::string & filename, const bipartite_graph_descriptor & desc, 
+    int type, bool optional_field, bool allow_zeros)
+{
+    
+    int ret_code;
+    MM_typecode matcode;
+    uint M, N; 
+    size_t i,nz;  
+
+    logstream(LOG_INFO) <<"Going to read matrix market vector from input file: " << filename << std::endl;
+  
+    FILE * f = open_file(filename.c_str(), "r", optional_field);
+    //if optional file not found return
+    if (f== NULL && optional_field){
+       return;
+    }
+
+    if (mm_read_banner(f, &matcode) != 0)
+        logstream(LOG_FATAL) << "Could not process Matrix Market banner." << std::endl;
+
+    /*  This is how one can screen matrix types if their application */
+    /*  only supports a subset of the Matrix Market data types.      */
+
+    if (mm_is_complex(matcode) && mm_is_matrix(matcode) && 
+            mm_is_sparse(matcode) )
+        logstream(LOG_FATAL) << "sorry, this application does not support " << std::endl << 
+          "Market Market type: " << mm_typecode_to_str(matcode) << std::endl;
+
+    /* find out size of sparse matrix .... */
+    if (mm_is_sparse(matcode)){
+       if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0)
+          logstream(LOG_FATAL) << "failed to read matrix market cardinality size " << std::endl; 
+    }
+    else {
+      if ((ret_code = mm_read_mtx_array_size(f, &M, &N))!= 0)
+          logstream(LOG_FATAL) << "failed to read matrix market vector size " << std::endl; 
+         if (N > M){ //if this is a row vector, transpose
+           int tmp = N;
+           N = M;
+           M = tmp;
+         }
+         nz = M*N;
+    }
+
+
+    uint row,col; 
+    double val;
+
+    for (i=0; i<nz; i++)
+    {
+        if (mm_is_sparse(matcode)){
+          int rc = fscanf(f, "%u %u %lg\n", &row, &col, &val);
+          if (rc != 3){
+	    logstream(LOG_FATAL) << "Failed reading input file: " << filename << "Problm at data row " << i << " (not including header and comment lines)" << std::endl;
+          }
+          row--;  /* adjust from 1-based to 0-based */
+          col--;
+        }
+        else {
+	  int rc = fscanf(f, "%lg\n", &val);
+          if (rc != 1){
+	    logstream(LOG_FATAL) << "Failed reading input file: " << filename << "Problm at data row " << i << " (not including header and comment lines)" << std::endl;
+          }
+          row = i;
+          col = 0;
+        }
+       //some users have gibrish in text file - better check both I and J are >=0 as well
+        assert(row >=0 && row< M);
+        assert(col == 0);
+        if (val == 0 && !allow_zeros)
+           logstream(LOG_FATAL)<<"Zero entries are not allowed in a sparse matrix market vector. Use --zero=true to avoid this error"<<std::endl;
+        //set observation value
+        vertex_data & vdata = latent_factors_inmem[row];
+        vdata.pvec[type] = val;
+    }
+    fclose(f);
+
+}
+
+
+
+inline void write_row(int row, int col, double val, FILE * f, bool issparse){
+    if (issparse)
+      fprintf(f, "%d %d %10.13g\n", row, col, val);
+    else fprintf(f, "%10.13g ", val);
+}
+
+inline void write_row(int row, int col, int val, FILE * f, bool issparse){
+    if (issparse)
+      fprintf(f, "%d %d %d\n", row, col, val);
+    else fprintf(f, "%d ", val);
+}
+
+template<typename T>
+inline void set_typecode(MM_typecode & matcore);
+
+template<>
+inline void set_typecode<vec>(MM_typecode & matcode){
+   mm_set_real(&matcode);
+}
+
+template<>
+inline void set_typecode<ivec>(MM_typecode & matcode){
+  mm_set_integer(&matcode);
+}
+
+
+template<typename vec>
+void save_matrix_market_format_vector(const std::string datafile, const vec & output, bool issparse, std::string comment)
+{
+    MM_typecode matcode;                        
+    mm_initialize_typecode(&matcode);
+    mm_set_matrix(&matcode);
+    mm_set_coordinate(&matcode);
+
+    if (issparse)
+       mm_set_sparse(&matcode);
+    else mm_set_dense(&matcode);
+
+    set_typecode<vec>(matcode);
+
+    FILE * f = fopen(datafile.c_str(),"w");
+    if (f == NULL)
+      logstream(LOG_FATAL)<<"Failed to open file: " << datafile << " for writing. " << std::endl;
+
+    mm_write_banner(f, matcode); 
+    if (comment.size() > 0) // add a comment to the matrix market header
+      fprintf(f, "%c%s\n", '%', comment.c_str());
+    if (issparse)
+      mm_write_mtx_crd_size(f, output.size(), 1, output.size());
+    else
+      mm_write_mtx_array_size(f, output.size(), 1);
+
+    for (int j=0; j<(int)output.size(); j++){
+      write_row(j+1, 1, output[j], f, issparse);
+      if (!issparse) 
+        fprintf(f, "\n");
+    }
+
+    fclose(f);
+}
+
+
+template<typename vec>
+inline void write_output_vector(const std::string & datafile, const vec& output, bool issparse, std::string comment = ""){
+
+  logstream(LOG_INFO)<<"Going to write output to file: " << datafile << " (vector of size: " << output.size() << ") " << std::endl;
+  save_matrix_market_format_vector(datafile, output,issparse, comment); 
 }
 
 
