@@ -289,6 +289,7 @@ class DistVec{
       mi.start = start;
       mi.end = end;
       graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+      engine.set_disable_vertexdata_storage();  
       engine.set_modifies_inedges(false);
       engine.set_modifies_outedges(false);
       Axb program;
@@ -517,6 +518,7 @@ DistVec& DistVec::operator=(DistMat &mat){
   mi.start = info.get_start_node(!transpose);
   mi.end = info.get_end_node(!transpose);
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  engine.set_disable_vertexdata_storage();  
   Axb program;
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
