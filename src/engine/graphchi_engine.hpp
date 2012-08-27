@@ -95,6 +95,7 @@ namespace graphchi {
         bool use_selective_scheduling;
         bool enable_deterministic_parallelism;
         bool store_inedges;
+        bool disable_vertexdata_storage;
         
         size_t blocksize;
         int membudget_mb;
@@ -157,6 +158,7 @@ namespace graphchi {
             modifies_outedges = true;
             modifies_inedges = true;
             only_adjacency = false;
+            disable_vertexdata_storage = false;
             blocksize = get_option_long("blocksize", 1024 * 1024);
             membudget_mb = get_option_int("membudget_mb", 1024);
             nupdates = 0;
@@ -321,8 +323,10 @@ namespace graphchi {
                     /* Load vertex edges from memory shard */
                     memoryshard->load_vertices(sub_interval_st, sub_interval_en, vertices);
 
-                    /* Load vertices */ 
-                    vertex_data_handler->load(sub_interval_st, sub_interval_en);
+                    /* Load vertices */
+                    if (!disable_vertexdata_storage) {
+                        vertex_data_handler->load(sub_interval_st, sub_interval_en);
+                    }
                 } else {
                     /* Load edges from a sliding shard */
                     if (p != exec_interval) {
@@ -356,7 +360,8 @@ namespace graphchi {
                         svertex_t & v = vertices[vid - sub_interval_st];
                         
                         if (exec_threads == 1 || v.parallel_safe) {
-                            v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
+                            if (!disable_vertexdata_storage)
+                                v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
                             if (v.scheduled) 
                                 userprogram.update(v, chicontext);
                         }
@@ -369,7 +374,8 @@ namespace graphchi {
                         for(int vid=sub_interval_st; vid <= (int)sub_interval_en; vid++) {
                             svertex_t & v = vertices[vid - sub_interval_st];
                             if (!v.parallel_safe && v.scheduled) {
-                                v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
+                                if (!disable_vertexdata_storage)
+                                    v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
                                 userprogram.update(v, chicontext);
                                 nonsafe_count++;
                             }
@@ -418,6 +424,7 @@ namespace graphchi {
         
         
         void save_vertices(std::vector<svertex_t> &vertices) {
+            if (disable_vertexdata_storage) return;
             size_t nvertices = vertices.size();
             bool modified_any_vertex = false;
             for(int i=0; i < (int)nvertices; i++) {
@@ -581,7 +588,8 @@ namespace graphchi {
                 initialize_iter();
                 
                 /* Check vertex data file has the right size (number of vertices may change) */
-                vertex_data_handler->check_size(num_vertices());
+                if (!disable_vertexdata_storage)
+                    vertex_data_handler->check_size(num_vertices());
                 
                 /* Keep the context object updated */
                 chicontext.filename = base_filename;
@@ -672,7 +680,9 @@ namespace graphchi {
                         load_after_updates(vertices);
                         
                         /* Save vertices */
-                        save_vertices(vertices);
+                        if (!disable_vertexdata_storage) {
+                            save_vertices(vertices);
+                        }
                         
                         sub_interval_st = sub_interval_en + 1;
                         
@@ -788,6 +798,16 @@ namespace graphchi {
         void set_enable_deterministic_parallelism(bool b) {
             enable_deterministic_parallelism = b;
         }
+      
+    public:
+        void set_disable_vertexdata_storage() {
+            this->disable_vertexdata_storage = true;
+        }
+        
+        void set_enable_vertexdata_storage() {
+            this->disable_vertexdata_storage = false;
+        }
+        
         
     protected:
         

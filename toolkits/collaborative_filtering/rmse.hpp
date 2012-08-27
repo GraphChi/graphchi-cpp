@@ -146,7 +146,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
 void training_rmse(int iteration){
     double rmse = 0;
 #pragma omp parallel for reduction(+:rmse)
-    for (uint i=0; i< max_left_vertex; i++){
+    for (int i=0; i< (int)max_left_vertex; i++){
       rmse += latent_factors_inmem[i].rmse;
     }
     std::cout<< std::setw(3) <<iteration<<") Training RMSE: " << std::setw(10)<< sqrt(rmse/pengine->num_edges());

@@ -23,12 +23,14 @@
 #  Written by Danny Bickson
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
 CPP = g++
+CXX = g++
 CPPFLAGS = -g -O3 $(INCFLAGS)  -fopenmp -Wall -Wno-strict-aliasing
 all: $(patsubst %.cpp, %, $(wildcard *.cpp))
 
-%.out: %.h %.hpp %.cpp Makefile ../../bin/%
+%.out: %.h %.hpp %.cpp ../../bin/%
 	$(CPP) $(CPPFLAGS) $<  -o $@
 	mv $@ ../../bin/
 
 clean:
 	touch *.cpp
+
