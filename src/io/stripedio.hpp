@@ -194,7 +194,7 @@ namespace graphchi {
             m.set("niothreads", (size_t)niothreads);
             
             // Each multiplex partition has its own queues
-            for(int i=0; i<multiplex * niothreads; i++) {
+            for(int i=0; i < multiplex * niothreads; i++) {
                 mplex_readtasks.push_back(synchronized_queue<iotask>());
                 mplex_writetasks.push_back(synchronized_queue<iotask>());
                 mplex_priotasks.push_back(synchronized_queue<iotask>());

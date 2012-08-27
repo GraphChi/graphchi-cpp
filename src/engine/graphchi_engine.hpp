@@ -137,10 +137,12 @@ namespace graphchi {
          */
         graphchi_engine(std::string _base_filename, int _nshards, bool _selective_scheduling, metrics &_m) : base_filename(_base_filename), nshards(_nshards), use_selective_scheduling(_selective_scheduling), m(_m) {
             /* Initialize IO */
+            m.start_time("iomgr_init");
             iomgr = new stripedio(m);
             if (disable_preloading()) {
                 iomgr->set_disable_preloading(true);
             }
+            m.stop_time("iomgr_init");
             logstream(LOG_INFO) << "Initializing graphchi_engine. This engine expects " << sizeof(EdgeDataType)
                         << "-byte edge data. " << std::endl;
             
