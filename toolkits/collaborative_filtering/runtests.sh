@@ -1,4 +1,5 @@
 #!/bin/bash
+export GRAPHCHI_ROOT=$PWD/../../
 
 stdoutfname=$PWD/stdout.log
 rm -f $stdoutfname 
