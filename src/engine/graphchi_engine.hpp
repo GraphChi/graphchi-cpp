@@ -598,6 +598,7 @@ namespace graphchi {
                 chicontext.iteration = iter;
                 chicontext.num_iterations = niters;
                 chicontext.nvertices = num_vertices();
+                if (!only_adjacency) chicontext.nedges = num_edges();
                 
                 chicontext.execthreads = exec_threads;
                 chicontext.reset_deltas(exec_threads);
