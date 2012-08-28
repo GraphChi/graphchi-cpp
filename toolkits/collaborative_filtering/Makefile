@@ -27,10 +27,12 @@ CXX = g++
 CPPFLAGS = -g -O3 $(INCFLAGS)  -fopenmp -Wall -Wno-strict-aliasing
 all: $(patsubst %.cpp, %, $(wildcard *.cpp))
 
-%.out: %.h %.hpp %.cpp ../../bin/%
+%.out: %.h %.hpp %.cpp rmse.hpp printouts.hpp types.hpp
 	$(CPP) $(CPPFLAGS) $<  -o $@
 	mv $@ ../../bin/
 
 clean:
 	touch *.cpp
 
+test:
+	./runtests.sh

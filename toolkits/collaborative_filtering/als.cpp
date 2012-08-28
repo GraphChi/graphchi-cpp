@@ -1,11 +1,11 @@
 /**
  * @file
- * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
+ * @author  Danny Bickson, based on code by Aapo Kyrola
  * @version 1.0
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] [Carnegie Mellon University]
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -228,7 +228,15 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
+  int unittest = get_option_int("unittest", 0);
+  int niters    = get_option_int("max_iter", 6);  // Number of iterations
+  if (unittest > 0)
+    training = get_option_string("training", "");    // Base filename
+  else training = get_option_string("training");
+  if (unittest == 1){
+    if (training == "") training = "test_als"; 
+    niters = 100;
+  }
   validation = get_option_string("validation", "");
   test = get_option_string("test", "");
 
@@ -237,7 +245,6 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
@@ -246,6 +253,7 @@ int main(int argc, const char ** argv) {
     global_logger().set_log_level(LOG_ERROR);
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.
+
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
@@ -268,6 +276,14 @@ int main(int argc, const char ** argv) {
   output_als_result(training, numvertices, max_left_vertex);
   test_predictions(&als_predict);    
 
+  if (unittest == 1){
+    if (dtraining_rmse > 0.03)
+      logstream(LOG_FATAL)<<"Unit test 1 failed. Training RMSE is: " << training_rmse << std::endl;
+    if (dvalidation_rmse > 1.03)
+      logstream(LOG_FATAL)<<"Unit test 1 failed. Validation RMSE is: " << dvalidation_rmse << std::endl;
+
+  }
+  
   /* Report execution metrics */
   metrics_report(m);
   return 0;

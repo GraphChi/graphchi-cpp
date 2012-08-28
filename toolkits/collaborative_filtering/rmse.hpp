@@ -25,7 +25,10 @@
  * 
  */
 
-
+#include "timer.hpp"
+timer mytimer;
+double dtraining_rmse = 0;
+double dvalidation_rmse = 0;
 /**
   compute predictions on test data
   */
@@ -116,7 +119,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
 
   Le = nz;
 
-  double validation_rmse = 0;   
+  dvalidation_rmse = 0;   
   int I, J;
   double val, time = 1.0;
  
@@ -135,20 +138,22 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     J--;
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction);
-    validation_rmse += time * pow(prediction - val, 2);
+    dvalidation_rmse += time * pow(prediction - val, 2);
   }
   fclose(f);
 
   assert(Le > 0);
-  std::cout<<"  Validation RMSE: " << std::setw(10) << sqrt(validation_rmse/(double)Le)<< std::endl;
+  dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
+  std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
 }
 
 void training_rmse(int iteration){
-    double rmse = 0;
-#pragma omp parallel for reduction(+:rmse)
+    dtraining_rmse = 0;
+#pragma omp parallel for reduction(+:dtraining_rmse)
     for (int i=0; i< (int)max_left_vertex; i++){
-      rmse += latent_factors_inmem[i].rmse;
+      dtraining_rmse += latent_factors_inmem[i].rmse;
     }
-    std::cout<< std::setw(3) <<iteration<<") Training RMSE: " << std::setw(10)<< sqrt(rmse/pengine->num_edges());
+    dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
+    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
 }
 #endif //DEF_RMSEHPP

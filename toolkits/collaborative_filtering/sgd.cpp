@@ -209,7 +209,7 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
 
-
+  mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);

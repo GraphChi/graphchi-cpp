@@ -162,7 +162,7 @@ vec one_sided_lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec &
    PRINT_INT(nv);
 
    while(nconv < nsv && its < max_iter){
-     logstream(LOG_INFO)<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
+     std::cout<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
      int k = nconv;
      int n = nv;
      PRINT_INT(k);
@@ -177,7 +177,7 @@ vec one_sided_lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec &
      PRINT_VEC2("u",u);
 
      for (int i=k+1; i<n; i++){
-       logstream(LOG_INFO) <<"Starting step: " << i << " at time: " << mytimer.current_time() << std::endl;
+       std::cout <<"Starting step: " << i << " at time: " << mytimer.current_time() << std::endl;
        PRINT_INT(i);
 
        V[i]=u*A;

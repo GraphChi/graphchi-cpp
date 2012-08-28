@@ -151,7 +151,7 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
    PRINT_INT(nv);
 
    while(nconv < nsv && its < max_iter){
-     logstream(LOG_INFO)<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
+     std::cout<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
      int k = nconv;
      int n = nv;
      PRINT_INT(k);
@@ -167,7 +167,7 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
      //U[k] = U[k]/alpha(0);
 
      for (int i=k+1; i<n; i++){
-       logstream(LOG_INFO) <<"Starting step: " << i << " at time: " << mytimer.current_time() <<  std::endl;
+       std::cout <<"Starting step: " << i << " at time: " << mytimer.current_time() <<  std::endl;
        PRINT_INT(i);
 
        V[i]=U[i-1]*A;

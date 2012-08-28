@@ -198,7 +198,16 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
+  int unittest = get_option_int("unittest", 0);
+  int niters    = get_option_int("max_iter", 6);  // Number of iterations
+  if (unittest > 0)
+    training = get_option_string("training", "");    // Base filename
+  else training = get_option_string("training");
+  if (unittest == 1){
+    if (training == "") training = "test_wals"; 
+    niters = 100;
+  }
+
   validation = get_option_string("validation", "");
   test = get_option_string("test", "");
 
@@ -207,16 +216,16 @@ int main(int argc, const char ** argv) {
   if (test == "")
     test += training + "t";
 
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
-
-
+   
   bool scheduler       = false;                        // Selective scheduling not supported for now.
+  
+
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training);
@@ -239,6 +248,14 @@ int main(int argc, const char ** argv) {
   output_als_result(training, numvertices, max_left_vertex);
   test_predictions(&wals_predict);    
 
+  if (unittest == 1){
+    if (dtraining_rmse > 0.03)
+      logstream(LOG_FATAL)<<"Unit test 1 failed. Training RMSE is: " << training_rmse << std::endl;
+    if (dvalidation_rmse > 0.61)
+      logstream(LOG_FATAL)<<"Unit test 1 failed. Validation RMSE is: " << validation_rmse << std::endl;
+
+  }
+ 
   /* Report execution metrics */
   metrics_report(m);
   return 0;
