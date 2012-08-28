@@ -187,8 +187,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if ((iter % 2 == 1 && !isuser) ||
         (iter % 2 == 0 && isuser))
       return;
-    //vec buf = zeros(isuser ? N: M);
-    vec buf = zeros(vertex.num_edges());
+    
     vec ret = zeros(NLATENT);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
@@ -205,21 +204,12 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       double prediction;
       if (compute_rmse)
         vdata.rmse += nmf_predict(vdata, nbr_latent, observation, prediction);
-      //int pos = vertex.edge(e)->vertex_id();
-      //if (isuser) 
-      //  pos -= M; 
-      //buf[pos] = observation / prediction;
-      buf[e] = observation / prediction;
-    }
-    for(int e=0; e < vertex.num_edges(); e++) {
-      vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      //int pos = vertex.edge(e)->vertex_id();
-      //if (isuser) 
-      //  pos -= M; 
+      if (prediction == 0)
+        logstream(LOG_FATAL)<<"Got into numerical error! Please submit a bug report." << std::endl;
       Map<vec> nbr_pvec(nbr_latent.pvec, NLATENT);
-      //ret += pvec * buf[pos];
-      ret += nbr_pvec * buf[e];
+      ret += nbr_pvec * (observation / prediction);
     }
+    
     vec px;
     if (isuser)
       px = x1;
