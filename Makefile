@@ -39,6 +39,8 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 cf:
 	@mkdir -p bin/$(@D)
 	cd toolkits/collaborative_filtering/; make ; cd ../../
+cf_test:
+	cd toolkits/collaborative_filtering/; make test; cd ../../
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config

@@ -14,16 +14,16 @@ if [ $? -eq 0 ]; then
   echo "PASS TEST 1 (Alternating least squares)"| tee -a $stdoutfname
 else
   somefailed=1
-  echo "FAIL ./aks --unittest=1 (Alternative least squares)"| tee -a $stdoutfname
+  echo "FAIL ./aks --unittest=1 (Alternating least squares)"| tee -a $stdoutfname
 fi
 
 echo "---------WALS-------------" | tee -a $stdoutfname
 ./wals --unittest=1 --quiet=1 >> $stdoutfname 2>& 1
 if [ $? -eq 0 ]; then
-  echo "PASS TEST 1 (Alternating least squares)"| tee -a $stdoutfname
+  echo "PASS TEST 2 (Weighted alternating least squares)"| tee -a $stdoutfname
 else
   somefailed=1
-  echo "FAIL ./aks --unittest=1 (Alternative least squares)"| tee -a $stdoutfname
+  echo "FAIL TEST 2 (Weighted Alternating least squares)"| tee -a $stdoutfname
 fi
 
 if [ $somefailed == 1 ]; then
