@@ -621,4 +621,26 @@ inline void svd(const mat & A, mat & U, mat & V, vec & singular_values){
   V= svdEigen.matrixV();
   singular_values =svdEigen.singularValues(); 
 }
+
+inline bool pair_compare (std::pair<double,int> &x1, std::pair<double,int> & x2) { return (x1.first>x2.first); }
+
+inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int K){
+  assert(a.size() == indices.size());
+  ivec ret(a.size()); 
+  std::vector<std::pair<double,int> > D;
+
+  D.reserve(a.size());
+  for (int i=0;i<a.size();i++)
+    D.push_back(std::make_pair<double,int>(a[i],indices[i]));
+  std::partial_sort(D.begin(),D.begin() + K, D.end(), pair_compare);
+  for (int i=0;i<a.size();i++)
+  { 
+    ret[i]=D[i].second;
+    out[i] = D[i].first;
+    if (i >= K-1)
+      break;
+  } 
+  return ret;
+}
+
 #endif

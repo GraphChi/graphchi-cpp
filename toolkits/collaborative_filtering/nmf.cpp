@@ -330,6 +330,7 @@ int main(int argc, const char ** argv) {
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
+  engine.set_disable_vertexdata_storage();
   pengine = &engine;
   engine.run(program, niters);
 
