@@ -180,12 +180,17 @@ void read_factors(std::string base_filename, bool users) {
   double val;
   nz = M*D;
 
-  for (size_t i=0; i<M; i++)
+  for (size_t i=(users? 0 : M); i< (users? M : M+N); i++)
     for (size_t j=0; j < D; j++)
     {
       int rc = fscanf(f, "%lg", &val);
       if (rc != 1)
         logstream(LOG_FATAL)<<"Error when reading input file at line " << i << std::endl;
+      if (latent_factors_inmem[i].pvec.size() == 0){
+        latent_factors_inmem[i].pvec = vec::Zero(D);
+        latent_factors_inmem[i].ratings = vec::Zero(K);
+        latent_factors_inmem[i].ids = ivec::Zero(K);
+      }
       latent_factors_inmem[i].pvec[j] = val;
     }
 
@@ -235,11 +240,11 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
+  if (vertex.id() >= M)
+    return;
 
   vertex_data & vdata = latent_factors_inmem[vertex.id()];
-  int start = N;
-  int end = N+M;
-  int howmany = (end-start)*knn_sample_percent;
+  int howmany = N*knn_sample_percent;
   assert(howmany > 0 );
   vec distances(howmany);
   ivec indices = ivec(howmany);
@@ -253,23 +258,23 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     curratings[vertex.edge(e)->vertex_id() - M] = true;
   }
    if (knn_sample_percent == 1.0){
-     for (int i=start; i< end; i++){
-        if (curratings[i-start])
+     for (uint i=M; i< M+N; i++){
+        if (curratings[i-M])
           continue;
         vertex_data & other = latent_factors_inmem[i];
         double dist;
         als_predict(vdata, other, 0, dist); 
-        indices[i-start] = i-M;
-        distances[i-start] = dist;
+        indices[i-M] = i-M;
+        distances[i-M] = dist;
      }
   }
   else for (int i=0; i<howmany; i++){
-        int random_other = ::randi(start, end-1);
+        int random_other = ::randi(M, M+N-1);
         vertex_data & other = latent_factors_inmem[random_other];
         double dist;
         als_predict(vdata, other, 0, dist); 
-        indices[i-start] = i-M;
-        distances[i-start] = dist;
+        indices[i-M] = i-M;
+        distances[i-M] = dist;
    }
   delete [] curratings;
   vec out_dist(K);
@@ -279,8 +284,8 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
   if (debug)
     printf("Closest is: %d with distance %g\n", (int)vdata.ids[0], vdata.ratings[0]);
 
-  if (vertex.id() % 100 == 0)
-    printf("handling validation row %d at time: %g\n", vertex.id(), mytimer.current_time());
+  if (vertex.id() % 1000 == 0)
+    printf("Computing recommendaitons for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
   }
 
 
@@ -317,10 +322,12 @@ struct  MMOutputter_ratings{
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
     mm_write_mtx_array_size(outf, end-start, K); 
-    for (uint i=start; i < end; i++)
+    for (uint i=start; i < end; i++){
       for(int j=0; j < K; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].ratings[j]);
+        fprintf(outf, "%1.12e ", latent_factors_inmem[i].ratings[j]);
       }
+      fprintf(outf, "\n");
+    }
   }
 
   ~MMOutputter_ratings() {
@@ -340,10 +347,12 @@ struct  MMOutputter_ids{
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
     mm_write_mtx_array_size(outf, end-start, K); 
-    for (uint i=start; i < end; i++)
+    for (uint i=start; i < end; i++){
       for(int j=0; j < K; j++) {
-        fprintf(outf, "%u\n", (int)latent_factors_inmem[i].ids[j]);
+        fprintf(outf, "%u ", (int)latent_factors_inmem[i].ids[j]+1);//go back to item ids starting from 1,2,3, (and not from zero as in c)
       }
+      fprintf(outf, "\n");
+    }
   }
 
   ~MMOutputter_ids() {
@@ -403,8 +412,8 @@ int main(int argc, const char ** argv) {
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
   max_left_vertex = M-1;
   max_right_vertex = M+N-1;
-  read_factors<vertex_data>(training + "_U.mm", 1);
-  read_factors<vertex_data>(training + "_V.mm", 1);
+  read_factors<vertex_data>(training + "_U.mm", true);
+  read_factors<vertex_data>(training + "_V.mm", false);
   if ((uint)K > N){
     logstream(LOG_WARNING)<<"K is too big - setting it to: " << N << std::endl;
     K = N;
