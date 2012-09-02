@@ -234,6 +234,7 @@ int main(int argc, const char ** argv) {
     /* Run */
     ALSEdgeFactorsProgram program;
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, scheduler, m); 
+    engine.set_enable_deterministic_parallelism(false);
     engine.run(program, niters);
         
     /* Report result (train RMSE) */

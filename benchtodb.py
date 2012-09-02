@@ -71,6 +71,7 @@ columns = ["file"
           ,"nedges"
           ,"nvertices"
           , "subwindow"
+          , "compression"
 	  , "loadthreads"]
  
 # This is terrible code!
