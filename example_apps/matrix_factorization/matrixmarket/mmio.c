@@ -19,8 +19,8 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
 {
     FILE *f;
     MM_typecode matcode;
-    int M, N, nz;
-    int i;
+    uint M, N;
+    size_t nz, i;
     double *val;
     int *I, *J;
  
@@ -74,7 +74,9 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i]);
+        int rc = fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i]);
+        if (rc != 3)
+          logstream(LOG_FATAL)<<"Failed to read input row: " << i << std::endl;
         I[i]--;  /* adjust from 1-based to 0-based */
         J[i]--;
     }
@@ -178,15 +180,15 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
     return 0;
 }
 
-int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz)
+int mm_write_mtx_crd_size(FILE *f, uint M, uint N, size_t nz)
 {
-    if (fprintf(f, "%d %d %d\n", M, N, nz) != 3)
+    if (fprintf(f, "%u %u %ld\n", M, N, nz) != 3)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
 }
 
-int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
+int mm_read_mtx_crd_size(FILE *f, uint *M, uint *N, size_t *nz )
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -202,13 +204,13 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d %d", M, N, nz) == 3)
+    if (sscanf(line, "%u %u %ld", M, N, nz) == 3)
         return 0;
         
     else
     do
     { 
-        num_items_read = fscanf(f, "%d %d %d", M, N, nz); 
+        num_items_read = fscanf(f, "%u %u %ld", M, N, nz); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
@@ -217,7 +219,7 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
 }
 
 
-int mm_read_mtx_array_size(FILE *f, int *M, int *N)
+int mm_read_mtx_array_size(FILE *f, uint *M, uint *N)
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -232,13 +234,13 @@ int mm_read_mtx_array_size(FILE *f, int *M, int *N)
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d", M, N) == 2)
+    if (sscanf(line, "%u %u", M, N) == 2)
         return 0;
         
     else /* we have a blank line */
     do
     { 
-        num_items_read = fscanf(f, "%d %d", M, N); 
+        num_items_read = fscanf(f, "%u %u", M, N); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 2);
@@ -246,9 +248,9 @@ int mm_read_mtx_array_size(FILE *f, int *M, int *N)
     return 0;
 }
 
-int mm_write_mtx_array_size(FILE *f, int M, int N)
+int mm_write_mtx_array_size(FILE *f, uint M, uint N)
 {
-    if (fprintf(f, "%d %d\n", M, N) != 2)
+    if (fprintf(f, "%u %u\n", M, N) != 2)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
@@ -262,21 +264,21 @@ int mm_write_mtx_array_size(FILE *f, int M, int N)
 /* use when I[], J[], and val[]J, and val[] are already allocated */
 /******************************************************************/
 
-int mm_read_mtx_crd_data(FILE *f, int M, int N, int nz, int I[], int J[],
+int mm_read_mtx_crd_data(FILE *f, uint M, uint N, size_t nz, uint I[], uint J[],
         double val[], MM_typecode matcode)
 {
-    int i;
+    size_t i;
     if (mm_is_complex(matcode))
     {
         for (i=0; i<nz; i++)
-            if (fscanf(f, "%d %d %lg %lg", &I[i], &J[i], &val[2*i], &val[2*i+1])
+            if (fscanf(f, "%u %u %lg %lg", &I[i], &J[i], &val[2*i], &val[2*i+1])
                 != 4) return MM_PREMATURE_EOF;
     }
     else if (mm_is_real(matcode))
     {
         for (i=0; i<nz; i++)
         {
-            if (fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i])
+            if (fscanf(f, "%u %u %lg\n", &I[i], &J[i], &val[i])
                 != 3) return MM_PREMATURE_EOF;
 
         }
@@ -285,7 +287,7 @@ int mm_read_mtx_crd_data(FILE *f, int M, int N, int nz, int I[], int J[],
     else if (mm_is_pattern(matcode))
     {
         for (i=0; i<nz; i++)
-            if (fscanf(f, "%d %d", &I[i], &J[i])
+            if (fscanf(f, "%u %u", &I[i], &J[i])
                 != 2) return MM_PREMATURE_EOF;
     }
     else
@@ -330,7 +332,7 @@ int mm_read_mtx_crd_entry(FILE *f, int *I, int *J,
                             (nz pairs of real/imaginary values)
 ************************************************************************/
 
-int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **I, int **J, 
+int mm_read_mtx_crd(char *fname, uint *M, uint *N, size_t *nz, uint **I, uint **J, 
         double **val, MM_typecode *matcode)
 {
     int ret_code;
@@ -353,8 +355,8 @@ int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **I, int **J,
         return ret_code;
 
 
-    *I = (int *)  malloc(*nz * sizeof(int));
-    *J = (int *)  malloc(*nz * sizeof(int));
+    *I = (uint *)  malloc(*nz * sizeof(uint));
+    *J = (uint *)  malloc(*nz * sizeof(uint));
     *val = NULL;
 
     if (mm_is_complex(*matcode))

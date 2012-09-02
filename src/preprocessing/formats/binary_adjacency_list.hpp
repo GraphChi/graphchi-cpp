@@ -114,9 +114,7 @@ namespace graphchi {
             fpos = 0;
 
             header = read_val<bin_adj_header>();
-            std::cout << header.format_version << std::endl;
             assert(header.format_version == FORMAT_VERSION);
-            std::cout << "Read header: " << header.max_vertex_id << " " << header.numedges << std::endl;
         }
         
         ~binary_adjacency_list_reader() {

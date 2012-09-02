@@ -95,6 +95,7 @@ namespace graphchi {
         bool use_selective_scheduling;
         bool enable_deterministic_parallelism;
         bool store_inedges;
+        bool disable_vertexdata_storage;
         
         size_t blocksize;
         int membudget_mb;
@@ -136,10 +137,12 @@ namespace graphchi {
          */
         graphchi_engine(std::string _base_filename, int _nshards, bool _selective_scheduling, metrics &_m) : base_filename(_base_filename), nshards(_nshards), use_selective_scheduling(_selective_scheduling), m(_m) {
             /* Initialize IO */
+            m.start_time("iomgr_init");
             iomgr = new stripedio(m);
             if (disable_preloading()) {
                 iomgr->set_disable_preloading(true);
             }
+            m.stop_time("iomgr_init");
             logstream(LOG_INFO) << "Initializing graphchi_engine. This engine expects " << sizeof(EdgeDataType)
             << "-byte edge data. " << std::endl;
             
@@ -160,6 +163,8 @@ namespace graphchi {
             blocksize = get_option_long("blocksize", 4096 * 1024);
             while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
             
+            disable_vertexdata_storage = false;
+
             membudget_mb = get_option_int("membudget_mb", 1024);
             nupdates = 0;
             iter = 0;
@@ -340,6 +345,11 @@ namespace graphchi {
                     
                     /* Load vertices */ 
                     vertex_data_handler->load(sub_interval_st, sub_interval_en);
+
+                    /* Load vertices */
+                    if (!disable_vertexdata_storage) {
+                        vertex_data_handler->load(sub_interval_st, sub_interval_en);
+                    }
                 } else {
                     /* Load edges from a sliding shard */
                     if (p != exec_interval) {
@@ -373,7 +383,8 @@ namespace graphchi {
                         svertex_t & v = vertices[vid - sub_interval_st];
                         
                         if (exec_threads == 1 || v.parallel_safe) {
-                            v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
+                            if (!disable_vertexdata_storage)
+                                v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
                             if (v.scheduled) 
                                 userprogram.update(v, chicontext);
                         }
@@ -386,7 +397,8 @@ namespace graphchi {
                         for(int vid=sub_interval_st; vid <= (int)sub_interval_en; vid++) {
                             svertex_t & v = vertices[vid - sub_interval_st];
                             if (!v.parallel_safe && v.scheduled) {
-                                v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
+                                if (!disable_vertexdata_storage)
+                                    v.dataptr = vertex_data_handler->vertex_data_ptr(vid);
                                 userprogram.update(v, chicontext);
                                 nonsafe_count++;
                             }
@@ -483,6 +495,7 @@ namespace graphchi {
         
         
         void save_vertices(std::vector<svertex_t> &vertices) {
+            if (disable_vertexdata_storage) return;
             size_t nvertices = vertices.size();
             bool modified_any_vertex = false;
             for(int i=0; i < (int)nvertices; i++) {
@@ -559,6 +572,10 @@ namespace graphchi {
          * Counts the number of edges from shard sizes.
          */
         virtual size_t num_edges() {
+            if (sliding_shards.size() == 0) {
+                logstream(LOG_ERROR) << "engine.num_edges() can be called only after engine has been started. To be fixed later. As a workaround, put the engine into a global variable, and query the number afterwards in begin_iteration(), for example." << std::endl;
+                assert(false);
+            }
             if (only_adjacency) {
                 // TODO: fix.
                 logstream(LOG_ERROR) << "Asked number of edges, but engine was run without edge-data." << std::endl; 
@@ -643,13 +660,15 @@ namespace graphchi {
                 initialize_iter();
                 
                 /* Check vertex data file has the right size (number of vertices may change) */
-                vertex_data_handler->check_size(num_vertices());
+                if (!disable_vertexdata_storage)
+                    vertex_data_handler->check_size(num_vertices());
                 
                 /* Keep the context object updated */
                 chicontext.filename = base_filename;
                 chicontext.iteration = iter;
                 chicontext.num_iterations = niters;
                 chicontext.nvertices = num_vertices();
+                if (!only_adjacency) chicontext.nedges = num_edges();
                 
                 chicontext.execthreads = exec_threads;
                 chicontext.reset_deltas(exec_threads);
@@ -690,7 +709,7 @@ namespace graphchi {
                     logstream(LOG_INFO) << chicontext.runtime() << "s: Starting: " 
                     << sub_interval_st << " -- " << interval_en << std::endl;
                     
-                    while (sub_interval_st < interval_en) {
+                    while (sub_interval_st <= interval_en) {
                         
                         modification_lock.lock();
                         /* Determine the sub interval */
@@ -698,7 +717,7 @@ namespace graphchi {
                                                                 sub_interval_st, 
                                                                 std::min(interval_en, sub_interval_st + maxwindow), 
                                                                 size_t(membudget_mb) * 1024 * 1024);
-                        assert(sub_interval_en > sub_interval_st);
+                        assert(sub_interval_en >= sub_interval_st);
                         
                         logstream(LOG_INFO) << "Iteration " << iter << "/" << (niters - 1) << ", subinterval: " << sub_interval_st << " - " << sub_interval_en << std::endl;
                         
@@ -741,7 +760,9 @@ namespace graphchi {
                         
                         
                         /* Save vertices */
-                        save_vertices(vertices);
+                        if (!disable_vertexdata_storage) {
+                            save_vertices(vertices);
+                        }
                         sub_interval_st = sub_interval_en + 1;
                         
                         /* Delete edge buffer. TODO: reuse. */
@@ -861,6 +882,16 @@ namespace graphchi {
         void set_enable_deterministic_parallelism(bool b) {
             enable_deterministic_parallelism = b;
         }
+      
+    public:
+        void set_disable_vertexdata_storage() {
+            this->disable_vertexdata_storage = true;
+        }
+        
+        void set_enable_vertexdata_storage() {
+            this->disable_vertexdata_storage = false;
+        }
+        
         
     protected:
         

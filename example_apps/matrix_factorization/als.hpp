@@ -133,7 +133,8 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    uint M, N;
+    size_t nz;   
     
     /**
      * Create sharder object
@@ -191,11 +192,13 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
     
     
     if (!sharderobj.preprocessed_file_exists()) {
-        for (int i=0; i<nz; i++)
+        for (size_t i=0; i<nz; i++)
         {
-            int I, J;
+            uint I, J;
             double val;
-            fscanf(f, "%d %d %lg\n", &I, &J, &val);
+            int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+            if (rc != 3)
+              logstream(LOG_FATAL)<<"Error reading line: " << i << std::endl;
             I--;  /* adjust from 1-based to 0-based */
             J--;
             
@@ -229,7 +232,7 @@ struct  MMOutputter : public VCallback<latentvec_t> {
         outf = fopen(fname.c_str(), "w");
         assert(outf != NULL);
         mm_write_banner(outf, matcode);
-        mm_write_mtx_array_size(outf, NLATENT, nvertices); // Column major
+        mm_write_mtx_array_size(outf, nvertices, NLATENT); 
     }
     
     void callback(vid_t vertex_id, latentvec_t &vec) {
@@ -250,7 +253,7 @@ void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_v
     
     
     MMOutputter mmoutput_right(filename + "_V.mm", numvertices - max_left_vertex - 1);
-    foreach_vertices<latentvec_t>(filename, max_left_vertex + 1, numvertices, mmoutput_right);
+    foreach_vertices<latentvec_t>(filename, max_left_vertex + 1, numvertices-1, mmoutput_right);
     logstream(LOG_INFO) << "ALS output files (in matrix market format): " << filename + "_U.mm" <<
     ", " << filename + "_V.mm" << std::endl;
 }
