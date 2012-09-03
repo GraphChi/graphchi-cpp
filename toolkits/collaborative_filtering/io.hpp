@@ -127,18 +127,23 @@ int convert_matrixmarket4(std::string base_filename) {
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename) {
+int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
   FILE *f;
   size_t nz;   
 
+  std::string suffix = "";
+  if (preprocessor != NULL) {
+     suffix = preprocessor->getSuffix();
+  }
+     
   /**
    * Create sharder object
    */
   int nshards;
-  if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+  if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
     int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
@@ -197,6 +202,11 @@ int convert_matrixmarket(std::string base_filename) {
     sharderobj.end_preprocessing();
     globalMean /= nz;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+
+    if (preprocessor != NULL) {
+       preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
+    }
+     
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
     fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
     fclose(outf);
@@ -205,14 +215,16 @@ int convert_matrixmarket(std::string base_filename) {
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
   }
-  if (f !=stdin) fclose(f);
+  fclose(f);
 
 
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
-
+  logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename + suffix << std::endl;
+  logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
+     
   return nshards;
 }
 

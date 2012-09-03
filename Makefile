@@ -38,7 +38,7 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 
 cf:
 	@mkdir -p bin/$(@D)
-	cd toolkits/collaborative_filtering/; source ./test_eigen.sh; 
+	cd toolkits/collaborative_filtering/; bash -x ./test_eigen.sh; 
 	if [ $$? -ne 0 ]; then exit 1; fi
 	cd toolkits/collaborative_filtering/; make 
 cf_test:
