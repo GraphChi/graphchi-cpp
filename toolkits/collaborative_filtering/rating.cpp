@@ -279,6 +279,8 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
   delete [] curratings;
   vec out_dist(K);
   ivec indices_sorted = reverse_sort_index2(distances, indices, out_dist, K);
+  assert(indices_sorted.size() <= K);
+  assert(out_dist.size() <= K);
   vdata.ids = indices_sorted;
   vdata.ratings = out_dist;
   if (debug)
@@ -286,9 +288,11 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
   if (vertex.id() % 1000 == 0)
     printf("Computing recommendaitons for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
+  
+  
   }
 
-
+   
 
   /**
    * Called after an iteration has finished.

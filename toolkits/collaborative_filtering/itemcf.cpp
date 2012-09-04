@@ -192,7 +192,7 @@ class adjlist_container {
    * Extend the interval of pivot vertices to en.
    */
   void extend_pivotrange(vid_t en) {
-    assert(en>pivot_en);
+    //assert(en>pivot_en);
     pivot_en = en; 
     adjs.resize(pivot_en - pivot_st);
   }
@@ -217,7 +217,8 @@ class adjlist_container {
     dense_adj dadj = dense_adj(edges_to_larger_id, (vid_t*) calloc(sizeof(vid_t), edges_to_larger_id));
     edges_to_larger_id = 0;
     for(int i=0; i<num_edges; i++) {
-      dadj.adjlist[edges_to_larger_id++] = v.edge(i)->vertex_id();
+      if (v.edge(i)->vertexid > v.id())
+        dadj.adjlist[edges_to_larger_id++] = v.edge(i)->vertex_id();
     }
     assert(dadj.count == edges_to_larger_id);
     adjs[v.id() - pivot_st] = dadj;
@@ -444,14 +445,18 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("triangle-counting");    
   /* Basic arguments for application */
-  std::string filename = get_option_string("file");  // Base filename
+  training = get_option_string("training");  // Base filename
   int niters           = 100000; // Automatically determined during running
   bool scheduler       = true;
 
   /* Preprocess the file, and order the vertices in the order of their degree.
      Mapping from original ids to new ids is saved separately. */
   OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
-  int nshards          = convert_matrixmarket<EdgeDataType>(filename, orderByDegreePreprocessor);
+  int nshards          = convert_matrixmarket<EdgeDataType>(training, orderByDegreePreprocessor);
+
+  assert(M > 0 && N > 0);
+  max_left_vertex = M-1;
+  max_right_vertex = M+N-1;
 
   /* Initialize adjacency container */
   adjcontainer = new adjlist_container();
@@ -461,7 +466,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   TriangleCountingProgram program;
-  graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + orderByDegreePreprocessor->getSuffix(),
+  graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(training + orderByDegreePreprocessor->getSuffix(),
       nshards, scheduler, m); 
   engine.set_enable_deterministic_parallelism(false);
 
@@ -474,7 +479,7 @@ int main(int argc, const char ** argv) {
   metrics_report(m);
 
   /* Count triangles */
-  size_t ntriangles = sum_vertices<vid_t, size_t>(filename + "_degord", 0, (vid_t)engine.num_vertices());
+  size_t ntriangles = sum_vertices<vid_t, size_t>(training + "_degord", 0, (vid_t)engine.num_vertices());
   std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
   return 0;
 }

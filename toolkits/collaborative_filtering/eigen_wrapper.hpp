@@ -626,7 +626,7 @@ inline bool pair_compare (std::pair<double,int> &x1, std::pair<double,int> & x2)
 
 inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int K){
   assert(a.size() == indices.size());
-  ivec ret(a.size()); 
+  ivec ret(std::min((uint)a.size(), (uint)K)); 
   std::vector<std::pair<double,int> > D;
 
   D.reserve(a.size());
@@ -640,6 +640,7 @@ inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int 
     if (i >= K-1)
       break;
   } 
+  D.clear();
   return ret;
 }
 
