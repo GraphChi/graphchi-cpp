@@ -19,7 +19,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- 
+
  *
  * @section DESCRIPTION
  *
@@ -49,9 +49,9 @@
 #include <vector>
 
 /**
-  * Need to define prior to including GraphChi
-  * headers. This enabled edge-deletion in the vertex object.
-  */
+ * Need to define prior to including GraphChi
+ * headers. This enabled edge-deletion in the vertex object.
+ */
 #define SUPPORT_DELETIONS 1
 
 
@@ -75,11 +75,11 @@ uint M, N;
 size_t L;
 uint Me, Ne, Le;
 double globalMean = 0;
-const double epsilon = 1e-16;
+int min_allowed_intersection = 5;
 
 vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
-
+bool * relevant_items  = NULL;
 #define NLATENT 20
 struct vertex_data {
   double pvec[NLATENT];
@@ -98,7 +98,8 @@ struct vertex_data {
 
 };
 
-
+bool is_item(vid_t v){ return v >= M; }
+bool is_user(vid_t v){ return v < M; }
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -112,188 +113,156 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 /**
-  * Code for intersection size computation and 
-  * pivot management.
-  */
+ * Code for intersection size computation and 
+ * pivot management.
+ */
 int grabbed_edges = 0;
 
 
 // Linear search
-inline bool findadj_linear(vid_t * datachunk, size_t n, vid_t target) {
-    for(int i=0; i<(int)n; i++) {
-        if (datachunk[i] == target) return true;
-        else if (datachunk[i] > target) return false;
-    }
-    return false;
+inline bool find_in_list_linear(vid_t * datachunk, size_t n, vid_t target) {
+  for(int i=0; i<(int)n; i++) {
+    if (datachunk[i] == target) return true;
+    else if (datachunk[i] > target) return false;
+  }
+  return false;
 }
 
 // Binary search
-inline bool findadj(vid_t * datachunk, size_t n, vid_t target) {
-    if (n<32) return findadj_linear(datachunk, n, target);
-    register size_t lo = 0;
-    register size_t hi = n;
-    register size_t m = lo + (hi-lo)/2;
-    while(hi>lo) {
-        vid_t eto = datachunk[m];
-        if (target == eto) {
-            return true;
-        }
-        if (target > eto) {
-            lo = m+1;
-        } else {
-            hi = m;
-        }
-        m = lo + (hi-lo)/2;
+inline bool find_in_list(vid_t * datachunk, size_t n, vid_t target) {
+  assert(is_user(target));
+  if (n<32) return find_in_list_linear(datachunk, n, target);
+  register size_t lo = 0;
+  register size_t hi = n;
+  register size_t m = lo + (hi-lo)/2;
+  while(hi>lo) {
+    vid_t eto = datachunk[m];
+    if (target == eto) {
+      return true;
     }
-    return false;
+    if (target > eto) {
+      lo = m+1;
+    } else {
+      hi = m;
+    }
+    m = lo + (hi-lo)/2;
+  }
+  return false;
 }
 
 
 
 struct dense_adj {
-    int count;
-    vid_t * adjlist;
-    
-    dense_adj() { adjlist = NULL; }
-    dense_adj(int _count, vid_t * _adjlist) : count(_count), adjlist(_adjlist) {
-    }
+  int count;
+  vid_t * adjlist;
+
+  dense_adj() { adjlist = NULL; }
+  dense_adj(int _count, vid_t * _adjlist) : count(_count), adjlist(_adjlist) {
+  }
+
 };
+
 
 
 
 // This is used for keeping in-memory
 class adjlist_container {
-    std::vector<dense_adj> adjs;
-    mutex m;
-public:
-    vid_t pivot_st, pivot_en;
-    
-    adjlist_container() {
-        pivot_st = 0;
-        pivot_en = 0;
+  std::vector<dense_adj> adjs;
+  //mutex m;
+  public:
+  vid_t pivot_st, pivot_en;
+
+  adjlist_container() {
+    pivot_st = 0;
+    pivot_en = 0;
+  }
+
+  void clear() {
+    for(std::vector<dense_adj>::iterator it=adjs.begin(); it != adjs.end(); ++it) {
+      if (it->adjlist != NULL) {
+        free(it->adjlist);
+        it->adjlist = NULL;
+      }
     }
-    
-    void clear() {
-        for(std::vector<dense_adj>::iterator it=adjs.begin(); it != adjs.end(); ++it) {
-            if (it->adjlist != NULL) {
-                free(it->adjlist);
-                it->adjlist = NULL;
-            }
-        }
-        adjs.clear();
-        pivot_st = pivot_en;
+    adjs.clear();
+    pivot_st = pivot_en;
+  }
+
+  /** 
+   * Extend the interval of pivot vertices to en.
+   */
+  void extend_pivotrange(vid_t en) {
+    assert(en>pivot_en);
+    pivot_en = en; 
+    adjs.resize(pivot_en - pivot_st);
+  }
+
+  /**
+   * Grab pivot's adjacency list into memory.
+   */
+  int load_edges_into_memory(graphchi_vertex<uint32_t, uint32_t> &v) {
+    assert(is_pivot(v.id()));
+
+    int num_edges = v.num_edges();
+    // Count how many neighbors have larger id than v
+    v.sort_edges_indirect();
+    int edges_to_larger_id = 0;
+    for(int i=0; i<num_edges; i++) {
+      if (v.edge(i)->vertexid > v.id())  
+        edges_to_larger_id++;  // Need to store only ids larger than me
     }
-    
-    /** 
-      * Extend the interval of pivot vertices to en.
-      */
-    void extend_pivotrange(vid_t en) {
-        assert(en>pivot_en);
-        pivot_en = en; 
-        adjs.resize(pivot_en - pivot_st);
+
+    // Allocate the in-memory adjacency list, using the
+    // knowledge of the number of edges.
+    dense_adj dadj = dense_adj(edges_to_larger_id, (vid_t*) calloc(sizeof(vid_t), edges_to_larger_id));
+    edges_to_larger_id = 0;
+    for(int i=0; i<num_edges; i++) {
+      dadj.adjlist[edges_to_larger_id++] = v.edge(i)->vertex_id();
     }
-    
-    /**
-      * Grab pivot's adjacency list into memory.
-      */
-    int grab_adj(graphchi_vertex<uint32_t, uint32_t> &v) {
-        if(is_pivot(v.id())) {            
-            int ncount = v.num_edges();
-            // Count how many neighbors have larger id than v
-            v.sort_edges_indirect();
-            int actcount = 0;
-            vid_t lastvid = 0;
-            for(int i=0; i<ncount; i++) {
-                if (v.edge(i)->vertexid > v.id() && v.edge(i)->vertexid != lastvid)  
-                    actcount++;  // Need to store only ids larger than me
-                lastvid = v.edge(i)->vertex_id();
-            }
-            
-            // Allocate the in-memory adjacency list, using the
-            // knowledge of the number of edges.
-            dense_adj dadj = dense_adj(actcount, (vid_t*) calloc(sizeof(vid_t), actcount));
-            actcount = 0;
-            lastvid = 0;
-            for(int i=0; i<ncount; i++) {
-                if (v.edge(i)->vertexid > v.id() && v.edge(i)->vertexid != lastvid) {  // Need to store only ids larger than me
-                    dadj.adjlist[actcount++] = v.edge(i)->vertex_id();
-                }
-                lastvid = v.edge(i)->vertex_id();
-            }
-            assert(dadj.count == actcount);
-            adjs[v.id() - pivot_st] = dadj;
-            assert(v.id() - pivot_st < adjs.size());
-            __sync_add_and_fetch(&grabbed_edges, actcount);
-            return actcount;
-        }
-        return 0;
-    }
-    
-    int acount(vid_t pivot) {
-        return adjs[pivot - pivot_st].count;
-    }
-    
-    
-    /** 
-      * Compute size of the relevant intersection of v and a pivot
-      */
-    int intersection_size(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int start_i) {
-        assert(is_pivot(pivot));
-        int count = 0;        
-        if (pivot > v.id()) {  
-            dense_adj &dadj = adjs[pivot - pivot_st];
-            int vc = v.num_edges();
-             
-            /**
-              * If the adjacency list sizes are not too different, use
-              * 'merge'-type of operation to compute size intersection.
-              */
-            if (dadj.count < 32 * (vc - start_i)) { // TODO: do real profiling to find best cutoff value
-                // Do merge-style of check
-                assert(v.edge(start_i)->vertex_id() == pivot);
-                int i1 = 0;
-                int i2 = start_i+1;
-                int nedges = v.num_edges(); 
-                
-                while (i1 < dadj.count && i2 < nedges) {
-                    vid_t dst = v.edge(i2)->vertexid;
-                    vid_t a = dadj.adjlist[i1];
-                    if (a == dst) {
-                        /* Add one to edge between v and the match */
-                        v.edge(i2)->set_data(v.edge(i2)->get_data() + 1);
-                        count++;
-                        i1++; i2++;
-                        
-                    } else {
-                        i1 += a < dst;
-                        i2 += a > dst;
-                    }  
-                }
-            } else {
-                /**
-                  * Otherwise, use linear/binary search.
-                  */
-                vid_t lastvid = 0;
-                for(int i=start_i+1; i < vc; i++) {
-                    vid_t nb = v.edge(i)->vertexid;
-                    if (nb > pivot && nb != lastvid) {
-                        int match = findadj(dadj.adjlist, dadj.count, nb);
-                        count += match;
-                        if (match > 0) {
-                            /* Add one to edge between v and the match */
-                            v.edge(i)->set_data(v.edge(i)->get_data() + 1); 
-                        }
-                    }
-                    lastvid = nb;
-                }
-            }
-        }        
-        return count;
-    }
-    
-    inline bool is_pivot(vid_t vid) {
-        return vid >= pivot_st && vid < pivot_en;
-    }
+    assert(dadj.count == edges_to_larger_id);
+    adjs[v.id() - pivot_st] = dadj;
+    assert(v.id() - pivot_st < adjs.size());
+    __sync_add_and_fetch(&grabbed_edges, edges_to_larger_id);
+    return edges_to_larger_id;
+  }
+
+  int acount(vid_t pivot) {
+    return adjs[pivot - pivot_st].count;
+  }
+
+
+  /** 
+   * for every two relevant items, go over all the users which are connected to those items
+   * and count how many such users exist.
+   */
+  int intersection_size(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot) {
+    assert(is_pivot(pivot));
+    assert(is_item(pivot) && is_item(v.id()));
+
+    int count = 0;        
+    if (pivot < v.id()) {  
+      dense_adj &pivot_edges = adjs[pivot - pivot_st];
+      int num_edges = v.num_edges();
+      for(int i=0; i < num_edges; i++) {
+        vid_t other_vertex = v.edge(i)->vertexid;
+        assert(is_user(other_vertex));
+        //if (other_vertex > pivot) {
+        int match = find_in_list(pivot_edges.adjlist, pivot_edges.count, other_vertex);
+        count += match;
+        /*if (match > min_allowed_intersection) {
+        // Add one to edge between v and the match 
+        v.edge(i)->set_data(v.edge(i)->get_data() + match); 
+        }*/
+        //}
+      }
+    }        
+    assert(count >= 1);
+    return count;
+  }
+
+  inline bool is_pivot(vid_t vid) {
+    return vid >= pivot_st && vid < pivot_en;
+  }
 };
 
 adjlist_container * adjcontainer;
@@ -301,195 +270,211 @@ adjlist_container * adjcontainer;
 
 
 /**
-  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
-  * class. The main logic is usually in the update function.
-  */
+ * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
+ * class. The main logic is usually in the update function.
+ */
 struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
-    
-     
-    /**
-     *  Vertex update function.
-     */
-    void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
-        if (gcontext.iteration % 2 == 0) {
-            adjcontainer->grab_adj(v);         
-        } else {
-            uint32_t oldcount = v.get_data();
-            uint32_t newcounts = 0;
 
-            v.sort_edges_indirect();
-            
-            vid_t lastvid = 0;
-            
-            /**
-              * Iterate through the edges, and if an edge is from a 
-              * pivot vertex, compute intersection of the relevant
-              * adjacency lists.
-              */
-            for(int i=0; i<v.num_edges(); i++) {
-                graphchi_edge<uint32_t> * e = v.edge(i);
-                if (e->vertexid > v.id() && e->vertexid >= adjcontainer->pivot_st) {
-                    assert(!is_deleted_edge_value(e->get_data()));
-                    if (e->vertexid != lastvid) {  // Handles reciprocal edges (a->b, b<-a)
-                        if (adjcontainer->is_pivot(e->vertexid)) {
-                            uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, e->vertexid, i);
-                            newcounts += pivot_triangle_count;
-                            
-                            /* Write the number of triangles into edge between this vertex and pivot */
-                            if (pivot_triangle_count == 0 && e->get_data() == 0) {
-                                /* ... or remove the edge, if the count is zero. */
-                                v.remove_edge(i); 
-                            } else {
-                                
-                                e->set_data(e->get_data() + pivot_triangle_count);
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                    lastvid = e->vertexid;
-                }  
-                assert(newcounts >= 0);
-            }
-            
-            if (newcounts > 0) {
-                v.set_data(oldcount + newcounts);
-            }
+
+  /**
+   *  Vertex update function.
+   */
+  void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
+    if (gcontext.iteration % 2 == 0) {
+      if (adjcontainer->is_pivot(v.id()))
+        adjcontainer->load_edges_into_memory(v);         
+
+      else if (is_user(v.id())){
+        uint32_t oldcount = v.get_data();
+        uint32_t newcounts = 0;
+
+        v.sort_edges_indirect();
+
+        //check if this user is connected to any pivot item
+        bool has_pivot = false;
+        int pivot = -1;
+        for(int i=0; i<v.num_edges(); i++) {
+          graphchi_edge<uint32_t> * e = v.edge(i);
+          if (adjcontainer->is_pivot(e->vertexid)) {
+            has_pivot = true;
+            pivot = e->vertexid;
+          }
         }
-        
-        
-        /* Collect triangle counts matched by vertices with id lower than
-            his one, and delete */
-        if (gcontext.iteration % 2 == 0) {
-            int newcounts = 0;
-          
-            for(int i=0; i < v.num_edges(); i++) {
-                graphchi_edge<uint32_t> * e = v.edge(i);
-                if (e->vertexid < v.id()) {
-                    newcounts += e->get_data();
-                    e->set_data(0);
-                    
-                    // This edge can be now deleted. Is there some other situations we can delete?
-                    if (v.id() < adjcontainer->pivot_st && e->vertexid < adjcontainer->pivot_st) {
-                        v.remove_edge(i);
-                    }
-                }
-            }
-            v.set_data(v.get_data() + newcounts);
+
+        if (!has_pivot)
+          return; 
+
+        //has pivot
+        for(int i=0; i<v.num_edges(); i++) {
+          graphchi_edge<uint32_t> * e = v.edge(i);
+          if (!adjcontainer->is_pivot(e->vertexid)) {
+            relevant_items[e->vertexid - M] = true;
+            //uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, e->vertexid, i);
+            /*newcounts += pivot_triangle_count;
+              if (pivot_triangle_count == 0 && e->get_data() == 0) {
+              v.remove_edge(i); 
+              } else {
+              e->set_data(e->get_data() + pivot_triangle_count);
+              }
+              } else {
+              break;
+              } */
+          e->set_data(pivot);
         }
-        
-     }
-    
-    /**
-     * Called before an iteration starts.
-     */
-    void before_iteration(int iteration, graphchi_context &gcontext) {
-        gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
-        if (gcontext.iteration % 2 == 0) {
-            // Schedule vertices that were pivots on last iteration, so they can
-            // keep count of the triangles counted by their lower id neighbros.
-            for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
-                gcontext.scheduler->add_task(i); 
-            }
-            grabbed_edges = 0;
-            adjcontainer->clear();
+
+        if (newcounts > 0) {
+          v.set_data(oldcount + newcounts);
+        }
+      }
+    }//is_user 
+
+  } //iteration % 2 =  1
+  else {
+    assert(is_item(v.id()));
+    assert(!adjcontainer->is_pivot(v.id()));
+
+    if (!relevant_items[v.id() - M])
+      return;
+
+    for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
+      //dense_adj &dadj = adjcontainer->adjs[i - adjcontainer->pivot_st];
+      uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
+      if (pivot_triangle_count > (uint)min_allowed_intersection){
+        //TODO save to file
+      }
+    }
+  }//end of iteration % 2 == 1
+ }//end of update function
+  /**
+   * Called before an iteration starts.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
+    /*if (gcontext.iteration % 2 == 0) {
+    // Schedule vertices that were pivots on last iteration, so they can
+    // keep count of the triangles counted by their lower id neighbros.
+    for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
+    gcontext.scheduler->add_task(i); 
+    }
+    grabbed_edges = 0;
+    adjcontainer->clear();
+    } else {
+    // Schedule everything that has id < pivot
+    logstream(LOG_INFO) << "Now pivots: " << adjcontainer->pivot_st << " " << adjcontainer->pivot_en << std::endl;
+    for(vid_t i=0; i < gcontext.nvertices; i++) {
+    if (i < adjcontainer->pivot_en) { 
+    gcontext.scheduler->add_task(i); 
+    }
+    }
+    }*/
+    if (gcontext.iteration % 2 == 0){
+      memset(relevant_items, 0, sizeof(bool)*N);
+      // Schedule vertices that were pivots on last iteration, so they can
+      // keep count of the triangles counted by their lower id neighbros.
+      for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
+        assert(is_item(i));
+        gcontext.scheduler->add_task(i); 
+      }
+      for (vid_t i = 0; i< M; i++)
+        gcontext.scheduler->add_task(i);
+
+      grabbed_edges = 0;
+      adjcontainer->clear();
+    } else {
+      for(vid_t i=adjcontainer->pivot_en; i < M+N; i++) {
+        assert(is_item(i));
+        gcontext.scheduler->add_task(i); 
+      }
+    }
+
+  }
+
+  /**
+   * Called after an iteration has finished.
+   */
+  void after_iteration(int iteration, graphchi_context &gcontext) {
+  }
+
+  /**
+   * Called before an execution interval is started.
+   *
+   * On every even iteration, we store pivot's adjacency lists to memory. 
+   * Here we manage the memory to ensure that we do not load too much
+   * edges into memory.
+   */
+  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
+    if (gcontext.iteration % 2 == 0) {
+      if (adjcontainer->pivot_st <= window_en) {
+        size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
+        if (grabbed_edges < max_grab_edges * 0.8) {
+          logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << std::endl;
+          for(vid_t vid=window_st; vid <= window_en; vid++) {
+            gcontext.scheduler->add_task(vid);
+          }
+          adjcontainer->extend_pivotrange(window_en + 1);
+          if (window_en == gcontext.nvertices) {
+            // Last iteration needed for collecting last triangle counts
+            gcontext.set_last_iteration(gcontext.iteration + 3);                    
+          }
         } else {
-            // Schedule everything that has id < pivot
-            logstream(LOG_INFO) << "Now pivots: " << adjcontainer->pivot_st << " " << adjcontainer->pivot_en << std::endl;
-            for(vid_t i=0; i < gcontext.nvertices; i++) {
-                if (i < adjcontainer->pivot_en) { 
-                    gcontext.scheduler->add_task(i); 
-                }
-            }
+          std::cout << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
         }
-        
+      }
     }
-    
-    /**
-     * Called after an iteration has finished.
-     */
-    void after_iteration(int iteration, graphchi_context &gcontext) {
-    }
-    
-    /**
-     * Called before an execution interval is started.
-     *
-     * On every even iteration, we store pivot's adjacency lists to memory. 
-     * Here we manage the memory to ensure that we do not load too much
-     * edges into memory.
-     */
-    void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-        if (gcontext.iteration % 2 == 0) {
-            if (adjcontainer->pivot_st <= window_en) {
-                size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
-                if (grabbed_edges < max_grab_edges * 0.8) {
-                    logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << std::endl;
-                    for(vid_t vid=window_st; vid <= window_en; vid++) {
-                        gcontext.scheduler->add_task(vid);
-                    }
-                    adjcontainer->extend_pivotrange(window_en + 1);
-                    if (window_en == gcontext.nvertices) {
-                        // Last iteration needed for collecting last triangle counts
-                        gcontext.set_last_iteration(gcontext.iteration + 3);                    
-                    }
-                } else {
-                    std::cout << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
-                }
-            }
-        }
-        
-    }
-    
-    /**
-     * Called after an execution interval has finished.
-     */
-    void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-    }
-    
+
+  }
+
+  /**
+   * Called after an execution interval has finished.
+   */
+  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
+  }
+
 };
 
- 
+
 
 
 int main(int argc, const char ** argv) {
-    /* GraphChi initialization will read the command line 
-       arguments and the configuration file. */
-    graphchi_init(argc, argv);
-    
-    /* Metrics object for keeping track of performance counters
-       and other information. Currently required. */
-    metrics m("triangle-counting");    
-    /* Basic arguments for application */
-    std::string filename = get_option_string("file");  // Base filename
-    int niters           = 100000; // Automatically determined during running
-    bool scheduler       = true;
-    
-    /* Preprocess the file, and order the vertices in the order of their degree.
-       Mapping from original ids to new ids is saved separately. */
-    OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
-    int nshards          = convert_matrixmarket<EdgeDataType>(filename, orderByDegreePreprocessor);
-    
-    /* Initialize adjacency container */
-    adjcontainer = new adjlist_container();
-    
-    // TODO: ordering by degree.
-    
-    /* Run */
-    TriangleCountingProgram program;
-    graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + orderByDegreePreprocessor->getSuffix(),
-                                                                      nshards, scheduler, m); 
-    engine.set_enable_deterministic_parallelism(false);
-    
-    // Low memory budget is required to prevent swapping as triangle counting
-    // uses more memory than standard GraphChi apps.
-    engine.set_membudget_mb(std::min(get_option_int("membudget_mb", 1024), 1024)); 
-    engine.run(program, niters);
-    
-    /* Report execution metrics */
-    metrics_report(m);
-    
-    /* Count triangles */
-    size_t ntriangles = sum_vertices<vid_t, size_t>(filename + "_degord", 0, (vid_t)engine.num_vertices());
-    std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
-    return 0;
+  /* GraphChi initialization will read the command line 
+     arguments and the configuration file. */
+  graphchi_init(argc, argv);
+
+  /* Metrics object for keeping track of performance counters
+     and other information. Currently required. */
+  metrics m("triangle-counting");    
+  /* Basic arguments for application */
+  std::string filename = get_option_string("file");  // Base filename
+  int niters           = 100000; // Automatically determined during running
+  bool scheduler       = true;
+
+  /* Preprocess the file, and order the vertices in the order of their degree.
+     Mapping from original ids to new ids is saved separately. */
+  OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
+  int nshards          = convert_matrixmarket<EdgeDataType>(filename, orderByDegreePreprocessor);
+
+  /* Initialize adjacency container */
+  adjcontainer = new adjlist_container();
+
+  relevant_items = new bool[N];
+  // TODO: ordering by degree.
+
+  /* Run */
+  TriangleCountingProgram program;
+  graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + orderByDegreePreprocessor->getSuffix(),
+      nshards, scheduler, m); 
+  engine.set_enable_deterministic_parallelism(false);
+
+  // Low memory budget is required to prevent swapping as triangle counting
+  // uses more memory than standard GraphChi apps.
+  engine.set_membudget_mb(std::min(get_option_int("membudget_mb", 1024), 1024)); 
+  engine.run(program, niters);
+
+  /* Report execution metrics */
+  metrics_report(m);
+
+  /* Count triangles */
+  size_t ntriangles = sum_vertices<vid_t, size_t>(filename + "_degord", 0, (vid_t)engine.num_vertices());
+  std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
+  return 0;
 }
