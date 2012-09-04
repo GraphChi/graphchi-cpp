@@ -331,10 +331,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
 
   } //iteration % 2 =  1
   else {
-    assert(is_item(v.id()));
-    assert(!adjcontainer->is_pivot(v.id()));
-
-    if (!relevant_items[v.id() - M])
+    if (!is_item(v.id()) || (is_item(v.id()) && !relevant_items[v.id()]))
       return;
 
     for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
@@ -368,27 +365,22 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
     }
     }
     }*/
-    if (gcontext.iteration % 2 == 0){
+    for (vid_t i=0; i < M+N; i++){
+        //assert(is_item(i));
+        gcontext.scheduler->add_task(i); 
+    }
+     if (gcontext.iteration % 2 == 0){
       memset(relevant_items, 0, sizeof(bool)*N);
       // Schedule vertices that were pivots on last iteration, so they can
       // keep count of the triangles counted by their lower id neighbros.
-      for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
-        assert(is_item(i));
-        gcontext.scheduler->add_task(i); 
-      }
-      for (vid_t i = 0; i< M; i++)
-        gcontext.scheduler->add_task(i);
+      //for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
+     //for (vid_t i = 0; i< M; i++)
+      //  gcontext.scheduler->add_task(i);
 
       grabbed_edges = 0;
       adjcontainer->clear();
-    } else {
-      for(vid_t i=adjcontainer->pivot_en; i < M+N; i++) {
-        assert(is_item(i));
-        gcontext.scheduler->add_task(i); 
-      }
+    } 
     }
-
-  }
 
   /**
    * Called after an iteration has finished.
