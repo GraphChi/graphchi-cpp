@@ -24,7 +24,7 @@
  */
 
 #include "types.hpp"
-
+#include "implicit.hpp"
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -98,8 +98,15 @@ int convert_matrixmarket4(std::string base_filename) {
       globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time));
     }
+  
+    uint toadd = 0;
+    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+      toadd = add_implicit_edges4(implicitratingtype, sharderobj);
+    globalMean += implicitratingvalue * toadd;
+    L += toadd;
+  
     sharderobj.end_preprocessing();
-    globalMean /= nz;
+    globalMean /= L;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
     fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
@@ -109,9 +116,8 @@ int convert_matrixmarket4(std::string base_filename) {
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
   }
-  if (f !=stdin) fclose(f);
-
-
+  
+  fclose(f);
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
   // Shard with a specified number of shards, or determine automatically if not defined
@@ -154,13 +160,12 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     return nshards;
   }   
 
-  sharder<als_edge_type> sharderobj(base_filename+ suffix);
+   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
 
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_ERROR) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-    exit(1);
+    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
 
@@ -199,8 +204,14 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
     }
+    uint toadd = 0;
+    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+      toadd = add_implicit_edges(implicitratingtype, sharderobj);
+    globalMean += implicitratingvalue * toadd;
+    L += toadd;
+  
     sharderobj.end_preprocessing();
-    globalMean /= nz;
+    globalMean /= L;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
 
     if (preprocessor != NULL) {

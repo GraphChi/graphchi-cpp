@@ -1,5 +1,5 @@
-/**
- * @file
+/* 
+* @file
  * @author  Danny Bickson
  * @version 1.0
  *
@@ -234,6 +234,8 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+
+  parse_implicit_command_line(); 
 
   if (user_sparsity < 0.5 || user_sparsity >= 1)
     logstream(LOG_FATAL)<<"Sparsity level should be [0.5,1). Please run again using --user_sparsity=XX in this range" << std::endl;

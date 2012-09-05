@@ -281,11 +281,14 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
+    printf("Entered iteration %d with %d\n", gcontext.iteration, v.id());
     if (gcontext.iteration % 2 == 0) {
-      if (adjcontainer->is_pivot(v.id()))
+      if (adjcontainer->is_pivot(v.id()) && is_item(v.id())){
         adjcontainer->load_edges_into_memory(v);         
-
+        printf("Loading pivot %dintro memory\n", v.id());
+      }
       else if (is_user(v.id())){
+        
         uint32_t oldcount = v.get_data();
         uint32_t newcounts = 0;
 
@@ -301,15 +304,18 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
             pivot = e->vertexid;
           }
         }
+        printf("user %d is linked to pivot %d\n", v.id(), pivot);
 
         if (!has_pivot)
           return; 
 
+
         //has pivot
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
-          if (!adjcontainer->is_pivot(e->vertexid)) {
-            relevant_items[e->vertexid - M] = true;
+          //if (!adjcontainer->is_pivot(e->vertexid)) {
+           assert(is_item(e->vertexid)); 
+           relevant_items[e->vertexid - M] = true;
             //uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, e->vertexid, i);
             /*newcounts += pivot_triangle_count;
               if (pivot_triangle_count == 0 && e->get_data() == 0) {
@@ -320,23 +326,28 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
               } else {
               break;
               } */
-          e->set_data(pivot);
+          //e->set_data(pivot);
         }
 
         if (newcounts > 0) {
           v.set_data(oldcount + newcounts);
         }
-      }
+      //}
     }//is_user 
 
   } //iteration % 2 =  1
   else {
-    if (!is_item(v.id()) || (is_item(v.id()) && !relevant_items[v.id()]))
+    if (!is_item(v.id()) || (is_item(v.id()) && !relevant_items[v.id() - M])){
+      printf("node %d is not relevan\n", v.id());
       return;
+    }
 
     for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
       //dense_adj &dadj = adjcontainer->adjs[i - adjcontainer->pivot_st];
+      if (!is_item(i))
+        continue;
       uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
+      printf("comparing to pivot %d\n", i);
       if (pivot_triangle_count > (uint)min_allowed_intersection){
         //TODO save to file
       }
@@ -376,7 +387,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
       //for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
      //for (vid_t i = 0; i< M; i++)
       //  gcontext.scheduler->add_task(i);
-
+      printf("setting relevant_items to zero\n");
       grabbed_edges = 0;
       adjcontainer->clear();
     } 
@@ -438,7 +449,7 @@ int main(int argc, const char ** argv) {
   metrics m("triangle-counting");    
   /* Basic arguments for application */
   training = get_option_string("training");  // Base filename
-  int niters           = 100000; // Automatically determined during running
+  int niters           = get_option_int("max_iter", 100000); // Automatically determined during running
   bool scheduler       = true;
 
   /* Preprocess the file, and order the vertices in the order of their degree.

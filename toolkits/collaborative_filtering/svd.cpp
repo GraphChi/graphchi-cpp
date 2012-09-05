@@ -365,6 +365,8 @@ int main(int argc,  const char *argv[]) {
   nodes = get_option_int("nodes", 0);
   //clopts.attach_option("no_edge_data", &no_edge_data, no_edge_data, "matrix is binary (optional)");
 
+  parse_implicit_command_line();
+
   if (nv < nsv){
     logstream(LOG_FATAL)<<"Please set the number of vectors --nv=XX, to be at least the number of support vectors --nsv=XX or larger" << std::endl;
   }

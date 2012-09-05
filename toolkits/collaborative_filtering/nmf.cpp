@@ -313,6 +313,8 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
 
+  parse_implicit_command_line();
+
   niters *= 2; //each NMF iteration is composed of two sub iters
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.

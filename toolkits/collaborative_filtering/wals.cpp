@@ -222,11 +222,10 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+  
+  parse_implicit_command_line();
    
   bool scheduler       = false;                        // Selective scheduling not supported for now.
-  
-
-
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training);
 
