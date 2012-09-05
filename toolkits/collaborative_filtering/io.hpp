@@ -34,7 +34,7 @@
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket4(std::string base_filename) {
+int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
@@ -47,11 +47,14 @@ int convert_matrixmarket4(std::string base_filename) {
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
-    if (rc != 4)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    if (rc != 5)
+      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    if (K <= 0)
+      logstream(LOG_FATAL)<<"Incorrect number of time bins K in .gm file " << base_filename << ".gm" << std::endl;
+
+    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
     return nshards;
   }   
 
@@ -95,8 +98,13 @@ int convert_matrixmarket4(std::string base_filename) {
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
       I--;  /* adjust from 1-based to 0-based */
       J--;
+      K = std::max((uint)time, K);
       globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time));
+      if (add_time_edges){
+        sharderobj.preprocessing_add_edge((uint)time + M + N, I, als_edge_type(val, M+J));
+        sharderobj.preprocessing_add_edge((uint)time + M + N, M+J , als_edge_type(val, I));
+      }
     }
   
     uint toadd = 0;
@@ -107,9 +115,9 @@ int convert_matrixmarket4(std::string base_filename) {
   
     sharderobj.end_preprocessing();
     globalMean /= L;
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
     fclose(outf);
 
 
@@ -152,11 +160,11 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
-    if (rc != 4)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    if (rc != 5)
+      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename+ suffix << ".gm" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
     return nshards;
   }   
 
@@ -219,7 +227,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     }
      
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
     fclose(outf);
 
 

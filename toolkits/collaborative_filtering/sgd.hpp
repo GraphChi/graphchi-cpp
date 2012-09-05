@@ -61,7 +61,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-uint M, N, Me, Ne, Le;
+uint M, N, Me, Ne, Le, K;
 size_t L;
 double globalMean = 0;
 
