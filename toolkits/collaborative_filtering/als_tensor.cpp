@@ -96,6 +96,9 @@ double globalMean = 0;
 /// RMSE computation
 double rmse=0.0;
 
+bool is_user(vid_t id){ return id < M; }
+bool is_item(vid_t id){ return id >= M && id < N; }
+bool is_time(vid_t id){ return id >= M+N; }
 
 struct vertex_data {
   double pvec[NLATENT];
@@ -182,7 +185,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     mat XtX = mat::Zero(NLATENT, NLATENT); 
     vec Xty = vec::Zero(NLATENT);
 
-    bool compute_rmse = (vertex.num_outedges() > 0);
+    bool compute_rmse = is_user(vertex.id()); 
     // Compute XtX and Xty (NOTE: unweighted)
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data().weight;                
@@ -191,8 +194,10 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       vertex_data & time_node = latent_factors_inmem[time];
       assert(time != vertex.id() && time != vertex.edge(e)->vertex_id());
       Map<vec> X(nbr_latent.pvec, NLATENT);
-      Xty += X * observation;
-      XtX.triangularView<Eigen::Upper>() += X * X.transpose();
+      Map<vec> Y(time_node.pvec, NLATENT);
+      vec XY = X.cwiseProduct(Y);
+      Xty += XY * observation;
+      XtX.triangularView<Eigen::Upper>() += XY * XY.transpose();
       if (compute_rmse) {
         double prediction;
         vdata.rmse += als_tensor_predict(vdata, nbr_latent, time_node, observation, prediction);
