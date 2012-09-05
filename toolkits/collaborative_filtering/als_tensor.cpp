@@ -166,11 +166,6 @@ float als_tensor_predict(const vertex_data& user,
 struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
-  // Helper
-  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
-    vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
-    latent_factors_inmem[vertex.id()] = fact;
-  }
 
   /**
    * Called before an iteration starts.
@@ -191,9 +186,10 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     // Compute XtX and Xty (NOTE: unweighted)
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data().weight;                
-      int time = vertex.edge(e)->get_data().time;
+      uint time = vertex.edge(e)->get_data().time;
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       vertex_data & time_node = latent_factors_inmem[time];
+      assert(time != vertex.id() && time != vertex.edge(e)->vertex_id());
       Map<vec> X(nbr_latent.pvec, NLATENT);
       Xty += X * observation;
       XtX.triangularView<Eigen::Upper>() += X * X.transpose();
@@ -326,7 +322,7 @@ int main(int argc, const char ** argv) {
   m.set("train_rmse", rmse);
   m.set("latent_dimension", NLATENT);
 
-  /* Output latent factor matrices in matrix-market format */
+  /* Output test predictions in matrix-market format */
   test_predictions3(&als_tensor_predict);    
 
   if (unittest == 1){

@@ -96,11 +96,15 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
       if (rc != 4)
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      if (time < 0)
+        logstream(LOG_FATAL)<<"Time (third columns) should be >= 0 " << std::endl;
       I--;  /* adjust from 1-based to 0-based */
       J--;
-      K = std::max((uint)time, K);
+      K = std::max((int)time, (int)K);
       globalMean += val; 
-      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time));
+      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time+M+N));
+      //in case of a tensor, add besides of the user-> movie edge also
+      //time -> user and time-> movie edges
       if (add_time_edges){
         sharderobj.preprocessing_add_edge((uint)time + M + N, I, als_edge_type(val, M+J));
         sharderobj.preprocessing_add_edge((uint)time + M + N, M+J , als_edge_type(val, I));
