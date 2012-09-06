@@ -21,26 +21,6 @@
  * limitations under the License.
 
  *
- * @section DESCRIPTION
- *
- * Triangle counting application. Counts the number of incident (full) triangles
- * for each vertex. Edge direction is ignored.
- *
- * This algorithm is quite complicated and requires 'trickery' to work
- * well on GraphChi. The complexity stems from the need to store large number
- * of adjacency lists in memory: we cannot store the adjacency lists reasonable
- * to edges, nor can we store all of them once at memory. Therefore the problems
- * is solved in a series of phases. On each phase, the relevant adjacency lists of an interval
- * of vertices (called 'pivots') is loaded into memory, and all vertices that have id smaller than the
- * pivots are matched with them. With 'relevant adjacency list' I mean the list of neighbors
- * that have higher id then the pivots themselves. That is, we only count triangles a -> b -> c
- * where a > b > c. 
- *
- * The application involves a special preprocessing step which orders the vertices in ascending
- * order of their degree. This turns out to be a very important optimization on big graphs. 
- *
- * This algorithm also utilizes the dynamic graph engine, and deletes edges after they have been
- * accounted for. 
  */
 
 
@@ -235,8 +215,14 @@ class adjlist_container {
     int count = 0;        
       dense_adj &pivot_edges = adjs[pivot - pivot_st];
       int num_edges = v.num_edges();
+      //if there are not enough neighboring user nodes to those two items there is no need
+      //to actually count the intersection
+      if (num_edges < min_allowed_intersection || pivot_edges.count < min_allowed_intersection)
+        return 0;
+
       std::vector<vid_t> edges;
-      std::vector<vid_t> intersection(pivot_edges.count + num_edges);
+      std::vector<vid_t> intersection;
+      intersection.resize(pivot_edges.count + num_edges);
       edges.resize(num_edges);
       for(int i=0; i < num_edges; i++) {
         vid_t other_vertex = v.edge(i)->vertexid;
@@ -313,9 +299,9 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
           //if (!adjcontainer->is_pivot(e->vertexid)) {
-          assert(v.id() != e->vertexid);
+          //assert(v.id() != e->vertexid);
           //printf("node %d connected to %d\n", v.id(), e->vertexid);
-          assert(is_item(e->vertexid)); 
+          //assert(is_item(e->vertexid)); 
           relevant_items[e->vertexid - M] = true;
         }
 
@@ -327,7 +313,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
 
   } //iteration % 2 =  1
   else {
-    if (!is_item(v.id()) || (is_item(v.id()) && !relevant_items[v.id() - M])){
+    if (!relevant_items[v.id() - M]){
       //printf("node %d is not relevan\n", v.id());
       return;
     }
@@ -336,11 +322,14 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
       //dense_adj &dadj = adjcontainer->adjs[i - adjcontainer->pivot_st];
       if (i >= v.id())
         continue;
-      uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
+     uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
       item_pairs_compared++;
       //if (i % 1000 == 0) printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, pivot_triangle_count);
       if (pivot_triangle_count > (uint)min_allowed_intersection){
-        fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id(), i, (double)pivot_triangle_count);
+         uint wi = v.num_edges();
+         uint wj = adjcontainer->acount(i);
+         double distance = pivot_triangle_count / (double)(wi+wj-pivot_triangle_count); 
+        fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)distance);
       }
     }
   }//end of iteration % 2 == 1
@@ -446,7 +435,7 @@ int main(int argc, const char ** argv) {
   training = get_option_string("training");  // Base filename
   int niters           = get_option_int("max_iter", 100000); // Automatically determined during running
   bool scheduler       = true;
-
+  min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   /* Preprocess the file, and order the vertices in the order of their degree.
      Mapping from original ids to new ids is saved separately. */
   //OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
