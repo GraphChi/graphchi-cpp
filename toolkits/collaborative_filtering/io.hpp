@@ -172,7 +172,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     return nshards;
   }   
 
-   sharder<als_edge_type> sharderobj(base_filename);
+   sharder<als_edge_type> sharderobj(base_filename + suffix);
   sharderobj.start_preprocessing();
 
 

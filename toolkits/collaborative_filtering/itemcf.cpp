@@ -75,7 +75,7 @@ uint M, N, K;
 size_t L;
 uint Me, Ne, Le;
 double globalMean = 0;
-int min_allowed_intersection = 5;
+int min_allowed_intersection = 1;
 int nodes_in_memory = 1000;
 
 bool * relevant_items  = NULL;
@@ -201,10 +201,10 @@ class adjlist_container {
    */
   int load_edges_into_memory(graphchi_vertex<uint32_t, uint32_t> &v) {
     assert(is_pivot(v.id()));
-
+    assert(is_item(v.id()));
     int num_edges = v.num_edges();
     // Count how many neighbors have larger id than v
-    v.sort_edges_indirect();
+    //v.sort_edges_indirect();
     int edges_to_larger_id = 0;
     for(int i=0; i<num_edges; i++) {
       edges_to_larger_id++;  // Need to store only ids larger than me
@@ -244,7 +244,6 @@ class adjlist_container {
         vid_t other_vertex = v.edge(i)->vertexid;
         assert(is_user(other_vertex));
         //if (other_vertex > pivot) {
-        if (other_vertex > pivot)
         count += find_in_list(pivot_edges.adjlist, pivot_edges.count, other_vertex);
         /*if (match > min_allowed_intersection) {
         // Add one to edge between v and the match 
@@ -287,13 +286,14 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
         uint32_t oldcount = v.get_data();
         uint32_t newcounts = 0;
 
-        v.sort_edges_indirect();
+        //v.sort_edges_indirect();
 
         //check if this user is connected to any pivot item
         bool has_pivot = false;
         int pivot = -1;
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
+          assert(is_item(e->vertexid)); 
           if (adjcontainer->is_pivot(e->vertexid)) {
             has_pivot = true;
             pivot = e->vertexid;
@@ -309,6 +309,8 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
           //if (!adjcontainer->is_pivot(e->vertexid)) {
+          assert(v.id() != e->vertexid);
+          printf("node %d connected to %d\n", v.id(), e->vertexid);
           assert(is_item(e->vertexid)); 
           relevant_items[e->vertexid - M] = true;
           //uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, e->vertexid, i);
@@ -339,10 +341,10 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
 
     for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
       //dense_adj &dadj = adjcontainer->adjs[i - adjcontainer->pivot_st];
-      if (!is_item(i) || i == v.id())
+      if (!is_item(i) || i >= v.id())
         continue;
       uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
-      printf("comparing %d to pivot %d\n", i, v.id());
+      printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, pivot_triangle_count);
       if (pivot_triangle_count > (uint)min_allowed_intersection){
         //TODO save to file
       }
@@ -410,8 +412,10 @@ void before_iteration(int iteration, graphchi_context &gcontext) {
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
           adjcontainer->extend_pivotrange(window_en + 1);
-          if (window_en == gcontext.nvertices) {
+          logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
+          if (window_en+1 == gcontext.nvertices) {
             // Last iteration needed for collecting last triangle counts
+            logstream(LOG_DEBUG)<<"Setting last iteration to: " << gcontext.iteration + 3 << std::endl;
             gcontext.set_last_iteration(gcontext.iteration + 3);                    
           }
         } else {
@@ -448,8 +452,8 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess the file, and order the vertices in the order of their degree.
      Mapping from original ids to new ids is saved separately. */
-  //OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
-  int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
+  OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
+  int nshards          = convert_matrixmarket<EdgeDataType>(training, orderByDegreePreprocessor);
 
   assert(M > 0 && N > 0);
   /* Initialize adjacency container */
@@ -459,8 +463,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   TriangleCountingProgram program;
-  graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(training /*+ orderByDegreePreprocessor->getSuffix(),*/
-      ,nshards, scheduler, m); 
+  graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(training+orderByDegreePreprocessor->getSuffix()  ,nshards, scheduler, m); 
   engine.set_enable_deterministic_parallelism(false);
 
   //engine.set_membudget_mb(std::min(get_option_int("membudget_mb", 1024), 1024)); 
