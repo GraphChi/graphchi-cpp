@@ -247,7 +247,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     J--;
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time], val, prediction);
-    dvalidation_rmse += time * pow(prediction - val, 2);
+    dvalidation_rmse += pow(prediction - val, 2);
   }
   fclose(f);
 

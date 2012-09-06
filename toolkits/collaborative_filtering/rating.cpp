@@ -369,7 +369,7 @@ struct  MMOutputter_ids{
 
 void output_knn_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
   MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, max_left_vertex + 1, "This file contains user scalar ratings. In each row i, K top scalar ratings of different items for user i.");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, max_left_vertex +1 ,"This file contains item ids matching the ratings. In each row i, K top item ids for user id");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, max_left_vertex +1 ,"This file contains item ids matching the ratings. In each row i, K top item ids for user i.");
   logstream(LOG_INFO) << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                            ", " << filename + ".ids " << std::endl;
 }
