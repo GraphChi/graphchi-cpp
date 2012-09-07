@@ -128,9 +128,18 @@ class adjlist_container {
    * Grab pivot's adjacency list into memory.
    */
   int load_edges_into_memory(graphchi_vertex<uint32_t, uint32_t> &v) {
-    assert(is_pivot(v.id()));
-    assert(is_item(v.id()));
+    //assert(is_pivot(v.id()));
+    //assert(is_item(v.id()));
+    
     int num_edges = v.num_edges();
+    //not enough user rated this item, we don't need to compare to it
+    if (num_edges < min_allowed_intersection){
+      relevant_items[v.id() - M] = false;
+      return 0;
+    }
+       
+    relevant_items[v.id() - M] = true;
+
     // Count how many neighbors have larger id than v
     dense_adj dadj = dense_adj(num_edges, (vid_t*) calloc(sizeof(vid_t), num_edges));
     for(int i=0; i<num_edges; i++) {
@@ -209,7 +218,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
           //assert(is_item(e->vertexid)); 
-          if (adjcontainer->is_pivot(e->vertexid)) {
+          if (adjcontainer->is_pivot(e->vertexid) && relevant_items[e->vertexid-M]) {
             has_pivot = true;
             pivot = e->vertexid;
           }
@@ -239,7 +248,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
         //since metric is symmetric, compare only to pivots which are smaller than this item id
-        if (i >= v.id())
+        if (i >= v.id() || (!relevant_items[i-M]))
           continue;
         uint32_t intersection_size = adjcontainer->intersection_size(v, i);
         item_pairs_compared++;
