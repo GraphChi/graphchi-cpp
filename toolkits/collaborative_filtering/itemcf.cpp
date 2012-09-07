@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-
+#include <iomanip>
 
 #include "graphchi_basic_includes.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
@@ -52,6 +52,7 @@ size_t L;
 uint Me, Ne, Le;
 double globalMean = 0;
 int min_allowed_intersection = 1;
+size_t written_pairs = 0;
 size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
@@ -181,7 +182,7 @@ class adjlist_container {
       edges[i] = other_vertex;
     }
     sort(edges.begin(), edges.end());
-    std::vector<vid_t>::iterator it = std::set_intersection(pivot_edges.adjlist, pivot_edges.adjlist + num_edges - 1, edges.begin(), edges.end(), intersection.begin());
+    std::vector<vid_t>::iterator it = std::set_intersection(pivot_edges.adjlist, pivot_edges.adjlist + pivot_edges.count, edges.begin(), edges.end(), intersection.begin());
     return (uint)(it - intersection.begin());
   }
 
@@ -221,6 +222,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           if (adjcontainer->is_pivot(e->vertexid) && relevant_items[e->vertexid-M]) {
             has_pivot = true;
             pivot = e->vertexid;
+            break;
           }
         }
         //printf("user %d is linked to pivot %d\n", v.id(), pivot);
@@ -253,14 +255,15 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         uint32_t intersection_size = adjcontainer->intersection_size(v, i);
         item_pairs_compared++;
         if (item_pairs_compared % 1000000 == 0)
-          logstream(LOG_INFO)<< mytimer.current_time() << ")  " << item_pairs_compared << " pairs compared " << std::endl;
+          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
 
-        //if (i % 1000 == 0) printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
+        //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
         if (intersection_size > (uint)min_allowed_intersection){
           uint wi = v.num_edges(); //number of users connected to current item
           uint wj = adjcontainer->acount(i); //number of users connected to current pivot
           double distance = intersection_size / (double)(wi+wj-intersection_size); //compute the distance
           fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)distance);//write item similarity to file
+          written_pairs++;
         }
       }
     }//end of iteration % 2 == 1
@@ -278,7 +281,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       for (vid_t i=0; i < M+N; i++){
         gcontext.scheduler->add_task(i); 
       }
-      printf("setting relevant_items to zero\n");
+      //printf("setting relevant_items to zero\n");
       grabbed_edges = 0;
       adjcontainer->clear();
     } else { //iteration % 2 == 1
@@ -389,7 +392,7 @@ int main(int argc, const char ** argv) {
 
   /* Report execution metrics */
   metrics_report(m);
-  logstream(LOG_INFO)<<"Total item pairs compaed: " << item_pairs_compared << std::endl;
+  logstream(LOG_INFO)<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
 
   for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);

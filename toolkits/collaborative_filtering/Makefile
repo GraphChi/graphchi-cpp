@@ -1,6 +1,6 @@
 #**
 # * @file
-# * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
+# * @author  Danny Bickson
 # * @version 1.0
 # *
 # * @section LICENSE
