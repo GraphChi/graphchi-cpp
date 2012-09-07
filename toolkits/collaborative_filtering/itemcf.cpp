@@ -241,16 +241,16 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         //since metric is symmetric, compare only to pivots which are smaller than this item id
         if (i >= v.id())
           continue;
-        uint32_t pivot_triangle_count = adjcontainer->intersection_size(v, i);
+        uint32_t intersection_size = adjcontainer->intersection_size(v, i);
         item_pairs_compared++;
         if (item_pairs_compared % 1000000 == 0)
           logstream(LOG_INFO)<< mytimer.current_time() << ")  " << item_pairs_compared << " pairs compared " << std::endl;
 
-        //if (i % 1000 == 0) printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, pivot_triangle_count);
-        if (pivot_triangle_count > (uint)min_allowed_intersection){
+        //if (i % 1000 == 0) printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
+        if (intersection_size > (uint)min_allowed_intersection){
           uint wi = v.num_edges(); //number of users connected to current item
           uint wj = adjcontainer->acount(i); //number of users connected to current pivot
-          double distance = pivot_triangle_count / (double)(wi+wj-pivot_triangle_count); //compute the distance
+          double distance = intersection_size / (double)(wi+wj-intersection_size); //compute the distance
           fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)distance);//write item similarity to file
         }
       }
@@ -288,7 +288,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
   /**
    * Called before an execution interval is started.
    *
-   * On every even iteration, we store pivot's adjacency lists to memory. 
+   * On every even iteration, we load pivot's item connected user lists to memory. 
    * Here we manage the memory to ensure that we do not load too much
    * edges into memory.
    */
@@ -341,10 +341,10 @@ int main(int argc, const char ** argv) {
   metrics m("triangle-counting");    
   /* Basic arguments for application */
   training = get_option_string("training");  // Base filename
-  int niters           = get_option_int("max_iter", 100000); // Automatically determined during running
-  bool scheduler       = true;
+  int niters               = get_option_int("max_iter", 100000); // Automatically determined during running
+  bool scheduler           = true;
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
-  int quiet = get_option_int("quiet", 0);
+  int quiet                = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
 
@@ -387,5 +387,6 @@ int main(int argc, const char ** argv) {
 
   logstream(LOG_INFO)<<"Created output files with the format: " << training << "XX.out, where XX is the output thread number" << std::endl; 
 
+  delete[] relevant_items;
   return 0;
 }
