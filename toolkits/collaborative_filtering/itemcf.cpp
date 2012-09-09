@@ -23,12 +23,18 @@
  * This file implements item based collaborative filtering by comparing all item pairs which
  * are connected by one or more user nodes. 
  *
+ * For the Jackard index see: http://en.wikipedia.org/wiki/Jaccard_index
+ *
+ * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
+ *
+ * For the RA index see the above paper, equation (3)
  */
 
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <set>
 
 #include "graphchi_basic_includes.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
@@ -42,6 +48,13 @@
 #include "timer.hpp"
 
 using namespace graphchi;
+
+enum DISTANCE_METRICS{
+  JACKARD = 0,
+  AA = 1,
+  RA = 2
+};
+
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
@@ -57,7 +70,8 @@ size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
 bool * relevant_items  = NULL;
-
+int grabbed_edges = 0;
+int distance_metric;
 
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
@@ -69,16 +83,15 @@ bool is_user(vid_t v){ return v < M; }
 typedef unsigned int VertexDataType;
 typedef unsigned int  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
-struct vertex_data{ vec pvec; };
+struct vertex_data{ 
+   vec pvec; 
+   int degree; 
+   vertex_data(){ degree = 0; }
+};
 std::vector<vertex_data> latent_factors_inmem;
 #include "io.hpp"
 
 
-/**
- * Code for intersection size computation and 
- * pivot management.
- */
-int grabbed_edges = 0;
 
 
 
@@ -159,13 +172,22 @@ class adjlist_container {
 
 
   /** 
-   * for every two relevant items, go over all the users which are connected to those items
-   * and count how many such users exist.
+   * calc distance between two items.
+   * Let a be all the users rated item 1
+   * Let b be all the users rated item 2
+   *
+   * 1) Using Jackard index:
+   *      Dist_ab = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
+   *
+   * 2) Using AA index:
+   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
+   *
+   * 3) Using RA index:
+   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
    */
-  int intersection_size(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot) {
+  double calc_distance(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
     //assert(is_item(pivot) && is_item(v.id()));
-
     dense_adj &pivot_edges = adjs[pivot - pivot_st];
     int num_edges = v.num_edges();
     //if there are not enough neighboring user nodes to those two items there is no need
@@ -174,16 +196,50 @@ class adjlist_container {
       return 0;
 
     std::vector<vid_t> edges;
-    std::vector<vid_t> intersection;
-    intersection.resize(pivot_edges.count + num_edges);
     edges.resize(num_edges);
     for(int i=0; i < num_edges; i++) {
       vid_t other_vertex = v.edge(i)->vertexid;
       edges[i] = other_vertex;
     }
     sort(edges.begin(), edges.end());
-    std::vector<vid_t>::iterator it = std::set_intersection(pivot_edges.adjlist, pivot_edges.adjlist + pivot_edges.count, edges.begin(), edges.end(), intersection.begin());
-    return (uint)(it - intersection.begin());
+    
+    std::set<vid_t> intersection;
+    std::set_intersection(
+        pivot_edges.adjlist, pivot_edges.adjlist + pivot_edges.count, 
+        edges.begin(), edges.end(), 
+        std::inserter(intersection, intersection.begin()));
+      
+    double intersection_size = (double)intersection.size();
+    //not enough user nodes rated both items, so the pairs of items are not compared.
+    if (intersection_size < (double)min_allowed_intersection)
+        return 0;
+  
+    if (distance_metric == JACKARD){
+      uint set_a_size = v.num_edges(); //number of users connected to current item
+      uint set_b_size = acount(pivot); //number of users connected to current pivot
+      return intersection_size / (double)(set_a_size + set_b_size - intersection_size); //compute the distance
+    }
+    else if (distance_metric == AA){
+       double dist = 0;
+       for (std::set<vid_t>::iterator i= intersection.begin() ; i != intersection.end(); i++){
+         vid_t user = *i;
+         assert(latent_factors_inmem.size() == M && is_user(user));
+         assert(latent_factors_inmem[user].degree > 0);
+         dist += 1.0 / log(latent_factors_inmem[user].degree);
+       }
+       return dist;
+    }
+    else if (distance_metric == RA){
+       double dist = 0;
+       for (std::set<vid_t>::iterator i= intersection.begin() ; i != intersection.end(); i++){
+         vid_t user = *i;
+         assert(latent_factors_inmem.size() == M && is_user(user));
+         assert(latent_factors_inmem[user].degree > 0);
+         dist += 1.0 / latent_factors_inmem[user].degree;
+       }
+       return dist;
+    }
+     return 0;
   }
 
   inline bool is_pivot(vid_t vid) {
@@ -191,8 +247,8 @@ class adjlist_container {
   }
 };
 
-adjlist_container * adjcontainer;
 
+adjlist_container * adjcontainer;
 
 struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
@@ -213,6 +269,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         //printf("Loading pivot %dintro memory\n", v.id());
       }
       else if (is_user(v.id())){
+
+        //in the zero iteration, if using AA distance metric, initialize array
+        //with node degrees 
+        if (gcontext.iteration == 0 && (distance_metric == AA || distance_metric == RA)){
+           latent_factors_inmem[v.id()].degree = v.num_edges();
+        }
+
         //check if this user is connected to any pivot item
         bool has_pivot = false;
         int pivot = -1;
@@ -252,17 +315,17 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         //since metric is symmetric, compare only to pivots which are smaller than this item id
         if (i >= v.id() || (!relevant_items[i-M]))
           continue;
-        uint32_t intersection_size = adjcontainer->intersection_size(v, i);
+        
+        double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
         if (item_pairs_compared % 1000000 == 0)
           logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
 
         //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
-        if (intersection_size > (uint)min_allowed_intersection){
-          uint wi = v.num_edges(); //number of users connected to current item
-          uint wj = adjcontainer->acount(i); //number of users connected to current pivot
-          double distance = intersection_size / (double)(wi+wj-intersection_size); //compute the distance
-          fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)distance);//write item similarity to file
+        if (dist != 0){
+         fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+         //where the output format is: 
+         //[item A] [ item B ] [ distance ] 
           written_pairs++;
         }
       }
@@ -360,6 +423,10 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
 
+  distance_metric          = get_option_int("distance", JACKARD);
+  if (distance_metric != JACKARD && distance_metric != AA && distance_metric != RA)
+    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACKARD, 1) AA, 2) RA" << std::endl;  
+
   mytimer.start();
   int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
 
@@ -369,6 +436,10 @@ int main(int argc, const char ** argv) {
   adjcontainer = new adjlist_container();
   //array for marking which items are conected to the pivot items via users.
   relevant_items = new bool[N];
+
+  //store node degrees in an array to be used for AA distance metric
+  if (distance_metric == AA || distance_metric == RA)
+    latent_factors_inmem.resize(M);
 
   /* Run */
   ItemDistanceProgram program;
