@@ -1,5 +1,6 @@
 
 #!/bin/sh
+mkdir dist
 mkdir dist/graphchi_v$1
 cp -r src example_apps toolkits conf docs README.txt graphchi_xcode Makefile dist/graphchi_v$1
 cd dist
