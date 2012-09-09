@@ -23,12 +23,8 @@
  *
  * @section DESCRIPTION
  *
- * The memory shard. This class should only be accessed internally by the GraphChi engine.
+ * Dynamic data version: The memory shard. This class should only be accessed internally by the GraphChi engine.
  */
-
-#ifdef DYNAMICEDATA
-#include "shards/dynamicdata/memoryshard.hpp"
-#endif
 
 #ifndef DEF_GRAPHCHI_MEMSHARD
 #define DEF_GRAPHCHI_MEMSHARD

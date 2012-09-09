@@ -24,12 +24,8 @@
  *
  * @section DESCRIPTION
  *
- * The sliding shard.
+ * Dynamic data version: The sliding shard.
  */
-
-#ifdef DYNAMICEDATA
-#include "shards/dynamicdata/memoryshard.hpp"
-#endif
 
 #ifndef DEF_GRAPHCHI_SLIDINGSHARD
 #define DEF_GRAPHCHI_SLIDINGSHARD
@@ -50,12 +46,11 @@
 #include "io/stripedio.hpp"
 #include "graphchi_types.hpp"
 
+#include "api/dynamicdata/chivector.hpp"
+
 
 namespace graphchi {
-    
-    
-    
-    
+        
     /**
      * A streaming block.
      */
@@ -134,6 +129,7 @@ namespace graphchi {
      * Graph shard that is streamed. I.e, it can only read in one direction, a chunk
      * a time.
      */
+    // ET must be a chivector<T>
     template <typename VT, typename ET, typename svertex_t = graphchi_vertex<VT, ET>, typename ETspecial = ET>
     class sliding_shard {
         

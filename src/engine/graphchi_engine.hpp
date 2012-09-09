@@ -143,9 +143,14 @@ namespace graphchi {
                 iomgr->set_disable_preloading(true);
             }
             m.stop_time("iomgr_init");
+#ifndef DYNAMICEDATA
             logstream(LOG_INFO) << "Initializing graphchi_engine. This engine expects " << sizeof(EdgeDataType)
             << "-byte edge data. " << std::endl;
-            
+#else
+            logstream(LOG_INFO) << "Initializing graphchi_engine with dynamic edge-data. This engine expects " << sizeof(int)
+            << "-byte edge data. " << std::endl;
+
+#endif
             /* If number of shards is unspecified - discover */
             if (nshards < 1) {
                 nshards = get_option_int("nshards", 0);
@@ -218,7 +223,11 @@ namespace graphchi {
          * shard numbers. Looks up to shard number 2000.
          */
         int discover_shard_num() {
+#ifndef DYNAMICEDATA
             int _nshards = find_shards<EdgeDataType>(base_filename);
+#else
+            int _nshards = find_shards<int>(base_filename);
+#endif
             if (_nshards == 0) {
                 logstream(LOG_ERROR) << "Could not find suitable shards - maybe you need to run sharder to create them?" << std::endl;
                 logstream(LOG_ERROR) << "You need to create the shards with edge data-type of size " << sizeof(EdgeDataType) << " bytes." << std::endl;
@@ -232,14 +241,19 @@ namespace graphchi {
         virtual void initialize_sliding_shards() {
             assert(sliding_shards.size() == 0);
             for(int p=0; p < nshards; p++) {
+#ifndef DYNAMICEDATA
                 std::string edata_filename = filename_shard_edata<EdgeDataType>(base_filename, p, nshards);
                 std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
-                
-                /* Let the IO manager know that we will be reading these files, and 
+                /* Let the IO manager know that we will be reading these files, and
                  it should decide whether to preload them or not.
                  */
                 iomgr->allow_preloading(edata_filename);
                 iomgr->allow_preloading(adj_filename);
+#else
+                std::string edata_filename = filename_shard_edata<int>(base_filename, p, nshards);
+                std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
+#endif
+                
                 
                 sliding_shards.push_back(
                                          new slidingshard_t(iomgr, edata_filename, 
@@ -612,6 +626,7 @@ namespace graphchi {
         }
         
         virtual memshard_t * create_memshard(vid_t interval_st, vid_t interval_en) {
+#ifndef DYNAMICEDATA
             return new memshard_t(this->iomgr,
                                   filename_shard_edata<EdgeDataType>(base_filename, exec_interval, nshards),  
                                   filename_shard_adj(base_filename, exec_interval, nshards),  
@@ -619,6 +634,15 @@ namespace graphchi {
                                   interval_en,
                                   blocksize,
                                   m);
+#else
+            return new memshard_t(this->iomgr,
+                                  filename_shard_edata<int>(base_filename, exec_interval, nshards),
+                                  filename_shard_adj(base_filename, exec_interval, nshards),
+                                  interval_st,
+                                  interval_en,
+                                  blocksize,
+                                  m);
+#endif
         }
         
         /**

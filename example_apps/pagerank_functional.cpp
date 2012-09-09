@@ -39,11 +39,7 @@
 
 #include "graphchi_basic_includes.hpp"
 #include "api/functional/functional_api.hpp"
-<<<<<<< local
-=======
 #include "graphchi_basic_includes.hpp"
-
->>>>>>> other
 #include "util/toplist.hpp"
 
 using namespace graphchi;

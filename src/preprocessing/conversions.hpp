@@ -291,8 +291,10 @@ namespace graphchi {
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             return nshards;
-        } 
+        }
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+
+        logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
         nshards = convert<EdgeDataType>(basefilename, nshards_string, preprocessor);
         return nshards;
