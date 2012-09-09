@@ -15,6 +15,7 @@ tests: tests/basic_smoketest tests/bulksync_functional_test
 clean:
 	@rm -rf bin/*
 	cd toolkits/collaborative_filtering/; make clean; cd ../../
+	cd toolkits/parsers/; make clean; cd ../../
 
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
 	$(CPP) $(CPPFLAGS) src/preprocessing/sharder_basic.cpp -o bin/sharder_basic
@@ -37,12 +38,14 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 	$(CPP) $(CPPFLAGS) example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp -o bin/graphlab_als
 
 cf:
-	@mkdir -p bin/$(@D)
 	cd toolkits/collaborative_filtering/; bash -x ./test_eigen.sh; 
 	if [ $$? -ne 0 ]; then exit 1; fi
 	cd toolkits/collaborative_filtering/; make 
 cf_test:
 	cd toolkits/collaborative_filtering/; make test; 
+
+parsers:
+	cd toolkits/parsers/; make
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config
