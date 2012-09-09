@@ -43,11 +43,11 @@
 #include "metrics/metrics.hpp"
 #include "io/stripedio.hpp"
 #include "graphchi_types.hpp"
-
+#include "shards/dynamicdata/dynamicblock.hpp"
 
 namespace graphchi {
     
-    
+       
     template <typename VT, typename ET, typename svertex_t = graphchi_vertex<VT, ET> >
     class memory_shard {
         
@@ -192,7 +192,7 @@ namespace graphchi {
     private:
         
         void load_edata() {
-            bool async_inedgedata_loading = !svertex_t().computational_edges();
+            bool async_inedgedata_loading = false; // Not supported with dynamic edgedata
             assert(blocksize % sizeof(ET) == 0);
             int nblocks = (int) (edatafilesize / blocksize + (edatafilesize % blocksize != 0));
             edgedata = (char **) calloc(nblocks, sizeof(char*));
@@ -216,7 +216,7 @@ namespace graphchi {
                     edgedata[blockid] = NULL;
                     iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
                     if (async_inedgedata_loading) {
-                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
+                        assert(false);
                     } else {
                         iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
                     }

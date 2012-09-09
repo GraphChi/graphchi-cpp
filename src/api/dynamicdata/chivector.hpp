@@ -38,13 +38,14 @@ namespace graphchi {
     
 template <typename T>
 class chivector {
-    
+
     uint16_t * sizeptr;
     uint16_t origsize;
     T * data;
     std::vector<T> * extensions;  // TODO: use a more memory efficient system?
     
 public:
+    typedef T element_type_t;
     chivector() {}
     
     chivector(uint16_t * sizeptr, T * dataptr) : sizeptr(sizeptr), data(dataptr) {

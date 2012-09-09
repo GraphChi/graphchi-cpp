@@ -28,7 +28,7 @@
 
 #ifdef DYNAMICEDATA
 #include "shards/dynamicdata/memoryshard.hpp"
-#endif
+#else
 
 #ifndef DEF_GRAPHCHI_MEMSHARD
 #define DEF_GRAPHCHI_MEMSHARD
@@ -410,4 +410,4 @@ namespace graphchi {
 };
 
 #endif
-
+#endif

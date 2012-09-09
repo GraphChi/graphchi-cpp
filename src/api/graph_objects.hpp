@@ -63,7 +63,7 @@ namespace graphchi {
         graphchi_edge(vid_t _vertexid, EdgeDataType * edata_ptr) : vertexid(_vertexid), data_ptr(edata_ptr) {
         }
         
-        
+#ifndef DYNAMICEDATA
         EdgeDataType get_data() {
             return * data_ptr;
         }
@@ -71,6 +71,11 @@ namespace graphchi {
         void set_data(EdgeDataType x) {
             *data_ptr = x;
         }
+#else 
+        EdgeDataType * get_vector() {  // EdgeDataType is a chivector
+            return data_ptr;
+        }
+#endif
         
         /**
           * Returns id of the endpoint of this edge. 

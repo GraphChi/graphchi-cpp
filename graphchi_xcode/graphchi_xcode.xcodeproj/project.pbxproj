@@ -286,6 +286,7 @@
 		5FCC23FE15A2395B0003D0E9 /* als_vertices_inmem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = als_vertices_inmem.cpp; sourceTree = "<group>"; };
 		5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = streaming_pagerank.cpp; sourceTree = "<group>"; };
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FE3D5AE15FD5E520061B039 /* dynamicblock.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = dynamicblock.hpp; sourceTree = "<group>"; };
 		5FEC749815D884560050EC64 /* filechecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = filechecker.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -568,6 +569,7 @@
 			children = (
 				5F54B85515FD519100B3842C /* memoryshard.hpp */,
 				5F54B85715FD519100B3842C /* slidingshard.hpp */,
+				5FE3D5AE15FD5E520061B039 /* dynamicblock.hpp */,
 			);
 			path = dynamicdata;
 			sourceTree = "<group>";

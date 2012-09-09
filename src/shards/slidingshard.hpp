@@ -28,8 +28,8 @@
  */
 
 #ifdef DYNAMICEDATA
-#include "shards/dynamicdata/memoryshard.hpp"
-#endif
+#include "shards/dynamicdata/slidingshard.hpp"
+#else
 
 #ifndef DEF_GRAPHCHI_SLIDINGSHARD
 #define DEF_GRAPHCHI_SLIDINGSHARD
@@ -506,6 +506,6 @@ namespace graphchi {
 };
 
 
-
+#endif
 #endif
 

@@ -57,22 +57,22 @@ struct DynamicDataSmokeTestProgram : public GraphChiProgram<VertexDataType, Edge
     void update(graphchi_vertex<VertexDataType, EdgeDataType > &vertex, graphchi_context &gcontext) {
         if (gcontext.iteration == 0) {
             for(int i=0; i < vertex.num_outedges(); i++) {
-                chivector<vid_t> evector = vertex.outedge(i)->get_data();
-                evector.clear();
-                assert(evector.size() == 0);
+                chivector<vid_t> * evector = vertex.outedge(i)->get_vector();
+                evector->clear();
+                assert(evector->size() == 0);
                 
-                evector.add(vertex.id());
-                assert(evector.size() == 1);
+                evector->add(vertex.id());
+                assert(evector->size() == 1);
 
             }
             
         } else {
             for(int i=0; i < vertex.num_inedges(); i++) {
                 graphchi_edge<EdgeDataType> * edge = vertex.inedge(i);
-                chivector<vid_t> evector = vertex.outedge(i)->get_data();
-                assert(evector.size() >= gcontext.iteration);
-                for(int j=0; j < evector.size(); j++) {
-                    assert(evector.get(j) == edge->vertex_id() + j);
+                chivector<vid_t> * evector = vertex.outedge(i)->get_vector();
+                assert(evector->size() >= gcontext.iteration);
+                for(int j=0; j < evector->size(); j++) {
+                    assert(evector->get(j) == edge->vertex_id() + j);
                 }
             }
             for(int i=0; i < vertex.num_outedges(); i++) {
