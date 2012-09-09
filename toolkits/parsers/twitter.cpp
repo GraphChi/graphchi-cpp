@@ -91,45 +91,52 @@ void assign_id(uint & outval, const string &name, const int line, const string &
 void find_ids(uint & to, const string& buf2, const int line, const string &filename){
   assign_id(to, buf2, line, filename);
 }
-
-bool extract_user_name(const char * linebuf, size_t line, int i, const char * saveptr, char * userid){
-  char *pch = strtok_r(NULL," \r\n\t:/.",(char**)&saveptr);
+ 
+/*
+* U  http://twitter.com/xlamp
+*/
+bool extract_user_name(const char * linebuf, size_t line, int i, char * saveptr, char * userid){
+  char *pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //HTTP
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  pch = strtok_r(NULL," \r\n\t:/.",(char**)&saveptr);
+  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //TWITTER
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  pch = strtok_r(NULL," \r\n\t:/.",(char**)&saveptr);
+  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //COM
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  userid = strtok_r(NULL," \r\n\t:/.",(char**)&saveptr); //USERNAME
+  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //USERNAME
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
+  strncpy(userid, pch, 256);
   return true;
 }
 
 
-bool convert_string_to_time(const char * linebuf, size_t line, int i, const char * saveptr, struct tm & ptm){
-  char *year = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+bool convert_string_to_time(const char * linebuf, size_t line, int i, char * saveptr, long int & outtime){
+  struct tm ptm;
+
+  char *year = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!year){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_year = atoi(year) - 1900;
 
-  char *month = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+  char *month = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!month){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_mon = atoi(month) - 1;
 
-  char *day = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+  char *day = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!day){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_mday = atoi(day);
 
-  char *hour = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+  char *hour = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!hour){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_hour = atoi(hour);
 
-  char *minute = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+  char *minute = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!minute){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_min = atoi(minute);
 
-  char *second = strtok_r(NULL," \r\n\t:/-",(char**)&saveptr);
+  char *second = strtok_r(NULL," \r\n\t:/-",&saveptr);
   if (!second){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_sec = atoi(second);
 
+  outtime = mktime(&ptm);
   return true; 
 
 } 
@@ -155,26 +162,26 @@ void parse(int i){
   in_file fin(in_files[i]);
   out_file fout((outdir + in_files[i] + ".out"));
 
-  char linebuf[24000], buf1[256];
-  char saveptr[1024];
+  size_t linesize = 0;
+  char * saveptr, * linebuf, buf1[256];
   size_t line = 1;
   uint id;
-  struct tm ptm;
+  long int ptime;
   bool ok;
 
   while(true){
-    int rc = fscanf(fin.outf, "%s\n", linebuf);
+    int rc = getline(&linebuf, &linesize, fin.outf);
     if (rc < 1)
       break;
-    if (strlen(linebuf) == 0) //skip empty lines
-      continue;
+    if (strlen(linebuf) <= 1) //skip empty lines
+      continue; 
 
-    char *pch = strtok_r(linebuf," \r\n\t:/",(char**)&saveptr);
+    char *pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
 
     switch(*pch){
       case 'T':
-        ok = convert_string_to_time(linebuf, line, i, saveptr, ptm);
+        ok = convert_string_to_time(linebuf, line, i, saveptr, ptime);
         if (!ok)
           return;
         break;
@@ -188,6 +195,8 @@ void parse(int i){
 
       case 'W':
         //TODO
+        if (debug && line < 20)
+          printf("Found user: %s id %u time %ld\n", buf1, id, ptime);
         break;
 
       default:
@@ -213,16 +222,14 @@ void parse(int i){
 }
 
 
-int main(int argc,  char *argv[]) {
+int main(int argc,  const char *argv[]) {
 
   logstream(LOG_WARNING)<<"GraphChi parsers library is written by Danny Bickson (c). Send any "
     " comments or bug reports to danny.bickson@gmail.com " << std::endl;
   global_logger().set_log_level(LOG_INFO);
   global_logger().set_log_to_console(true);
 
-  // int unittest = 0;
-  uint lines = 0;
-  string filter = "";
+  graphchi_init(argc, argv);
 
   debug = get_option_int("debug", 0);
   dir = get_option_string("file_list");
