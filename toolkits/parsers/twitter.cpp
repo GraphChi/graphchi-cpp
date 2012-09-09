@@ -33,8 +33,6 @@ using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-bool quick = true;
-bool gzip = false;
 unordered_map<string,uint> string2nodeid;
 unordered_map<uint,string> nodeid2hash;
 uint conseq_id;
@@ -42,10 +40,33 @@ std::mutex mymutex;
 timer mytime;
 size_t lines;
 unsigned long long total_lines = 0;
-unsigned long long self_edges = 0;
 string dir;
 string outdir;
 std::vector<std::string> in_files;
+
+
+void save_map_to_text_file(const std::unordered_map<std::string,uint> & map, const std::string filename){
+    std::unordered_map<std::string,uint>::const_iterator it;
+    out_file fout(filename);
+    unsigned int total = 0;
+    for (it = map.begin(); it != map.end(); it++){ 
+      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second);
+     total++;
+    } 
+    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
+}
+
+
+void save_map_to_text_file(const std::unordered_map<uint,std::string> & map, const std::string filename){
+    std::unordered_map<uint,std::string>::const_iterator it;
+    out_file fout(filename);
+    unsigned int total = 0;
+    for (it = map.begin(); it != map.end(); it++){ 
+      fprintf(fout.outf, "%u %s\n", it->first, it->second.c_str());
+     total++;
+    } 
+    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
+}
 
 
 void assign_id(uint & outval, const string &name, const int line, const string &filename){
@@ -229,10 +250,9 @@ int main(int argc,  char *argv[]) {
     parse(i);
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
-  std::cout << "Total number of edges: " << self_edges << std::endl;
 
-  save_map_to_text_file(string2nodeid, outdir + ".map.text.gz", gzip);
-  save_map_to_text_file(nodeid2hash, outdir + ".reverse.map.text.gz", gzip);
+  save_map_to_text_file(string2nodeid, outdir + ".map.text.gz");
+  save_map_to_text_file(nodeid2hash, outdir + ".reverse.map.text.gz");
   return 0;
 }
 

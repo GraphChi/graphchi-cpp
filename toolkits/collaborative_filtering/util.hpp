@@ -39,30 +39,6 @@ struct out_file{
 
 
 
-
-void save_map_to_text_file(const std::unordered_map<std::string,uint> & map, const std::string filename, bool gzip){
-    std::unordered_map<std::string,uint>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second);
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
-
-
-void save_map_to_text_file(const std::unordered_map<uint,std::string> & map, const std::string filename, bool gzip){
-    std::unordered_map<uint,std::string>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%u %s\n", it->first, it->second.c_str());
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
-
 /*
 template<typename T1>
 void load_map_from_txt_file(T1 & map, const std::string filename, bool gzip, int fields){
