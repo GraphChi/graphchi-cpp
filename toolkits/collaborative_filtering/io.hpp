@@ -24,7 +24,7 @@
  */
 
 #include "types.hpp"
-
+#include "implicit.hpp"
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -34,7 +34,7 @@
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket4(std::string base_filename) {
+int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
@@ -47,11 +47,14 @@ int convert_matrixmarket4(std::string base_filename) {
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
-    if (rc != 4)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    if (rc != 5)
+      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    if (K <= 0)
+      logstream(LOG_FATAL)<<"Incorrect number of time bins K in .gm file " << base_filename << ".gm" << std::endl;
+
+    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
     return nshards;
   }   
 
@@ -93,25 +96,40 @@ int convert_matrixmarket4(std::string base_filename) {
       int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
       if (rc != 4)
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      if (time < 0)
+        logstream(LOG_FATAL)<<"Time (third columns) should be >= 0 " << std::endl;
       I--;  /* adjust from 1-based to 0-based */
       J--;
+      K = std::max((int)time, (int)K);
       globalMean += val; 
-      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time));
+      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time+M+N));
+      //in case of a tensor, add besides of the user-> movie edge also
+      //time -> user and time-> movie edges
+      if (add_time_edges){
+        sharderobj.preprocessing_add_edge((uint)time + M + N, I, als_edge_type(val, M+J));
+        sharderobj.preprocessing_add_edge((uint)time + M + N, M+J , als_edge_type(val, I));
+      }
     }
+  
+    uint toadd = 0;
+    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+      toadd = add_implicit_edges4(implicitratingtype, sharderobj);
+    globalMean += implicitratingvalue * toadd;
+    L += toadd;
+  
     sharderobj.end_preprocessing();
-    globalMean /= nz;
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    globalMean /= L;
+    logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
     fclose(outf);
 
 
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
   }
-  if (f !=stdin) fclose(f);
-
-
+  
+  fclose(f);
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
   // Shard with a specified number of shards, or determine automatically if not defined
@@ -127,35 +145,39 @@ int convert_matrixmarket4(std::string base_filename) {
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename) {
+int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
   FILE *f;
   size_t nz;   
 
+  std::string suffix = "";
+  if (preprocessor != NULL) {
+     suffix = preprocessor->getSuffix();
+  }
+     
   /**
    * Create sharder object
    */
   int nshards;
-  if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+  if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg",&M, &N, &L, &globalMean);
-    if (rc != 4)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << std::endl;
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    if (rc != 5)
+      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename+ suffix << ".gm" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
     return nshards;
   }   
 
-  sharder<als_edge_type> sharderobj(base_filename);
+   sharder<als_edge_type> sharderobj(base_filename + suffix);
   sharderobj.start_preprocessing();
 
 
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_ERROR) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-    exit(1);
+    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
 
@@ -194,25 +216,38 @@ int convert_matrixmarket(std::string base_filename) {
       globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
     }
+    uint toadd = 0;
+    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+      toadd = add_implicit_edges(implicitratingtype, sharderobj);
+    globalMean += implicitratingvalue * toadd;
+    L += toadd;
+  
     sharderobj.end_preprocessing();
-    globalMean /= nz;
+    globalMean /= L;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+
+    if (preprocessor != NULL) {
+       preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
+    }
+     
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n", M, N, L, globalMean);
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
     fclose(outf);
 
 
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
   }
-  if (f !=stdin) fclose(f);
+  fclose(f);
 
 
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
-
+  logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename + suffix << std::endl;
+  logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
+     
   return nshards;
 }
 

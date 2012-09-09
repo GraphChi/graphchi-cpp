@@ -44,7 +44,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-uint M, N, Me, Ne, Le;
+uint M, N, Me, Ne, Le, K;
 size_t L;
 double globalMean = 0;
 int nshards;
@@ -364,6 +364,8 @@ int main(int argc,  const char *argv[]) {
   save_vectors = get_option_int("save_vectors", 1);
   nodes = get_option_int("nodes", 0);
   //clopts.attach_option("no_edge_data", &no_edge_data, no_edge_data, "matrix is binary (optional)");
+
+  parse_implicit_command_line();
 
   if (nv < nsv){
     logstream(LOG_FATAL)<<"Please set the number of vectors --nv=XX, to be at least the number of support vectors --nsv=XX or larger" << std::endl;

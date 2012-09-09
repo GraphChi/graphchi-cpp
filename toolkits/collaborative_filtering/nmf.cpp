@@ -59,7 +59,7 @@ double maxval = 1e100;
 std::string training;
 std::string validation;
 std::string test;
-uint M, N;
+uint M, N, K;
 size_t L;
 uint Me, Ne, Le;
 double globalMean = 0;
@@ -312,6 +312,8 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+
+  parse_implicit_command_line();
 
   niters *= 2; //each NMF iteration is composed of two sub iters
 

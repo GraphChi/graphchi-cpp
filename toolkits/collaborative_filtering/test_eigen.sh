@@ -5,8 +5,8 @@ if [ ! -d "../../src/Eigen/" ]; then
    echo "Please follow step 3 of the instructions here: "
    echo "http://bickson.blogspot.co.il/2012/08/collaborative-filtering-with-graphchi.html"
    echo "********************************************************************************"
-   return 1;
+   exit 1;
 else
    echo "Found Eigen linear algebra package!"
-   return 0;
+   exit 0;
 fi

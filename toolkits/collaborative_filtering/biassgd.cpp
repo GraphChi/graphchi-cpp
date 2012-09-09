@@ -254,6 +254,7 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
 
+  parse_implicit_command_line();
 
 
   /* Preprocess data if needed, or discover preprocess files */
