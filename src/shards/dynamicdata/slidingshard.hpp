@@ -67,22 +67,18 @@ namespace graphchi {
         bool active;
         bool is_edata_block;
         std::string blockfilename;
-        dynamicdata_block<typename ET::element_type_t> * dynblock;
+        dynamicdata_block<ET> * dynblock;
         
         sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; }
         sblock(int wdesc, int rdesc, bool is_edata_block=false) : writedesc(wdesc), readdesc(rdesc), active(false),
-        sblock(int wdesc, int rdesc, bool is_edata_block=false, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
-        is_edata_block(is_edata_block), blockfilename(blockfilename) { data = NULL; }
+        is_edata_block(is_edata_block){ data = NULL; }
+        sblock(int wdesc, int rdesc, bool is_edata_block, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
+        is_edata_block(is_edata_block), blockfilename(blockfilename) {
+            assert(is_edata_block == true);
+            data = NULL; }
         
         void commit_async(stripedio * iomgr) {
-            if (active && data != NULL && writedesc >= 0) {
-                if (is_edata_block) {
-                    iomgr->managed_pwritea_async(writedesc, &data, end - offset, 0, true, true);
-                    data = NULL;
-                } else {
-                    iomgr->managed_pwritea_async(writedesc, &data, end - offset, offset, true);
-                }
-            }
+            commit_now(iomgr); // TODO: async
         }
         
         void commit_now(stripedio * iomgr) {
@@ -90,7 +86,11 @@ namespace graphchi {
                 size_t len = ptr-data;
                 if (len > end-offset) len = end-offset;
                 if (is_edata_block) {
-                    iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
+                    uint8_t * outdata = NULL;
+                    int realsize;
+                    dynblock->write(&outdata, realsize);
+                    write_block_uncompressed_size(blockfilename, realsize);
+                    iomgr->managed_pwritea_now(writedesc, &data, realsize, 0); /* Need to write whole block in the compressed regime */
                 } else {
                     iomgr->managed_pwritea_now(writedesc, &data, len, offset);
                 }
@@ -103,6 +103,8 @@ namespace graphchi {
             if (is_edata_block) {
                 int realsize = get_block_uncompressed_size(blockfilename, end-offset);
                 iomgr->managed_preada_now(readdesc, &data, realsize, 0);
+                int nedges = (end - offset) / sizeof(int); // Ugly
+                dynblock = new dynamicdata_block<ET>(nedges, (uint8_t *) &data);
             } else {
                 iomgr->managed_preada_now(readdesc, &data, end - offset, offset);
             }
@@ -113,6 +115,7 @@ namespace graphchi {
                 iomgr->managed_release(readdesc, &data);
                 if (is_edata_block) {
                     iomgr->close_session(readdesc);
+                    delete dynblock;
                 }
             }
             data = NULL;
@@ -145,7 +148,7 @@ namespace graphchi {
         size_t adjoffset, edataoffset, adjfilesize, edatafilesize;
         size_t window_start_edataoffset;
         
-        std::vector<sblock> activeblocks;
+        std::vector<sblock<ET> > activeblocks;
         int adjfile_session;
         int writedesc;
         sblock<ET> * curblock;
@@ -181,11 +184,11 @@ namespace graphchi {
             window_start_edataoffset = 0;
             
             
-            while(blocksize % sizeof(ET) != 0) blocksize++;
-            assert(blocksize % sizeof(ET)==0);
+            while(blocksize % sizeof(int) != 0) blocksize++;
+            assert(blocksize % sizeof(int)==0);
             
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
+            edatafilesize = get_shard_edata_filesize<int>(filename_edata);
             if (!only_adjacency) {
                 logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize << std::endl;
             } else {
@@ -318,8 +321,8 @@ namespace graphchi {
             if (only_adjacency) return NULL;
             check_curblock(sizeof(int));
             edataoffset += sizeof(int);
-            curblock->ptr += sizeof(int));
-            return curblock->dynblock->edge(curblock->ptr / sizeof(int));
+            curblock->ptr += sizeof(int);
+            return curblock->dynblock->edgevec((curblock->ptr - curblock->data) / sizeof(int));
         }
         
         inline void skip(int n, int sz) {
@@ -427,7 +430,7 @@ namespace graphchi {
         /**
          * Commit modifications.
          */
-        void commit(sblock &b, bool synchronously, bool disable_writes=false) {
+        void commit(sblock<ET> &b, bool synchronously, bool disable_writes=false) {
             if (synchronously) {
                 metrics_entry me = m.start_time();
                 if (!disable_writes) b.commit_now(iomgr);
@@ -470,7 +473,7 @@ namespace graphchi {
          */
         void release_prior_to_offset(bool all=false, bool disable_writes=false) { // disable writes is for the dynamic case
             for(int i=(int)activeblocks.size() - 1; i >= 0; i--) {
-                sblock &b = activeblocks[i];
+                sblock<ET> &b = activeblocks[i];
                 if (b.end <= edataoffset || all) {
                     commit(b, all, disable_writes);
                     activeblocks.erase(activeblocks.begin() + (unsigned int)i);

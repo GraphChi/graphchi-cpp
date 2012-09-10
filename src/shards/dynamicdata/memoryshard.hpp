@@ -70,7 +70,7 @@ namespace graphchi {
         uint8_t * adjdata;
         char ** edgedata;
         std::vector<size_t> blocksizes;
-        std::vector< dynamicdata_block<typename ET::element_type_t>> dynamicblocks;
+        std::vector< dynamicdata_block<ET> > dynamicblocks;
         uint64_t chunkid;
         
         std::vector<int> block_edatasessions;
@@ -98,7 +98,6 @@ namespace graphchi {
             is_loaded = false;
             adj_session = -1;
             edgedata = NULL;
-            doneptr = NULL;
         }
         
         ~memory_shard() {
@@ -117,15 +116,12 @@ namespace graphchi {
             if (edgedata != NULL)
                 free(edgedata);
             edgedata = NULL;
-            if (doneptr != NULL) {
-                free(doneptr);
-            }
         }
         
         void write_and_release_block(int i) {
-            std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
+            std::string block_filename = filename_shard_edata_block(filename_edata, i, blocksize);
 
-            dynamicdata_block<typename ET::element_type_t> * dynblock = dynamicblocks[i];
+            dynamicdata_block<ET> & dynblock = dynamicblocks[i];
             uint8_t * outdata;
             int outsize;
             dynblock.write(&outdata, outsize);
@@ -224,7 +220,7 @@ namespace graphchi {
                     } else {
                         iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
                     }
-                    dynamicblocks.push_back(dynamicdata_block(nedges, edgedata[blockid]));
+                    dynamicblocks.push_back(dynamicdata_block<ET>(nedges, (uint8_t*) edgedata[blockid]));
 
                     blockid++;
 

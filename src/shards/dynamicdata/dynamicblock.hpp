@@ -29,8 +29,11 @@
 #ifndef graphchi_xcode_dynamicblock_hpp
 #define graphchi_xcode_dynamicblock_hpp
 
+#include <stdint.h>
+
 namespace graphchi {
     
+    int get_block_uncompressed_size(std::string blockfilename, int defaultsize);
     int get_block_uncompressed_size(std::string blockfilename, int defaultsize) {
         std::string szfilename = blockfilename + ".bsize";
         FILE * f = fopen(szfilename.c_str(), "r");
@@ -44,10 +47,11 @@ namespace graphchi {
         }
     }
     
+    void write_block_uncompressed_size(std::string blockfilename, int size);
     void write_block_uncompressed_size(std::string blockfilename, int size) {
         std::string szfilename = blockfilename + ".bsize";
         FILE * f = fopen(szfilename.c_str(), "w");
-        fwrite(&size, 1, sizeof(int), &size);
+        fwrite(&size, 1, sizeof(int), f);
         fclose(f);
     }
     
@@ -66,29 +70,29 @@ namespace graphchi {
             for(int i=0; i < nedges; i++) {
                 uint16_t * sz = ((uint16_t *) ptr);
                 ptr += sizeof(uint16_t);
-                chivecs[i] = ET(sz, ptr);
-                ptr += (*sz) * sizeof(typename ET::element_type_t)
+                chivecs[i] = ET(sz, (typename ET::element_type_t *) ptr);
+                ptr += (int) (*sz) * sizeof(typename ET::element_type_t);
             }
         }
         
-        ET * edgevec(i) {
-            return chivecs[i];
+        ET * edgevec(int i) {
+            return &chivecs[i];
         }
         
         void write(uint8_t ** outdata, int & size) {
             // First compute size
             size = 0;
-            for(int i=0; i < chivecs.size(); i++) {
+            for(int i=0; i < nedges; i++) {
                 size += chivecs[i].size() * sizeof(typename ET::element_type_t) + sizeof(uint16_t);
             }
             
             *outdata = (uint8_t *) malloc(size);
             uint8_t * ptr = *outdata;
-            for(int i=0; i < chivecs.size(); i++) {
+            for(int i=0; i < nedges; i++) {
                 ET & vec = chivecs[i];
                 ((uint16_t *) ptr)[0] = vec.size();
                 ptr += sizeof(uint16_t);
-                vec.write(ptr);
+                vec.write((typename ET::element_type_t *)  ptr);
                 ptr += vec.size() * sizeof(typename ET::element_type_t);
             }
         }

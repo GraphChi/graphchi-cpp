@@ -76,7 +76,7 @@ struct DynamicDataSmokeTestProgram : public GraphChiProgram<VertexDataType, Edge
                 }
             }
             for(int i=0; i < vertex.num_outedges(); i++) {
-                vertex.outedge(i)->get_data().add(vertex.id() + gcontext.iteration);
+                vertex.outedge(i)->get_vector()->add(vertex.id() + gcontext.iteration);
             }
         }
         vertex.set_data(gcontext.iteration + 1);
@@ -138,8 +138,7 @@ int main(int argc, const char ** argv) {
     bool scheduler       = false;                       // Whether to use selective scheduling
     
     /* Detect the number of shards or preprocess an input to creae them */
-    int nshards          = convert_if_notexists<int>(filename,
-                                                              get_option_string("nshards", "auto"));
+    int nshards          = get_option_int("nshards", 3);
     
     /* Run */
     DynamicDataSmokeTestProgram program;
