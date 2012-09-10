@@ -31,12 +31,34 @@
 
 namespace graphchi {
     
+    int get_block_uncompressed_size(std::string blockfilename, int defaultsize) {
+        std::string szfilename = blockfilename + ".bsize";
+        FILE * f = fopen(szfilename.c_str(), "r");
+        if (f != NULL) {
+            int sz;
+            fread(&sz, 1, sizeof(int), f);
+            fclose(f);
+            return sz;
+        } else {
+            return defaultsize;
+        }
+    }
+    
+    void write_block_uncompressed_size(std::string blockfilename, int size) {
+        std::string szfilename = blockfilename + ".bsize";
+        FILE * f = fopen(szfilename.c_str(), "w");
+        fwrite(&size, 1, sizeof(int), &size);
+        fclose(f);
+    }
+    
     
     template <typename ET>
     struct dynamicdata_block {
         int nedges;
         uint8_t * data;
         ET * chivecs;
+        
+        dynamicdata_block() : data(NULL), chivecs(NULL) {}
         
         dynamicdata_block(int nedges, uint8_t * data) {
             chivecs = new ET[nedges];
@@ -47,6 +69,10 @@ namespace graphchi {
                 chivecs[i] = ET(sz, ptr);
                 ptr += (*sz) * sizeof(typename ET::element_type_t)
             }
+        }
+        
+        ET * edgevec(i) {
+            return chivecs[i];
         }
         
         void write(uint8_t ** outdata, int & size) {
@@ -68,8 +94,8 @@ namespace graphchi {
         }
         
         ~dynamicdata_block() {
-            delete [] chivecs;
-            free(data);
+            if (chivecs != NULL)
+                delete [] chivecs;
         }
         
     };

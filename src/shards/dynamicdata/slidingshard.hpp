@@ -47,6 +47,7 @@
 #include "graphchi_types.hpp"
 
 #include "api/dynamicdata/chivector.hpp"
+#include "shards/dynamicdata/dynamicblock.hpp"
 
 
 namespace graphchi {
@@ -54,6 +55,7 @@ namespace graphchi {
     /**
      * A streaming block.
      */
+    template <typename ET>
     struct sblock {
         
         int writedesc;
@@ -64,18 +66,21 @@ namespace graphchi {
         uint8_t * ptr;
         bool active;
         bool is_edata_block;
+        std::string blockfilename;
+        dynamicdata_block<typename ET::element_type_t> * dynblock;
         
         sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; }
         sblock(int wdesc, int rdesc, bool is_edata_block=false) : writedesc(wdesc), readdesc(rdesc), active(false),
-        is_edata_block(is_edata_block){ data = NULL; }
+        sblock(int wdesc, int rdesc, bool is_edata_block=false, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
+        is_edata_block(is_edata_block), blockfilename(blockfilename) { data = NULL; }
         
         void commit_async(stripedio * iomgr) {
             if (active && data != NULL && writedesc >= 0) {
                 if (is_edata_block) {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
+                    iomgr->managed_pwritea_async(writedesc, &data, end - offset, 0, true, true);
                     data = NULL;
                 } else {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
+                    iomgr->managed_pwritea_async(writedesc, &data, end - offset, offset, true);
                 }
             }
         }
@@ -92,18 +97,14 @@ namespace graphchi {
             }
         }
         void read_async(stripedio * iomgr) {
-            if (is_edata_block) {
-                iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
-                
-            } else {
-                iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
-            }
+            assert(false);
         }
         void read_now(stripedio * iomgr) {
             if (is_edata_block) {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
+                int realsize = get_block_uncompressed_size(blockfilename, end-offset);
+                iomgr->managed_preada_now(readdesc, &data, realsize, 0);
             } else {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+                iomgr->managed_preada_now(readdesc, &data, end - offset, offset);
             }
         }
         
@@ -147,8 +148,8 @@ namespace graphchi {
         std::vector<sblock> activeblocks;
         int adjfile_session;
         int writedesc;
-        sblock * curblock;
-        sblock * curadjblock;
+        sblock<ET> * curblock;
+        sblock<ET> * curadjblock;
         metrics &m;
         
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
@@ -194,7 +195,7 @@ namespace graphchi {
             adjfile_session = iomgr->open_session(filename_adj, true);
             save_offset();
             
-            async_edata_loading = !svertex_t().computational_edges();
+            async_edata_loading = false; // With dynamic edge data size, do not load
 #ifdef SUPPORT_DELETIONS
             async_edata_loading = false; // See comment above for memshard, async_edata_loading = false;
 #endif
@@ -268,7 +269,7 @@ namespace graphchi {
                 // Load next
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
                 int edata_session = iomgr->open_session(blockfilename, false, true);
-                sblock newblock(edata_session, edata_session, true);
+                sblock<ET> newblock(edata_session, edata_session, true, blockfilename);
                 
                 // We align blocks always to the blocksize, even if that requires
                 // allocating and reading some unnecessary data.
@@ -290,7 +291,7 @@ namespace graphchi {
                     delete curadjblock;
                     curadjblock = NULL;
                 }
-                sblock * newblock = new sblock(0, adjfile_session);
+                sblock<ET> * newblock = new sblock<ET>(0, adjfile_session);
                 newblock->offset = adjoffset;
                 newblock->end = std::min(adjfilesize, adjoffset+blocksize);
                 assert(newblock->end > 0);
@@ -313,14 +314,12 @@ namespace graphchi {
             return res;
         }
         
-        template <typename U>
-        inline U * read_edgeptr() {
+        inline ET * read_edgeptr() {
             if (only_adjacency) return NULL;
-            check_curblock(sizeof(U));
-            U * resptr = ((U*)curblock->ptr);
-            edataoffset += sizeof(U);
-            curblock->ptr += sizeof(U);
-            return resptr;
+            check_curblock(sizeof(int));
+            edataoffset += sizeof(int);
+            curblock->ptr += sizeof(int));
+            return curblock->dynblock->edge(curblock->ptr / sizeof(int));
         }
         
         inline void skip(int n, int sz) {
@@ -328,9 +327,9 @@ namespace graphchi {
             adjoffset += tot;
             if (curadjblock != NULL)
                 curadjblock->ptr += tot;
-            edataoffset += sizeof(ET)*n;
+            edataoffset += sizeof(int) * n;
             if (curblock != NULL)
-                curblock->ptr += sizeof(ET)*n;
+                curblock->ptr += sizeof(int) * n;
         }
         
     public:
@@ -391,7 +390,7 @@ namespace graphchi {
                         while(--n >= 0) {
                             bool special_edge = false;
                             vid_t target = (sizeof(ET) == sizeof(ETspecial) ? read_val<vid_t>() : translate_edge(read_val<vid_t>(), special_edge));
-                            ET * evalue = (special_edge ? (ET*)read_edgeptr<ETspecial>(): read_edgeptr<ET>());
+                            ET * evalue = read_edgeptr();
                             
                             if (!only_adjacency) {
                                 if (!curblock->active) {
