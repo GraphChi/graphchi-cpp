@@ -69,9 +69,9 @@ namespace graphchi {
         std::string blockfilename;
         dynamicdata_block<ET> * dynblock;
         
-        sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; }
+        sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; dynblock = NULL; }
         sblock(int wdesc, int rdesc, bool is_edata_block=false) : writedesc(wdesc), readdesc(rdesc), active(false),
-        is_edata_block(is_edata_block){ data = NULL; }
+        is_edata_block(is_edata_block){ data = NULL; dynblock = NULL; }
         sblock(int wdesc, int rdesc, bool is_edata_block, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
         is_edata_block(is_edata_block), blockfilename(blockfilename) {
             assert(is_edata_block == true);
@@ -90,7 +90,8 @@ namespace graphchi {
                     int realsize;
                     dynblock->write(&outdata, realsize);
                     write_block_uncompressed_size(blockfilename, realsize);
-                    iomgr->managed_pwritea_now(writedesc, &data, realsize, 0); /* Need to write whole block in the compressed regime */
+                    iomgr->managed_pwritea_now(writedesc, &outdata, realsize, 0); /* Need to write whole block in the compressed regime */
+                    free(outdata);
                 } else {
                     iomgr->managed_pwritea_now(writedesc, &data, len, offset);
                 }
@@ -104,7 +105,7 @@ namespace graphchi {
                 int realsize = get_block_uncompressed_size(blockfilename, end-offset);
                 iomgr->managed_preada_now(readdesc, &data, realsize, 0);
                 int nedges = (end - offset) / sizeof(int); // Ugly
-                dynblock = new dynamicdata_block<ET>(nedges, (uint8_t *) &data);
+                dynblock = new dynamicdata_block<ET>(nedges, (uint8_t *) data, realsize);
             } else {
                 iomgr->managed_preada_now(readdesc, &data, end - offset, offset);
             }
@@ -280,10 +281,13 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);
-                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
+                int realsize = get_block_uncompressed_size(blockfilename, newblock.end - newblock.offset);
+                iomgr->managed_malloc(edata_session, &newblock.data, realsize, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
                 curblock = &activeblocks[activeblocks.size()-1];
+                curblock->active = true;
+                curblock->read_now(iomgr);
             }
         }
         
@@ -321,8 +325,10 @@ namespace graphchi {
             if (only_adjacency) return NULL;
             check_curblock(sizeof(int));
             edataoffset += sizeof(int);
+            int blockedgeidx = (curblock->ptr - curblock->data) / sizeof(int);
             curblock->ptr += sizeof(int);
-            return curblock->dynblock->edgevec((curblock->ptr - curblock->data) / sizeof(int));
+            assert(curblock->dynblock != NULL);
+            return curblock->dynblock->edgevec(blockedgeidx);
         }
         
         inline void skip(int n, int sz) {
@@ -394,18 +400,8 @@ namespace graphchi {
                             bool special_edge = false;
                             vid_t target = (sizeof(ET) == sizeof(ETspecial) ? read_val<vid_t>() : translate_edge(read_val<vid_t>(), special_edge));
                             ET * evalue = read_edgeptr();
+
                             
-                            if (!only_adjacency) {
-                                if (!curblock->active) {
-                                    if (async_edata_loading) {
-                                        curblock->read_async(iomgr);
-                                    } else {
-                                        curblock->read_now(iomgr);
-                                    }
-                                }
-                                // Note: this needs to be set always because curblock might change during this loop.
-                                curblock->active = true; // This block has an scheduled vertex - need to commit
-                            }
                             vertex.add_outedge(target, evalue, special_edge);
                             
                             if (!((target >= range_st && target <= range_end))) {

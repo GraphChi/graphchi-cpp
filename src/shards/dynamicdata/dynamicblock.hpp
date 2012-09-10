@@ -64,10 +64,11 @@ namespace graphchi {
         
         dynamicdata_block() : data(NULL), chivecs(NULL) {}
         
-        dynamicdata_block(int nedges, uint8_t * data) {
+        dynamicdata_block(int nedges, uint8_t * data, int datasize) : nedges(nedges){
             chivecs = new ET[nedges];
             uint8_t * ptr = data;
             for(int i=0; i < nedges; i++) {
+                assert(ptr - data <= datasize);
                 uint16_t * sz = ((uint16_t *) ptr);
                 ptr += sizeof(uint16_t);
                 chivecs[i] = ET(sz, (typename ET::element_type_t *) ptr);
@@ -76,6 +77,8 @@ namespace graphchi {
         }
         
         ET * edgevec(int i) {
+            assert(i < nedges);
+            assert(chivecs != NULL);
             return &chivecs[i];
         }
         

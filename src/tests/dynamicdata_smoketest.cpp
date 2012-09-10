@@ -63,16 +63,21 @@ struct DynamicDataSmokeTestProgram : public GraphChiProgram<VertexDataType, Edge
                 
                 evector->add(vertex.id());
                 assert(evector->size() == 1);
-
+                assert(evector->get(0) == vertex.id());
             }
             
         } else {
             for(int i=0; i < vertex.num_inedges(); i++) {
                 graphchi_edge<EdgeDataType> * edge = vertex.inedge(i);
-                chivector<vid_t> * evector = vertex.outedge(i)->get_vector();
+                chivector<vid_t> * evector = edge->get_vector();
                 assert(evector->size() >= gcontext.iteration);
                 for(int j=0; j < evector->size(); j++) {
-                    assert(evector->get(j) == edge->vertex_id() + j);
+                    vid_t expected =edge->vertex_id() + j;
+                    vid_t has = evector->get(j);
+                    if (has != expected) {
+                        std::cout << "Mismatch: " << has << " != " << expected << std::endl;
+                    }
+                    assert(has == expected);
                 }
             }
             for(int i=0; i < vertex.num_outedges(); i++) {

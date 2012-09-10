@@ -70,7 +70,7 @@ namespace graphchi {
         uint8_t * adjdata;
         char ** edgedata;
         std::vector<size_t> blocksizes;
-        std::vector< dynamicdata_block<ET> > dynamicblocks;
+        std::vector< dynamicdata_block<ET> * > dynamicblocks;
         uint64_t chunkid;
         
         std::vector<int> block_edatasessions;
@@ -107,8 +107,10 @@ namespace graphchi {
                 if (edgedata[i] != NULL) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     iomgr->close_session(block_edatasessions[i]);
+                    delete dynamicblocks[i];
                 }
             }
+            dynamicblocks.clear();
             if (adj_session >= 0) {
                 if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
                 iomgr->close_session(adj_session);
@@ -121,10 +123,10 @@ namespace graphchi {
         void write_and_release_block(int i) {
             std::string block_filename = filename_shard_edata_block(filename_edata, i, blocksize);
 
-            dynamicdata_block<ET> & dynblock = dynamicblocks[i];
+            dynamicdata_block<ET> * dynblock = dynamicblocks[i];
             uint8_t * outdata;
             int outsize;
-            dynblock.write(&outdata, outsize);
+            dynblock->write(&outdata, outsize);
             write_block_uncompressed_size(block_filename, outsize);
             iomgr->managed_pwritea_now(block_edatasessions[i], &outdata, outsize, 0);
             iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
@@ -220,7 +222,7 @@ namespace graphchi {
                     } else {
                         iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
                     }
-                    dynamicblocks.push_back(dynamicdata_block<ET>(nedges, (uint8_t*) edgedata[blockid]));
+                    dynamicblocks.push_back(new dynamicdata_block<ET>(nedges, (uint8_t*) edgedata[blockid], fsize));
 
                     blockid++;
 
@@ -349,7 +351,7 @@ namespace graphchi {
                     ptr += sizeof(vid_t);
                     if (vertex != NULL && outedges)
                     {
-                        vertex->add_outedge(target, (only_adjacency ? NULL : dynamicblocks[blockid].edgevec(edgeptr % blocksize)), false);
+                        vertex->add_outedge(target, (only_adjacency ? NULL : dynamicblocks[blockid]->edgevec((edgeptr % blocksize)/sizeof(int))), false);
                     }
                     
                     if (target >= window_st)  {
@@ -359,7 +361,7 @@ namespace graphchi {
                                 if (dstvertex.scheduled) {
                                     any_edges = true;
                                     //  assert(only_adjacency ||  edgeptr < edatafilesize);
-                                    ET * eptr = (only_adjacency ? NULL  : dynamicblocks[blockid].edgevec(edgeptr % blocksize));
+                                    ET * eptr = (only_adjacency ? NULL  : dynamicblocks[blockid]->edgevec((edgeptr % blocksize)/sizeof(int)));
 
                                     dstvertex.add_inedge(vid,  (only_adjacency ? NULL : eptr), false);
                                     dstvertex.parallel_safe = dstvertex.parallel_safe && (vertex == NULL); // Avoid if
