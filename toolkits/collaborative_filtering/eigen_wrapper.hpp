@@ -643,5 +643,13 @@ inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int 
   D.clear();
   return ret;
 }
+//define function to be applied coefficient-wise
+double equal_greater(double x){
+  if (x != 0)
+    return 1;
+  else 
+    return 0;
+}    
+//sort(edges.begin(), edges.end());
 
 #endif
