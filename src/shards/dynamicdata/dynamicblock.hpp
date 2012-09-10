@@ -69,10 +69,10 @@ namespace graphchi {
             uint8_t * ptr = data;
             for(int i=0; i < nedges; i++) {
                 assert(ptr - data <= datasize);
-                uint16_t * sz = ((uint16_t *) ptr);
-                ptr += sizeof(uint16_t);
-                chivecs[i] = ET(sz, (typename ET::element_type_t *) ptr);
-                ptr += (int) (*sz) * sizeof(typename ET::element_type_t);
+                typename ET::sizeword_t * sz = ((typename ET::sizeword_t *) ptr);
+                ptr += sizeof(typename ET::sizeword_t);
+                chivecs[i] = ET(((uint16_t *)sz)[0], ((uint16_t *)sz)[1], (typename ET::element_type_t *) ptr);
+                ptr += (int) ((uint16_t *)sz)[1] * sizeof(typename ET::element_type_t);
             }
         }
         
@@ -86,7 +86,7 @@ namespace graphchi {
             // First compute size
             size = 0;
             for(int i=0; i < nedges; i++) {
-                size += chivecs[i].size() * sizeof(typename ET::element_type_t) + sizeof(uint16_t);
+                size += chivecs[i].capacity() * sizeof(typename ET::element_type_t) + sizeof(typename ET::sizeword_t);
             }
             
             *outdata = (uint8_t *) malloc(size);
@@ -94,9 +94,11 @@ namespace graphchi {
             for(int i=0; i < nedges; i++) {
                 ET & vec = chivecs[i];
                 ((uint16_t *) ptr)[0] = vec.size();
-                ptr += sizeof(uint16_t);
+                ((uint16_t *) ptr)[1] = vec.capacity();
+
+                ptr += sizeof(typename ET::sizeword_t);
                 vec.write((typename ET::element_type_t *)  ptr);
-                ptr += vec.size() * sizeof(typename ET::element_type_t);
+                ptr += vec.capacity() * sizeof(typename ET::element_type_t);
             }
         }
         

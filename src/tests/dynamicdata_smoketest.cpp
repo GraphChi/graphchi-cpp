@@ -72,7 +72,7 @@ struct DynamicDataSmokeTestProgram : public GraphChiProgram<VertexDataType, Edge
                 chivector<vid_t> * evector = edge->get_vector();
                 assert(evector->size() >= gcontext.iteration);
                 for(int j=0; j < evector->size(); j++) {
-                    vid_t expected =edge->vertex_id() + j;
+                    vid_t expected = edge->vertex_id() + j;
                     vid_t has = evector->get(j);
                     if (has != expected) {
                         std::cout << "Mismatch: " << has << " != " << expected << std::endl;

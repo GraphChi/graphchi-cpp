@@ -197,7 +197,7 @@ namespace graphchi {
         
         void load_edata() {
             bool async_inedgedata_loading = false; // Not supported with dynamic edgedata
-            assert(blocksize % sizeof(ET) == 0);
+            assert(blocksize % sizeof(int) == 0);
             int nblocks = (int) (edatafilesize / blocksize + (edatafilesize % blocksize != 0));
             edgedata = (char **) calloc(nblocks, sizeof(char*));
             size_t compressedsize = 0;

@@ -9,7 +9,7 @@ HEADERS=$(wildcard *.h**)
 all: apps tests 
 apps: example_apps/connectedcomponents example_apps/pagerank example_apps/pagerank_functional example_apps/communitydetection example_apps/trianglecounting
 als: example_apps/matrix_factorization/als_edgefactors  example_apps/matrix_factorization/als_vertices_inmem
-tests: tests/basic_smoketest tests/bulksync_functional_test
+tests: tests/basic_smoketest tests/bulksync_functional_test tests/dynamicdata_smoketest
 
 
 clean:

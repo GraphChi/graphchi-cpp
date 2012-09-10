@@ -36,20 +36,26 @@
 namespace graphchi {
 
     
+#define MINCAPACITY 2
+    
 template <typename T>
 class chivector {
 
-    uint16_t * sizeptr;
     uint16_t origsize;
+    uint16_t nsize;
+    uint16_t ncapacity;
     T * data;
     std::vector<T> * extensions;  // TODO: use a more memory efficient system?
     
 public:
     typedef T element_type_t;
+    typedef uint32_t sizeword_t;
     chivector() {}
     
-    chivector(uint16_t * sizeptr, T * dataptr) : sizeptr(sizeptr), data(dataptr) {
-        origsize = *sizeptr;
+    chivector(uint16_t sz, uint16_t cap, T * dataptr) : data(dataptr) {
+        origsize = sz;
+        nsize = origsize;
+        ncapacity = cap;
         extensions = NULL;
     }
     
@@ -62,21 +68,25 @@ public:
     
 public:
     uint16_t size() {
-        return *sizeptr;
+        return nsize;
+    }
+    
+    uint16_t capacity() {
+        return nsize > MINCAPACITY ? nsize : MINCAPACITY;
     }
     
     void add(T val) {
-        *sizeptr += 1;
-        if (*sizeptr > origsize) {
+        nsize ++;
+        if (nsize > ncapacity) {
             if (extensions == NULL) extensions = new std::vector<T>();
             extensions->push_back(val);
         } else {
-            data[*sizeptr - 1] = val;
+            data[nsize - 1] = val;
         }
     }
     
     T get(int idx) {
-        if (idx >= origsize) {
+        if (idx >= ncapacity) {
             return (* extensions)[idx - (int)origsize];
         } else {
             return data[idx];
@@ -93,7 +103,7 @@ public:
     }
     
     void clear() {
-        *sizeptr = 0;
+        nsize = 0;
     }
     
     // TODO: iterators
