@@ -74,6 +74,8 @@ size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
 bool * relevant_items  = NULL;
+vec mean;
+vec stddev;
 int grabbed_edges = 0;
 int distance_metric;
 
@@ -89,8 +91,7 @@ typedef float  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 struct vertex_data{ 
   vec pvec; 
-  double mean; 
-  vertex_data(){ mean = 0; }
+  vertex_data(){ }
 };
 std::vector<vertex_data> latent_factors_inmem;
 #include "io.hpp"
@@ -125,7 +126,7 @@ class adjlist_container {
 
   void clear() {
     for(std::vector<dense_adj>::iterator it=adjs.begin(); it != adjs.end(); ++it) {
-      if (it->edges.size() > 0) {
+      if (nnz(it->edges)) {
         it->edges.resize(0);
       }
     }
@@ -171,7 +172,7 @@ class adjlist_container {
   }
 
   int acount(vid_t pivot) {
-    return adjs[pivot - pivot_st].edges.size();
+    return nnz(adjs[pivot - pivot_st].edges);
   }
 
 
@@ -199,7 +200,7 @@ class adjlist_container {
     int num_edges = v.num_edges();
     //if there are not enough neighboring user nodes to those two items there is no need
     //to actually count the intersection
-    if (num_edges < min_allowed_intersection || pivot_edges.edges.size() < min_allowed_intersection)
+    if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection)
       return 0;
 
     dense_adj item_edges; 
@@ -213,8 +214,8 @@ class adjlist_container {
       return 0;
 
     //(distance_metric == PEARSON){
-    double dist = pivot_edges.edges.dot(item_edges.edges);
-    return dist;
+    double dist = minus(pivot_edges.edges, mean).dot(minus(item_edges.edges, mean));
+    return dist; //TODO: compute stddev
   }
 
   inline bool is_pivot(vid_t vid) {
@@ -250,7 +251,7 @@ class adjlist_container {
             for(int i=0; i<v.num_edges(); i++) {
               graphchi_edge<float> * e = v.edge(i);
               vid_t user = e->vertexid;
-              latent_factors_inmem[user].mean += e->get_data() / (float)N;
+              mean[user] += e->get_data() / (float)N;
             }
           }
         }
@@ -414,10 +415,8 @@ class adjlist_container {
         adjcontainer = new adjlist_container();
         //array for marking which items are conected to the pivot items via users.
         relevant_items = new bool[N];
-
-        //store node degrees in an array to be used for AA distance metric
-        if (distance_metric == AA || distance_metric == RA)
-          latent_factors_inmem.resize(M);
+        mean.resize(M);
+        stddev.resize(M); 
 
         /* Run */
         ItemDistanceProgram program;
