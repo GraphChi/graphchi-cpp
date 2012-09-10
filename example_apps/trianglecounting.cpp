@@ -148,7 +148,7 @@ public:
       * Extend the interval of pivot vertices to en.
       */
     void extend_pivotrange(vid_t en) {
-        assert(en>pivot_en);
+        assert(en>=pivot_en);
         pivot_en = en; 
         adjs.resize(pivot_en - pivot_st);
     }

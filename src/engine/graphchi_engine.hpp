@@ -623,6 +623,8 @@ namespace graphchi {
                     vid_t interval_st = get_interval_start(exec_interval);
                     vid_t interval_en = get_interval_end(exec_interval);
                     
+                    if (interval_st > interval_en) continue; // Can happen on very very small graphs.
+                    
                     userprogram.before_exec_interval(interval_st, interval_en, chicontext);
 
                     /* Flush stream shard for the exec interval */
@@ -835,7 +837,7 @@ namespace graphchi {
             for(int i=0; i < nshards; i++) {
                 assert(!intervalsF.eof());
                 intervalsF >> en;
-                intervals.push_back(std::pair<vid_t,vid_t>(st, en));
+                intervals.push_back(std::pair<vid_t,vid_t>(std::min(st, en), en));
                 st = en + 1;
             }
             for(int i=0; i < nshards; i++) {
