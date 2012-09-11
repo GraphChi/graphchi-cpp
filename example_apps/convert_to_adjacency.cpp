@@ -41,6 +41,11 @@ typedef bool EdgeDataType;
 
 FILE * f;
 
+#define MODE_ADJLIST 0
+#define MODE_CASSOVARY_ADJ 1
+
+int mode;
+
 struct AdjConverter : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     
@@ -49,10 +54,21 @@ struct AdjConverter : public GraphChiProgram<VertexDataType, EdgeDataType> {
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
         if (vertex.id() % 10000 == 0) std::cout << vertex.id() << std::endl;
-        fprintf(f, "%d %d", vertex.id(), vertex.num_outedges());
-        for(int i=0; i<vertex.num_outedges(); i++) 
-            fprintf(f, " %d", vertex.outedge(i)->vertex_id());
-        fprintf(f, "\n");
+        switch(mode) {
+            case MODE_ADJLIST: {
+                fprintf(f, "%d %d", vertex.id(), vertex.num_outedges());
+                for(int i=0; i<vertex.num_outedges(); i++) 
+                    fprintf(f, " %d", vertex.outedge(i)->vertex_id());
+                fprintf(f, "\n");
+                break;
+            }
+            case MODE_CASSOVARY_ADJ: {
+                fprintf(f, "%d %d\n", vertex.id(), vertex.num_outedges());
+                for(int i=0; i<vertex.num_outedges(); i++) 
+                    fprintf(f, "%d\n", vertex.outedge(i)->vertex_id());
+                break;
+            }
+        }
     }
     
     /**
@@ -96,7 +112,7 @@ int main(int argc, const char ** argv) {
     /* Detect the number of shards or preprocess an input to create them */
     int nshards          = convert_if_notexists<EdgeDataType>(filename, 
                                                               get_option_string("nshards", "auto"));
-    
+    mode = get_option_int("mode", 0);
     std::string outfile = filename + ".adj";
     f = fopen(outfile.c_str(), "w");
     
