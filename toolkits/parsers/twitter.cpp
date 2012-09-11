@@ -38,7 +38,7 @@ unordered_map<uint,string> nodeid2hash;
 uint conseq_id;
 std::mutex mymutex;
 timer mytime;
-size_t lines;
+size_t lines = 0, links_found = 0;
 unsigned long long total_lines = 0;
 string dir;
 string outdir;
@@ -140,6 +140,28 @@ bool convert_string_to_time(const char * linebuf, size_t line, int i, char * sav
   return true; 
 
 } 
+bool parse_links(const char * linebuf, size_t line, int i, char * saveptr, uint id, long int ptime, FILE * f){
+
+  uint otherid = 0;
+  char * pch = NULL;
+  do {
+    pch = strtok_r(NULL, " \r\n\t:/-", &saveptr);
+    if (!pch || strlen(pch) == 0)
+      return true;
+
+    if (pch[0] == '@'){
+      assign_id(otherid, pch+1, line, linebuf);
+      fprintf(f, "%u %u %ld\n", id, otherid, ptime);
+      links_found++;
+      if (debug && line < 20)
+        printf("found link between : %u %u in time %ld\n", id, otherid, ptime);
+    };
+
+  } while (pch != NULL);
+  return true; 
+
+} 
+
 
 /*
  * Twitter input format is:
@@ -194,7 +216,7 @@ void parse(int i){
         break;
 
       case 'W':
-        //TODO
+        ok = parse_links(linebuf, line, i, saveptr, id, ptime, fout.outf);
         if (debug && line < 20)
           printf("Found user: %s id %u time %ld\n", buf1, id, ptime);
         break;
