@@ -21,8 +21,7 @@
 #include <cstdio>
 #include <map>
 #include <iostream>
-#include <unordered_map>
-#include <mutex>
+#include <map>
 #include <omp.h>
 #include <assert.h>
 #include "graphchi_basic_includes.hpp"
@@ -33,10 +32,10 @@ using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-unordered_map<string,uint> string2nodeid;
-unordered_map<uint,string> nodeid2hash;
+map<string,uint> string2nodeid;
+map<uint,string> nodeid2hash;
 uint conseq_id;
-std::mutex mymutex;
+mutex mymutex;
 timer mytime;
 size_t lines;
 unsigned long long total_lines = 0;
@@ -45,8 +44,8 @@ string outdir;
 std::vector<std::string> in_files;
 
 
-void save_map_to_text_file(const std::unordered_map<std::string,uint> & map, const std::string filename){
-    std::unordered_map<std::string,uint>::const_iterator it;
+void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
+    std::map<std::string,uint>::const_iterator it;
     out_file fout(filename);
     unsigned int total = 0;
     for (it = map.begin(); it != map.end(); it++){ 
@@ -57,8 +56,8 @@ void save_map_to_text_file(const std::unordered_map<std::string,uint> & map, con
 }
 
 
-void save_map_to_text_file(const std::unordered_map<uint,std::string> & map, const std::string filename){
-    std::unordered_map<uint,std::string>::const_iterator it;
+void save_map_to_text_file(const std::map<uint,std::string> & map, const std::string filename){
+    std::map<uint,std::string>::const_iterator it;
     out_file fout(filename);
     unsigned int total = 0;
     for (it = map.begin(); it != map.end(); it++){ 
@@ -71,7 +70,7 @@ void save_map_to_text_file(const std::unordered_map<uint,std::string> & map, con
 
 void assign_id(uint & outval, const string &name){
 
-  unordered_map<string,uint>::iterator it = string2nodeid.find(name);
+  map<string,uint>::iterator it = string2nodeid.find(name);
   if (it != string2nodeid.end()){
     outval = it->second;
     return;
@@ -98,7 +97,7 @@ void parse(int i){
   uint id;
 
   while(true){
-    std::unordered_map<uint,uint> wordcount;
+    std::map<uint,uint> wordcount;
     int rc = getline(&linebuf, &linesize, fin.outf);
     if (rc < 1)
       break;
@@ -121,7 +120,7 @@ void parse(int i){
     line++;
     total_lines++;
 
-    std::unordered_map<uint,uint>::const_iterator it;
+    std::map<uint,uint>::const_iterator it;
     for (it = wordcount.begin(); it != wordcount.end(); it++){
        fprintf(fout.outf, "%lu %u %u\n", line, it->first, it->second);
     }
