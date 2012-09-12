@@ -188,8 +188,8 @@ namespace graphchi {
             assert(blocksize % sizeof(ET)==0);
             
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
             if (!only_adjacency) {
+                edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
                 logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize << std::endl;
             } else {
                 // Nothing

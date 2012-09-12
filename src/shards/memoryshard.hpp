@@ -233,9 +233,10 @@ namespace graphchi {
                     break;
                 }
             }
-            assert(blockid == nblocks);
             std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
                             " number of blocks: " << nblocks << std::endl;
+            assert(blockid == nblocks);
+
         }
         
         
@@ -245,7 +246,6 @@ namespace graphchi {
         void load() {
             is_loaded = true;
             adjfilesize = get_filesize(filename_adj);
-            edatafilesize = get_shard_edata_filesize<ET>(filename_edata);            
             
 #ifdef SUPPORT_DELETIONS
             async_inedgedata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),
@@ -261,6 +261,7 @@ namespace graphchi {
             iomgr->launch_stream_reader(&adj_stream_session);
             /* Initialize edge data asynchonous reading */
             if (!only_adjacency) {
+                edatafilesize = get_shard_edata_filesize<ET>(filename_edata);            
                 load_edata();
             }
         }

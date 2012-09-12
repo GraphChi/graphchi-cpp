@@ -113,6 +113,8 @@ namespace graphchi {
         size_t bufsize;
         size_t edgedatasize;
         
+        bool no_edgevalues;
+        
         metrics m;
         
         binary_adjacency_list_writer<EdgeDataType> * preproc_writer;
@@ -121,6 +123,7 @@ namespace graphchi {
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
             edgedatasize = sizeof(EdgeDataType);
+            no_edgevalues = false;
             compressed_block_size = 4096 * 1024;
             while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
         }
@@ -130,6 +133,10 @@ namespace graphchi {
             if (preproc_writer != NULL) {
                 delete preproc_writer;
             }
+        }
+        
+        void set_no_edgevalues() {
+            no_edgevalues = true;
         }
         
         std::string preprocessed_name() {
@@ -232,6 +239,8 @@ namespace graphchi {
         
         template <typename T>
         void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {
+            if (no_edgevalues) return;
+            
             if (bufptr + sizeof(T) - buf > compressed_block_size) {
                 edata_flush<T>(buf, bufptr, shard_filename, totbytes);
                 bufptr = buf;
@@ -474,7 +483,8 @@ namespace graphchi {
                 std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
                 
                 /* Make the block directory */
-                mkdir(edblockdirname.c_str(), 0777);
+                if (!no_edgevalues)
+                    mkdir(edblockdirname.c_str(), 0777);
                 
                 edge_t * shovelbuf;
                 int shovelf = open(shovelfname.c_str(), O_RDONLY);
@@ -493,8 +503,6 @@ namespace graphchi {
                 assert(f >= 0);
                 int trerr = ftruncate(f, 0);
                 assert(trerr == 0);
-                
-               
                 
                 char * buf = (char*) malloc(SHARDER_BUFSIZE); 
                 char * bufptr = buf;
@@ -556,15 +564,16 @@ namespace graphchi {
                 close(f);
                 close(shovelf);
                 
-            
-                edata_flush<EdgeDataType>(ebuf, ebufptr, edfname, tot_edatabytes);
                 
                 /* Write edata size file */
-                std::string sizefilename = edfname + ".size";
-                std::ofstream ofs(sizefilename.c_str());
-                ofs << tot_edatabytes;
-                ofs.close();
-                
+                if (!no_edgevalues) {
+                    edata_flush<EdgeDataType>(ebuf, ebufptr, edfname, tot_edatabytes);
+
+                    std::string sizefilename = edfname + ".size";
+                    std::ofstream ofs(sizefilename.c_str());
+                    ofs << tot_edatabytes;
+                    ofs.close();
+                }
                 free(ebuf);
                 remove(shovelfname.c_str()); 
                 
@@ -601,9 +610,8 @@ namespace graphchi {
                                          new slidingshard_t(iomgr, filename_shard_edata<EdgeDataType>(basefilename, p, nshards), 
                                                             filename_shard_adj(basefilename, p, nshards), intervals[p].first, 
                                                             intervals[p].second, 
-                                                            blocksize, m, true));
+                                                            blocksize, m, true, true));
             }
-            for(int p=0; p < nshards; p++) sliding_shards[p]->only_adjacency = true;
             
             graphchi_context ginfo;
             ginfo.nvertices = 1 + intervals[nshards - 1].second;

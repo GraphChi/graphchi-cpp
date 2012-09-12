@@ -278,6 +278,46 @@ namespace graphchi {
         return nshards;
     }
     
+    struct dummy {};
+    
+    /** 
+     * Converts a graph input to shards with no edge values. Preprocessing has several steps, 
+     * see sharder.hpp for more information.
+     */
+    int convert_none(std::string basefilename, std::string nshards_string) {
+        std::string suffix = "";
+        sharder<dummy> sharderobj(basefilename + suffix);
+        sharderobj.set_no_edgevalues();
+        
+        if (!sharderobj.preprocessed_file_exists()) {
+            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
+            if (file_type_str != "adjlist" && file_type_str != "edgelist") {
+                logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
+                assert(false);
+            }
+            
+            /* Start preprocessing */
+            sharderobj.start_preprocessing();
+            
+            if (file_type_str == "adjlist") {
+                convert_adjlist<dummy>(basefilename, sharderobj);
+            } else if (file_type_str == "edgelist") {
+                convert_edgelist<dummy>(basefilename, sharderobj);
+            }
+            
+            /* Finish preprocessing */
+            sharderobj.end_preprocessing();
+            
+            
+        }
+        
+        int nshards = sharderobj.execute_sharding(nshards_string);
+        logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
+        return nshards;
+    }
+
+    
     
     template <typename EdgeDataType>
     int convert_if_notexists(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {

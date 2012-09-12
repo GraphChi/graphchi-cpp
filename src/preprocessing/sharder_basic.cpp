@@ -46,7 +46,7 @@ int main(int argc, const char ** argv) {
     global_logger().set_log_level(LOG_DEBUG);
     
     std::string basefile = get_option_string_interactive("file", "[path to the input graph]");
-    std::string edge_data_type = get_option_string_interactive("edgedatatype", "int, uint, short, float, char, double, boolean, long, float-float, int-int");
+    std::string edge_data_type = get_option_string_interactive("edgedatatype", "int, uint, short, float, char, double, boolean, long, float-float, int-int, none");
     std::string nshards_str = get_option_string_interactive("nshards", "Number of shards to create, or 'auto'");
     
     if (edge_data_type == "float") {
@@ -69,6 +69,8 @@ int main(int argc, const char ** argv) {
         convert<bool>(basefile, nshards_str);
     } else if (edge_data_type == "long") {
         convert<long>(basefile, nshards_str);
+    } else if (edge_data_type == "none") {
+        convert_none(basefile, nshards_str);
     } else {
         logstream(LOG_ERROR) << "You need to specify edgedatatype. Currently supported: int, short, float, char, double, boolean, long.";
         return -1;    
