@@ -296,6 +296,7 @@
 		5FCC23FE15A2395B0003D0E9 /* als_vertices_inmem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = als_vertices_inmem.cpp; sourceTree = "<group>"; };
 		5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = streaming_pagerank.cpp; sourceTree = "<group>"; };
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FE6102615FFE270007BB5B7 /* convert_to_adjacency.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = convert_to_adjacency.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -795,6 +796,7 @@
 		5FCC1EBC1599F59A0003D0E9 /* example_apps */ = {
 			isa = PBXGroup;
 			children = (
+				5FE6102515FFE24E007BB5B7 /* util */,
 				5FCC1EC8159A03D50003D0E9 /* matrix_factorization */,
 				5FCC1EBD1599F59A0003D0E9 /* application_template.cpp */,
 				5FCC1EBE1599F59A0003D0E9 /* communitydetection.cpp */,
@@ -846,6 +848,14 @@
 				5FCC229815A1ECB40003D0E9 /* graphchi_graphlabv2_1.hpp */,
 			);
 			path = graphlab2_1_GAS_api;
+			sourceTree = "<group>";
+		};
+		5FE6102515FFE24E007BB5B7 /* util */ = {
+			isa = PBXGroup;
+			children = (
+				5FE6102615FFE270007BB5B7 /* convert_to_adjacency.cpp */,
+			);
+			name = util;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
