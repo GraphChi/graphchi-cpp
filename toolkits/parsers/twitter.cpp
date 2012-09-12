@@ -34,14 +34,16 @@ using namespace graphchi;
 bool debug = false;
 map<string,uint> string2nodeid;
 map<uint,string> nodeid2hash;
+map<uint,uint> tweets_per_user;
 uint conseq_id;
 mutex mymutex;
 timer mytime;
-size_t lines = 0, links_found = 0;
+size_t lines = 0, links_found = 0, http_links = 0, missing_names = 0, retweet_found = 0;
 unsigned long long total_lines = 0;
 string dir;
 string outdir;
 std::vector<std::string> in_files;
+const char user_chars_tokens[] = {" \r\n\t,.\"!?#%^&*()|-\'+$/:"};
 
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
@@ -67,13 +69,45 @@ void save_map_to_text_file(const std::map<uint,std::string> & map, const std::st
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
 }
 
+void save_map_to_text_file(const std::map<uint,uint> & map, const std::string filename){
+    std::map<uint,uint>::const_iterator it;
+    out_file fout(filename);
+    unsigned int total = 0;
+    for (it = map.begin(); it != map.end(); it++){ 
+      fprintf(fout.outf, "%u %u\n", it->first, it->second);
+     total++;
+    } 
+    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
+}
 
-void assign_id(uint & outval, const string &name, const int line, const string &filename){
+
+/*
+* If this is a legal user name, assign an integer id to this user name
+*
+* What Characters Are Allowed in Twitter Usernames
+*
+* Taken from: http://kagan.mactane.org/blog/2009/09/22/what-characters-are-allowed-in-twitter-usernames/
+*
+* A while back, when I was writing Hummingbird, I needed to look for Twitter usernames in various strings. More recently, I’m doing some work that involves Twitter at my new job. Once again, I need to find and match on Twitter usernames.
+*
+* Luckily, this time, Twitter seems to have updated its signup page with some nice AJAX that constrains the user’s options, and provides helpful feedback. So, for anyone else who needs this information in the future, here’s the scoop:
+*
+* Letters, numbers, and underscores only. It’s case-blind, so you can enter hi_there, Hi_There, or HI_THERE and they’ll all work the same (and be treated as a single account).
+* There is apparently no minimum-length requirement; the user a exists on Twitter. Maximum length is 15 characters.
+* There is also no requirement that the name contain letters at all; the user 69 exists, as does a user whose name I can’t pronounce
+*/
+bool assign_id(uint & outval, string name, const int line, const string &filename){
+
+  if (name.size() == 0 || strstr(name.c_str(), "/") || strstr(name.c_str(), ":") || name.size() > 15)
+      return false;
+
+  for (uint i=0; i< name.size(); i++)
+   name[i] = tolower(name[i]); 
 
   map<string,uint>::iterator it = string2nodeid.find(name);
   if (it != string2nodeid.end()){
     outval = it->second;
-    return;
+    return true;
   }
   mymutex.lock();
   outval = string2nodeid[name];
@@ -83,26 +117,28 @@ void assign_id(uint & outval, const string &name, const int line, const string &
     nodeid2hash[outval] = name;
   }
   mymutex.unlock();
+  return true;
 }
 
 
 
-void find_ids(uint & to, const string& buf2, const int line, const string &filename){
-  assign_id(to, buf2, line, filename);
-}
  
 /*
 * U  http://twitter.com/xlamp
+
 */
 bool extract_user_name(const char * linebuf, size_t line, int i, char * saveptr, char * userid){
-  char *pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //HTTP
+
+
+  char *pch = strtok_r(NULL, user_chars_tokens,&saveptr); //HTTP
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //TWITTER
+  pch = strtok_r(NULL,user_chars_tokens,&saveptr); //TWITTER
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //COM
+  pch = strtok_r(NULL,user_chars_tokens,&saveptr); //COM
   if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
-  pch = strtok_r(NULL," \r\n\t:/.",&saveptr); //USERNAME
-  if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
+  pch = strtok_r(NULL,user_chars_tokens,&saveptr); //USERNAME
+  if (!pch){ logstream(LOG_WARNING) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; missing_names++; return false; }
+  for (uint j=0; j< strlen(pch); j++) pch[j] = tolower(pch[j]); //make user name lower
   strncpy(userid, pch, 256);
   return true;
 }
@@ -142,20 +178,35 @@ bool convert_string_to_time(const char * linebuf, size_t line, int i, char * sav
 bool parse_links(const char * linebuf, size_t line, int i, char * saveptr, uint id, long int ptime, FILE * f){
 
   uint otherid = 0;
+  if (strstr(linebuf, "http://"))
+    http_links++;
+
   char * pch = NULL;
   do {
-    pch = strtok_r(NULL, " \r\n\t:/-", &saveptr);
+    pch = strtok_r(NULL, user_chars_tokens, &saveptr);
     if (!pch || strlen(pch) == 0)
       return true;
 
     if (pch[0] == '@'){
-      assign_id(otherid, pch+1, line, linebuf);
-      fprintf(f, "%u %u %ld\n", id, otherid, ptime);
-      links_found++;
+      bool ok = assign_id(otherid, pch+1, line, linebuf);
+      if (ok){
+        fprintf(f, "%u %u %ld 1\n", id, otherid, ptime);
+        links_found++;
+      }
       if (debug && line < 20)
         printf("found link between : %u %u in time %ld\n", id, otherid, ptime);
-    };
+    }
+    else if (!strncmp(pch, "RT", 2)){
+       pch = strtok_r(NULL, user_chars_tokens, &saveptr);
+      if (!pch || strlen(pch) == 0)
+        continue;
 
+      bool ok = assign_id(otherid, pch, line, linebuf);
+      if (ok){
+        fprintf(f, "%u %u %ld 2\n", id, otherid, ptime);
+        retweet_found++;
+      }
+    }
   } while (pch != NULL);
   return true; 
 
@@ -184,38 +235,42 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr, * linebuf, buf1[256];
+  char * saveptr, * linebuf, buf1[256], linebuf_debug[1024];
   size_t line = 1;
   uint id;
   long int ptime;
   bool ok;
+  bool first = true;
 
   while(true){
     int rc = getline(&linebuf, &linesize, fin.outf);
+    strncpy(linebuf_debug, linebuf, 1024);
+    total_lines++;
     if (rc < 1)
       break;
     if (strlen(linebuf) <= 1) //skip empty lines
       continue; 
+    if (first){ first = false; continue; } //skip first line
 
     char *pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
 
     switch(*pch){
       case 'T':
-        ok = convert_string_to_time(linebuf, line, i, saveptr, ptime);
+        ok = convert_string_to_time(linebuf_debug, total_lines, i, saveptr, ptime);
         if (!ok)
           return;
         break;
 
       case 'U':
-        ok = extract_user_name(linebuf, line, i, saveptr, buf1);
-        if (!ok)
-          return;
-        assign_id(id, buf1, line, in_files[i]);
+        ok = extract_user_name(linebuf_debug, total_lines, i, saveptr, buf1);
+        if (ok)
+          assign_id(id, buf1, line, in_files[i]);
+        tweets_per_user[id]++;
         break;
 
       case 'W':
-        ok = parse_links(linebuf, line, i, saveptr, id, ptime, fout.outf);
+        ok = parse_links(linebuf_debug, total_lines, i, saveptr, id, ptime, fout.outf);
         if (debug && line < 20)
           printf("Found user: %s id %u time %ld\n", buf1, id, ptime);
         break;
@@ -227,7 +282,6 @@ void parse(int i){
     }
 
     line++;
-    total_lines++;
     if (lines && line>=lines)
       break;
 
@@ -277,10 +331,15 @@ int main(int argc,  const char *argv[]) {
   for (uint i=0; i< in_files.size(); i++)
     parse(i);
 
-  std::cout << "Finished in " << mytime.current_time() << std::endl;
+  std::cout << "Finished in " << mytime.current_time() << std::endl << "\t direct tweets found: " << links_found  
+    << "\t http links: " << http_links << 
+    "\t retweets: " << retweet_found <<
+    "\t total lines in input file : " << total_lines << 
+    " \t invalid records (missing names) " << missing_names <<  std::endl;
 
-  save_map_to_text_file(string2nodeid, outdir + ".map.text.gz");
-  save_map_to_text_file(nodeid2hash, outdir + ".reverse.map.text.gz");
+  save_map_to_text_file(string2nodeid, outdir + "map.text");
+  save_map_to_text_file(nodeid2hash, outdir + "reverse.map.text");
+  save_map_to_text_file(tweets_per_user, outdir + "tweets_per_user.text");
   return 0;
 }
 
