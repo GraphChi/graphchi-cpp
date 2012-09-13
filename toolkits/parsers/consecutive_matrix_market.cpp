@@ -36,7 +36,10 @@ using namespace graphchi;
 bool debug = false;
 map<string,uint> string2nodeid;
 map<uint,string> nodeid2hash;
+map<string,uint> string2nodeid2;
+map<uint,string> nodeid2hash2;
 uint conseq_id;
+uint conseq_id2;
 mutex mymutex;
 timer mytime;
 size_t lines;
@@ -79,7 +82,7 @@ void save_map_to_text_file(const std::map<uint,std::string> & map, const std::st
 }
 
 
-void assign_id(uint & outval, const string &name, bool from){
+void assign_id(map<string,uint> & string2nodeid, map<uint,string> & nodeid2hash, uint & outval, const string &name, bool from){
 
   map<string,uint>::iterator it = string2nodeid.find(name);
   if (it != string2nodeid.end()){
@@ -89,7 +92,7 @@ void assign_id(uint & outval, const string &name, bool from){
   mymutex.lock();
   outval = string2nodeid[name];
   if (outval == 0){
-    string2nodeid[name] = ++conseq_id;
+    string2nodeid[name] = (from? ++conseq_id : ++conseq_id2);
     outval = conseq_id;
     nodeid2hash[outval] = name;
     if (from)
@@ -134,17 +137,22 @@ void parse(int i){
     //read [FROM]
     char *pch = strtok_r(linebuf,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(from, pch, true);
+    assign_id(string2nodeid,nodeid2hash, from, pch, true);
 
     //read [TO]
     pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(to, pch, false);
+    assign_id(string2nodeid2,nodeid2hash2, to, pch, false);
 
     //read [VAL]
     pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    fprintf(fout.outf, "%u %u %s\n", from, to, pch);
+    if (tsv)
+      fprintf(fout.outf, "%u\t%u\t%s\n", from, to, pch);
+    else if (csv)
+      fprintf(fout.outf, "%u,%u,%s\n", from, to, pch);
+    else 
+      fprintf(fout.outf, "%u %u %s\n", from, to, pch);
     nnz++;
 
     line++;
@@ -209,8 +217,10 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
 
-  save_map_to_text_file(string2nodeid, outdir + dir + "map.text");
-  save_map_to_text_file(nodeid2hash, outdir + dir + "reverse.map.text");
+  save_map_to_text_file(string2nodeid, outdir + dir + "user.map.text");
+  save_map_to_text_file(nodeid2hash, outdir + dir + "user.reverse.map.text");
+  save_map_to_text_file(string2nodeid2, outdir + dir + "movie.map.text");
+  save_map_to_text_file(nodeid2hash2, outdir + dir + "movie.reverse.map.text");
 
   logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;
   out_file fout("matrix_market.info");
