@@ -27,6 +27,8 @@
 #include "graphchi_basic_includes.hpp"
 #include "../collaborative_filtering/timer.hpp"
 #include "../collaborative_filtering/util.hpp"
+#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
+#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 
 using namespace std;
 using namespace graphchi;
@@ -43,6 +45,15 @@ string dir;
 string outdir;
 std::vector<std::string> in_files;
 uint M,N;
+size_t nnz = 0;
+const char * string_to_tokenize;
+int csv = 0;
+int tsv = 0;
+
+const char * spaces = " \r\n\t";
+const char * tsv_spaces = "\t\n";
+const char * csv_spaces = ",\n";
+
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
     std::map<std::string,uint>::const_iterator it;
@@ -108,7 +119,7 @@ void parse(int i){
     if (strlen(linebuf) <= 1) //skip empty lines
       continue;
    //skipping over matrix market header (if any) 
-    if (!strcmp(linebuf, "%%MatrixMarket")){
+    if (!strncmp(linebuf, "%%MatrixMarket", 14)){
       matrix_market = true;
       continue;
     }
@@ -120,17 +131,21 @@ void parse(int i){
       continue;
     }
 
-    char *pch = strtok_r(linebuf," \r\n\t,", &saveptr);
+    //read [FROM]
+    char *pch = strtok_r(linebuf,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     assign_id(from, pch, true);
 
-    pch = strtok_r(NULL," \r\n\t,", &saveptr);
+    //read [TO]
+    pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     assign_id(to, pch, false);
 
-    pch = strtok_r(NULL," \r\n\t,", &saveptr);
+    //read [VAL]
+    pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     fprintf(fout.outf, "%u %u %s\n", from, to, pch);
+    nnz++;
 
     line++;
     total_lines++;
@@ -162,7 +177,16 @@ int main(int argc,  const char *argv[]) {
   dir = get_option_string("file_list");
   lines = get_option_int("lines", 0);
   omp_set_num_threads(get_option_int("ncpus", 1));
+  tsv = get_option_int("tsv", 0); //is this tab seperated file?
+  csv = get_option_int("csv", 0); // is the command seperated file?
   mytime.start();
+
+
+  string_to_tokenize = spaces;
+  if (tsv)
+    string_to_tokenize = tsv_spaces;
+  else if (csv)
+    string_to_tokenize = csv_spaces;
 
   FILE * f = fopen(dir.c_str(), "r");
   if (f == NULL)
@@ -179,7 +203,7 @@ int main(int argc,  const char *argv[]) {
   if (in_files.size() == 0)
     logstream(LOG_FATAL)<<"Failed to read any file names from the list file: " << dir << std::endl;
 
-#pragma omp parallel for
+//#pragma omp parallel for
   for (uint i=0; i< in_files.size(); i++)
     parse(i);
 
@@ -187,6 +211,16 @@ int main(int argc,  const char *argv[]) {
 
   save_map_to_text_file(string2nodeid, outdir + dir + "map.text");
   save_map_to_text_file(nodeid2hash, outdir + dir + "reverse.map.text");
+
+  logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;
+  out_file fout("matrix_market.info");
+  MM_typecode out_typecode;
+  mm_clear_typecode(&out_typecode);
+  mm_set_integer(&out_typecode); 
+  mm_set_sparse(&out_typecode); 
+  mm_set_matrix(&out_typecode);
+  mm_write_banner(fout.outf, out_typecode);
+  mm_write_mtx_crd_size(fout.outf, M, N, nnz);
   return 0;
 }
 
