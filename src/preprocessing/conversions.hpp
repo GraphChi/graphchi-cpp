@@ -221,6 +221,7 @@ namespace graphchi {
             }
         }
         free(s);
+        fclose(inf);
     }
     
     // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
@@ -276,7 +277,15 @@ namespace graphchi {
         
         for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
             std::string inputfile = *it;
-            if (inputfile.find_first_of(prefix) == 0) {
+            std::cout << inputfile << " -- " << inputfile.find("tmp") << std::endl;
+            if (inputfile.find(prefix) == 0 && inputfile.find("tmp") == inputfile.npos) {
+                std::cout << "Going to process: " << inputfile << std::endl;
+            }
+        }
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
                 inputfile = dirname + "/" + inputfile;
                 std::cout << "Process: " << inputfile << std::endl;
                 FILE * inf = fopen(inputfile.c_str(), "r");
@@ -325,6 +334,7 @@ namespace graphchi {
                     }
                 }
                 free(s);
+                fclose(inf);
             }
         }
     }
