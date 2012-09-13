@@ -30,6 +30,8 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include "graphchi_types.hpp"
 #include "logger/logger.hpp"
@@ -37,9 +39,9 @@
 #include "preprocessing/formats/binary_adjacency_list.hpp"
 
 /**
-  * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if 
-  * the particular app being compiled does not use a function.
-  */
+ * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if 
+ * the particular app being compiled does not use a function.
+ */
 #ifdef __GNUC__
 #define VARIABLE_IS_NOT_USED __attribute__ ((unused))
 #else
@@ -196,7 +198,7 @@ namespace graphchi {
             }
             FIXLINE(s);
             bytesread += strlen(s);
-
+            
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             char * t = strtok(s, delims);
@@ -221,12 +223,119 @@ namespace graphchi {
         free(s);
     }
     
+    // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
+    int getdir (std::string dir, std::vector<std::string> &files)
+    {
+        DIR *dp;
+        struct dirent *dirp;
+        if((dp  = opendir(dir.c_str())) == NULL) {
+            std::cout << "Error(" << errno << ") opening " << dir << std::endl;
+            return errno;
+        }
+        
+        while ((dirp = readdir(dp)) != NULL) {
+            files.push_back(std::string(dirp->d_name));
+        }
+        closedir(dp);
+        return 0;
+    }
+    
+    
+    std::string get_dirname(std::string arg) {
+        size_t a = arg.find_last_of("/");
+        if (a != arg.npos) {
+            std::string dir = arg.substr(0, a);
+            return dir;
+        } else {
+            assert(false);
+        }
+    }
+    
+    std::string get_filename(std::string arg) {
+        size_t a = arg.find_last_of("/");
+        if (a != arg.npos) {
+            std::string f = arg.substr(a + 1);
+            return f;
+        } else {
+            assert(false);
+        }
+    }
+    
+    /**
+     * Converts a graph from cassovary's (Twitter) format. Edge values are not supported,
+     * and each edge gets the default value for the type. Self-edges are ignored.
+     */
+    template <typename EdgeDataType>
+    void convert_cassovary(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+        std::vector<std::string> parts;
+        std::string dirname = get_dirname(basefilename);
+        std::string prefix =  get_filename(basefilename);
+        
+        std::cout << "dir=[" << dirname << "] prefix=[" << prefix << "]" << std::endl;
+        getdir(dirname, parts);
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find_first_of(prefix) == 0) {
+                inputfile = dirname + "/" + inputfile;
+                std::cout << "Process: " << inputfile << std::endl;
+                FILE * inf = fopen(inputfile.c_str(), "r");
+                if (inf == NULL) {
+                    logstream(LOG_FATAL) << "Could not load :" << inputfile << " error: " << strerror(errno) << std::endl;
+                }
+                assert(inf != NULL);
+                logstream(LOG_INFO) << "Reading in cassovary format!" << std::endl;
+                
+                int maxlen = 100000000;
+                char * s = (char*) malloc(maxlen); 
+                
+                size_t bytesread = 0;
+                
+                char delims[] = " \t";
+                size_t linenum = 0;
+                size_t lastlog = 0;
+                /*** PHASE 1 - count ***/
+                while(fgets(s, maxlen, inf) != NULL) {
+                    linenum++;
+                    if (bytesread - lastlog >= 500000000) {
+                        logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl;
+                        lastlog = bytesread;
+                    }
+                    FIXLINE(s);
+                    bytesread += strlen(s);
+                    
+                    if (s[0] == '#') continue; // Comment
+                    if (s[0] == '%') continue; // Comment
+                    char * t = strtok(s, delims);
+                    vid_t from = atoi(t);
+                    t = strtok(NULL,delims);
+                    if (t != NULL) {
+                        vid_t num = atoi(t);                
+                        // Read next line
+                        linenum += num + 1;
+                        for(vid_t i=0; i < num; i++) {
+                            fgets(s, maxlen, inf);
+                            FIXLINE(s);
+                            vid_t to = atoi(s);
+                            if (from != to) {
+                                sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
+                            }
+                            i++;
+                        }
+                    }
+                }
+                free(s);
+            }
+        }
+    }
+    
+    
     
     /** 
-      * A abstract class for defining preprocessor objects
-      * that modify the preprocessed binary input prior
-      * to sharding.
-      */
+     * A abstract class for defining preprocessor objects
+     * that modify the preprocessed binary input prior
+     * to sharding.
+     */
     template <typename EdgeDataType>
     class SharderPreprocessor {
     public:
@@ -236,9 +345,9 @@ namespace graphchi {
     };
     
     /** 
-      * Converts a graph input to shards. Preprocessing has several steps, 
-      * see sharder.hpp for more information.
-      */
+     * Converts a graph input to shards. Preprocessing has several steps, 
+     * see sharder.hpp for more information.
+     */
     template <typename EdgeDataType>
     int convert(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         std::string suffix = "";
@@ -290,8 +399,8 @@ namespace graphchi {
         sharderobj.set_no_edgevalues();
         
         if (!sharderobj.preprocessed_file_exists()) {
-            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist") {
+            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary");
+            if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary") {
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -303,6 +412,8 @@ namespace graphchi {
                 convert_adjlist<dummy>(basefilename, sharderobj);
             } else if (file_type_str == "edgelist") {
                 convert_edgelist<dummy>(basefilename, sharderobj);
+            } else if (file_type_str == "cassovary") {
+                convert_cassovary<dummy>(basefilename, sharderobj);
             }
             
             /* Finish preprocessing */
@@ -316,7 +427,7 @@ namespace graphchi {
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
         return nshards;
     }
-
+    
     
     
     template <typename EdgeDataType>
@@ -326,14 +437,14 @@ namespace graphchi {
         if (preprocessor != NULL) {
             suffix = preprocessor->getSuffix();
         }
-
+        
         /* Check if input file is already sharded */
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             return nshards;
         }
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
-
+        
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
         nshards = convert<EdgeDataType>(basefilename, nshards_string, preprocessor);
@@ -359,13 +470,13 @@ namespace graphchi {
     }
     
     /** 
-      * Special preprocessor which relabels vertices in ascending order
-      * of their degree.
-      */
+     * Special preprocessor which relabels vertices in ascending order
+     * of their degree.
+     */
     template <typename EdgeDataType>
     class OrderByDegree : public SharderPreprocessor<EdgeDataType> {
         int phase;
-
+        
     public:
         typedef edge_with_value<EdgeDataType> edge_t;
         vid_t * translate_table;
@@ -394,11 +505,11 @@ namespace graphchi {
         }
         
         /**
-          * Callback function that binary_adjacency_list_reader
-          * invokes. In first phase, the degrees of vertice sare collected.
-          * In the next face, they are written out to the degree-ordered data.
-          * Note: this version does not preserve edge values!
-          */
+         * Callback function that binary_adjacency_list_reader
+         * invokes. In first phase, the degrees of vertice sare collected.
+         * In the next face, they are written out to the degree-ordered data.
+         * Note: this version does not preserve edge values!
+         */
         void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
             if (phase == 0) {
                 degarray[from].deg++;
@@ -449,14 +560,14 @@ namespace graphchi {
             
             writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
             binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
-
+            
             phase = 1;
             reader2.read_edges(this);
             
             writer->finish();
             delete writer;
             writer = NULL;
-                           
+            
             delete translate_table;
         }
         
