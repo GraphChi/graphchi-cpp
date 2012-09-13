@@ -38,7 +38,7 @@ map<uint,uint> tweets_per_user;
 uint conseq_id;
 mutex mymutex;
 timer mytime;
-size_t lines = 0, links_found = 0, http_links = 0, missing_names = 0, retweet_found = 0;
+size_t lines = 0, links_found = 0, http_links = 0, missing_names = 0, retweet_found = 0, wide_tweets = 0;
 unsigned long long total_lines = 0;
 string dir;
 string outdir;
@@ -181,17 +181,20 @@ bool parse_links(const char * linebuf, size_t line, int i, char * saveptr, uint 
   if (strstr(linebuf, "http://"))
     http_links++;
 
+  bool found = false;
+
   char * pch = NULL;
   do {
     pch = strtok_r(NULL, user_chars_tokens, &saveptr);
     if (!pch || strlen(pch) == 0)
-      return true;
+      return found;
 
     if (pch[0] == '@'){
       bool ok = assign_id(otherid, pch+1, line, linebuf);
       if (ok){
         fprintf(f, "%u %u %ld 1\n", id, otherid, ptime);
         links_found++;
+        found = true;
       }
       if (debug && line < 20)
         printf("found link between : %u %u in time %ld\n", id, otherid, ptime);
@@ -205,10 +208,11 @@ bool parse_links(const char * linebuf, size_t line, int i, char * saveptr, uint 
       if (ok){
         fprintf(f, "%u %u %ld 2\n", id, otherid, ptime);
         retweet_found++;
+        found = true;
       }
     }
   } while (pch != NULL);
-  return true; 
+  return found; 
 
 } 
 
@@ -273,6 +277,8 @@ void parse(int i){
         ok = parse_links(linebuf_debug, total_lines, i, saveptr, id, ptime, fout.outf);
         if (debug && line < 20)
           printf("Found user: %s id %u time %ld\n", buf1, id, ptime);
+        if (!ok)
+          wide_tweets++;
         break;
 
       default:
@@ -331,8 +337,9 @@ int main(int argc,  const char *argv[]) {
   for (uint i=0; i< in_files.size(); i++)
     parse(i);
 
-  std::cout << "Finished in " << mytime.current_time() << std::endl << "\t direct tweets found: " << links_found  
-    << "\t http links: " << http_links << 
+  std::cout << "Finished in " << mytime.current_time() << std::endl << "\t direct tweets found: " << links_found  <<
+    " \t global tweets: " << wide_tweets << 
+    "\t http links: " << http_links << 
     "\t retweets: " << retweet_found <<
     "\t total lines in input file : " << total_lines << 
     " \t invalid records (missing names) " << missing_names <<  std::endl;
