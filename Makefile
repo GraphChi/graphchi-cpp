@@ -46,6 +46,8 @@ cf_test:
 
 parsers:
 	cd toolkits/parsers/; make
+ga:
+	cd toolkits/graph_analytics/; make
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config

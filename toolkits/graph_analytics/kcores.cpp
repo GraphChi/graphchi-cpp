@@ -112,10 +112,11 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
         vdata.active = false;
         vdata.kcore = cur_iter;
     }
-    else 
+    else {
       mymutex.lock();
       links += increasing_links;
       mymutex.unlock();
+    }
 
     if (vdata.active){
       mymutex.lock();
@@ -131,10 +132,11 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
    printf("Number of active nodes in round %d is %di, links: %d\n", iiter, num_active, links);
    active_links_num[iiter] = links;
 
-   if (num_active == 0){
-     max_iter = iiter;
-     gcontext.set_last_iteration(gcontext.iteration+1);
-   }
+  }
+  
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    num_active = 0;
+    links = 0;
   }
 }; // end of  aggregator
 
@@ -142,7 +144,7 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 vec fill_output(){
   vec ret = vec::Zero(latent_factors_inmem.size());
-  for (int i=0; latent_factors_inmem.size(); i++)
+  for (uint i=0; i < latent_factors_inmem.size(); i++)
     ret[i] = latent_factors_inmem[i].kcore;
     return ret;
 }
@@ -160,10 +162,9 @@ int main(int argc,  const char *argv[]) {
   metrics m("kcores-inmemory-factors");
 
   std::string datafile;
-  std::string format = "matrixmarket";
   int unittest = 0;
 
-  int max_iter    = get_option_int("max_iter", 6);  // Number of iterations
+  int max_iter    = get_option_int("max_iter", 15000);  // Number of iterations
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   bool quiet    = get_option_int("quiet", 0);
@@ -171,7 +172,7 @@ int main(int argc,  const char *argv[]) {
     global_logger().set_log_level(LOG_ERROR);
   debug         = get_option_int("debug", 0);
   unittest      = get_option_int("unittest", 0); 
-
+  datafile      = get_option_string("training");
   active_nodes_num = ivec(max_iter+1);
   active_links_num = ivec(max_iter+1);
 
@@ -184,8 +185,8 @@ int main(int argc,  const char *argv[]) {
   mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
-
+  int nshards = convert_matrixmarket<float>(datafile);
+  latent_factors_inmem.resize(M+N);
 
   int pass = 0;
   for (iiter=1; iiter< max_iter+1; iiter++){
@@ -194,7 +195,7 @@ int main(int argc,  const char *argv[]) {
       int prev_nodes = active_nodes_num[iiter];
      /* Run */
       KcoresProgram program;
-      graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+      graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
       engine.set_disable_vertexdata_storage();  
       engine.set_modifies_inedges(false);
       engine.set_modifies_outedges(false);
@@ -204,8 +205,10 @@ int main(int argc,  const char *argv[]) {
       if (prev_nodes == cur_nodes)
         break; 
     }
-    if (active_nodes_num[iiter] == 0)
-	break;
+    if (active_nodes_num[iiter] == 0){
+      max_iter = iiter;
+      break;
+    }
   }
  
   std::cout << "KCORES finished in " << mytimer.current_time() << std::endl;
@@ -216,12 +219,17 @@ int main(int argc,  const char *argv[]) {
   std::cout<<active_nodes_num<<std::endl;
   std::cout<<active_links_num<<std::endl;
 
+  active_nodes_num[0] = M+N;
+  active_links_num[0] = 2*L;
+
+  std::cout<<"     Core Removed Total    Removed"<<std::endl;
+  std::cout<<"     Num  Nodes   Removed  Links" <<std::endl;
   for (int i=0; i <= max_iter; i++){
     set_val(retmat, i, 0, i);
     if (i >= 1){
       set_val(retmat, i, 1, active_nodes_num[i-1]-active_nodes_num[i]);
       set_val(retmat, i, 2, active_nodes_num[0]-active_nodes_num[i]);
-      set_val(retmat, i, 3, L - active_links_num[i]);
+      set_val(retmat, i, 3, 2*L - active_links_num[i]);
     }
   } 
   //write_output_matrix(datafile + ".kcores.out", format, retmat);
