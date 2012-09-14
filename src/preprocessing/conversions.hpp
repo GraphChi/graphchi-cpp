@@ -277,7 +277,6 @@ namespace graphchi {
         
         for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
             std::string inputfile = *it;
-            std::cout << inputfile << " -- " << inputfile.find("tmp") << std::endl;
             if (inputfile.find(prefix) == 0 && inputfile.find("tmp") == inputfile.npos) {
                 std::cout << "Going to process: " << inputfile << std::endl;
             }
@@ -303,7 +302,6 @@ namespace graphchi {
                 char delims[] = " \t";
                 size_t linenum = 0;
                 size_t lastlog = 0;
-                /*** PHASE 1 - count ***/
                 while(fgets(s, maxlen, inf) != NULL) {
                     linenum++;
                     if (bytesread - lastlog >= 500000000) {
@@ -319,7 +317,8 @@ namespace graphchi {
                     vid_t from = atoi(t);
                     t = strtok(NULL,delims);
                     if (t != NULL) {
-                        vid_t num = atoi(t);                
+                        vid_t num = atoi(t);
+
                         // Read next line
                         linenum += num + 1;
                         for(vid_t i=0; i < num; i++) {
@@ -328,9 +327,9 @@ namespace graphchi {
                             vid_t to = atoi(s);
                             if (from != to) {
                                 sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
-                            }
-                            i++;
+                            }                            
                         }
+                        
                     }
                 }
                 free(s);
