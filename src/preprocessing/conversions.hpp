@@ -426,9 +426,12 @@ namespace graphchi {
             }
             
             /* Finish preprocessing */
-            sharderobj.end_preprocessing();
-            
-            
+            sharderobj.end_preprocessing();            
+        }
+        
+        if (get_option_int("skipsharding", 0) == 1) {
+            std::cout << "Skip sharding..." << std::endl;
+            exit(0);
         }
         
         int nshards = sharderobj.execute_sharding(nshards_string);
