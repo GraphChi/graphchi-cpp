@@ -220,7 +220,7 @@ int main(int argc,  const char *argv[]) {
   std::cout<<active_links_num<<std::endl;
 
   active_nodes_num[0] = M+N;
-  active_links_num[0] = 2*L;
+  active_links_num[0] = L;
 
   std::cout<<"     Core Removed Total    Removed"<<std::endl;
   std::cout<<"     Num  Nodes   Removed  Links" <<std::endl;
@@ -229,7 +229,7 @@ int main(int argc,  const char *argv[]) {
     if (i >= 1){
       set_val(retmat, i, 1, active_nodes_num[i-1]-active_nodes_num[i]);
       set_val(retmat, i, 2, active_nodes_num[0]-active_nodes_num[i]);
-      set_val(retmat, i, 3, 2*L - active_links_num[i]);
+      set_val(retmat, i, 3, L - active_links_num[i]);
     }
   } 
   //write_output_matrix(datafile + ".kcores.out", format, retmat);
