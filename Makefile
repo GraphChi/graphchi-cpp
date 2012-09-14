@@ -16,6 +16,7 @@ clean:
 	@rm -rf bin/*
 	cd toolkits/collaborative_filtering/; make clean; cd ../../
 	cd toolkits/parsers/; make clean; cd ../../
+	cd toolkits/graph_analytics/; make clean; cd ../../
 
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
 	$(CPP) $(CPPFLAGS) src/preprocessing/sharder_basic.cpp -o bin/sharder_basic
