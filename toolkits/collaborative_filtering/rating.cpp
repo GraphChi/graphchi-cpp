@@ -55,6 +55,7 @@ using namespace graphchi;
 uint D;
 int debug;
 int K;
+int num_ratings;
 double minval = -1e100;
 double maxval = 1e100;
 std::string training;
@@ -188,8 +189,8 @@ void read_factors(std::string base_filename, bool users) {
         logstream(LOG_FATAL)<<"Error when reading input file at line " << i << std::endl;
       if (latent_factors_inmem[i].pvec.size() == 0){
         latent_factors_inmem[i].pvec = vec::Zero(D);
-        latent_factors_inmem[i].ratings = vec::Zero(K);
-        latent_factors_inmem[i].ids = ivec::Zero(K);
+        latent_factors_inmem[i].ratings = vec::Zero(num_ratings);
+        latent_factors_inmem[i].ids = ivec::Zero(num_ratings);
       }
       latent_factors_inmem[i].pvec[j] = val;
     }
@@ -227,13 +228,6 @@ float nmf_predict(const vertex_data& user,
  */
 struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
-
-
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-  }
 
   /**
    *  Vertex update function - computes the least square step
@@ -277,10 +271,10 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         distances[i-M] = dist;
    }
   delete [] curratings;
-  vec out_dist(K);
-  ivec indices_sorted = reverse_sort_index2(distances, indices, out_dist, K);
-  assert(indices_sorted.size() <= K);
-  assert(out_dist.size() <= K);
+  vec out_dist(num_ratings);
+  ivec indices_sorted = reverse_sort_index2(distances, indices, out_dist, num_ratings);
+  assert(indices_sorted.size() <= num_ratings);
+  assert(out_dist.size() <= num_ratings);
   vdata.ids = indices_sorted;
   vdata.ratings = out_dist;
   if (debug)
@@ -325,9 +319,9 @@ struct  MMOutputter_ratings{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, K); 
+    mm_write_mtx_array_size(outf, end-start, num_ratings); 
     for (uint i=start; i < end; i++){
-      for(int j=0; j < K; j++) {
+      for(int j=0; j < num_ratings; j++) {
         fprintf(outf, "%1.12e ", latent_factors_inmem[i].ratings[j]);
       }
       fprintf(outf, "\n");
@@ -350,9 +344,9 @@ struct  MMOutputter_ids{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, K); 
+    mm_write_mtx_array_size(outf, end-start, num_ratings); 
     for (uint i=start; i < end; i++){
-      for(int j=0; j < K; j++) {
+      for(int j=0; j < num_ratings; j++) {
         fprintf(outf, "%u ", (int)latent_factors_inmem[i].ids[j]+1);//go back to item ids starting from 1,2,3, (and not from zero as in c)
       }
       fprintf(outf, "\n");
@@ -368,8 +362,8 @@ struct  MMOutputter_ids{
 
 
 void output_knn_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, max_left_vertex + 1, "This file contains user scalar ratings. In each row i, K top scalar ratings of different items for user i.");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, max_left_vertex +1 ,"This file contains item ids matching the ratings. In each row i, K top item ids for user i.");
+  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, max_left_vertex + 1, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i.");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, max_left_vertex +1 ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i.");
   logstream(LOG_INFO) << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                            ", " << filename + ".ids " << std::endl;
 }
@@ -403,7 +397,10 @@ int main(int argc, const char ** argv) {
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   bool quiet    = get_option_int("quiet", 0);
-  K             = get_option_int("K", 10);
+  num_ratings   = get_option_int("num_ratings", 10);
+  if (num_ratings <= 0)
+    logstream(LOG_FATAL)<<"num_ratings, the number of recomended items for each user, should be >=1 " << std::endl;
+
   debug         = get_option_int("debug", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
@@ -418,9 +415,9 @@ int main(int argc, const char ** argv) {
   max_right_vertex = M+N-1;
   read_factors<vertex_data>(training + "_U.mm", true);
   read_factors<vertex_data>(training + "_V.mm", false);
-  if ((uint)K > N){
-    logstream(LOG_WARNING)<<"K is too big - setting it to: " << N << std::endl;
-    K = N;
+  if ((uint)num_ratings > N){
+    logstream(LOG_WARNING)<<"num_ratings is too big - setting it to: " << N << std::endl;
+    num_ratings = N;
   }
   srand(time(NULL));
 
