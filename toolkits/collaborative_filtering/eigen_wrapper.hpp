@@ -634,15 +634,12 @@ inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int 
   D.reserve(a.size());
   for (int i=0;i<a.size();i++)
     D.push_back(std::make_pair<double,int>(a[i],indices[i]));
-  std::partial_sort(D.begin(),D.begin() + K, D.end(), pair_compare);
+  std::partial_sort(D.begin(),D.begin() + size, D.end(), pair_compare);
   for (int i=0;i< size;i++)
   { 
     ret[i]=D[i].second;
     out[i] = D[i].first;
-    if (i >= K-1)
-      break;
   } 
-  D.clear();
   return ret;
 }
 //define function to be applied coefficient-wise

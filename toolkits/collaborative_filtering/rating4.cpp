@@ -86,12 +86,21 @@ struct vertex_data {
   }
 
 };
+struct edge_data {
+  double weight;
+  double time;
+
+  edge_data() { weight = time = 0; }
+
+  edge_data(double weight, double time) : weight(weight), time(time) { }
+};
+
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
@@ -408,7 +417,7 @@ int main(int argc, const char ** argv) {
   bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket4<edge_data>(training);
   assert(M > 0 && N > 0);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
   max_left_vertex = M-1;
