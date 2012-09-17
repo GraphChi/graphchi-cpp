@@ -250,6 +250,34 @@ namespace graphchi {
         }
         return 0;
     }
+    
+    /** 
+     * Loads vertex intervals.
+     */
+    static void load_vertex_intervals(std::string base_filename, int nshards, std::vector<std::pair<vid_t, vid_t> > & intervals, bool allowfail);
+    static void load_vertex_intervals(std::string base_filename, int nshards, std::vector<std::pair<vid_t, vid_t> > & intervals, bool allowfail=false) {
+        std::string intervalsFilename = filename_intervals(base_filename, nshards);
+        std::ifstream intervalsF(intervalsFilename.c_str());
+        
+        if (!intervalsF.good()) {
+            if (allowfail) return; // Hack
+            logstream(LOG_ERROR) << "Could not load intervals-file: " << intervalsFilename << std::endl;
+        }
+        assert(intervalsF.good());
+        
+        intervals.clear();
+        
+        vid_t st=0, en;            
+        for(int i=0; i < nshards; i++) {
+            assert(!intervalsF.eof());
+            intervalsF >> en;
+            intervals.push_back(std::pair<vid_t,vid_t>(st, en));
+            st = en + 1;
+        }
+        for(int i=0; i < nshards; i++) {
+            logstream(LOG_INFO) << "shard: " << intervals[i].first << " - " << intervals[i].second << std::endl;
+        }
+    }
 };
                                  
 #endif

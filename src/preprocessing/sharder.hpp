@@ -98,6 +98,8 @@ namespace graphchi {
         /* Sharding */
         int nshards;
         std::vector< std::pair<vid_t, vid_t> > intervals;
+        std::vector< size_t > shovelsizes;
+        std::vector< int > shovelblocksidxs;
         int phase;
         
         int * edgecounts;
@@ -105,7 +107,6 @@ namespace graphchi {
         size_t nedges;
         std::string prefix;
         
-        int * shovelfs;
         int compressed_block_size;
         
         edge_t ** bufs;
@@ -251,6 +252,15 @@ namespace graphchi {
         }
         
         
+        bool try_load_intervals() {
+            std::vector<std::pair<vid_t, vid_t> > tmpintervals;
+            load_vertex_intervals(basefilename, nshards, tmpintervals, true);
+            if (tmpintervals.empty()) {
+                return false;
+            } 
+            intervals = tmpintervals;
+            return true;
+        }
         
         
         /**
@@ -262,13 +272,21 @@ namespace graphchi {
             determine_number_of_shards(nshards_string);
             
             for(int phase=1; phase <= 2; ++phase) {
+               
                 /* Start the sharing process */
-                
                 binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
                 
                 /* Read max vertex id */
                 max_vertex_id = (vid_t) reader.get_max_vertex_id();
                 logstream(LOG_INFO) << "Max vertex id: " << max_vertex_id << std::endl; 
+                
+                if (phase == 1) {
+                    if (try_load_intervals()) {  // Hack: if intervals already computed, can skip that phase
+                        std::cout << "Found intervals-file, skipping that step!" << std::endl;
+                        continue; 
+                    }
+                }
+                
                 
                 this->start_phase(phase);
                 
@@ -376,7 +394,8 @@ namespace graphchi {
                     break;
                     
                 case SHOVEL:
-                    shovelfs = new int[nshards];
+                    shovelsizes.resize(nshards);
+                    shovelblocksidxs.resize(nshards);
                     bufs = new edge_t*[nshards];
                     bufptrs =  new int[nshards];
                     bufsize = (1024 * 1024 * get_option_long("membudget_mb", 1024)) / nshards / 4;
@@ -385,13 +404,8 @@ namespace graphchi {
                     logstream(LOG_DEBUG)<< "Shoveling bufsize: " << bufsize << std::endl;
                     
                     for(int i=0; i < nshards; i++) {
-                        std::string fname = shovel_filename(i);
-                        shovelfs[i] = open(fname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                        if (shovelfs[i] < 0) {
-                            logstream(LOG_ERROR) << "Could not create a temporary file " << fname <<
-                            " error: " << strerror(errno) << std::endl;
-                        }
-                        assert(shovelfs[i] >= 0);
+                        shovelsizes[i] = 0;
+                        shovelblocksidxs[i] = 0;
                         bufs[i] = (edge_t*) malloc(bufsize);
                         bufptrs[i] = 0;
                     }
@@ -409,8 +423,7 @@ namespace graphchi {
                     break;
                 case SHOVEL:
                     for(int i=0; i<nshards; i++) {
-                        writea(shovelfs[i], bufs[i], sizeof(edge_t) * (bufptrs[i]));
-                        close(shovelfs[i]);
+                        swrite(i, edge_t(0, 0, EdgeDataType()), true);
                         free(bufs[i]);
                     }
                     free(bufs);
@@ -422,11 +435,21 @@ namespace graphchi {
         
         int lastpart;
         
-        void swrite(int shard, edge_t et) {
-            bufs[shard][bufptrs[shard]++] = et;
-            if (bufptrs[shard] * sizeof(edge_t) >= bufsize) {
-                writea(shovelfs[shard], bufs[shard], sizeof(edge_t) * bufptrs[shard]);
+        void swrite(int shard, edge_t et, bool flush=false) {
+            if (!flush)
+                bufs[shard][bufptrs[shard]++] = et;
+            if (flush || bufptrs[shard] * sizeof(edge_t) >= bufsize) {
+                std::stringstream ss;
+                ss << shovel_filename(shard) << "." << shovelblocksidxs[shard];
+                std::string shovelfblockname = ss.str();
+                int bf = open(shovelfblockname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+                size_t len = sizeof(edge_t) * bufptrs[shard];
+                write_compressed(bf, bufs[shard], len);
                 bufptrs[shard] = 0;
+                
+                close(bf);
+                shovelsizes[shard] += len;
+                shovelblocksidxs[shard] ++;
             }
         }
         
@@ -466,6 +489,30 @@ namespace graphchi {
             }
         }
         
+        size_t read_shovel(int shard, char ** data) {
+            size_t sz = shovelsizes[shard];
+            *data = (char *) malloc(sz);
+            char * ptr = * data;
+            size_t nread = 0;
+            int blockidx = 0;
+            while(true) {
+                size_t len = std::min(bufsize, sz-nread);
+                
+                std::stringstream ss;
+                ss << shovel_filename(shard) << "." << blockidx;
+                std::string shovelfblockname = ss.str();
+                int f = open(shovelfblockname.c_str(), O_RDONLY);
+                if (f < 0) break;
+                read_compressed(f, ptr, len);
+                nread += len;
+                ptr += len;
+                close(f);
+                blockidx++;
+                remove(shovelfblockname.c_str());
+            }
+            assert(nread == sz);
+            return sz;
+        }
         
         
         /** 
@@ -477,7 +524,6 @@ namespace graphchi {
             for(int shard=0; shard < nshards; shard++) {
                 logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
                 
-                std::string shovelfname = shovel_filename(shard);
                 std::string fname = filename_shard_adj(basefilename, shard, nshards);
                 std::string edfname = filename_shard_edata<EdgeDataType>(basefilename, shard, nshards);
                 std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
@@ -487,8 +533,7 @@ namespace graphchi {
                     mkdir(edblockdirname.c_str(), 0777);
                 
                 edge_t * shovelbuf;
-                int shovelf = open(shovelfname.c_str(), O_RDONLY);
-                size_t shovelsize = readfull(shovelf, (char**) &shovelbuf);
+                size_t shovelsize = read_shovel(shard, (char**) &shovelbuf);
                 size_t numedges = shovelsize / sizeof(edge_t);
                 
                 logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
@@ -561,9 +606,7 @@ namespace graphchi {
                 writea(f, buf, bufptr - buf);
                 free(buf);
                 free(shovelbuf);
-                close(f);
-                close(shovelf);
-                
+                close(f);                
                 
                 /* Write edata size file */
                 if (!no_edgevalues) {
@@ -574,9 +617,7 @@ namespace graphchi {
                     ofs << tot_edatabytes;
                     ofs.close();
                 }
-                free(ebuf);
-                remove(shovelfname.c_str()); 
-                
+                free(ebuf);                
             }
             
             create_degree_file();

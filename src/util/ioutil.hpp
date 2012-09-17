@@ -165,6 +165,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     int trerr = ftruncate(f, 0);
     assert (trerr == 0);
     
+    
    /* run deflate() on input until output buffer not full, finish
      compression if all of source has been read in */
     do {
@@ -186,7 +187,6 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     (void)deflateEnd(&strm);
     free(out);
 }
-
 
 /* Zlib-inflated read. Assume tbuf is correctly sized memory block. */
 template <typename T>
