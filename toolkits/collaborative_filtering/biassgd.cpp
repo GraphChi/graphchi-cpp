@@ -22,8 +22,9 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorization with the Stochastic Gradient Descent (BIASSGD) algorithm.
- *
+ * Matrix factorization with the Bias Stochastic Gradient Descent (BIASSGD) algorithm.
+ * Algorithm is described in the paper:
+ * Y. Koren. Factorization Meets the Neighborhood: a Multifaceted Collaborative Filtering Model. ACM SIGKDD 2008. Equation (5).
  * 
  */
 
@@ -81,18 +82,6 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
 
 
   /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
-    }
-  }
-
-  /**
    * Called after an iteration has finished.
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
@@ -121,27 +110,21 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
 
         Map<vec> movie_vec(movie.pvec, NLATENT);
         Map<vec> user_vec(user.pvec, NLATENT);
+ //NOTE: the following code is not thread safe, since potentially several
+ //user nodes may update this item gradient vector concurrently. However in practice it
+ //did not matter in terms of accuracy on a multicore machine.
+ //if you like to defend the code, you can define a global variable
+ //mutex mymutex;
+ //
+ //and then do: mymutex.lock()
         movie_vec += biassgd_gamma*(err*user_vec - biassgd_lambda*movie_vec);
+ //here add: mymutex.unlock();
         user_vec += biassgd_gamma*(err*movie_vec - biassgd_lambda*user_vec);
       }
     }
 
   }
 
-
-
-
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -212,10 +195,10 @@ struct  MMOutputter_global_mean {
 
 
 void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains bias-SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices , "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, max_left_vertex + 1, "This file contains bias-SGD output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", max_left_vertex +1 ,numvertices , "This file contains bias-SGD output bias vector. In each row a single item bias.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,numvertices , "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains bias-SGD output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,numvertices , "This file contains bias-SGD output bias vector. In each row a single item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
@@ -259,6 +242,9 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
+  latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
+  assert(M > 0 && N > 0);
+
 
   /* Run */
   BIASSGDVerticesInMemProgram program;
@@ -271,8 +257,7 @@ int main(int argc, const char ** argv) {
 
   /* Output latent factor matrices in matrix-market format */
   vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_biassgd_result(training, numvertices, max_left_vertex);
+  output_biassgd_result(training, numvertices, M);
   test_predictions(&bias_sgd_predict);    
 
 

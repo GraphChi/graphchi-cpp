@@ -157,8 +157,8 @@ struct  MMOutputter{
 
 //dump output to file
 void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,numvertices,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
 
   logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
