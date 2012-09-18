@@ -63,9 +63,7 @@ float sgd_predict(const vertex_data& user,
     double & prediction){
 
 
-  prediction = 0;
-  for (int j=0; j< NLATENT; j++)
-    prediction += user.pvec[j]* movie.pvec[j];  
+  prediction = user.dot(movie);
 
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
