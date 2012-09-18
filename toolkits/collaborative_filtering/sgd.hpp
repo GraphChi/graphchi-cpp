@@ -53,30 +53,27 @@ using namespace graphchi;
 #define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
 #endif
 
-double sgd_lambda = 1e-3;
-double sgd_gamma = 1e-3;
-double sgd_step_dec = 0.9;
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, Me, Ne, Le, K;
-size_t L;
-double globalMean = 0;
-
-/// RMSE computation
-double rmse=0.0;
-
-
-// Hackish: we need to count the number of left
-// and right vertices in the bipartite graph ourselves.
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
+double sgd_lambda = 1e-3; //sgd step size
+double sgd_gamma = 1e-3;  //sgd regularization
+double sgd_step_dec = 0.9; //sgd step decrement
+double minval = -1e100;    //min allowed rating
+double maxval = 1e100;     //max allowed rating
+std::string training;      //training input file
+std::string validation;    //validation input file
+std::string test;          //test input file
+uint M;                    //number of users
+uint N;                    //number of items
+uint Me;                   //number of users (validation file)      
+uint Ne;                   //number of items (validation file)
+uint Le;                   //number of ratings (validation file)
+uint K;                    //unused
+size_t L;                  //number of ratings (training file)
+double globalMean = 0;     //global mean rating - unused
+double rmse=0.0;           //current error
 
 struct vertex_data {
-    double pvec[NLATENT];
-    double rmse;
+    double pvec[NLATENT]; //storing the feature vector
+    double rmse;          //tracking rmse
     double bias;
  
     vertex_data() {
@@ -85,7 +82,8 @@ struct vertex_data {
         rmse = 0;
         bias = 0;
     }
-    
+   
+    //dot product 
     double dot(const vertex_data &oth) const {
         double x=0;
         for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];

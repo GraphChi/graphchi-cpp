@@ -89,18 +89,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 
   /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
-    }
-  }
-
-  /**
    * Called after an iteration has finished.
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
@@ -216,7 +204,9 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
-
+  latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
+  assert(M > 0 && N > 0);
+  
   /* Run */
   SGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
