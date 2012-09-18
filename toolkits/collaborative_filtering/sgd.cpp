@@ -23,6 +23,9 @@
  * @section DESCRIPTION
  *
  * Matrix factorization with the Stochastic Gradient Descent (SGD) algorithm.
+ * Algorithm is described in the papers:
+ * 1) Matrix Factorization Techniques for Recommender Systems Yehuda Koren, Robert Bell, Chris Volinsky. In IEEE Computer, Vol. 42, No. 8. (07 August 2009), pp. 30-37. 
+ * 2) Takács, G, Pilászy, I., Németh, B. and Tikk, D. (2009). Scalable Collaborative Filtering Approaches for Large Recommender Systems. Journal of Machine Learning Research, 10, 623-656.
  *
  * 
  */
@@ -110,9 +113,11 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+    //go over all user nodes
     if ( vertex.num_outedges() > 0){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
       user.rmse = 0; 
+      //go over all ratings
       for(int e=0; e < vertex.num_edges(); e++) {
         float observation = vertex.edge(e)->get_data();                
         vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
@@ -123,30 +128,24 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
         Map<vec> movie_vec(movie.pvec, NLATENT);
         Map<vec> user_vec(user.pvec, NLATENT);
+        //NOTE: the following code is not thread safe, since potentially several
+        //user nodes may updates this item gradient vector concurrently. However in practice it
+        //did not matter in terms of accuracy on a multicore machine.
+        //if you like to defend the code, you can define a global variable
+        //mutex mymutex;
+        //
+        //and then do: mymutex.lock()
         movie_vec += sgd_gamma*(err*user_vec - sgd_lambda*movie_vec);
+        //and here add: mymutex.unlock();
         user_vec += sgd_gamma*(err*movie_vec - sgd_lambda*user_vec);
       }
     }
 
   }
 
-
-
-
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
 };
 
+//struct for writing the output feature vectors into file
 struct  MMOutputter{
   FILE * outf;
   MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
@@ -169,6 +168,8 @@ struct  MMOutputter{
   }
 
 };
+
+//dump output to file
 void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
   MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
@@ -227,8 +228,7 @@ int main(int argc, const char ** argv) {
 
   /* Output latent factor matrices in matrix-market format */
   vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_sgd_result(training, numvertices, max_left_vertex);
+  output_sgd_result(training, numvertices, M);
   test_predictions(&sgd_predict);    
 
 
