@@ -39,7 +39,9 @@
 #include <sstream>
 #include <stdlib.h>
 #include <unistd.h>
+#include <vector>
 
+#include "graphchi_types.hpp"
 #include "logger/logger.hpp"
 
 namespace graphchi {

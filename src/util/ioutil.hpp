@@ -141,7 +141,7 @@ void writea(int f, T * tbuf, size_t nbytes) {
 
 
 template <typename T>
-void write_compressed(int f, T * tbuf, size_t nbytes) {
+size_t write_compressed(int f, T * tbuf, size_t nbytes) {
     unsigned char * buf = (unsigned char*)tbuf;
     int ret;
     unsigned have;
@@ -164,7 +164,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     
     int trerr = ftruncate(f, 0);
     assert (trerr == 0);
-    
+    size_t totwritten = 0;
     
    /* run deflate() on input until output buffer not full, finish
      compression if all of source has been read in */
@@ -178,6 +178,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
             (void)deflateEnd(&strm);
             assert(false);
         }
+        totwritten += have;
     } while (strm.avail_out == 0);
     assert(strm.avail_in == 0);     /* all input will be used */
         
@@ -186,6 +187,7 @@ void write_compressed(int f, T * tbuf, size_t nbytes) {
     /* clean up and return */
     (void)deflateEnd(&strm);
     free(out);
+    return totwritten;
 }
 
 /* Zlib-inflated read. Assume tbuf is correctly sized memory block. */

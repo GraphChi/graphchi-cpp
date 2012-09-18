@@ -184,7 +184,7 @@ namespace graphchi {
             exec_threads = get_option_int("execthreads", omp_get_max_threads());
             
             /* Load graph shard interval information */
-            load_vertex_intervals();
+            _load_vertex_intervals();
             
             _m.set("file", _base_filename);
             _m.set("engine", "default");
@@ -927,7 +927,7 @@ namespace graphchi {
     protected:
         
         
-        virtual void load_vertex_intervals() {
+        virtual void _load_vertex_intervals() {
             load_vertex_intervals(base_filename, nshards, intervals);
         }
         

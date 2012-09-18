@@ -318,7 +318,7 @@ namespace graphchi {
                     t = strtok(NULL,delims);
                     if (t != NULL) {
                         vid_t num = atoi(t);
-
+                        
                         // Read next line
                         linenum += num + 1;
                         for(vid_t i=0; i < num; i++) {
@@ -333,6 +333,50 @@ namespace graphchi {
                     }
                 }
                 free(s);
+                fclose(inf);
+            }
+        }
+    }
+    
+    
+    
+    /**
+     * Converts a set of files in the binedgelist format (binary edge list)
+     */
+    template <typename EdgeDataType>
+    void convert_binedgelist(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+        std::vector<std::string> parts;
+        std::string dirname = get_dirname(basefilename);
+        std::string prefix =  get_filename(basefilename);
+        
+        std::cout << "dir=[" << dirname << "] prefix=[" << prefix << "]" << std::endl;
+        getdir(dirname, parts);
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find(prefix) == 0 && inputfile.find("tmp") == inputfile.npos) {
+                std::cout << "Going to process: " << inputfile << std::endl;
+            }
+        }
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
+                inputfile = dirname + "/" + inputfile;
+                std::cout << "Process: " << inputfile << std::endl;
+                FILE * inf = fopen(inputfile.c_str(), "r");
+                
+                while(!feof(inf)) {
+                    vid_t from;
+                    vid_t to;
+                    
+                    fread(&from, 1, sizeof(vid_t), inf);
+                    fread(&to, 1, sizeof(vid_t), inf);
+                    
+                    if (from != to) {
+                        sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
+                    } 
+                }
                 fclose(inf);
             }
         }
@@ -408,8 +452,8 @@ namespace graphchi {
         sharderobj.set_no_edgevalues();
         
         if (!sharderobj.preprocessed_file_exists()) {
-            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary") {
+            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary, binedgelist");
+            if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary"  && file_type_str != "binedgelist") {
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -423,6 +467,8 @@ namespace graphchi {
                 convert_edgelist<dummy>(basefilename, sharderobj);
             } else if (file_type_str == "cassovary") {
                 convert_cassovary<dummy>(basefilename, sharderobj);
+            } else if (file_type_str == "binedgelist") {
+                convert_binedgelist<dummy>(basefilename, sharderobj);
             }
             
             /* Finish preprocessing */

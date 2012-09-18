@@ -444,12 +444,15 @@ namespace graphchi {
                 std::string shovelfblockname = ss.str();
                 int bf = open(shovelfblockname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
                 size_t len = sizeof(edge_t) * bufptrs[shard];
-                write_compressed(bf, bufs[shard], len);
+                size_t wcompressed = write_compressed(bf, bufs[shard], len);
                 bufptrs[shard] = 0;
                 
                 close(bf);
                 shovelsizes[shard] += len;
                 shovelblocksidxs[shard] ++;
+                
+                std::cout << "Flushed " << shovelfblockname << " bufsize: " << bufsize << "/" << wcompressed << " ("
+                        << (wcompressed * 1.0 / bufsize) << ")" << std::endl;
             }
         }
         
