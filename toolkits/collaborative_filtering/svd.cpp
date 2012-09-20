@@ -312,13 +312,14 @@ printf("\n");
   }
 
   if (save_vectors){
+     std::cout<<"Going to save output vectors U and V" << std::endl;
      if (nconv == 0)
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
      char output_filename[256];
      for (int i=0; i< nconv; i++){
-        sprintf(output_filename, "%s.U.%d", datafile.c_str(), i);
+        sprintf(output_filename, "%s.U.%d", training.c_str(), i);
         write_output_vector(output_filename, U[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
-        sprintf(output_filename, "%s.V.%d", datafile.c_str(), i);
+        sprintf(output_filename, "%s.V.%d", training.c_str(), i);
         write_output_vector(output_filename, V[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix V'");
      }
   }
@@ -416,7 +417,7 @@ int main(int argc,  const char *argv[]) {
  
   std::cout << "Lanczos finished " << mytimer.current_time() << std::endl;
 
-  write_output_vector(datafile + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
+  write_output_vector(training + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
 
   if (unittest == 1){
     assert(errest.size() == 3);
