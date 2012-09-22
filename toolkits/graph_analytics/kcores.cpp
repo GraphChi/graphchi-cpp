@@ -104,6 +104,7 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
       const vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         if (other.active){
       	  cur_links++;
+          if (vertex.edge(e)->vertex_id() > vertex.id())
           increasing_links++;
         }
     }
@@ -216,11 +217,10 @@ int main(int argc,  const char *argv[]) {
   imat retmat = imat(max_iter+1, 4);
   memset((int*)data(retmat),0,sizeof(int)*retmat.size());
 
-  std::cout<<active_nodes_num<<std::endl;
-  std::cout<<active_links_num<<std::endl;
 
   active_nodes_num[0] = M+N;
   active_links_num[0] = L;
+  assert(L>0);
 
   std::cout<<"     Core Removed Total    Removed"<<std::endl;
   std::cout<<"     Num  Nodes   Removed  Links" <<std::endl;
@@ -229,6 +229,7 @@ int main(int argc,  const char *argv[]) {
     if (i >= 1){
       set_val(retmat, i, 1, active_nodes_num[i-1]-active_nodes_num[i]);
       set_val(retmat, i, 2, active_nodes_num[0]-active_nodes_num[i]);
+      assert(active_nodes_num[i] >= 0);
       set_val(retmat, i, 3, L - active_links_num[i]);
     }
   } 
