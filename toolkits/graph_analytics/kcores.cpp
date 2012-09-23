@@ -45,6 +45,7 @@ std::string test;
 uint M, N, Me, Ne, Le, K;
 size_t L;
 double globalMean = 0;
+int square = 0;
 
 /// RMSE computation
 double rmse=0.0;
@@ -69,13 +70,18 @@ struct vertex_data {
 
 }; // end of vertex_data
 
+//edges in kcore algorithm are binary
 struct edge_data {
   edge_data()  { }
   //compatible with parser which have edge value (we don't need it)
   edge_data(double val)  { }
+  edge_data(double val, double time) { }
 };
+
+
+
 typedef vertex_data VertexDataType;
-typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
@@ -90,8 +96,8 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
  
    vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    if (debug)
-      logstream(LOG_INFO)<<"Entering node: " << vertex.id() << std::endl;
+    if (debug && iiter > 99 && vertex.id() % 1000 == 0)
+      std::cout<<"Entering node: " << vertex.id() << std::endl;
 
     if (!vdata.active)
       return;
@@ -103,6 +109,8 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     for(int e=0; e < vertex.num_edges(); e++) {
       const vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         if (other.active){
+          if (debug && iiter > 99)
+             std::cout<<"neighbor: "<<vertex.edge(e)->vertex_id()<<" active"<<std::endl;
       	  cur_links++;
           if (vertex.edge(e)->vertex_id() > vertex.id())
           increasing_links++;
@@ -114,6 +122,8 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
         vdata.kcore = cur_iter;
     }
     else {
+      if (debug && iiter > 99)
+        std::cout<<vertex.id()<<": cur links: " << cur_links << std::endl;
       mymutex.lock();
       links += increasing_links;
       mymutex.unlock();
@@ -174,6 +184,8 @@ int main(int argc,  const char *argv[]) {
   debug         = get_option_int("debug", 0);
   unittest      = get_option_int("unittest", 0); 
   datafile      = get_option_string("training");
+  square        = get_option_int("square", 0);
+
   active_nodes_num = ivec(max_iter+1);
   active_links_num = ivec(max_iter+1);
 
@@ -186,8 +198,8 @@ int main(int argc,  const char *argv[]) {
   mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(datafile);
-  latent_factors_inmem.resize(M+N);
+  int nshards = convert_matrixmarket4<edge_data>(datafile, false, square);
+  latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
   int pass = 0;
   for (iiter=1; iiter< max_iter+1; iiter++){
@@ -218,7 +230,7 @@ int main(int argc,  const char *argv[]) {
   memset((int*)data(retmat),0,sizeof(int)*retmat.size());
 
 
-  active_nodes_num[0] = M+N;
+  active_nodes_num[0] = (square? std::max(M,N) : M+N);
   active_links_num[0] = L;
   assert(L>0);
 

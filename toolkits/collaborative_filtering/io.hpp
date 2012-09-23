@@ -34,7 +34,7 @@
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false) {
+int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
@@ -102,7 +102,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       J--;
       K = std::max((int)time, (int)K);
       globalMean += val; 
-      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type(val, time+M+N));
+      sharderobj.preprocessing_add_edge(I, (square? J : (M + J)), als_edge_type(val, time+M+N));
       //in case of a tensor, add besides of the user-> movie edge also
       //time -> user and time-> movie edges
       if (add_time_edges){

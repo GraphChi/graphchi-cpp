@@ -44,7 +44,8 @@ string dir;
 string outdir;
 std::vector<std::string> in_files;
 const char user_chars_tokens[] = {" \r\n\t,.\"!?#%^&*()|-\'+$/:"};
-
+uint maxfrom = 0;
+uint maxto = 0;
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
     std::map<std::string,uint>::const_iterator it;
@@ -193,6 +194,8 @@ bool parse_links(const char * linebuf, size_t line, int i, char * saveptr, uint 
       bool ok = assign_id(otherid, pch+1, line, linebuf);
       if (ok){
         fprintf(f, "%u %u %ld 1\n", id, otherid, ptime);
+        maxfrom = std::max(maxfrom, id);
+        maxto = std::max(maxto, otherid);
         links_found++;
         found = true;
       }
@@ -347,6 +350,10 @@ int main(int argc,  const char *argv[]) {
   save_map_to_text_file(string2nodeid, outdir + "map.text");
   save_map_to_text_file(nodeid2hash, outdir + "reverse.map.text");
   save_map_to_text_file(tweets_per_user, outdir + "tweets_per_user.text");
+
+  out_file fout("mm.info");
+  fprintf(fout.outf, "%%%%MatrixMarket matrix coordinate real general\n");
+  fprintf(fout.outf, "%u %u %lu\n", maxfrom+1, maxto+1, links_found);
   return 0;
 }
 
