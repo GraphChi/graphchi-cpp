@@ -46,6 +46,7 @@ uint M, N, Me, Ne, Le, K;
 size_t L;
 double globalMean = 0;
 int square = 0;
+int tokens_per_row = 3;
 
 /// RMSE computation
 double rmse=0.0;
@@ -185,6 +186,7 @@ int main(int argc,  const char *argv[]) {
   unittest      = get_option_int("unittest", 0); 
   datafile      = get_option_string("training");
   square        = get_option_int("square", 0);
+  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
 
   active_nodes_num = ivec(max_iter+1);
   active_links_num = ivec(max_iter+1);
@@ -198,7 +200,14 @@ int main(int argc,  const char *argv[]) {
   mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket4<edge_data>(datafile, false, square);
+
+  int nshards = 0;
+  if (tokens_per_row == 4 )
+    convert_matrixmarket4<edge_data>(datafile, false, square);
+  else if (tokens_per_row == 3) 
+    convert_matrixmarket<edge_data>(datafile);
+  else logstream(LOG_FATAL)<<"Please use --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
+
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
   int pass = 0;
