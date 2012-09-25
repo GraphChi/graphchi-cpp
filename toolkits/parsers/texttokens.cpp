@@ -15,6 +15,12 @@
  *  governing permissions and limitations under the License.
  *
  *  Written by Danny Bickson, CMU
+ *
+ *
+ *  This program reads a text input file, where each line 
+ *  is taken from another document. The program counts the number of word
+ *  occurances for each line (document) and outputs a document word count to be used
+ *  in LDA.
  */
 
 
@@ -43,6 +49,9 @@ string dir;
 string outdir;
 std::vector<std::string> in_files;
 
+//non word tokens that will be removed in the parsing
+//it is possible to add additional special characters or remove ones you want to keep
+const char spaces[] = {" \r\n\t!?@#$%^&*()-+.,~`'\";:"};
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
     std::map<std::string,uint>::const_iterator it;
@@ -104,20 +113,19 @@ void parse(int i){
     if (strlen(linebuf) <= 1) //skip empty lines
       continue; 
 
-    char *pch = strtok_r(linebuf," \r\n\t", &saveptr);
+    char *pch = strtok_r(linebuf, spaces, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     assign_id(id, pch);
     wordcount[id]+= 1;
 
     while(pch != NULL){
-      pch = strtok_r(NULL, " \r\n\t",&saveptr);
+      pch = strtok_r(NULL, spaces ,&saveptr);
       if (pch != NULL && strlen(pch) > 1){ 
         assign_id(id, pch);
         wordcount[id]+= 1;
       }
     }  
 
-    line++;
     total_lines++;
 
     std::map<uint,uint>::const_iterator it;
@@ -125,6 +133,7 @@ void parse(int i){
        fprintf(fout.outf, "%lu %u %u\n", line, it->first, it->second);
     }
 
+    line++;
     if (lines && line>=lines)
       break;
 
