@@ -88,7 +88,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
   int I, J;
   double val, time;
-  L = nz;
 
   if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
@@ -101,7 +100,11 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       I--;  /* adjust from 1-based to 0-based */
       J--;
       K = std::max((int)time, (int)K);
+      //avoid self edges
+      if (square && I == J)
+        continue;
       globalMean += val; 
+      L++;
       sharderobj.preprocessing_add_edge(I, (square? J : (M + J)), als_edge_type(val, time+M+N));
       //in case of a tensor, add besides of the user-> movie edge also
       //time -> user and time-> movie edges

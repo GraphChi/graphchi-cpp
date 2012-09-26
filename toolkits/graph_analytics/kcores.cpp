@@ -34,7 +34,6 @@
 #include "preprocessing/sharder.hpp"
 #include "../collaborative_filtering/eigen_wrapper.hpp"
 #include "../collaborative_filtering/timer.hpp"
-#include "../collaborative_filtering/util.hpp"
 
 using namespace graphchi;
 
@@ -56,10 +55,11 @@ int max_iter = 50;
 bool info_file = false;
 ivec active_nodes_num;
 ivec active_links_num;
-ivec tmp_active_nodes_num;
-ivec tmp_active_links_num;
 int iiter = 0; //current iteration
 int nodes = 0;
+uint num_active = 0;
+uint links = 0;
+mutex mymutex;
 timer mytimer;
 
 
@@ -106,8 +106,7 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     int cur_iter = iiter;
     int cur_links = 0;
     int increasing_links = 0;
-    int id = omp_get_thread_num();
-
+    
     for(int e=0; e < vertex.num_edges(); e++) {
       const vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         if (other.active){
@@ -126,25 +125,30 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     else {
       if (debug && iiter > 99)
         std::cout<<vertex.id()<<": cur links: " << cur_links << std::endl;
-      tmp_active_links_num[id] += increasing_links;
+      mymutex.lock();
+      links += increasing_links;
+      mymutex.unlock();
     }
 
     if (vdata.active){
-      tmp_active_nodes_num[id]++;
+      mymutex.lock();
+      num_active++;
+      mymutex.unlock();
     }
   }
 
   void after_iteration(int iteration, graphchi_context &gcontext) {
-   active_nodes_num[iiter] = tmp_active_nodes_num.sum();//num_active;
-   active_links_num[iiter] = tmp_active_links_num.sum();//links;
-   printf("%8.4lg Number of active nodes in round %5d is %10d, links: %10d\n", mytimer.current_time(), iiter, active_nodes_num[iiter], active_links_num[iiter]);
+   active_nodes_num[iiter] = num_active;
+   if (num_active == 0)
+	links = 0;
+   printf("Number of active nodes in round %d is %di, links: %d\n", iiter, num_active, links);
+   active_links_num[iiter] = links;
+
   }
   
   void before_iteration(int iteration, graphchi_context &gcontext) {
-    //num_active = 0;
-    //links = 0;
-    tmp_active_nodes_num = ivec::Zero(tmp_active_nodes_num.size());
-    tmp_active_links_num = ivec::Zero(tmp_active_links_num.size()); 
+    num_active = 0;
+    links = 0;
   }
 }; // end of  aggregator
 
@@ -187,9 +191,7 @@ int main(int argc,  const char *argv[]) {
   active_nodes_num = ivec(max_iter+1);
   active_links_num = ivec(max_iter+1);
 
-  int threads = number_of_omp_threads();
-  tmp_active_links_num = ivec(threads);
-  tmp_active_nodes_num = ivec(threads);
+
 
   //unit testing
   if (unittest == 1){
