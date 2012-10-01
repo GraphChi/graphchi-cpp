@@ -24,9 +24,12 @@
 #include <map>
 #include <omp.h>
 #include <assert.h>
+#include <algorithm>
 #include "graphchi_basic_includes.hpp"
+
 #include "../collaborative_filtering/timer.hpp"
 #include "../collaborative_filtering/util.hpp"
+
 
 using namespace std;
 using namespace graphchi;
@@ -104,6 +107,9 @@ bool assign_id(uint & outval, string name, const int line, const string &filenam
 
   for (uint i=0; i< name.size(); i++)
    name[i] = tolower(name[i]); 
+
+  const char shtrudel[]= {"@"};
+  name.erase (std::remove(name.begin(), name.end(), shtrudel[0]), name.end());
 
   map<string,uint>::iterator it = string2nodeid.find(name);
   if (it != string2nodeid.end()){
