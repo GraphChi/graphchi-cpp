@@ -24,8 +24,30 @@
  * are connected by one or more user nodes. 
  *
  *
- * For Pearson's correlation see: http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
- */
+ * For Pearson's correlation 
+ *
+ * see: http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
+
+Cosine Similarity
+
+See: http://en.wikipedia.org/wiki/Cosine_similarity
+
+Manhattan Distance
+
+See http://en.wikipedia.org/wiki/Taxicab_geometry
+
+Log Similarity Distance
+
+See http://tdunning.blogspot.co.il/2008/03/surprise-and-coincidence.html
+
+Chebychev Distance
+
+http://en.wikipedia.org/wiki/Chebyshev_distance
+
+Tanimoto Distance
+
+See http://en.wikipedia.org/wiki/Jaccard_index
+*/
 
 #include <string>
 #include <vector>
@@ -187,17 +209,23 @@ class adjlist_container {
    * Let a be all the users rated item 1
    * Let b be all the users rated item 2
    *
-   * 1) Using Jackard index:
-   *      Dist_ab = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
-   *
-   * 2) Using AA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
-   *
-   * 3) Using RA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
-   *
-   * 4) Using Pearson correlation
+   * 3) Using Pearson correlation
    *      Dist_ab = (a - mean)*(b- mean)' / (std(a)*std(b))
+   *
+   * 4) Using cosine similarity:
+   *      Dist_ab = (a*b) / sqrt(sum_sqr(a)) * sqrt(sum_sqr(b)))
+   *
+*    5) Using chebychev:
+*          Dist_ab = max(abs(a-b))
+  *
+   * 6) Using manhatten distance:
+   *      Dist_ab = sum(abs(a-b))
+   *
+   * 7) Using tanimoto:
+   *      Dist_ab = 1.0 - [(a*b) / (sum_sqr(a) + sum_sqr(b) - a*b)]
+   *
+   * 8) Using log likelihood similarity
+   *      Dist_ab = 1.0 - 1.0/(1.0 + loglikelihood)
    */
   double calc_distance(graphchi_vertex<uint32_t, float> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
