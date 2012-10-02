@@ -23,11 +23,6 @@
  * This file implements item based collaborative filtering by comparing all item pairs which
  * are connected by one or more user nodes. 
  *
- * For the Jackard index see: http://en.wikipedia.org/wiki/Jaccard_index
- *
- * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
- *
- * For the RA index see the above paper, equation (3)
  *
  * For Pearson's correlation see: http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
  */
@@ -47,6 +42,7 @@
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
 #include "eigen_wrapper.hpp"
+#include "distance.hpp"
 #include "util.hpp"
 #include "timer.hpp"
 
@@ -56,7 +52,12 @@ enum DISTANCE_METRICS{
   JACKARD = 0,
   AA = 1,
   RA = 2,
-  PEARSON = 3
+  PEARSON = 3,
+  COSINE = 4,
+  CHEBYCHEV = 5,
+  MANHATTEN = 6,
+  TANIMOTO = 7,
+  LOG_LIKELIHOOD = 8
 };
 
 double minval = -1e100;
@@ -218,7 +219,7 @@ class adjlist_container {
     if (intersection_size < (double)min_allowed_intersection)
       return 0;
 
-    //(distance_metric == PEARSON){
+    if (distance_metric == PEARSON){
     if (debug){
       std::cout<< pivot -M+1<<" Pivot edges: " <<pivot_edges.edges << std::endl;
       std::cout<< "Minusmean:   " << minus(pivot_edges.edges,mean) << std::endl;
@@ -230,6 +231,40 @@ class adjlist_container {
       std::cout<<"dist " << pivot-M+1 << ":" << v.id()-M+1 << " " << dist << std::endl;
     
     return dist / (stddev[pivot-M] * stddev[v.id()-M]);
+    }
+   else if (distance_metric == TANIMOTO){
+     return calc_tanimoto_distance(pivot_edges.edges, 
+                                         item_edges.edges,
+                                         sum_sqr(pivot_edges.edges),
+                                         sum_sqr(item_edges.edges));
+
+
+
+    }
+    else if (distance_metric == CHEBYCHEV){
+return calc_chebychev_distance(pivot_edges.edges, 
+                                         item_edges.edges);
+    }
+    else if (distance_metric == LOG_LIKELIHOOD){
+      return calc_loglikelihood_distance(pivot_edges.edges, 
+                                         item_edges.edges,
+                                         sum_sqr(pivot_edges.edges),
+                                         sum_sqr(item_edges.edges));
+
+    }
+    else if (distance_metric == COSINE){
+return calc_cosine_distance(pivot_edges.edges, 
+                                         item_edges.edges,
+                                         sum_sqr(pivot_edges.edges),
+                                         sum_sqr(item_edges.edges));
+
+
+    }
+    else if (distance_metric ==MANHATTEN){
+return calc_manhatten_distance(pivot_edges.edges, 
+                                         item_edges.edges);
+    }
+    return NAN;  
   }
 
   inline bool is_pivot(vid_t vid) {
@@ -433,7 +468,10 @@ class adjlist_container {
     if (quiet)
       global_logger().set_log_level(LOG_ERROR);
 
-    distance_metric          = PEARSON; //get_option_int("distance", JACKARD);
+    distance_metric          = get_option_int("distance", PEARSON);
+    if (distance_metric != PEARSON && distance_metric != MANHATTEN && distance_metric != COSINE &&
+        distance_metric != CHEBYCHEV && distance_metric != LOG_LIKELIHOOD)
+      logstream(LOG_FATAL)<<"--distance_metrix=XX should be one of: 3=PEARSON, 4=COSINE, 5=CHEBYCHEV, 6=MANHATTEN, 7=TANIMOTO, 8=LOG_LIKELIHOOD" << std::endl;
     debug                    = get_option_int("debug", 0);
 
     //if (distance_metric != JACKARD && distance_metric != AA && distance_metric != RA)

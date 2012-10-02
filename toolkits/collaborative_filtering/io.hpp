@@ -86,7 +86,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
-  int I, J;
+  uint I, J;
   double val, time;
 
   if (!sharderobj.preprocessed_file_exists()) {
@@ -99,6 +99,10 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
         logstream(LOG_FATAL)<<"Time (third columns) should be >= 0 " << std::endl;
       I--;  /* adjust from 1-based to 0-based */
       J--;
+      if (I >= M)
+        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+      if (J >= N)
+        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
       K = std::max((int)time, (int)K);
       //avoid self edges
       if (square && I == J)
@@ -205,18 +209,22 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
-
+  uint I, J;
+  double val;
   if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
     {
-      int I, J;
-      double val;
+
       int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
       if (rc != 3)
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
       I--;  /* adjust from 1-based to 0-based */
       J--;
-      globalMean += val; 
+      if (I >= M)
+        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+      if (J >= N)
+        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+   globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
     }
     uint toadd = 0;

@@ -52,7 +52,7 @@ using namespace graphchi;
 enum DISTANCE_METRICS{
   JACKARD = 0,
   AA = 1,
-  RA = 2
+  RA = 2,
 };
 
 double minval = -1e100;
@@ -239,7 +239,7 @@ class adjlist_container {
        }
        return dist;
     }
-     return 0;
+    return 0;
   }
 
   inline bool is_pivot(vid_t vid) {
