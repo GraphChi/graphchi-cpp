@@ -63,6 +63,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
   mm_write_banner(fout, matcode);
+  fprintf(fout, "%%This file contains predictions of user/item pair, one prediction in each line. The first column is user id. The second column is the item id. The third column is the computed prediction.\n");
   mm_write_mtx_crd_size(fout ,M,N,nz); 
 
   for (uint i=0; i<nz; i++)
@@ -81,7 +82,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   fclose(f);
   fclose(fout);
 
-  logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+  std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
 
 void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction)) {
