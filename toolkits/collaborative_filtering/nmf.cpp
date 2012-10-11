@@ -233,7 +233,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     int now = iteration % 2;
     if (now == 0){
       training_rmse(iteration/2, gcontext);
-      validation_rmse(&nmf_predict);
+      validation_rmse(&nmf_predict, gcontext);
     }
   }
 

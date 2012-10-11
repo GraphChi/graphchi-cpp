@@ -102,7 +102,7 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     svdpp.usrBiasStep *= svdpp.step_dec;
 
     training_rmse(iteration, gcontext);
-    validation_rmse(&svdpp_predict);
+    validation_rmse(&svdpp_predict, gcontext);
   }
 
   /**

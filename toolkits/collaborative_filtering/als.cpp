@@ -165,7 +165,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse(&als_predict);
+    validation_rmse(&als_predict, gcontext);
   }
 
   /**

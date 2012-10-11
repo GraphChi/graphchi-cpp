@@ -92,7 +92,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void after_iteration(int iteration, graphchi_context &gcontext) {
     sgd_lambda *= sgd_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&sgd_predict);
+    validation_rmse(&sgd_predict, gcontext);
   }
 
   /**

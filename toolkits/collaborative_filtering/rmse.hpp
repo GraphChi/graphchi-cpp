@@ -30,6 +30,8 @@ timer mytimer;
 double dtraining_rmse = 0;
 double last_training_rmse = 0;
 double dvalidation_rmse = 0;
+double last_validation_rmse = 0;
+
 int halt_on_rmse_increase = 0;//stop engine when RMSE starts to increase
 /**
   compute predictions on test data
@@ -145,7 +147,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   compute validation rmse
   */
 void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)
-    ,int tokens_per_row = 3) {
+    ,graphchi_context & gcontext, int tokens_per_row = 3) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -171,6 +173,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
 
   Le = nz;
 
+  last_validation_rmse = dvalidation_rmse;
   dvalidation_rmse = 0;   
   int I, J;
   double val, time = 1.0;
@@ -197,6 +200,10 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   assert(Le > 0);
   dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
   std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
+  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+       gcontext.set_last_iteration(gcontext.iteration);
+    }
 }
 
 
@@ -204,7 +211,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   compute validation rmse
   */
 void validation_rmse3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction)
-    ,int tokens_per_row = 4) {
+    ,graphchi_context & gcontext,int tokens_per_row = 4) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -230,6 +237,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
 
   Le = nz;
 
+  last_validation_rmse = dvalidation_rmse;
   dvalidation_rmse = 0;   
   int I, J;
   double val, time = 1.0;
@@ -257,6 +265,10 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   assert(Le > 0);
   dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
   std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
+  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+       gcontext.set_last_iteration(gcontext.iteration);
+    }
 }
 
 
@@ -269,9 +281,5 @@ void training_rmse(int iteration, graphchi_context &gcontext){
     }
     dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
     std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
-    if (halt_on_rmse_increase && dtraining_rmse > last_training_rmse && gcontext.iteration > 1){
-       logstream(LOG_WARNING)<<"Stopping engine because of RMSE increase" << std::endl;
-       gcontext.set_last_iteration(gcontext.iteration);
-    }
-}
+ }
 #endif //DEF_RMSEHPP

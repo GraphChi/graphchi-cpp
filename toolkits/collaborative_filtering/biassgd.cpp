@@ -87,7 +87,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
   void after_iteration(int iteration, graphchi_context &gcontext) {
     biassgd_lambda *= biassgd_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&bias_sgd_predict);
+    validation_rmse(&bias_sgd_predict, gcontext);
   }
 
   /**

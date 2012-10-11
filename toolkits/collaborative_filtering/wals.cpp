@@ -136,7 +136,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse(&wals_predict, 4);
+    validation_rmse(&wals_predict, gcontext, 4);
   }
 
   /**
