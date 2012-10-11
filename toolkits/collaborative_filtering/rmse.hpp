@@ -28,7 +28,9 @@
 #include "timer.hpp"
 timer mytimer;
 double dtraining_rmse = 0;
+double last_training_rmse = 0;
 double dvalidation_rmse = 0;
+int halt_on_rmse_increase = 0;//stop engine when RMSE starts to increase
 /**
   compute predictions on test data
   */
@@ -258,7 +260,8 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
 }
 
 
-void training_rmse(int iteration){
+void training_rmse(int iteration, graphchi_context &gcontext){
+    last_training_rmse = dtraining_rmse;
     dtraining_rmse = 0;
 #pragma omp parallel for reduction(+:dtraining_rmse)
     for (int i=0; i< (int)M; i++){
@@ -266,5 +269,9 @@ void training_rmse(int iteration){
     }
     dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
     std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+    if (halt_on_rmse_increase && dtraining_rmse > last_training_rmse && gcontext.iteration > 1){
+       logstream(LOG_WARNING)<<"Stopping engine because of RMSE increase" << std::endl;
+       gcontext.set_last_iteration(gcontext.iteration);
+    }
 }
 #endif //DEF_RMSEHPP

@@ -101,7 +101,7 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     svdpp.itmBiasStep *= svdpp.step_dec;
     svdpp.usrBiasStep *= svdpp.step_dec;
 
-    training_rmse(iteration);
+    training_rmse(iteration, gcontext);
     validation_rmse(&svdpp_predict);
   }
 
@@ -277,7 +277,7 @@ int main(int argc, const char ** argv) {
   training = get_option_string("training");    // Base training
   validation = get_option_string("validation", "");
   test = get_option_string("test", "");
-
+  
   if (validation == "")
     validation += training + "e";  
   if (test == "")
@@ -299,6 +299,7 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   parse_implicit_command_line();
 

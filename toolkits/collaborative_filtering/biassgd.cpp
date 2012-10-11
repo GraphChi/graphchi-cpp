@@ -86,7 +86,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     biassgd_lambda *= biassgd_step_dec;
-    training_rmse(iteration);
+    training_rmse(iteration, gcontext);
     validation_rmse(&bias_sgd_predict);
   }
 
@@ -236,6 +236,7 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   parse_implicit_command_line();
 

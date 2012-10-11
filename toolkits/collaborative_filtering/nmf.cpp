@@ -232,7 +232,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     //print rmse every other iteration, since 2 iterations are considered one NMF round
     int now = iteration % 2;
     if (now == 0){
-      training_rmse(iteration/2);
+      training_rmse(iteration/2, gcontext);
       validation_rmse(&nmf_predict);
     }
   }
@@ -312,6 +312,7 @@ int main(int argc, const char ** argv) {
   bool quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
+  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   parse_implicit_command_line();
 
