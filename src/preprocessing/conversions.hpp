@@ -347,7 +347,7 @@ namespace graphchi {
         }
         
         vid_t translate(vid_t vid) {
-            if (vid >= max_vertex_id) return vid;
+            if (vid > max_vertex_id) return vid;
             return translate_table[vid];
         }
         
@@ -398,7 +398,7 @@ namespace graphchi {
             if (df < 0) logstream(LOG_ERROR) << "Could not write vertex map: " << translate_table_file <<
                 " error: " << strerror(errno) << std::endl;
             assert(df >= 0);
-            pwritea(df, translate_table, nverts, 0);
+            pwritea(df, translate_table, nverts * sizeof(vid_t), 0);
             close(df);
             
             /* Now recreate the processed file */

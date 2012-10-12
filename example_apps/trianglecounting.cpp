@@ -199,8 +199,8 @@ public:
       */
     int intersection_size(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int start_i) {
         assert(is_pivot(pivot));
-        int count = 0;        
-        if (pivot > v.id()) {  
+        int count = 0;
+        if (pivot > v.id()) {
             dense_adj &dadj = adjs[pivot - pivot_st];
             int vc = v.num_edges();
              
@@ -241,7 +241,7 @@ public:
                         count += match;
                         if (match > 0) {
                             /* Add one to edge between v and the match */
-                            v.edge(i)->set_data(v.edge(i)->get_data() + 1); 
+                            v.edge(i)->set_data(v.edge(i)->get_data() + 1);
                         }
                     }
                     lastvid = nb;
@@ -271,8 +271,9 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
      *  Vertex update function.
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
+        
         if (gcontext.iteration % 2 == 0) {
-            adjcontainer->grab_adj(v);         
+            adjcontainer->grab_adj(v);
         } else {
             uint32_t oldcount = v.get_data();
             uint32_t newcounts = 0;

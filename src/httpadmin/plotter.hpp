@@ -70,7 +70,7 @@ namespace graphchi {
         std::string plotfile = plotdirectory() + plotname + ".dat";
         
         std::stringstream ss;
-        ss << "python ";
+        ss << "python2.6 ";
         ss <<  plotdirectory() + "plotter.py " + plotfile + " lastsecs ";
         ss << lookback_secs;
         
