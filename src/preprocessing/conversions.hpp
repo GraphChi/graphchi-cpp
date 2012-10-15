@@ -485,6 +485,11 @@ namespace graphchi {
             exit(0);
         }
         
+        vid_t max_vertex_id = get_option_int("maxvertex", 0);
+        if (max_vertex_id > 0) {
+            sharderobj.set_max_vertex_id(max_vertex_id);
+        }
+        
         int nshards = sharderobj.execute_sharding(nshards_string);
         logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
