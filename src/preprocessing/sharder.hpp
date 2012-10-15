@@ -114,6 +114,8 @@ namespace graphchi {
         size_t bufsize;
         size_t edgedatasize;
         
+        vid_t filter_max_vertex;
+        
         bool no_edgevalues;
         
         metrics m;
@@ -126,6 +128,7 @@ namespace graphchi {
             edgedatasize = sizeof(EdgeDataType);
             no_edgevalues = false;
             compressed_block_size = 4096 * 1024;
+            filter_max_vertex = 0;
             while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
         }
         
@@ -134,6 +137,10 @@ namespace graphchi {
             if (preproc_writer != NULL) {
                 delete preproc_writer;
             }
+        }
+        
+        void set_max_vertex_id(vid_t maxid) {
+            filter_max_vertex = maxid;
         }
         
         void set_no_edgevalues() {
@@ -171,9 +178,7 @@ namespace graphchi {
             
             m.start_time("preprocessing");
             std::string tmpfilename = preprocessed_name() + ".tmp";
-            preproc_writer = new binary_adjacency_list_writer<EdgeDataType>(tmpfilename);
-            
-            
+            preproc_writer = new binary_adjacency_list_writer<EdgeDataType>(tmpfilename);            
             logstream(LOG_INFO) << "Started preprocessing: " << basefilename << " --> " << tmpfilename << std::endl;
             
             /* Write the maximum vertex id place holder - to be filled later */
@@ -272,12 +277,15 @@ namespace graphchi {
             determine_number_of_shards(nshards_string);
             
             for(int phase=1; phase <= 2; ++phase) {
-               
                 /* Start the sharing process */
                 binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
                 
                 /* Read max vertex id */
                 max_vertex_id = (vid_t) reader.get_max_vertex_id();
+                if (filter_max_vertex > 0) {
+                    max_vertex_id = filter_max_vertex;
+                }
+                
                 logstream(LOG_INFO) << "Max vertex id: " << max_vertex_id << std::endl; 
                 
                 if (phase == 1) {
@@ -464,9 +472,13 @@ namespace graphchi {
                 return;
             }
             if (from > max_vertex_id || to > max_vertex_id) {
-                logstream(LOG_ERROR) << "Tried to add an edge with too large from/to values. From:" << 
-                from << " to: "<< to << " max: " << max_vertex_id << std::endl;
-                assert(false);
+                if (max_vertex_id == 0) {
+                    logstream(LOG_ERROR) << "Tried to add an edge with too large from/to values. From:" << 
+                    from << " to: "<< to << " max: " << max_vertex_id << std::endl;
+                    assert(false);
+                } else {
+                    return;
+                }
             }
             switch (phase) {
                 case COMPUTE_INTERVALS:
