@@ -498,7 +498,7 @@ return calc_manhatten_distance(pivot_edges.edges,
 
     distance_metric          = get_option_int("distance", PEARSON);
     if (distance_metric != PEARSON && distance_metric != MANHATTEN && distance_metric != COSINE &&
-        distance_metric != CHEBYCHEV && distance_metric != LOG_LIKELIHOOD)
+        distance_metric != CHEBYCHEV && distance_metric != LOG_LIKELIHOOD && distance_metric != TANIMOTO)
       logstream(LOG_FATAL)<<"--distance_metrix=XX should be one of: 3=PEARSON, 4=COSINE, 5=CHEBYCHEV, 6=MANHATTEN, 7=TANIMOTO, 8=LOG_LIKELIHOOD" << std::endl;
     debug                    = get_option_int("debug", 0);
 
