@@ -117,13 +117,13 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
         sharderobj.preprocessing_add_edge((uint)time + M + N, M+J , als_edge_type(val, I));
       }
     }
-  
+
     uint toadd = 0;
     if (implicitratingtype == IMPLICIT_RATING_RANDOM)
       toadd = add_implicit_edges4(implicitratingtype, sharderobj);
     globalMean += implicitratingvalue * toadd;
     L += toadd;
-  
+
     sharderobj.end_preprocessing();
     globalMean /= L;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
@@ -135,7 +135,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
   }
-  
+
   fclose(f);
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
@@ -161,9 +161,9 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
 
   std::string suffix = "";
   if (preprocessor != NULL) {
-     suffix = preprocessor->getSuffix();
+    suffix = preprocessor->getSuffix();
   }
-     
+
   /**
    * Create sharder object
    */
@@ -179,7 +179,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     return nshards;
   }   
 
-   sharder<als_edge_type> sharderobj(base_filename + suffix);
+  sharder<als_edge_type> sharderobj(base_filename + suffix);
   sharderobj.start_preprocessing();
 
 
@@ -224,7 +224,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-   globalMean += val; 
+      globalMean += val; 
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
     }
     uint toadd = 0;
@@ -232,15 +232,15 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       toadd = add_implicit_edges(implicitratingtype, sharderobj);
     globalMean += implicitratingvalue * toadd;
     L += toadd;
-  
+
     sharderobj.end_preprocessing();
     globalMean /= L;
     logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
 
     if (preprocessor != NULL) {
-       preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
+      preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
     }
-     
+
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
     fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
     fclose(outf);
@@ -258,7 +258,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
   logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename + suffix << std::endl;
   logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
-     
+
   return nshards;
 }
 
@@ -433,6 +433,53 @@ inline void write_output_vector(const std::string & datafile, const vec& output,
   save_matrix_market_format_vector(datafile, output,issparse, comment); 
 }
 
+/** load a matrix market file into a matrix */
+void load_matrix_market_matrix(const std::string & filename, bool users){
+  MM_typecode matcode;                        
+  uint i,I,J;
+  double val;
+  uint rows, cols;
+  size_t nnz;
+  FILE * f = open_file(filename.c_str() ,"r");
+  int rc = mm_read_banner(f, &matcode); 
+  if (rc != 0)
+    logstream(LOG_FATAL)<<"Failed to load matrix market banner in file: " << filename << std::endl;
 
+  if (mm_is_sparse(matcode)){
+    int rc = mm_read_mtx_crd_size(f, &rows, &cols, &nnz);
+    if (rc != 0)
+      logstream(LOG_FATAL)<<"Failed to load matrix market banner in file: " << filename << std::endl;
+  }
+  else { //dense matrix
+    rc = mm_read_mtx_array_size(f, &rows, &cols);
+    if (rc != 0)
+      logstream(LOG_FATAL)<<"Failed to load matrix market banner in file: " << filename << std::endl;
+    nnz = rows * cols;
+  }
+
+  for (i=0; i<nnz; i++){
+    if (mm_is_sparse(matcode)){
+      rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+      if (rc != 3)
+        logstream(LOG_FATAL)<<"Error reading input line " << i << std::endl;
+      I--; J--;
+      assert(I >= 0 && I < rows);
+      assert(J >= 0 && J < cols);
+      //set_val(a, I, J, val);
+      latent_factors_inmem[users? I : I+M].pvec[J] = val;
+    }
+    else {
+      rc = fscanf(f, "%lg", &val);
+      if (rc != 1)
+        logstream(LOG_FATAL)<<"Error reading nnz " << i << std::endl;
+      I = i / NLATENT;
+      J = i % cols;
+      //set_val(a, I, J, val);
+      latent_factors_inmem[users ? I : I+M].pvec[J] = val;
+    }
+  }
+  logstream(LOG_INFO) << "Factors from file: loaded matrix of size " << rows << " x " << cols << " from file: " << filename << " total of " << nnz << " entries. "<< i << std::endl;
+
+}
 
 #endif

@@ -110,23 +110,6 @@ float als_predict(const vertex_data& user,
 struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
-  // Helper
-  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
-    vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
-    latent_factors_inmem[vertex.id()] = fact;
-  }
-
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
-    }
-  }
 
   /**
    *  Vertex update function - computes the least square step
@@ -168,17 +151,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     validation_rmse(&als_predict, gcontext);
   }
 
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -253,6 +225,7 @@ int main(int argc, const char ** argv) {
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
   parse_implicit_command_line();
 
   bool scheduler       = false;                        // Selective scheduling not supported for now.
@@ -260,6 +233,15 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
+  latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
+  assert(M > 0 && N > 0);
+  max_left_vertex = M-1;
+  max_right_vertex = M+N-1;
+
+  if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", true);
+    load_matrix_market_matrix(training + "_V.mm", false);
+  }
 
   /* Run */
   ALSVerticesInMemProgram program;

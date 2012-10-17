@@ -64,7 +64,7 @@ uint Me, Ne, Le;
 double globalMean = 0;
 /// RMSE computation
 double rmse=0.0;
-
+bool load_factors_from_file = false;
 
 // Hackish: we need to count the number of left
 // and right vertices in the bipartite graph ourselves.
