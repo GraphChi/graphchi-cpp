@@ -95,6 +95,7 @@ uint Me, Ne, Le;
 double globalMean = 0;
 /// RMSE computation
 double rmse=0.0;
+bool load_factors_from_file = false;
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
@@ -306,6 +307,7 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
   parse_implicit_command_line();
 
@@ -315,6 +317,12 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, true);
   latent_factors_inmem.resize(M+N+K); // Initialize in-memory vertices.
+  if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_T.mm", M+N, NLATENT);
+  }
+
 
   /* Run */
   ALSVerticesInMemProgram program;

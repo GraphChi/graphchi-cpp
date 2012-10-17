@@ -196,6 +196,7 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
   parse_implicit_command_line();
 
@@ -204,8 +205,12 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  assert(M > 0 && N > 0);
-  
+ if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+  }
+
+ 
   /* Run */
   SGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 

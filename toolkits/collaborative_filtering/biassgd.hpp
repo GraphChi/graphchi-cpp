@@ -63,7 +63,7 @@ std::string test;
 uint M, N, K;
 size_t L;
 uint Me, Ne, Le;
-
+bool load_factors_from_file = false;
 
 /// RMSE computation
 double rmse=0.0;

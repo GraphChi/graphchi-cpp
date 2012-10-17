@@ -92,7 +92,7 @@ std::string validation;
 std::string test;
 uint M, N, Me, Ne, Le, K;
 size_t L;
-
+bool load_factors_from_file = false;
 
 /// RMSE computation
 double rmse=0.0;

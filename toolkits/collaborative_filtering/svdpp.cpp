@@ -78,18 +78,6 @@ float svdpp_predict(const vertex_data& user, const vertex_data& movie, const flo
  */
 struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
- 
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
-    }
-  }
 
   /**
    * Called after an iteration has finished.
@@ -300,11 +288,19 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
+  latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
+  assert(M > 0 && N > 0);
+
+  if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+  }
 
   /* Run */
   SVDPPVerticesInMemProgram program;

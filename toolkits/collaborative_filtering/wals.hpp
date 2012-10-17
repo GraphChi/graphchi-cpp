@@ -62,8 +62,7 @@ uint M, N, Me, Ne, Le, K;
 size_t L;
 double globalMean = 0;
 double rmse=0.0;
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
+bool load_factors_from_file = false;
 
 struct vertex_data {
   double pvec[NLATENT];

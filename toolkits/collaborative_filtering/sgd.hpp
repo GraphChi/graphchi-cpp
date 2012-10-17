@@ -70,6 +70,7 @@ uint K;                    //unused
 size_t L;                  //number of ratings (training file)
 double globalMean = 0;     //global mean rating - unused
 double rmse=0.0;           //current error
+bool load_factors_from_file = false;
 
 struct vertex_data {
     double pvec[NLATENT]; //storing the feature vector

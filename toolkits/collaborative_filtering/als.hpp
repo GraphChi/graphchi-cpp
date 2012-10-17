@@ -1,5 +1,4 @@
 
-
 /**
  * @file
  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
@@ -68,8 +67,6 @@ bool load_factors_from_file = false;
 
 // Hackish: we need to count the number of left
 // and right vertices in the bipartite graph ourselves.
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
 
 struct vertex_data {
   double pvec[NLATENT];

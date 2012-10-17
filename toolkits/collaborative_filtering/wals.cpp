@@ -81,25 +81,6 @@ float wals_predict(const vertex_data& user,
  */
 struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
-
-  // Helper
-  virtual void set_latent_factor(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, vertex_data &fact) {
-    vertex.set_data(fact); // Note, also stored on disk. This is non-optimal...
-    latent_factors_inmem[vertex.id()] = fact;
-  }
-
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
-    }
-  }
-
   /**
    *  Vertex update function.
    */
@@ -178,8 +159,8 @@ struct  MMOutputter{
 
 
 void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains WALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains WALS  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex , "This file contains WALS output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex  ,numvertices, "This file contains WALS  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                             ", " << filename + "_V.mm " << std::endl;
 }
@@ -224,11 +205,20 @@ int main(int argc, const char ** argv) {
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
   
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
   parse_implicit_command_line();
    
   bool scheduler       = false;                        // Selective scheduling not supported for now.
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training);
+  latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
+  assert(M > 0 && N > 0);
+
+  if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+  }
+
 
   /* Run */
   WALSVerticesInMemProgram program;
@@ -243,9 +233,7 @@ int main(int argc, const char ** argv) {
   m.set("latent_dimension", NLATENT);
 
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_als_result(training, numvertices, max_left_vertex);
+  output_als_result(training, M+N, M);
   test_predictions(&wals_predict);    
 
   if (unittest == 1){

@@ -237,6 +237,7 @@ int main(int argc, const char ** argv) {
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
+  load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
   parse_implicit_command_line();
 
@@ -244,7 +245,19 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  assert(M > 0 && N > 0);
+
+  /* load initial state from disk (optional) */
+  if (load_factors_from_file){
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    for (uint i=0; i<M+N; i++){
+      latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
+    }
+    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
+    globalMean = gm[0];
+  }
 
 
   /* Run */

@@ -180,8 +180,8 @@ struct  MMOutputter{
 
 
 void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex , "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex  ,numvertices, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "ALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
@@ -234,13 +234,9 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  assert(M > 0 && N > 0);
-  max_left_vertex = M-1;
-  max_right_vertex = M+N-1;
-
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", true);
-    load_matrix_market_matrix(training + "_V.mm", false);
+    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
+    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
   }
 
   /* Run */
@@ -256,9 +252,7 @@ int main(int argc, const char ** argv) {
   m.set("latent_dimension", NLATENT);
 
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_als_result(training, numvertices, max_left_vertex);
+  output_als_result(training, M+N, M);
   test_predictions(&als_predict);    
 
   if (unittest == 1){

@@ -362,6 +362,84 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
 
 }
 
+vec load_matrix_market_vector(const std::string & filename,  bool optional_field, bool allow_zeros)
+{
+
+  int ret_code;
+  MM_typecode matcode;
+  uint M, N; 
+  size_t i,nz;  
+
+  logstream(LOG_INFO) <<"Going to read matrix market vector from input file: " << filename << std::endl;
+
+  FILE * f = open_file(filename.c_str(), "r", optional_field);
+  //if optional file not found return
+  if (f== NULL && optional_field){
+    return zeros(1);
+  }
+
+  if (mm_read_banner(f, &matcode) != 0)
+    logstream(LOG_FATAL) << "Could not process Matrix Market banner." << std::endl;
+
+  /*  This is how one can screen matrix types if their application */
+  /*  only supports a subset of the Matrix Market data types.      */
+
+  if (mm_is_complex(matcode) && mm_is_matrix(matcode) && 
+      mm_is_sparse(matcode) )
+    logstream(LOG_FATAL) << "sorry, this application does not support " << std::endl << 
+      "Market Market type: " << mm_typecode_to_str(matcode) << std::endl;
+
+  /* find out size of sparse matrix .... */
+  if (mm_is_sparse(matcode)){
+    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0)
+      logstream(LOG_FATAL) << "failed to read matrix market cardinality size " << std::endl; 
+  }
+  else {
+    if ((ret_code = mm_read_mtx_array_size(f, &M, &N))!= 0)
+      logstream(LOG_FATAL) << "failed to read matrix market vector size " << std::endl; 
+    if (N > M){ //if this is a row vector, transpose
+      int tmp = N;
+      N = M;
+      M = tmp;
+    }
+    nz = M*N;
+  }
+
+  vec ret = zeros(M);
+  uint row,col; 
+  double val;
+
+  for (i=0; i<nz; i++)
+  {
+    if (mm_is_sparse(matcode)){
+      int rc = fscanf(f, "%u %u %lg\n", &row, &col, &val);
+      if (rc != 3){
+        logstream(LOG_FATAL) << "Failed reading input file: " << filename << "Problm at data row " << i << " (not including header and comment lines)" << std::endl;
+      }
+      row--;  /* adjust from 1-based to 0-based */
+      col--;
+    }
+    else {
+      int rc = fscanf(f, "%lg\n", &val);
+      if (rc != 1){
+        logstream(LOG_FATAL) << "Failed reading input file: " << filename << "Problm at data row " << i << " (not including header and comment lines)" << std::endl;
+      }
+      row = i;
+      col = 0;
+    }
+    //some users have gibrish in text file - better check both I and J are >=0 as well
+    assert(row >=0 && row< M);
+    assert(col == 0);
+    if (val == 0 && !allow_zeros)
+      logstream(LOG_FATAL)<<"Zero entries are not allowed in a sparse matrix market vector. Use --zero=true to avoid this error"<<std::endl;
+    //set observation value
+    ret[row] = val;
+  }
+  fclose(f);
+  logstream(LOG_INFO)<<"Succesfully read a vector of size: " << M << " [ " << nz << "]" << std::endl;
+  return ret;
+}
+
 
 
   inline void write_row(int row, int col, double val, FILE * f, bool issparse){
@@ -434,7 +512,7 @@ inline void write_output_vector(const std::string & datafile, const vec& output,
 }
 
 /** load a matrix market file into a matrix */
-void load_matrix_market_matrix(const std::string & filename, bool users){
+void load_matrix_market_matrix(const std::string & filename, int offset, int D){
   MM_typecode matcode;                        
   uint i,I,J;
   double val;
@@ -466,16 +544,16 @@ void load_matrix_market_matrix(const std::string & filename, bool users){
       assert(I >= 0 && I < rows);
       assert(J >= 0 && J < cols);
       //set_val(a, I, J, val);
-      latent_factors_inmem[users? I : I+M].pvec[J] = val;
+      latent_factors_inmem[I+offset].pvec[J] = val;
     }
     else {
       rc = fscanf(f, "%lg", &val);
       if (rc != 1)
         logstream(LOG_FATAL)<<"Error reading nnz " << i << std::endl;
-      I = i / NLATENT;
+      I = i / D;
       J = i % cols;
       //set_val(a, I, J, val);
-      latent_factors_inmem[users ? I : I+M].pvec[J] = val;
+      latent_factors_inmem[I+offset].pvec[J] = val;
     }
   }
   logstream(LOG_INFO) << "Factors from file: loaded matrix of size " << rows << " x " << cols << " from file: " << filename << " total of " << nnz << " entries. "<< i << std::endl;
