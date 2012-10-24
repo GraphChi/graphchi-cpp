@@ -144,8 +144,8 @@ void parse(int i){
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     assign_id(string2nodeid2,nodeid2hash2, to, pch, false);
 
-    //read [VAL]
-    pch = strtok_r(NULL,string_to_tokenize, &saveptr);
+    //read the rest of the line
+    pch = strtok_r(NULL, "\n", &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     if (tsv)
       fprintf(fout.outf, "%u\t%u\t%s\n", from, to, pch);
@@ -186,7 +186,7 @@ int main(int argc,  const char *argv[]) {
   lines = get_option_int("lines", 0);
   omp_set_num_threads(get_option_int("ncpus", 1));
   tsv = get_option_int("tsv", 0); //is this tab seperated file?
-  csv = get_option_int("csv", 0); // is the command seperated file?
+  csv = get_option_int("csv", 0); // is the comma seperated file?
   mytime.start();
 
 

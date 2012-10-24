@@ -176,7 +176,7 @@ void read_factors(std::string base_filename, bool users) {
    }
 
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << (users? M :N) << " x " << D << ", non-zeros: " << M*D << std::endl;
+    << (users? M :N) << " x " << D << ", non-zeros: " << (users? M :N)*D << std::endl;
 
   double val;
   nz = M*D;
