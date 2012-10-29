@@ -48,6 +48,7 @@ double globalMean = 0;
 int nshards;
 vid_t max_left_vertex =0 ;
 vid_t max_right_vertex = 0;
+int input_cols = 3;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
 metrics m("svd-onesided-inmemory-factors");
@@ -69,6 +70,7 @@ struct vertex_data {
 struct edge_data {
   float weight;
   edge_data(double weight = 0) : weight(weight) { }
+  edge_data(double weight, double ignored) : weight(weight) { }
   //void set_field(int pos, double val){ weight = val; }
   //double get_field(int pos){ return weight; }
 };
@@ -382,10 +384,9 @@ int main(int argc,  const char *argv[]) {
   ortho_repeats = get_option_int("ortho_repeats", 3); 
   nv = get_option_int("nv", 1);
   nsv = get_option_int("nsv", 1);
-  regularization = get_option_float("regularization", 1e-5);
   tol = get_option_float("tol", 1e-5);
   save_vectors = get_option_int("save_vectors", 1);
-  nodes = get_option_int("nodes", 0);
+  input_cols = get_option_int("input_cols", 3);
   //clopts.attach_option("no_edge_data", &no_edge_data, no_edge_data, "matrix is binary (optional)");
 
   parse_implicit_command_line();
@@ -421,12 +422,17 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Load matrix " << datafile << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  nshards = convert_matrixmarket<edge_data>(training);
+  if (input_cols == 3)
+    nshards = convert_matrixmarket<edge_data>(training);
+  else if (input_cols == 4)
+    nshards = convert_matrixmarket4<edge_data>(training);
+  else logstream(LOG_FATAL)<<"--input_cols=XX should be either 3 or 4 input columns" << std::endl;
+
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
   latent_factors_inmem.resize(info.total());
 
-  timer mytimer; mytimer.start(); 
+  timer mytimer; mytimer.start();
   init_lanczos(info);
   init_math(info, ortho_repeats);
 

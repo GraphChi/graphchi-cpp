@@ -94,7 +94,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
     {
       int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
       if (rc != 4)
-        logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+        logstream(LOG_FATAL)<<"Error when reading input file - line " << i << std::endl;
       if (time < 0)
         logstream(LOG_FATAL)<<"Time (third columns) should be >= 0 " << std::endl;
       I--;  /* adjust from 1-based to 0-based */
