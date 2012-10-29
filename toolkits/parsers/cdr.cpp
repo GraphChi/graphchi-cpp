@@ -49,10 +49,12 @@ uint maxto = 0;
 
 /* 2011-12-05 00:00:00  */
 
-bool convert_string_to_time(const char * linebuf, size_t line, int i, char * saveptr, long int & outtime){
+bool convert_string_to_time(char * linebuf, size_t line, int i, long int & outtime){
+  char * saveptr;
   struct tm ptm;
+  memset(&ptm, 0, sizeof(ptm));
 
-  char *year = strtok_r(NULL," \r\n\t:/-",&saveptr);
+  char *year = strtok_r(linebuf," \r\n\t:/-",&saveptr);
   if (!year){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return false; }
   ptm.tm_year = atoi(year) - 1900;
 
@@ -99,7 +101,7 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr, * linebuf, linebuf_debug[1024];
+  char * saveptr2, * linebuf, linebuf_debug[1024];
   size_t line = 1;
   uint from, to, duration1, duration2;
   long int ptime;
@@ -110,38 +112,39 @@ void parse(int i){
     total_lines++;
     if (rc < 1)
       break;
-    if (strlen(linebuf) <= 1) //skip empty lines
-      continue; 
 
-
-    bool ok = convert_string_to_time(linebuf_debug, total_lines, i, saveptr, ptime);
+    bool ok = convert_string_to_time(linebuf_debug, total_lines, i, ptime);
     if (!ok)
        return;
 
-    linebuf += 20; //skip date
-    char *pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
+    char *pch = strtok_r(linebuf,"\t", &saveptr2); //skip the date
+    if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
+
+    pch = strtok_r(NULL," \r\n\t:/-", &saveptr2);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     from = atoi(pch);
     maxfrom = std::max(from, maxfrom);
 
-    pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
+    pch = strtok_r(NULL," \r\n\t:/-", &saveptr2);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     to = atoi(pch);
     maxto = std::max(to, maxto);
 
-    pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
+    pch = strtok_r(NULL," \r\n\t:/-", &saveptr2);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     duration1 = atoi(pch);
 
-    pch = strtok_r(linebuf," \r\n\t:/-", &saveptr);
+    pch = strtok_r(NULL," \r\n\t:/-", &saveptr2);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     duration2 = atoi(pch);
 
-   
 
     line++;
     if (lines && line>=lines)
       break;
+
+    if (debug && (line % 100000 == 0))
+      logstream(LOG_INFO)<<"Parsed line: " << line << endl;
 
     fprintf(fout.outf, "%u %u %lu %u\n", from, to, ptime, duration2); 
   } 
@@ -180,7 +183,7 @@ int main(int argc,  const char *argv[]) {
   if (in_files.size() == 0)
     logstream(LOG_FATAL)<<"Failed to read any file names from the list file: " << dir << std::endl;
 
-#pragma omp parallel for
+//#pragma omp parallel for
   for (uint i=0; i< in_files.size(); i++)
     parse(i);
 
