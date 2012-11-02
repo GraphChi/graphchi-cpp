@@ -82,7 +82,7 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr, * linebuf;
+  char * saveptr = NULL, * linebuf = NULL;
   size_t line = 1;
   double total = 0;
   uint from = 0, to = 0;

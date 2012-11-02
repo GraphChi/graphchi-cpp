@@ -50,7 +50,7 @@ uint maxto = 0;
 /* 2011-12-05 00:00:00  */
 
 bool convert_string_to_time(char * linebuf, size_t line, int i, long int & outtime){
-  char * saveptr;
+  char * saveptr = NULL;
   struct tm ptm;
   memset(&ptm, 0, sizeof(ptm));
 
@@ -101,7 +101,7 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr2, * linebuf, linebuf_debug[1024];
+  char * saveptr2 = NULL, * linebuf = NULL, linebuf_debug[1024];
   size_t line = 1;
   uint from, to, duration1, duration2;
   long int ptime;
