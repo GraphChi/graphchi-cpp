@@ -81,24 +81,31 @@ void save_map_to_text_file(const std::map<uint,std::string> & map, const std::st
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
 }
 
-
+/*
+ * assign a consecutive id from either the [from] or [to] ids.
+ */
 void assign_id(map<string,uint> & string2nodeid, map<uint,string> & nodeid2hash, uint & outval, const string &name, bool from){
 
   map<string,uint>::iterator it = string2nodeid.find(name);
+  //if an id was already assigned, return it
   if (it != string2nodeid.end()){
     outval = it->second;
     return;
   }
   mymutex.lock();
+  //assign a new id
   outval = string2nodeid[name];
   if (outval == 0){
+    //update the mapping between string to the id
     string2nodeid[name] = (from? ++conseq_id : ++conseq_id2);
-    outval = conseq_id;
+    //return the id
+    outval = (from? conseq_id : conseq_id2);
+    //store the reverse mapping between id to string
     nodeid2hash[outval] = name;
     if (from)
       M = std::max(M, conseq_id);
     else
-      N = std::max(N, conseq_id);
+      N = std::max(N, conseq_id2);
   }
   mymutex.unlock();
 }
