@@ -281,7 +281,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     printf("Closest is: %d with distance %g\n", (int)vdata.ids[0], vdata.ratings[0]);
 
   if (vertex.id() % 1000 == 0)
-    printf("Computing recommendaitons for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
+    printf("Computing recommendations for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
   
   
   }
