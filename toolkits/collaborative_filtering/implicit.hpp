@@ -44,7 +44,7 @@ uint add_implicit_edges4(int type, sharder<als_edge_type>& shrd){
   };
 
   uint added = 0;
-  uint toadd  = implicitratingpercentage*N*M;
+  uint toadd  = (uint)(implicitratingpercentage*N*M);
   logstream(LOG_INFO)<<"Going to add: " << toadd << " implicit edges. " << std::endl;
   assert(toadd >= 1);
   for (uint j=0; j< toadd; j++){
@@ -67,7 +67,7 @@ uint add_implicit_edges(int type, sharder<als_edge_type>& shrd ){
   };
 
   uint added = 0;
-  uint toadd  = implicitratingpercentage*N*M;
+  uint toadd  = (uint)(implicitratingpercentage*N*M);
   logstream(LOG_INFO)<<"Going to add: " << toadd << " implicit edges. " << std::endl;
   assert(toadd >= 1);
   for (uint j=0; j< toadd; j++){

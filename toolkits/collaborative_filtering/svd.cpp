@@ -111,7 +111,7 @@ int nv = 0;
 int nsv = 0;
 double tol = 1e-8;
 bool finished = false;
-double ortho_repeats = 3;
+int ortho_repeats = 3;
 bool save_vectors = false;
 std::string datafile; 
 std::string format = "matrixmarket";

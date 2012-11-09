@@ -126,7 +126,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       if (isuser)
         sparsity_level -= user_sparsity;
       else sparsity_level -= movie_sparsity;
-      vdata_vec = CoSaMP(XtX, Xty, ceil(sparsity_level*(double)NLATENT), 10, 1e-4, NLATENT); 
+      vdata_vec = CoSaMP(XtX, Xty, (int)ceil(sparsity_level*(double)NLATENT), 10, 1e-4, NLATENT); 
     }
     else vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }

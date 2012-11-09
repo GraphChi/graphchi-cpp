@@ -179,7 +179,7 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
 }; //end Axb
 
 
-void init_math(bipartite_graph_descriptor & _info, double ortho_repeats = 3){
+void init_math(bipartite_graph_descriptor & _info, int ortho_repeats = 3){
   info = _info;
   mi.reset_offsets();
   mi.ortho_repeats = ortho_repeats;
