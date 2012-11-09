@@ -58,10 +58,6 @@ using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-map<string,uint> string2nodeid;
-map<uint,string> nodeid2hash;
-uint conseq_id;
-mutex mymutex;
 timer mytime;
 size_t lines;
 unsigned long long total_lines = 0;
@@ -132,17 +128,15 @@ void parse(int i){
       break;
 
     if (debug && (line % 50000 == 0))
-      logstream(LOG_INFO) << "Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
-    if (string2nodeid.size() % 500000 == 0)
-      logstream(LOG_INFO) << "Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
+      logstream(LOG_INFO) << "Parsed line: " << line << std::endl;
+
   } 
 
   if (last_from != 0 && last_to != 0)
      fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
  
-  logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl <<
-    "total map size: " << string2nodeid.size() << endl;
 
+  logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl;
 }
 
 
