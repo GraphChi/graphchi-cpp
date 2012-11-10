@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5F3D4F19164DF8CC003A50A6 /* inmemconncomps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F3D4F17164DF8CC003A50A6 /* inmemconncomps.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
@@ -174,6 +175,7 @@
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
 		5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = binary_adjacency_list.hpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
+		5F3D4F17164DF8CC003A50A6 /* inmemconncomps.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
 		5F54B80615FD224F00B3842C /* als */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = als; sourceTree = "<group>"; };
 		5F54B80715FD224F00B3842C /* als.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = als.cpp; sourceTree = "<group>"; };
 		5F54B80815FD224F00B3842C /* als.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = als.dSYM; sourceTree = "<group>"; };
@@ -805,6 +807,7 @@
 				5FCC1EC11599F59A0003D0E9 /* pagerank_functional.cpp */,
 				5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */,
 				5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */,
+				5F3D4F17164DF8CC003A50A6 /* inmemconncomps.cpp */,
 			);
 			name = example_apps;
 			path = ../example_apps;
@@ -1068,6 +1071,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
+				5F3D4F19164DF8CC003A50A6 /* inmemconncomps.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
