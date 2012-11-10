@@ -16,12 +16,32 @@
  *
  *  Written by Danny Bickson, CMU
  *
+ *  This program takes a file in the following graph format format:
+ *  1 1 050803 156
+ *  1 1 050803 12
+ *  2 2 050803 143
+ *  3 3 050803 0
+ *  4 4 050803 0
+ *  5 5 050803 1
+ *  6 6 050803 68
  *
- *  This program reads a text input file, where each line 
- *  is taken from another document. The program counts the number of word
- *  occurances for each line (document) and outputs a document word count to be used
- *  in LDA.
- */
+ *  Namely, a text file where the first field is a "from" field (uint >=1), second field is a "to" field (uint > = 1)
+ *  and then there is a list of fields seperated by spaces (either strings or numbers) which characterize this edge.
+ *
+ *  The input file is sorted by the from and to fields.
+ *
+ *  The output of this program is a sorted graph, where edges values are aggregated together, s.t. each edge
+ *  appears only once:
+ *  1 1 050803 168
+ *  2 2 050803 143
+ *  3 3 050803 0
+ *  4 4 050803 0
+ *  5 5 050803 1
+ *  6 6 050803 68
+ *  
+ *  Namely, an aggregation of the value in column defined by --col=XX command line flag,
+ *  in the above example 168 = 156+12
+ *  */
 
 
 #include <cstdio>
@@ -38,61 +58,18 @@ using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-map<string,uint> string2nodeid;
-map<uint,string> nodeid2hash;
-uint conseq_id;
-mutex mymutex;
 timer mytime;
 size_t lines;
 unsigned long long total_lines = 0;
 string dir;
 string outdir;
 std::vector<std::string> in_files;
+int col = 3;
 
 //non word tokens that will be removed in the parsing
 //it is possible to add additional special characters or remove ones you want to keep
 const char spaces[] = {" \r\n\t!?@#$%^&*()-+.,~`'\";:"};
 
-void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
-    std::map<std::string,uint>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second);
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
-
-
-void save_map_to_text_file(const std::map<uint,std::string> & map, const std::string filename){
-    std::map<uint,std::string>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%u %s\n", it->first, it->second.c_str());
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
-
-
-void assign_id(uint & outval, const string &name){
-
-  map<string,uint>::iterator it = string2nodeid.find(name);
-  if (it != string2nodeid.end()){
-    outval = it->second;
-    return;
-  }
-  mymutex.lock();
-  outval = string2nodeid[name];
-  if (outval == 0){
-    string2nodeid[name] = ++conseq_id;
-    outval = conseq_id;
-    nodeid2hash[outval] = name;
-  }
-  mymutex.unlock();
-}
 
 
  
@@ -103,49 +80,63 @@ void parse(int i){
   size_t linesize = 0;
   char * saveptr = NULL, * linebuf = NULL;
   size_t line = 1;
-  uint id;
-
+  double total = 0;
+  uint from = 0, to = 0;
+  uint last_from = 0, last_to = 0;
   while(true){
-    std::map<uint,uint> wordcount;
     int rc = getline(&linebuf, &linesize, fin.outf);
     if (rc < 1)
       break;
     if (strlen(linebuf) <= 1) //skip empty lines
       continue; 
 
+    //identify from and to fields
     char *pch = strtok_r(linebuf, spaces, &saveptr);
-    if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(id, pch);
-    wordcount[id]+= 1;
+    if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; continue; }
+    from = atoi(pch);
 
-    while(pch != NULL){
+    pch = strtok_r(NULL, spaces ,&saveptr);
+    if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; continue; }
+    to = atoi(pch);
+
+    int col_num = 3;
+    //go over the rest of the line
+    while(true){
       pch = strtok_r(NULL, spaces ,&saveptr);
-      if (pch != NULL && strlen(pch) > 1){ 
-        assign_id(id, pch);
-        wordcount[id]+= 1;
+      if (pch == NULL && col_num > col)
+        break;
+      if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; continue; }
+    
+     //aggregate the requested column 
+      if (col == col_num){ 
+        if (from != last_from || to != last_to){
+           if (last_from != 0 && last_to != 0)
+              fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
+           total = atof(pch);
+        }
+        else
+          total += atof(pch);
       }
-    }  
-
-    total_lines++;
-
-    std::map<uint,uint>::const_iterator it;
-    for (it = wordcount.begin(); it != wordcount.end(); it++){
-       fprintf(fout.outf, "%lu %u %u\n", line, it->first, it->second);
+      col_num++; 
     }
 
+         
+    last_from = from; last_to = to;
+    total_lines++;
     line++;
     if (lines && line>=lines)
       break;
 
     if (debug && (line % 50000 == 0))
-      logstream(LOG_INFO) << "Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
-    if (string2nodeid.size() % 500000 == 0)
-      logstream(LOG_INFO) << "Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
+      logstream(LOG_INFO) << "Parsed line: " << line << std::endl;
+
   } 
 
-  logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl <<
-    "total map size: " << string2nodeid.size() << endl;
+  if (last_from != 0 && last_to != 0)
+     fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
+ 
 
+  logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl;
 }
 
 
@@ -161,6 +152,7 @@ int main(int argc,  const char *argv[]) {
   debug = get_option_int("debug", 0);
   dir = get_option_string("file_list");
   lines = get_option_int("lines", 0);
+  col = get_option_int("col", 3);
   omp_set_num_threads(get_option_int("ncpus", 1));
   mytime.start();
 
@@ -185,8 +177,6 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
 
-  save_map_to_text_file(string2nodeid, outdir + dir + "map.text");
-  save_map_to_text_file(nodeid2hash, outdir + dir + "reverse.map.text");
   return 0;
 }
 

@@ -67,7 +67,7 @@ float svdpp_predict(const vertex_data& user, const vertex_data& movie, const flo
   prediction = std::max((double)prediction, minval);
   float err = rating - prediction;
   if (std::isnan(err))
-    logstream(LOG_FATAL)<<"Got into numerical errors. Try to decrease step size using svdpp)" << std::endl;
+    logstream(LOG_FATAL)<<"Got into numerical errors. Try to decrease step size using the command line: svdpp_user_bias_step, svdpp_item_bias_step, svdpp_user_factor2_step, svdpp_user_factor_step, svdpp_item_step" << std::endl;
   return err*err; 
 }
 
@@ -279,8 +279,10 @@ int main(int argc, const char ** argv) {
   svdpp.usrBiasReg  =   get_option_float("svdpp_user_bias_reg", 1e-3);
   svdpp.usrFctrStep  =   get_option_float("svdpp_user_factor_step", 1e-3);
   svdpp.usrFctrReg  =   get_option_float("svdpp_user_factor_reg", 1e-3);
-  svdpp.itmFctr2Reg =   get_option_float("svdpp_user_factor2_reg", 1e-3);
-  svdpp.itmFctr2Step =   get_option_float("svdpp_user_factor2_step", 1e-3);
+  svdpp.itmFctrReg =   get_option_float("svdpp_item_factor_reg", 1e-3);
+  svdpp.itmFctrStep =   get_option_float("svdpp_item_factor_step", 1e-3);
+  svdpp.itmFctr2Reg =   get_option_float("svdpp_item_factor2_reg", 1e-3);
+  svdpp.itmFctr2Step =   get_option_float("svdpp_item_factor2_step", 1e-3);
 
   maxval            = get_option_float("maxval", 1e100);
   minval            = get_option_float("minval", -1e100);

@@ -190,7 +190,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     // Compute XtX and Xty (NOTE: unweighted)
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data().weight;                
-      uint time = vertex.edge(e)->get_data().time;
+      uint time = (uint)vertex.edge(e)->get_data().time;
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       vertex_data & time_node = latent_factors_inmem[time];
       assert(time != vertex.id() && time != vertex.edge(e)->vertex_id());

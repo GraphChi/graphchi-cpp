@@ -247,7 +247,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     return;
 
   vertex_data & vdata = latent_factors_inmem[vertex.id()];
-  int howmany = N*knn_sample_percent;
+  int howmany = (int)(N*knn_sample_percent);
   assert(howmany > 0 );
   vec distances = vec::Zero(howmany);
   ivec indices = ivec(howmany);

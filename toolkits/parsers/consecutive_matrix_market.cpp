@@ -81,24 +81,31 @@ void save_map_to_text_file(const std::map<uint,std::string> & map, const std::st
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
 }
 
-
+/*
+ * assign a consecutive id from either the [from] or [to] ids.
+ */
 void assign_id(map<string,uint> & string2nodeid, map<uint,string> & nodeid2hash, uint & outval, const string &name, bool from){
 
   map<string,uint>::iterator it = string2nodeid.find(name);
+  //if an id was already assigned, return it
   if (it != string2nodeid.end()){
     outval = it->second;
     return;
   }
   mymutex.lock();
+  //assign a new id
   outval = string2nodeid[name];
   if (outval == 0){
+    //update the mapping between string to the id
     string2nodeid[name] = (from? ++conseq_id : ++conseq_id2);
-    outval = conseq_id;
+    //return the id
+    outval = (from? conseq_id : conseq_id2);
+    //store the reverse mapping between id to string
     nodeid2hash[outval] = name;
     if (from)
       M = std::max(M, conseq_id);
     else
-      N = std::max(N, conseq_id);
+      N = std::max(N, conseq_id2);
   }
   mymutex.unlock();
 }
@@ -110,7 +117,7 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr, * linebuf;
+  char * saveptr = NULL, * linebuf = NULL;
   size_t line = 1;
   uint from,to;
   bool matrix_market = false;
@@ -144,8 +151,8 @@ void parse(int i){
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     assign_id(string2nodeid2,nodeid2hash2, to, pch, false);
 
-    //read [VAL]
-    pch = strtok_r(NULL,string_to_tokenize, &saveptr);
+    //read the rest of the line
+    pch = strtok_r(NULL, "\n", &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     if (tsv)
       fprintf(fout.outf, "%u\t%u\t%s\n", from, to, pch);
@@ -186,7 +193,7 @@ int main(int argc,  const char *argv[]) {
   lines = get_option_int("lines", 0);
   omp_set_num_threads(get_option_int("ncpus", 1));
   tsv = get_option_int("tsv", 0); //is this tab seperated file?
-  csv = get_option_int("csv", 0); // is the command seperated file?
+  csv = get_option_int("csv", 0); // is the comma seperated file?
   mytime.start();
 
 

@@ -176,7 +176,7 @@ void read_factors(std::string base_filename, bool users) {
    }
 
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << (users? M :N) << " x " << D << ", non-zeros: " << M*D << std::endl;
+    << (users? M :N) << " x " << D << ", non-zeros: " << (users? M :N)*D << std::endl;
 
   double val;
   nz = M*D;
@@ -238,7 +238,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     return;
 
   vertex_data & vdata = latent_factors_inmem[vertex.id()];
-  int howmany = N*knn_sample_percent;
+  int howmany = (int)(N*knn_sample_percent);
   assert(howmany > 0 );
   vec distances = vec::Zero(howmany);
   ivec indices = ivec(howmany);
@@ -281,7 +281,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     printf("Closest is: %d with distance %g\n", (int)vdata.ids[0], vdata.ratings[0]);
 
   if (vertex.id() % 1000 == 0)
-    printf("Computing recommendaitons for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
+    printf("Computing recommendations for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
   
   
   }

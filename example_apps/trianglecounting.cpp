@@ -70,6 +70,16 @@ typedef uint32_t VertexDataType;
 typedef uint32_t EdgeDataType;
 
 
+/*
+ * Class for writing the output number of triangles for each node
+ */
+class OutputVertexCallback : public VCallback<VertexDataType> {
+  public:
+    virtual void callback(vid_t vertex_id, VertexDataType &value) {
+       if (value > 0)
+        std::cout << vertex_id << " " << value << std::endl;
+    }
+};
 
 /**
   * Code for intersection size computation and 
@@ -454,5 +464,10 @@ int main(int argc, const char ** argv) {
     /* Count triangles */
     size_t ntriangles = sum_vertices<vid_t, size_t>(filename + "_degord", 0, (vid_t)engine.num_vertices());
     std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
+
+    /* write the output */
+    OutputVertexCallback callback;
+    foreach_vertices<VertexDataType>(filename + "_degord", 0, engine.num_vertices(), callback);
+
     return 0;
 }

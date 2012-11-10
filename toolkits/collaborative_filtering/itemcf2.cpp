@@ -127,7 +127,7 @@ std::vector<vertex_data> latent_factors_inmem;
 struct dense_adj {
   sparse_vec edges;
   dense_adj() { }
-  int intersect(const dense_adj & other){
+  double intersect(const dense_adj & other){
     sparse_vec x1 = edges.unaryExpr(std::ptr_fun(equal_greater));
     sparse_vec x2 = other.edges.unaryExpr(std::ptr_fun(equal_greater));
     sparse_vec x3 = x1.cwiseProduct(x2);

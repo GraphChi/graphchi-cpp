@@ -310,3 +310,4 @@ namespace graphchi {
 }
 
 #endif
+

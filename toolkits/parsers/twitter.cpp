@@ -248,7 +248,7 @@ void parse(int i){
   out_file fout((outdir + in_files[i] + ".out"));
 
   size_t linesize = 0;
-  char * saveptr, * linebuf, buf1[256], linebuf_debug[1024];
+  char * saveptr = NULL, * linebuf = NULL, buf1[256], linebuf_debug[1024];
   size_t line = 1;
   uint id;
   long int ptime;
