@@ -370,8 +370,6 @@ namespace graphchi {
             binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
             max_vertex_id = (vid_t) reader.get_max_vertex_id();
             
-            
-            
             degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));        
             vid_t nverts = max_vertex_id + 1;
             for(vid_t i=0; i < nverts; i++) {
