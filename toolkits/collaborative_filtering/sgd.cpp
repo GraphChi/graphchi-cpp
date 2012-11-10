@@ -39,7 +39,7 @@
 
 /* SGD-related classes are contained in sgd.hpp */
 #include "sgd.hpp"
-
+#include "util.hpp"
 using namespace graphchi;
 
 
@@ -210,7 +210,12 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
   }
 
- 
+ std::cout<<"[feature_width] => [" << NLATENT << "]" << std::endl;
+ std::cout<<"[users] => [" << M << "]" << std::endl;
+ std::cout<<"[movies] => [" << N << "]" <<std::endl;
+ std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
+ std::cout<<"[number_of_threads] => [" << number_of_omp_threads() << "]" <<std::endl;
+ std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
   /* Run */
   SGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
