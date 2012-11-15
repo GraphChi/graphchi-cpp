@@ -522,6 +522,7 @@ return calc_manhatten_distance(pivot_edges.edges,
     graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, scheduler, m); 
     engine.set_modifies_inedges(false);
     engine.set_modifies_outedges(false);
+    engine.set_enable_deterministic_parallelism(false);
     engine.set_disable_vertexdata_storage();  
 
     //open output files as the number of operating threads

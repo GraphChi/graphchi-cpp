@@ -264,6 +264,7 @@ int main(int argc, const char ** argv) {
   BIASSGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   engine.set_disable_vertexdata_storage();  
+  engine.set_enable_deterministic_parallelism(false);
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
   pengine = &engine;

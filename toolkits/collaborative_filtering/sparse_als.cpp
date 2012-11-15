@@ -251,6 +251,7 @@ if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algori
   /* Run */
   ALSVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
+  engine.set_enable_deterministic_parallelism(false);
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
   engine.set_disable_vertexdata_storage();  
