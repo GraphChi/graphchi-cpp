@@ -6,13 +6,13 @@
  * @section LICENSE
  *
  * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,9 +37,9 @@
 #include "preprocessing/formats/binary_adjacency_list.hpp"
 
 /**
-  * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if 
-  * the particular app being compiled does not use a function.
-  */
+ * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if
+ * the particular app being compiled does not use a function.
+ */
 #ifdef __GNUC__
 #define VARIABLE_IS_NOT_USED __attribute__ ((unused))
 #else
@@ -91,11 +91,11 @@ namespace graphchi {
     
     static void parse(bool &x, const char * s) {
         x = atoi(s) == 1;
-    }   
+    }
     
     static  void parse(double &x, const char * s) {
         x = atof(s);
-    }   
+    }
     
     static void parse(short &x, const char * s) {
         x = (short) atoi(s);
@@ -113,7 +113,7 @@ namespace graphchi {
     
     // Removes \n from the end of line
     void FIXLINE(char * s) {
-        int len = (int) strlen(s)-1; 	  
+        int len = (int) strlen(s)-1;
         if(s[len] == '\n') s[len] = 0;
     }
     
@@ -137,18 +137,30 @@ namespace graphchi {
         while(fgets(s, 1024, inf) != NULL) {
             linenum++;
             if (linenum % 10000000 == 0) {
-                logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl; 
+                logstream(LOG_DEBUG) << "Read " << linenum << " lines, " << bytesread / 1024 / 1024.  << " MB" << std::endl;
             }
             FIXLINE(s);
             bytesread += strlen(s);
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             
-            char delims[] = "\t ";	
+            char delims[] = "\t ";
             char * t;
             t = strtok(s, delims);
+            if (t == NULL) {
+                logstream(LOG_ERROR) << "Input file is not in right format. "
+                << "Expecting \"<from>\t<to>\". "
+                << "Current line: \"" << s << "\"\n";
+                assert(false);
+            }
             vid_t from = atoi(t);
             t = strtok(NULL, delims);
+            if (t == NULL) {
+                logstream(LOG_ERROR) << "Input file is not in right format. "
+                << "Expecting \"<from>\t<to>\". "
+                << "Current line: \"" << s << "\"\n";
+                assert(false);
+            }
             vid_t to = atoi(t);
             
             /* Check if has value */
@@ -180,7 +192,7 @@ namespace graphchi {
         logstream(LOG_INFO) << "Reading in adjacency list format!" << std::endl;
         
         int maxlen = 100000000;
-        char * s = (char*) malloc(maxlen); 
+        char * s = (char*) malloc(maxlen);
         
         size_t bytesread = 0;
         
@@ -196,7 +208,7 @@ namespace graphchi {
             }
             FIXLINE(s);
             bytesread += strlen(s);
-
+            
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             char * t = strtok(s, delims);
@@ -222,11 +234,11 @@ namespace graphchi {
     }
     
     
-    /** 
-      * A abstract class for defining preprocessor objects
-      * that modify the preprocessed binary input prior
-      * to sharding.
-      */
+    /**
+     * A abstract class for defining preprocessor objects
+     * that modify the preprocessed binary input prior
+     * to sharding.
+     */
     template <typename EdgeDataType>
     class SharderPreprocessor {
     public:
@@ -235,10 +247,10 @@ namespace graphchi {
         virtual void reprocess(std::string preprocFilename, std::string basefileName) = 0;
     };
     
-    /** 
-      * Converts a graph input to shards. Preprocessing has several steps, 
-      * see sharder.hpp for more information.
-      */
+    /**
+     * Converts a graph input to shards. Preprocessing has several steps,
+     * see sharder.hpp for more information.
+     */
     template <typename EdgeDataType>
     int convert(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         std::string suffix = "";
@@ -286,20 +298,20 @@ namespace graphchi {
         if (preprocessor != NULL) {
             suffix = preprocessor->getSuffix();
         }
-
+        
         /* Check if input file is already sharded */
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             return nshards;
-        } 
+        }
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
         nshards = convert<EdgeDataType>(basefilename, nshards_string, preprocessor);
         return nshards;
     }
     
-    /** 
-     * Special machinery for reordering vertices by 
+    /**
+     * Special machinery for reordering vertices by
      * their degree, i.e setting their vertex ids to be in the order
      * of vertex degree. This is used at least by the Triangle counting application.
      */
@@ -316,14 +328,14 @@ namespace graphchi {
         return a.deg < b.deg || (a.deg == b.deg && a.id < b.id);
     }
     
-    /** 
-      * Special preprocessor which relabels vertices in ascending order
-      * of their degree.
-      */
+    /**
+     * Special preprocessor which relabels vertices in ascending order
+     * of their degree.
+     */
     template <typename EdgeDataType>
     class OrderByDegree : public SharderPreprocessor<EdgeDataType> {
         int phase;
-
+        
     public:
         typedef edge_with_value<EdgeDataType> edge_t;
         vid_t * translate_table;
@@ -352,11 +364,11 @@ namespace graphchi {
         }
         
         /**
-          * Callback function that binary_adjacency_list_reader
-          * invokes. In first phase, the degrees of vertice sare collected.
-          * In the next face, they are written out to the degree-ordered data.
-          * Note: this version does not preserve edge values!
-          */
+         * Callback function that binary_adjacency_list_reader
+         * invokes. In first phase, the degrees of vertice sare collected.
+         * In the next face, they are written out to the degree-ordered data.
+         * Note: this version does not preserve edge values!
+         */
         void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
             if (phase == 0) {
                 degarray[from].deg++;
@@ -370,7 +382,7 @@ namespace graphchi {
             binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
             max_vertex_id = (vid_t) reader.get_max_vertex_id();
             
-            degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));        
+            degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));
             vid_t nverts = max_vertex_id + 1;
             for(vid_t i=0; i < nverts; i++) {
                 degarray[i].id = i;
@@ -405,14 +417,14 @@ namespace graphchi {
             
             writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
             binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
-
+            
             phase = 1;
             reader2.read_edges(this);
             
             writer->finish();
             delete writer;
             writer = NULL;
-                           
+            
             delete translate_table;
         }
         
