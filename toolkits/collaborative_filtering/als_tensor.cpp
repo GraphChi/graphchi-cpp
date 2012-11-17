@@ -261,7 +261,7 @@ struct  MMOutputter{
 };
 
 
-void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+void output_als_result(std::string filename) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains tensor-ALS output matrix U. In each row NLATENT factors of a single user node.");
   MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains tensor-ALS  output matrix V. In each row NLATENT factors of a single item node.");
   MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains tensor-ALS  output matrix T. In each row NLATENT factors of a single time node.");
@@ -338,6 +338,7 @@ int main(int argc, const char ** argv) {
   m.set("latent_dimension", NLATENT);
 
   /* Output test predictions in matrix-market format */
+  output_als_result(training);
   test_predictions3(&als_tensor_predict);    
 
   if (unittest == 1){
