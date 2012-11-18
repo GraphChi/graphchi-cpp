@@ -273,11 +273,17 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
 }
 
 
-void training_rmse(int iteration, graphchi_context &gcontext){
+void training_rmse(int iteration, graphchi_context &gcontext, bool items){
     last_training_rmse = dtraining_rmse;
     dtraining_rmse = 0;
+    int start = 0;
+    int end = M;
+    if (items){
+      start = M;
+      end = M+N;
+    }
 #pragma omp parallel for reduction(+:dtraining_rmse)
-    for (int i=0; i< (int)M; i++){
+    for (int i=start; i< (int)end; i++){
       dtraining_rmse += latent_factors_inmem[i].rmse;
     }
     dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
