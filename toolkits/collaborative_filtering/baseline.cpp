@@ -219,6 +219,7 @@ int main(int argc, const char ** argv) {
   else logstream(LOG_FATAL)<<"Unsupported algorithm name. Should be --algorithm=XX where XX is one of [global_mean,user_mean,item_mean] for example --algorithm=global_mean" << std::endl;
 
 
+  parse_command_line_args();
   mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
