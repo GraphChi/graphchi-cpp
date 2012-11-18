@@ -30,22 +30,13 @@
  * For the RA index see the above paper, equation (3)
  */
 
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <iomanip>
-#include <set>
 
-#include "graphchi_basic_includes.hpp"
-#include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
-#include "api/chifilenames.hpp"
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-#include "eigen_wrapper.hpp"
-#include "util.hpp"
+#include <set>
+#include <iomanip>
+#include "common.hpp"
 #include "timer.hpp"
+#include "eigen_wrapper.hpp"
+#include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
 
 using namespace graphchi;
 
@@ -55,15 +46,6 @@ enum DISTANCE_METRICS{
   RA = 2,
 };
 
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, K;
-size_t L;
-uint Me, Ne, Le;
-double globalMean = 0;
 int min_allowed_intersection = 1;
 size_t written_pairs = 0;
 size_t item_pairs_compared = 0;
@@ -90,9 +72,6 @@ struct vertex_data{
 };
 std::vector<vertex_data> latent_factors_inmem;
 #include "io.hpp"
-
-
-
 
 
 struct dense_adj {
@@ -354,11 +333,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     } 
   }
 
-  /**
-   * Called after an iteration has finished.
-   */
-  void after_iteration(int iteration, graphchi_context &gcontext) {
-  }
 
   /**
    * Called before an execution interval is started.
@@ -392,11 +366,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
   }
 
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -404,8 +373,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
 
 int main(int argc, const char ** argv) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+
+  print_copyright();
 
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
@@ -415,17 +384,11 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("triangle-counting");    
   /* Basic arguments for application */
-  training = get_option_string("training");  // Base filename
-  int niters               = get_option_int("max_iter", 100000); // Automatically determined during running
-  bool scheduler           = true;
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
-  int quiet                = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-
   distance_metric          = get_option_int("distance", JACKARD);
   if (distance_metric != JACKARD && distance_metric != AA && distance_metric != RA)
     logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACKARD, 1) AA, 2) RA" << std::endl;  
+  parse_command_line_args();
 
   mytimer.start();
   int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
@@ -443,11 +406,8 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, scheduler, m); 
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
-  engine.set_disable_vertexdata_storage();  
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
+  set_engine_flags(engine);
 
   //open output files as the number of operating threads
   out_files.resize(number_of_omp_threads());

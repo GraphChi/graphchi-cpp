@@ -32,15 +32,9 @@
 
 
 
-#include <string>
-#include <algorithm>
-
 #include "graphchi_basic_includes.hpp"
 #include <assert.h>
-#include <string>
-
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
+#include "common.hpp"
 
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
@@ -49,30 +43,14 @@
 #include "eigen_wrapper.hpp"
 using namespace graphchi;
 
-
-#ifndef NLATENT
-#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
-#endif
-
-double minval = -1e100;    //min allowed rating
-double maxval = 1e100;     //max allowed rating
-std::string training;      //training input file
-std::string validation;    //validation input file
-std::string test;          //test input file
-uint M;                    //number of users
-uint N;                    //number of items
-uint Me;                   //number of users (validation file)      
-uint Ne;                   //number of items (validation file)
-uint Le;                   //number of ratings (validation file)
-uint K;                    //unused
-size_t L;                  //number of ratings (training file)
-double globalMean = 0;     //global mean rating - unused
-double rmse=0.0;           //current error
+//types of algorithms supported when computing prediction
 enum{
   GLOBAL_MEAN = 0, USER_MEAN = 1, ITEM_MEAN = 2
 };
+
 int algo = GLOBAL_MEAN;
 std::string algorithm;
+
 struct vertex_data {
   double mean_rating; 
   double rmse;        
@@ -86,13 +64,8 @@ struct vertex_data {
 };
 
 #include "util.hpp"
-using namespace graphchi;
 
 
-/**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
 typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
@@ -101,7 +74,6 @@ std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
 #include "io.hpp"
-
 
 
 /** compute a missing value based on SGD algorithm */
@@ -192,9 +164,9 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
 };
 
 //struct for writing the output feature vectors into file
-struct  MMOutputter{
+struct  MMOutputter2{
   FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+  MMOutputter2(std::string fname, uint start, uint end, std::string comment)  {
     MM_typecode matcode;
     set_matcode(matcode);     
     outf = fopen(fname.c_str(), "w");
@@ -207,7 +179,7 @@ struct  MMOutputter{
       fprintf(outf, "%1.12e\n", latent_factors_inmem[i].mean_rating);
   }
 
-  ~MMOutputter() {
+  ~MMOutputter2() {
     if (outf != NULL) fclose(outf);
   }
 
@@ -216,10 +188,10 @@ struct  MMOutputter{
 //dump output to file
 void output_baseline_result(std::string filename) {
   if (algo == USER_MEAN){
-    MMOutputter mmoutput_left(filename + ".baseline_user", 0, M, "This file contains Baseline output matrix U. In each row rating mean a single user node.");
+    MMOutputter2 mmoutput_left(filename + ".baseline_user", 0, M, "This file contains Baseline output matrix U. In each row rating mean a single user node.");
   }
   else if (algo == ITEM_MEAN){
-    MMOutputter mmoutput_right(filename + ".baseline_item", M ,M+N,  "This file contains Baseline  output vector V. In each row rating mean of a single item node.");
+    MMOutputter2 mmoutput_right(filename + ".baseline_item", M ,M+N,  "This file contains Baseline  output vector V. In each row rating mean of a single item node.");
 
   }
   logstream(LOG_INFO) << "Baseline output files (in matrix market format): " << filename << (algo == USER_MEAN ? ".baseline_user" : ".baseline_item") << std::endl;
@@ -227,8 +199,8 @@ void output_baseline_result(std::string filename) {
 
 
 int main(int argc, const char ** argv) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+
+  print_copyright();
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -237,22 +209,6 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("sgd-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base training
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-
   algorithm     = get_option_string("algorithm", "global_mean");
   if (algorithm == "global_mean")
     algo = GLOBAL_MEAN;
@@ -260,6 +216,8 @@ int main(int argc, const char ** argv) {
     algo = USER_MEAN;
   else if (algorithm == "item_mean")
     algo = ITEM_MEAN;
+  else logstream(LOG_FATAL)<<"Unsupported algorithm name. Should be --algorithm=XX where XX is one of [global_mean,user_mean,item_mean] for example --algorithm=global_mean" << std::endl;
+
 
   mytimer.start();
 
@@ -267,27 +225,18 @@ int main(int argc, const char ** argv) {
   int nshards = convert_matrixmarket<float>(training);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
 
-  std::cout<<"[feature_width] => [" << NLATENT << "]" << std::endl;
-  std::cout<<"[users] => [" << M << "]" << std::endl;
-  std::cout<<"[movies] => [" << N << "]" <<std::endl;
-  std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
-  std::cout<<"[number_of_threads] => [" << number_of_omp_threads() << "]" <<std::endl;
-  std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
+  print_config();
 
   /* Run */
   BaselineVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  engine.set_disable_vertexdata_storage();  
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
+  set_engine_flags(engine); 
   pengine = &engine;
   engine.run(program, 1);
 
   if (algo == USER_MEAN || algo == ITEM_MEAN)
     output_baseline_result(training);
   test_predictions(&baseline_predict);    
-
 
   /* Report execution metrics */
   metrics_report(m);

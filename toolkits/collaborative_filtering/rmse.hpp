@@ -32,7 +32,6 @@ double last_training_rmse = 0;
 double dvalidation_rmse = 0;
 double last_validation_rmse = 0;
 
-int halt_on_rmse_increase = 0;//stop engine when RMSE starts to increase
 /**
   compute predictions on test data
   */
@@ -273,7 +272,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
 }
 
 
-void training_rmse(int iteration, graphchi_context &gcontext, bool items){
+void training_rmse(int iteration, graphchi_context &gcontext, bool items = false){
     last_training_rmse = dtraining_rmse;
     dtraining_rmse = 0;
     int start = 0;

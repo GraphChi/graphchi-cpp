@@ -35,11 +35,31 @@
 
 #include "graphchi_basic_includes.hpp"
 
-/* ALS-related classes are contained in als.hpp */
-#include "als.hpp"
 #include "cosamp.hpp"
+#include "eigen_wrapper.hpp"
+#include "common.hpp"
 
 using namespace graphchi;
+
+double lambda = 0.065;
+
+struct vertex_data {
+  double pvec[NLATENT];
+  double rmse;
+
+  vertex_data() {
+    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
+    rmse = 0;
+  }
+
+  double dot(const vertex_data &oth) const {
+    double x=0;
+    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+    return x;
+  }
+
+};
+
 
 
 /**
@@ -141,17 +161,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     validation_rmse(&sparse_als_predict, gcontext);
   }
 
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -180,9 +189,10 @@ struct  MMOutputter{
 };
 
 
-void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex ,numvertices, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
+
+void output_als_result(std::string filename) {
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains ALS output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains ALS  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "ALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
@@ -190,8 +200,8 @@ void output_als_result(std::string filename, vid_t numvertices, vid_t max_left_v
 int main(int argc, const char ** argv) {
 
 
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+  print_copyright(); 
+ 
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -200,30 +210,12 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("als-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
   user_sparsity = get_option_float("user_sparsity", 0.9);
   movie_sparsity = get_option_float("movie_sparsity", 0.9);
   algorithm      = get_option_int("algorithm", SPARSE_USR_FACTOR);
 
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
-
+  parse_command_line_args();
   parse_implicit_command_line(); 
 
   if (user_sparsity < 0.5 || user_sparsity >= 1)
@@ -234,8 +226,6 @@ int main(int argc, const char ** argv) {
 
 if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algorithm != SPARSE_ITM_FACTOR)
     logstream(LOG_FATAL)<<"Algorithm should be 1 for SPARSE_USR_FACTOR, 2 for SPARSE_ITM_FACTOR and 3 for SPARSE_BOTH_FACTORS" << std::endl;
-
-  bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
@@ -250,19 +240,13 @@ if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algori
 
   /* Run */
   ALSVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
-  engine.set_disable_vertexdata_storage();  
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
 
-  m.set("train_rmse", rmse);
-  m.set("latent_dimension", NLATENT);
-
   /* Output latent factor matrices in matrix-market format */
-  output_als_result(training, M+N, M);
+  output_als_result(training);
   test_predictions(&sparse_als_predict);    
 
   /* Report execution metrics */

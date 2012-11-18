@@ -1,5 +1,9 @@
 #ifndef __CF_UTILS__
 #define __CF_UTILS__
+
+#include <omp.h>
+#include <stdio.h>
+
 int number_of_omp_threads(){
   int num_threads = 0;
   int id;

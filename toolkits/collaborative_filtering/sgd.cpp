@@ -34,14 +34,39 @@
 
 #include <string>
 #include <algorithm>
+#include <assert.h>
+#include "api/vertex_aggregator.hpp"
+#include "preprocessing/sharder.hpp"
 
-#include "graphchi_basic_includes.hpp"
+#include "eigen_wrapper.hpp"
+#include "common.hpp"
 
-/* SGD-related classes are contained in sgd.hpp */
-#include "sgd.hpp"
+double sgd_lambda = 1e-3; //sgd step size
+double sgd_gamma = 1e-3;  //sgd regularization
+double sgd_step_dec = 0.9; //sgd step decrement
+
+struct vertex_data {
+    double pvec[NLATENT]; //storing the feature vector
+    double rmse;          //tracking rmse
+    double bias;
+ 
+    vertex_data() {
+        for(int k=0; k < NLATENT; k++) 
+           pvec[k] =  drand48(); 
+        rmse = 0;
+        bias = 0;
+    }
+   
+    //dot product 
+    double dot(const vertex_data &oth) const {
+        double x=0;
+        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+        return x;
+    }
+    
+};
+
 #include "util.hpp"
-using namespace graphchi;
-
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -74,9 +99,6 @@ float sgd_predict(const vertex_data& user,
   return err*err; 
 
 }
-
-
-
 
 
 /**
@@ -131,10 +153,10 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 };
 
-//struct for writing the output feature vectors into file
 struct  MMOutputter{
   FILE * outf;
   MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+    assert(start < end);
     MM_typecode matcode;
     set_matcode(matcode);     
     outf = fopen(fname.c_str(), "w");
@@ -155,10 +177,11 @@ struct  MMOutputter{
 
 };
 
+
 //dump output to file
-void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+void output_sgd_result(std::string filename) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,numvertices,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
 
   logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
@@ -166,8 +189,8 @@ void output_sgd_result(std::string filename, vid_t numvertices, vid_t max_left_v
 
 
 int main(int argc, const char ** argv) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+
+  print_copyright();
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -177,27 +200,11 @@ int main(int argc, const char ** argv) {
   metrics m("sgd-inmemory-factors");
 
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base training
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
   sgd_lambda    = get_option_float("sgd_lambda", 1e-3);
   sgd_gamma     = get_option_float("sgd_gamma", 1e-3);
   sgd_step_dec  = get_option_float("sgd_step_dec", 0.9);
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
-
+  
+  parse_command_line_args();
   parse_implicit_command_line();
 
   mytimer.start();
@@ -205,30 +212,24 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
- if (load_factors_from_file){
+  
+/* load initial state from disk (optional) */
+  if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
     load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
   }
 
- std::cout<<"[feature_width] => [" << NLATENT << "]" << std::endl;
- std::cout<<"[users] => [" << M << "]" << std::endl;
- std::cout<<"[movies] => [" << N << "]" <<std::endl;
- std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
- std::cout<<"[number_of_threads] => [" << number_of_omp_threads() << "]" <<std::endl;
- std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
+  print_config();
+
   /* Run */
   SGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  engine.set_disable_vertexdata_storage();  
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
 
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  output_sgd_result(training, numvertices, M);
+  output_sgd_result(training);
   test_predictions(&sgd_predict);    
 
 

@@ -24,12 +24,9 @@
 
 
 #include "graphchi_basic_includes.hpp"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
+#include "common.hpp"
 
-#include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
 
 #include "types.hpp"
 #include "eigen_wrapper.hpp"
@@ -39,17 +36,7 @@ using namespace graphchi;
 using namespace std;
 
 
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, Me, Ne, Le, K;
-size_t L;
-double globalMean = 0;
 int nshards;
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
 int input_cols = 3;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
@@ -331,8 +318,8 @@ printf("\n");
 }
 
 int main(int argc,  const char *argv[]) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+ 
+  print_copyright();
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -340,27 +327,9 @@ int main(int argc,  const char *argv[]) {
     
 
   std::string vecfile;
-  int unittest = 0;
-
-  training = get_option_string("training");    // Base training
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  max_iter      = get_option_int("max_iter", 6);  // Number of iterations
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
 
   vecfile       = get_option_string("initial_vector", "");
   debug         = get_option_int("debug", 0);
-  unittest      = get_option_int("unittest", 0);
   ortho_repeats = get_option_int("ortho_repeats", 3); 
   nv = get_option_int("nv", 1);
   nsv = get_option_int("nsv", 1);
@@ -368,8 +337,7 @@ int main(int argc,  const char *argv[]) {
   save_vectors = get_option_int("save_vectors", 1);
   input_cols = get_option_int("input_cols", 3);
 
-  //clopts.attach_option("no_edge_data", &no_edge_data, no_edge_data, "matrix is binary (optional)");
-
+  parse_command_line_args();
   parse_implicit_command_line();
 
   if (nv < nsv){

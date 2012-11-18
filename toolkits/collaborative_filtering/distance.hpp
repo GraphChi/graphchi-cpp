@@ -1,3 +1,8 @@
+#ifndef _DISTANCE_HPP__
+#define _DISTANCE_HPP__
+#include "graphchi_basic_includes.hpp"
+
+
 typedef double flt_dbl;
 typedef sparse_vec sparse_flt_dbl_vec;
 typedef vec flt_dbl_vec;
@@ -143,4 +148,4 @@ flt_dbl calc_dot_product_distance( sparse_flt_dbl_vec & datapoint,  sparse_flt_d
          return dot_prod(datapoint, cluster);
 }
 
-
+#endif //_DISTANCE_HPP__

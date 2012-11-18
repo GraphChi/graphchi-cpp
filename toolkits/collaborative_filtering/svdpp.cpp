@@ -29,14 +29,58 @@
 
 
 
-#include <string>
-#include <algorithm>
-
 #include "graphchi_basic_includes.hpp"
-
-/* SVDPP-related classes are contained in svdpp.hpp */
-#include "svdpp.hpp"
+#include "common.hpp"
 using namespace graphchi;
+
+
+struct svdpp_params{
+  float itmBiasStep;
+  float itmBiasReg;
+  float usrBiasStep;
+  float usrBiasReg;
+  float usrFctrStep;
+  float usrFctrReg;
+  float itmFctrStep;
+  float itmFctrReg; //gamma7
+  float itmFctr2Step;
+  float itmFctr2Reg;
+  float step_dec;
+
+  svdpp_params(){
+    itmBiasStep = 1e-4f;
+    itmBiasReg = 1e-4f;
+    usrBiasStep = 1e-4f;
+    usrBiasReg = 2e-4f;
+    usrFctrStep = 1e-4f;
+    usrFctrReg = 2e-4f;
+    itmFctrStep = 1e-4f;
+    itmFctrReg = 1e-4f; //gamma7
+    itmFctr2Step = 1e-4f;
+    itmFctr2Reg = 1e-4f;
+    step_dec = 0.9;
+  }
+};
+
+svdpp_params svdpp;
+
+struct vertex_data {
+  double pvec[NLATENT];
+  double weight[NLATENT];
+  double rmse;
+  double bias;
+
+  vertex_data() {
+    for(int k=0; k < NLATENT; k++) {
+      pvec[k] =  drand48(); 
+      weight[k] = drand48();
+    }
+    rmse = 0;
+    bias = 0;
+  }
+
+};
+
 
 
 /**
@@ -157,42 +201,8 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
 
 
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
 };
 
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-    }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 struct  MMOutputter_bias{
   FILE * outf;
   MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
@@ -235,13 +245,37 @@ struct  MMOutputter_global_mean {
 
 };
 
+struct  MMOutputter{
+  FILE * outf;
+  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+    assert(start < end);
+    MM_typecode matcode;
+    set_matcode(matcode);     
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    for (uint i=start; i < end; i++)
+      for(int j=0; j < NLATENT; j++) {
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
+      }
+  }
+
+  ~MMOutputter() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
 
 
-void output_svdpp_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex + 1, "This file contains SVD++ output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex +1 ,numvertices, "This file contains SVD++ output matrix V. In each row NLATENT factors of a single item node.");
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, max_left_vertex + 1, "This file contains SVD++ output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", max_left_vertex +1 ,numvertices, "This file contains SVD++ output bias vector. In each row a single item bias.");
+
+void output_svdpp_result(std::string filename) {
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains SVD++ output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", M, M+N, "This file contains SVD++ output bias vector. In each row a single item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
@@ -251,8 +285,8 @@ void output_svdpp_result(std::string filename, vid_t numvertices, vid_t max_left
 
 
 int main(int argc, const char ** argv) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+
+  print_copyright();
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -261,17 +295,6 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("svdpp-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base training
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-  
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  int niters        = get_option_int("max_iter", 6);  // Number of iterations
   svdpp.step_dec  =   get_option_float("svdpp_step_dec", 0.9);
   svdpp.itmBiasStep  =   get_option_float("svdpp_item_bias_step", 1e-3);
   svdpp.itmBiasReg =   get_option_float("svdpp_item_bias_reg", 1e-3);
@@ -284,14 +307,7 @@ int main(int argc, const char ** argv) {
   svdpp.itmFctr2Reg =   get_option_float("svdpp_item_factor2_reg", 1e-3);
   svdpp.itmFctr2Step =   get_option_float("svdpp_item_factor2_step", 1e-3);
 
-  maxval            = get_option_float("maxval", 1e100);
-  minval            = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
-
+  parse_command_line_args();
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
@@ -302,22 +318,24 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
     load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
-  }
+    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    for (uint i=0; i<M+N; i++){
+      latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
+    }
+    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
+    globalMean = gm[0];
+ }
 
   /* Run */
   SVDPPVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  engine.set_disable_vertexdata_storage();  
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
 
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_svdpp_result(training, numvertices, max_left_vertex);
+  output_svdpp_result(training);
   test_predictions(&svdpp_predict);    
 
 

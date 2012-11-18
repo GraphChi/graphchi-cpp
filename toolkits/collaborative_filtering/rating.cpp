@@ -28,21 +28,9 @@
 
 
 
-#include <string>
-#include <algorithm>
 
 #include "graphchi_basic_includes.hpp"
-
-
-#include <assert.h>
-#include <cmath>
-#include <errno.h>
-#include <string>
-#include <stdint.h>
-
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
-
+#include "common.hpp"
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
@@ -54,21 +42,9 @@ using namespace graphchi;
 
 uint D;
 int debug;
-int K;
 int num_ratings;
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
 double knn_sample_percent = 1.0;
-std::string test;
-uint M, N;
-size_t L;
-uint Me, Ne, Le;
-double globalMean = 0;
 const double epsilon = 1e-16;
-vid_t max_left_vertex =0 ;
-vid_t max_right_vertex = 0;
 timer mytimer;
 
 struct vertex_data {
@@ -286,26 +262,6 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
   
   }
 
-   
-
-  /**
-   * Called after an iteration has finished.
-   */
-  void after_iteration(int iteration, graphchi_context &gcontext) {
-  }
-
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
 };
 
 struct  MMOutputter_ratings{
@@ -361,9 +317,9 @@ struct  MMOutputter_ids{
 
 
 
-void output_knn_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, max_left_vertex + 1, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i.");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, max_left_vertex +1 ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i.");
+void output_knn_result(std::string filename) {
+  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i.");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i.");
   logstream(LOG_INFO) << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                            ", " << filename + ".ids " << std::endl;
 }
@@ -371,8 +327,9 @@ void output_knn_result(std::string filename, vid_t numvertices, vid_t max_left_v
 int main(int argc, const char ** argv) {
 
   mytimer.start();
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+  
+  print_copyright();
+
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -381,40 +338,24 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("nmf-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
   knn_sample_percent = get_option_float("knn_sample_percent", 1.0);
   if (knn_sample_percent <= 0 || knn_sample_percent > 1)
     logstream(LOG_FATAL)<<"Sample percente should be in the range (0, 1] " << std::endl;
 
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
   num_ratings   = get_option_int("num_ratings", 10);
   if (num_ratings <= 0)
     logstream(LOG_FATAL)<<"num_ratings, the number of recomended items for each user, should be >=1 " << std::endl;
 
   debug         = get_option_int("debug", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-
-  bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   assert(M > 0 && N > 0);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  max_left_vertex = M-1;
-  max_right_vertex = M+N-1;
+  
   read_factors<vertex_data>(training + "_U.mm", true);
   read_factors<vertex_data>(training + "_V.mm", false);
+  
   if ((uint)num_ratings > N){
     logstream(LOG_WARNING)<<"num_ratings is too big - setting it to: " << N << std::endl;
     num_ratings = N;
@@ -423,20 +364,13 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   RatingVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_disable_vertexdata_storage();
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, 1);
 
-  m.set("latent_dimension", (int)D);
-
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  assert(numvertices == max_right_vertex + 1); // Sanity check
-  output_knn_result(training, numvertices, max_left_vertex);
+  output_knn_result(training);
 
   rating_stats();
   /* Report execution metrics */

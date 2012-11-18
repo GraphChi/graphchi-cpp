@@ -101,8 +101,6 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     if (iteration == 0) {
       latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
       assert(M > 0 && N > 0);
-      max_left_vertex = M-1;
-      max_right_vertex = M+N-1;
     }
   }
 

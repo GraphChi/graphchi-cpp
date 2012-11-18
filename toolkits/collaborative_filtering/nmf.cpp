@@ -33,16 +33,7 @@
 
 #include "graphchi_basic_includes.hpp"
 
-
-#include <assert.h>
-#include <cmath>
-#include <errno.h>
-#include <string>
-#include <stdint.h>
-
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
-
+#include "common.hpp"
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
@@ -50,21 +41,7 @@
 #include "eigen_wrapper.hpp"
 using namespace graphchi;
 
-#ifndef NLATENT
-#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
-#endif
-
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, K;
-size_t L;
-uint Me, Ne, Le;
-double globalMean = 0;
 const double epsilon = 1e-16;
-bool load_factors_from_file = false;
 
 struct vertex_data {
   double pvec[NLATENT];
@@ -228,19 +205,6 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       validation_rmse(&nmf_predict, gcontext);
     }
   }
-
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
 };
 
 struct  MMOutputter{
@@ -268,9 +232,10 @@ struct  MMOutputter{
 };
 
 
-void output_nmf_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, max_left_vertex , "This file contains NMF output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", max_left_vertex  ,numvertices, "This file contains NMF  output matrix V. In each row NLATENT factors of a single item node.");
+
+void output_nmf_result(std::string filename){
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row NLATENT factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row NLATENT factors of a single item node.");
   logstream(LOG_INFO) << "NMF output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
@@ -278,8 +243,8 @@ void output_nmf_result(std::string filename, vid_t numvertices, vid_t max_left_v
 int main(int argc, const char ** argv) {
 
 
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+  print_copyright(); 
+ 
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -288,30 +253,10 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("nmf-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base filename
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
-
+  parse_command_line_args();
   parse_implicit_command_line();
 
   niters *= 2; //each NMF iteration is composed of two sub iters
-
-  bool scheduler       = false;                        // Selective scheduling not supported for now.
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
@@ -327,18 +272,13 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   NMFVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
-  engine.set_disable_vertexdata_storage();
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
 
-  m.set("latent_dimension", NLATENT);
-
   /* Output latent factor matrices in matrix-market format */
-  output_nmf_result(training, M+N, M);
+  output_nmf_result(training);
   test_predictions(&nmf_predict);    
 
   /* Report execution metrics */

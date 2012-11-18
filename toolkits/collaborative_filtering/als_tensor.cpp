@@ -22,80 +22,17 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
- * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
- * and Danny Bickson (CMU). A good explanation of the algorithm is 
- * given in the following paper:
- *    Large-Scale Parallel Collaborative Filtering for the Netflix Prize
- *    Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan
- *    http://www.springerlink.com/content/j1076u0h14586183/
- *
- * Faster version of ALS, which stores latent factors of vertices in-memory.
- * Thus, this version requires more memory. See the version "als_edgefactors"
- * for a low-memory implementation.
- *
- *
- * In the code, we use movie-rating terminology for clarity. This code has been
- * tested with the Netflix movie rating challenge, where the task is to predict
- * how user rates movies in range from 1 to 5.
- *
- * This code is has integrated preprocessing, 'sharding', so it is not necessary
- * to run sharder prior to running the matrix factorization algorithm. Input
- * data must be provided in the Matrix Market format (http://math.nist.gov/MatrixMarket/formats.html).
- *
- * ALS uses free linear algebra library 'Eigen'. See Readme_Eigen.txt for instructions
- * how to obtain it.
- *
- * At the end of the processing, the two latent factor matrices are written into files in 
- * the matrix market format. 
- *
- * @section USAGE
- *
- * bin/example_apps/matrix_factorization/als_edgefactors file <matrix-market-input> niters 5
- *
+ * Tensor factorization with the Alternative Least Squares (ALS) algorithm.
  * 
  */
 
 
 
-#include <string>
-#include <algorithm>
-
 #include "graphchi_basic_includes.hpp"
-
-#include <assert.h>
-#include <cmath>
-#include <errno.h>
-#include <string>
-#include <stdint.h>
-
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
-
-#include "api/chifilenames.hpp"
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-
+#include "common.hpp"
 #include "eigen_wrapper.hpp"
-using namespace graphchi;
-
-#ifndef NLATENT
-#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
-#endif
 
 double lambda = 0.065;
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, K;
-size_t L;
-uint Me, Ne, Le;
-double globalMean = 0;
-/// RMSE computation
-double rmse=0.0;
-bool load_factors_from_file = false;
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
@@ -169,15 +106,7 @@ float als_tensor_predict(const vertex_data& user,
  */
 struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
-
-
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-  }
-
-  /**
+   /*
    *  Vertex update function - computes the least square step
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
@@ -222,17 +151,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     validation_rmse3(&als_tensor_predict, gcontext);
   }
 
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -272,47 +190,19 @@ void output_als_result(std::string filename) {
 int main(int argc, const char ** argv) {
 
 
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
-  /* GraphChi initialization will read the command line 
+  print_copyright();  
+
+/* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("als-inmemory-factors");
+  metrics m("als-tensor-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  int unittest = get_option_int("unittest", 0);
-  int niters    = get_option_int("max_iter", 6);  // Number of iterations
-  if (unittest > 0)
-    training = get_option_string("training", "");    // Base filename
-  else training = get_option_string("training");
-  if (unittest == 1){
-    if (training == "") training = "test_als"; 
-    niters = 100;
-  }
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  maxval        = get_option_float("maxval", 1e100);
-  minval        = get_option_float("minval", -1e100);
   lambda        = get_option_float("lambda", 0.065);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
-
+  parse_command_line_args();
   parse_implicit_command_line();
-
-  bool scheduler       = false;                        // Selective scheduling not supported for now.
-
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, true);
@@ -326,29 +216,15 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ALSVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, scheduler, m); 
-  engine.set_disable_vertexdata_storage();  
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
-
-  m.set("train_rmse", rmse);
-  m.set("latent_dimension", NLATENT);
 
   /* Output test predictions in matrix-market format */
   output_als_result(training);
   test_predictions3(&als_tensor_predict);    
 
-  if (unittest == 1){
-    if (dtraining_rmse > 0.03)
-      logstream(LOG_FATAL)<<"Unit test 1 failed. Training RMSE is: " << training_rmse << std::endl;
-    if (dvalidation_rmse > 1.03)
-      logstream(LOG_FATAL)<<"Unit test 1 failed. Validation RMSE is: " << dvalidation_rmse << std::endl;
-
-  }
-  
   /* Report execution metrics */
   metrics_report(m);
   return 0;

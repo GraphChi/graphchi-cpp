@@ -5,7 +5,7 @@
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] [Carnegie Mellon University]
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +29,34 @@
  */
 
 
+#include "common.hpp"
 
-#include <string>
-#include <algorithm>
+double biassgd_lambda = 1e-3; //sgd step size
+double biassgd_gamma = 1e-3;  //sgd regularization
+double biassgd_step_dec = 0.9; //sgd step decrement
 
-#include "graphchi_basic_includes.hpp"
+struct vertex_data {
+    double pvec[NLATENT]; //storing the feature vector
+    double rmse;          //tracking rmse
+    double bias;
+ 
+    vertex_data() {
+        for(int k=0; k < NLATENT; k++) 
+           pvec[k] =  drand48(); 
+        rmse = 0;
+        bias = 0;
+    }
+   
+    //dot product 
+    double dot(const vertex_data &oth) const {
+        double x=0;
+        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+        return x;
+    }
+    
+};
 
-/* BIASSGD-related classes are contained in biassgd.hpp */
-#include "biassgd.hpp"
+
 
 using namespace graphchi;
 
@@ -128,28 +148,6 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
 
 };
 
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 struct  MMOutputter_bias{
   FILE * outf;
   MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
@@ -192,13 +190,37 @@ struct  MMOutputter_global_mean {
 
 };
 
+struct  MMOutputter{
+  FILE * outf;
+  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
+    assert(start < end);
+    MM_typecode matcode;
+    set_matcode(matcode);     
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    for (uint i=start; i < end; i++)
+      for(int j=0; j < NLATENT; j++) {
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
+      }
+  }
+
+  ~MMOutputter() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
 
 
-void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_left_vertex) {
+
+void output_biassgd_result(std::string filename){
   MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,numvertices , "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N , "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains bias-SGD output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,numvertices , "This file contains bias-SGD output bias vector. In each row a single item bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains bias-SGD output bias vector. In each row a single item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
@@ -207,8 +229,7 @@ void output_biassgd_result(std::string filename, vid_t numvertices, vid_t max_le
 
 
 int main(int argc, const char ** argv) {
-  logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "
-    " comments or bug reports to danny.bickson@gmail.com " << std::endl;
+  print_copyright();
 
   //* GraphChi initialization will read the command line arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -217,28 +238,12 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("biassgd-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  training = get_option_string("training");    // Base training
-  validation = get_option_string("validation", "");
-  test = get_option_string("test", "");
-
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
-  int niters        = get_option_int("max_iter", 6);  // Number of iterations
   biassgd_lambda    = get_option_float("biassgd_lambda", 1e-3);
   biassgd_gamma     = get_option_float("biassgd_gamma", 1e-3);
   biassgd_step_dec  = get_option_float("biassgd_step_dec", 0.9);
-  maxval            = get_option_float("maxval", 1e100);
-  minval            = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
-  if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
-  halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
-  load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
+
+  parse_command_line_args();
   parse_implicit_command_line();
 
 
@@ -263,16 +268,12 @@ int main(int argc, const char ** argv) {
   /* Run */
   BIASSGDVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  engine.set_disable_vertexdata_storage();  
-  engine.set_enable_deterministic_parallelism(false);
-  engine.set_modifies_inedges(false);
-  engine.set_modifies_outedges(false);
+  set_engine_flags(engine);
   pengine = &engine;
   engine.run(program, niters);
 
   /* Output latent factor matrices in matrix-market format */
-  vid_t numvertices = engine.num_vertices();
-  output_biassgd_result(training, numvertices, M);
+  output_biassgd_result(training);
   test_predictions(&bias_sgd_predict);    
 
 

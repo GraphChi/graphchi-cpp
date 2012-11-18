@@ -23,6 +23,7 @@
  * 
  */
 
+#include "eigen_wrapper.hpp"
 
 enum{
 IMPLICIT_RATING_DISABLED = 0,

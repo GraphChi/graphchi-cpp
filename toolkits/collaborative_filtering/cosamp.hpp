@@ -27,8 +27,7 @@
 #ifndef _COSAMP_HPP
 #define _COSAMP_HPP
 
-//#include <itpp/base/sort.h>
-
+#include "eigen_wrapper.hpp"
 
 
 ivec sort_union(ivec a, ivec b){
