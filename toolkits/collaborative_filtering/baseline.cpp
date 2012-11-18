@@ -138,7 +138,7 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
 
 
   void after_iteration(int iteration, graphchi_context &gcontext) {
-    training_rmse(iteration, gcontext, true);
+    training_rmse(iteration, gcontext, algo == ITEM_MEAN);
     validation_rmse(&baseline_predict, gcontext);
   }
 
