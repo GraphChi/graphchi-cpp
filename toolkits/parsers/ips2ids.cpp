@@ -41,7 +41,7 @@ std::vector<std::string> in_files;
 
 // global data-structs
 mutex ids_mutex;
-std::map<uint64_t, uint64_t> ids;
+std::map<unsigned int, unsigned int> ids;
 
 /*
  * The expected format is one of the following:
@@ -121,11 +121,11 @@ void parse(int i) {
         // attribute already contains the '\n' since it's the last
         // string on the line
         if (tsv) {
-            fprintf(fout.outf, "%lu\t%lu\t%s", ids[caller.s_addr], ids[callee.s_addr], attribute);
+            fprintf(fout.outf, "%u\t%u\t%s", ids[caller.s_addr], ids[callee.s_addr], attribute);
         } else if (csv) {
-            fprintf(fout.outf, "%lu,%lu,%s", ids[caller.s_addr], ids[callee.s_addr], attribute);
+            fprintf(fout.outf, "%u,%u,%s", ids[caller.s_addr], ids[callee.s_addr], attribute);
         } else {
-            fprintf(fout.outf, "%lu %lu %s", ids[caller.s_addr], ids[callee.s_addr], attribute);
+            fprintf(fout.outf, "%u %u %s", ids[caller.s_addr], ids[callee.s_addr], attribute);
         }
         if (++lines % 100000 == 0) {
             logstream(LOG_INFO) << "Edges: " << lines
@@ -177,13 +177,13 @@ int main(int argc,  const char *argv[]) {
     // serialize the id-map
     logstream(LOG_INFO) << "serializing ids..." << std::endl;
     out_file fout(std::string(dir + ".map").c_str());
-    for (std::map<uint64_t, uint64_t>::const_iterator it = ids.begin();
+    for (std::map<unsigned int, unsigned int>::const_iterator it = ids.begin();
          it != ids.end();
          ++it)
     {
-        if (tsv) fprintf(fout.outf, "%lu\t%lu\n", it->first, it->second);
-        else if (csv) fprintf(fout.outf, "%lu,%lu\n", it->first, it->second);
-        else fprintf(fout.outf, "%lu %lu\n", it->first, it->second);
+        if (tsv) fprintf(fout.outf, "%u\t%u\n", it->first, it->second);
+        else if (csv) fprintf(fout.outf, "%u,%u\n", it->first, it->second);
+        else fprintf(fout.outf, "%u %u\n", it->first, it->second);
     }
 
     return 0;

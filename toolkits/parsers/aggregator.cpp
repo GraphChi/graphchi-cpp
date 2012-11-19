@@ -172,7 +172,7 @@ int main(int argc,  const char *argv[]) {
     logstream(LOG_FATAL)<<"Failed to read any file names from the list file: " << dir << std::endl;
 
 #pragma omp parallel for
-  for (uint i=0; i< in_files.size(); i++)
+  for (int i=0; i< (int)in_files.size(); i++)
     parse(i);
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
