@@ -52,7 +52,8 @@ size_t nnz = 0;
 const char * string_to_tokenize;
 int csv = 0;
 int tsv = 0;
-int binary = 0;
+int binary = 0; //edges are binary, contain no weights
+int single_domain = 0; //both user and movies ids are from the same id space:w
 const char * spaces = " \r\n\t";
 const char * tsv_spaces = "\t\n";
 const char * csv_spaces = ",\n";
@@ -149,7 +150,8 @@ void parse(int i){
     //read [TO]
     pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(string2nodeid2,nodeid2hash2, to, pch, false);
+    assign_id(single_domain ? string2nodeid:string2nodeid2,
+        single_domain ? nodeid2hash : nodeid2hash2, to, pch, single_domain ? true : false);
 
     //read the rest of the line
     if (!binary){
@@ -197,6 +199,7 @@ int main(int argc,  const char *argv[]) {
   tsv = get_option_int("tsv", 0); //is this tab seperated file?
   csv = get_option_int("csv", 0); // is the comma seperated file?
   binary = get_option_int("binary", 0);
+  single_domain = get_option_int("single_domain", 0);
   mytime.start();
 
 
@@ -229,9 +232,10 @@ int main(int argc,  const char *argv[]) {
 
   save_map_to_text_file(string2nodeid, outdir + dir + "user.map.text");
   save_map_to_text_file(nodeid2hash, outdir + dir + "user.reverse.map.text");
-  save_map_to_text_file(string2nodeid2, outdir + dir + "movie.map.text");
-  save_map_to_text_file(nodeid2hash2, outdir + dir + "movie.reverse.map.text");
-
+  if (!single_domain){
+    save_map_to_text_file(string2nodeid2, outdir + dir + "movie.map.text");
+    save_map_to_text_file(nodeid2hash2, outdir + dir + "movie.reverse.map.text");
+  }
   logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;
   out_file fout("matrix_market.info");
   MM_typecode out_typecode;
