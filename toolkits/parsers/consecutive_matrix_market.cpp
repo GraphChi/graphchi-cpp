@@ -52,7 +52,7 @@ size_t nnz = 0;
 const char * string_to_tokenize;
 int csv = 0;
 int tsv = 0;
-
+int binary = 0;
 const char * spaces = " \r\n\t";
 const char * tsv_spaces = "\t\n";
 const char * csv_spaces = ",\n";
@@ -152,14 +152,16 @@ void parse(int i){
     assign_id(string2nodeid2,nodeid2hash2, to, pch, false);
 
     //read the rest of the line
+    if (!binary){
     pch = strtok_r(NULL, "\n", &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
+    }
     if (tsv)
-      fprintf(fout.outf, "%u\t%u\t%s\n", from, to, pch);
+      fprintf(fout.outf, "%u\t%u\t%s\n", from, to, binary? "": pch);
     else if (csv)
-      fprintf(fout.outf, "%u,%u,%s\n", from, to, pch);
+      fprintf(fout.outf, "%u,%u,%s\n", from, to, binary? "" : pch);
     else 
-      fprintf(fout.outf, "%u %u %s\n", from, to, pch);
+      fprintf(fout.outf, "%u %u %s\n", from, to, binary? "" : pch);
     nnz++;
 
     line++;
@@ -194,6 +196,7 @@ int main(int argc,  const char *argv[]) {
   omp_set_num_threads(get_option_int("ncpus", 1));
   tsv = get_option_int("tsv", 0); //is this tab seperated file?
   csv = get_option_int("csv", 0); // is the comma seperated file?
+  binary = get_option_int("binary", 0);
   mytime.start();
 
 

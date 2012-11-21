@@ -20,7 +20,8 @@ struct  in_file{
   FILE * outf;
   in_file(std::string fname)  {
     outf = fopen(fname.c_str(), "r");
-    assert(outf != NULL);
+    if (outf == NULL)
+      logstream(LOG_FATAL)<<"Failed to open file: " << fname << std::endl;
   }
 
   ~in_file() {
