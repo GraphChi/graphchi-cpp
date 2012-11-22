@@ -1,0 +1,85 @@
+body {
+	background-color: #F0F0F0;
+	font-family: 'Open Sans', sans-serif;
+	margin: 0;
+	color: #333;
+}
+
+#wrapper {
+	margin: auto;
+	width: 1000px;
+	padding: 15px 15px;
+	min-height: 600px;
+	background-color: #F4F4F4;
+}
+
+#left {
+	width: 400px;
+	float: left;
+}
+
+#right {
+	margin-left: 15px;
+	width: 585px;
+	float: left;
+}
+
+#graph {
+	height: 435
+}
+
+table {
+	margin: auto;
+
+}
+
+td {
+	background: #F0F0F0;
+	padding: 4px;
+	font-size: 14px;
+	width: 160px;
+}
+
+.container {
+	padding: 8px;
+	border-radius: 4px;
+	margin-bottom: 15px;
+	background-color: #F9F9F9;
+	-moz-box-shadow: 0 2px 3px rgba(50,50,50,0.05);
+	-webkit-box-shadow: 0 2px 3px rgba(50,50,50,0.05);
+	box-shadow: 0 2px 4px rgba(50,50,50,0.05);
+}
+
+h2 {
+	margin: 6px;
+	padding: 0px 4px;
+	padding-bottom: 2px;
+	border-bottom: solid 1px #CCC;
+	font-size: 20px;
+}
+
+p {
+	margin: 10px 10px;
+	font-size: 14px;
+}
+
+#logo {
+	margin-left: -3px;
+	padding-bottom: 8px;
+}
+
+.no-padding {
+	padding: 0;
+}
+
+.color-div {
+	display: inline-block;
+	height: 20px;
+	width: 20px;
+	background-color: blue;
+}
+
+.clear-both {
+	clear: both;
+}
+

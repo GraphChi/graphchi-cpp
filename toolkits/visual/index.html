@@ -1,0 +1,88 @@
+<html>
+	<head>
+		<link rel='stylesheet' type='text/css' href='style.css'>
+		<link rel='stylesheet' type="text/css" href="d3.css">
+		<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+		
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+		<script src="http://d3js.org/d3.v2.js"></script>
+		<!--><script src="graphit.js" type='text/javascript'></script><-->
+		<script src="graphM2M.js" type='text/javascript'></script>
+		
+		<script type='text/javascript' src='d3_chart_2.js'></script>
+	</head>
+	
+	<body>
+		<div id='wrapper'>
+			<div id='right'>
+				<div class='container no-padding'>
+					<img id='logo' src='logo.gif' alt='GraphLab' />
+				</div>
+				<div class='container' align="center">
+					<h2>Settings</h2>
+					<p>
+						<table id='settings_table'>
+							
+						</table>
+					</p>
+				</div>
+				</div>
+			<div class='container'>
+				<h2>Graph</h2>
+				<div id='large_graph'></div>
+			</div>
+		
+		<script type='text/javascript'>
+		
+			//var rmse_chart = new Chart({file_path:"runA"});
+			//rmse_chart.plot("#rmse_chart");
+			//var num_iterations_last = -1;
+			check_iterations();
+			
+			
+			function check_iterations() {
+				//rmse_chart.update_points();
+				/*if (rmse_chart.trials && rmse_chart.trials.length) {
+					var num_iterations = rmse_chart.num_points() - 1;
+					if (num_iterations > num_iterations_last) { 
+					
+						$("#train_rmse_value").text(rmse_chart.trials[0].values[num_iterations].y_value);
+						$("#validation_rmse_value").text(rmse_chart.trials[1].values[num_iterations].y_value);
+						$("#rmse_iteration").text(num_iterations);
+						rmse_chart.plot("#rmse_chart");
+						num_iterations_last = num_iterations;
+					}
+				}*/
+				
+				$.get('settingA', function(response){
+					var settings = parse_settings(response);
+					$('#settings_table').empty();
+					$('#data_properties_table').empty();
+					for (var ind=0; ind < settings.length-1; ind = ind+2) {
+						if (ind < 17) {
+							$("#settings_table").append("<tr><td>" + settings[ind] + "</td><td>" + settings[ind+1] + "</td></tr>");
+						} else {
+							$("#data_properties_table").append("<tr><td>" + settings[ind] + "</td><td>" + settings[ind+1] + "</td></tr>");
+						}
+					}
+				});
+				
+				//setTimeout("check_iterations()", 500);
+			}
+			
+			function parse_settings(text) {
+				var text_arr = text.split(/[\[\]]/);
+				var settings_arr = [];
+				for(var i = 0; i < text_arr.length; i++) {
+					if(text_arr[i].trim().length > 0) { 
+						settings_arr.push(text_arr[i]);
+					}
+				}
+				return settings_arr;
+			}
+			
+			
+		</script>
+	</body>
+</html>
+
