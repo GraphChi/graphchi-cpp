@@ -152,7 +152,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL) {
+int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
@@ -187,10 +187,11 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
+  if (nodes == 0 && edges == 0){
 
-  if (mm_read_banner(f, &matcode) != 0)
+  if (mm_read_banner(f, &matcode) != 0){
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
-
+  }
 
   /*  This is how one can screen matrix types if their application */
   /*  only supports a subset of the Matrix Market data types.      */
@@ -203,21 +204,33 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
-
+  }
+  else {
+    M = N = nodes;
+    nz = edges;
+  }
   L=nz;
 
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  double val;
+  double val = 1.0;
   if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
     {
-
-      int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
+      if (tokens_per_row == 3){
+      int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
       if (rc != 3)
         logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      }
+      else if (tokens_per_row == 2){
+        int rc = fscanf(f, "%u %u\n", &I, &J);
+        if (rc != 2)
+        logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+       }
+      else assert(false);
+
       I--;  /* adjust from 1-based to 0-based */
       J--;
       if (I >= M)

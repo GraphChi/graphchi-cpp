@@ -53,16 +53,15 @@ int tokens_per_row = 3;
 
 bool debug = false;
 int max_iter = 50;
-ivec active_nodes_num;
-ivec active_links_num;
 int iiter = 0; //current iteration
-int nodes = 0;
 uint num_active = 0;
 uint links = 0;
 mutex mymutex;
 timer mytimer;
 out_file * pout = NULL;
-size_t edges; //number of edges to cut from graph
+size_t edges = 1000; //number of edges to cut from graph
+size_t nodes = 0; //number of nodes in original file (optional)
+size_t orig_edges = 0; // number of edges in original file (optional)
 
 struct vertex_data {
   bool active;
@@ -150,6 +149,9 @@ int main(int argc,  const char *argv[]) {
   square        = get_option_int("square", 0);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
   edges         = get_option_int("edges", 2460000000);
+  nodes         = get_option_int("nodes", nodes);
+  orig_edges         = get_option_int("orig_edges", orig_edges);
+
   std::string seeds   = get_option_string("seeds");
 
  mytimer.start();
@@ -160,18 +162,18 @@ int main(int argc,  const char *argv[]) {
   int nshards = 0;
   if (tokens_per_row == 4 )
     convert_matrixmarket4<edge_data>(datafile, false, square);
-  else if (tokens_per_row == 3) 
-    convert_matrixmarket<edge_data>(datafile);
+  else if (tokens_per_row == 3 || tokens_per_row == 2) 
+    convert_matrixmarket<edge_data>(datafile, NULL, nodes, orig_edges, tokens_per_row);
   else logstream(LOG_FATAL)<<"Please use --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
   char * pseeds = strdup(seeds.c_str());
   char * pch = strtok(pseeds, ",\n\r\t ");
   int node = atoi(pch);
-  latent_factors_inmem[node].active = true;
+  latent_factors_inmem[node-1].active = true;
   while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
     node = atoi(pch);
-    latent_factors_inmem[node].active = true;
+    latent_factors_inmem[node-1].active = true;
   }
  
 
