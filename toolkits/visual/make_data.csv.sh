@@ -1,6 +1,8 @@
 #!/bin/bash
 
-GRAPHCHI_ROOT=~/graphchi/
+cd ../../
+GRAPHCHI_ROOT=`pwd`
+cd -
 CURPATH=`pwd`
 NUM_EDGES=0
 FILENAME=""
