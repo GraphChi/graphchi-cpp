@@ -99,5 +99,4 @@ echo "[seeds][$SEEDS]" >> settingA
 #remove intermediate files
 rm -f $GRAPHCHI_ROOT/$FILENAME.$NUM_EDGES 
 
-echo "scp bickson@thrust.ml.cmu.edu:~/tmp/graph${NUM_EDGES}.csv ~/Downloads/visualization_demo/gv_demo/"
-echo "scp bickson@thrust.ml.cmu.edu:~/tmp/settingA ~/Downloads/visualization_demo/gv_demo/"
+echo "scp bickson@thrust.ml.cmu.edu:~/tmp/graph${NUM_EDGES}.csv bickson@thrust.ml.cmu.edu:~/tmp/settingA ~/Downloads/visualization_demo/gv_demo/"
