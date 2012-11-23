@@ -464,7 +464,7 @@ char  *mm_typecode_to_str(MM_typecode matcode)
     if (mm_is_matrix(matcode)) 
         types[0] = (char*)MM_MTX_STR;
     else
-        error=1;
+        return NULL;
 
     /* check for CRD or ARR matrix */
     if (mm_is_sparse(matcode))

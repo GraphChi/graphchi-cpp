@@ -110,7 +110,7 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
       vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       if (links >= edges)
         break;
-      fprintf(pout->outf, "%u %u\n", vertex.id(), vertex.edge(e)->vertex_id());
+      fprintf(pout->outf, "%u %u\n", vertex.id()+1, vertex.edge(e)->vertex_id()+1);
       if (!other.done){
         other.next_active = true;
       }
