@@ -17,6 +17,10 @@
  * For more about this software visit:
  *
  *      http://www.graphlab.ml.cmu.edu
+ 
+
+   Written by Danny Bickson, CMU
+   File for extracting a subgraph out of the input graph, starting with a given set of seeds.
  *
  */
 
@@ -58,6 +62,7 @@ uint links = 0;
 mutex mymutex;
 timer mytimer;
 out_file * pout = NULL;
+size_t edges; //number of edges to cut from graph
 
 struct vertex_data {
   bool active;
@@ -104,6 +109,8 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     mymutex.lock();
     for(int e=0; e < vertex.num_edges(); e++) {
       vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+      if (links >= edges)
+        break;
       fprintf(pout->outf, "%u %u\n", vertex.id(), vertex.edge(e)->vertex_id());
       if (!other.done){
         other.next_active = true;
@@ -142,9 +149,8 @@ int main(int argc,  const char *argv[]) {
   datafile      = get_option_string("training");
   square        = get_option_int("square", 0);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  edges         = get_option_int("edges", 2460000000);
   std::string seeds   = get_option_string("seeds");
-  active_nodes_num = ivec(max_iter+1);
-  active_links_num = ivec(max_iter+1);
 
  mytimer.start();
 
@@ -177,7 +183,6 @@ int main(int argc,  const char *argv[]) {
       //while(true){
       KcoresProgram program;
       num_active = 0;
-      links = 0;
       graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
       engine.set_disable_vertexdata_storage();  
       engine.set_modifies_inedges(false);
@@ -190,12 +195,15 @@ int main(int argc,  const char *argv[]) {
           latent_factors_inmem[i].active = true;
         }
       }
-      //if (links == 0)
-      //  break;
-      //}
+      if (links >= edges){
+        std::cout<<"Grabbed enough edges!" << std::endl;
+        break;
+      }
   }
+      
+  std::cout<< iiter << ") Number of active nodes: " << num_active <<"Number of links: " << links << std::endl;
  
-  std::cout << "sibgraph finished in " << mytimer.current_time() << std::endl;
+  std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
   std::cout << "Number of passes: " << iiter<< std::endl;
 
    delete pout;
