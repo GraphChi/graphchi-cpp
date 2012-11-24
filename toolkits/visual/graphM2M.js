@@ -23,7 +23,7 @@ var force = d3.layout.force()
 .links(links)
 .size([w, h])
 .charge(-500)
-.gravity(.5)
+.gravity(.3)
 .on("tick", tick)
 .start();
 

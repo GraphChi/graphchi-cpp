@@ -98,7 +98,9 @@ echo "[nodes][$nodes_num]" >> settingA
 echo "[edges][$edges_num]" >> settingA
 echo "[hops][$HOPS]" >> settingA
 echo "[seeds][$SEEDS]" >> settingA
+echo "[creation][`date`]" >> settingA
+echo "[user][$USER]" >> settingA
 #remove intermediate files
 rm -f $GRAPHCHI_ROOT/$FILENAME.$NUM_EDGES 
-
+mv graph${NUM_EDGES}.csv graph1000.csv # ugly, need to find a way to pass graph name to UI
 echo "scp bickson@thrust.ml.cmu.edu:~/tmp/graph${NUM_EDGES}.csv bickson@thrust.ml.cmu.edu:~/tmp/settingA ~/Downloads/visualization_demo/gv_demo/"

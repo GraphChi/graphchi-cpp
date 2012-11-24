@@ -3,6 +3,7 @@
 
 #include <omp.h>
 #include <stdio.h>
+#include <iostream>
 
 int number_of_omp_threads(){
   int num_threads = 0;
@@ -20,8 +21,10 @@ struct  in_file{
   FILE * outf;
   in_file(std::string fname)  {
     outf = fopen(fname.c_str(), "r");
-    if (outf == NULL)
-      logstream(LOG_FATAL)<<"Failed to open file: " << fname << std::endl;
+    if (outf == NULL){
+      std::cerr<<"Failed to open file: " << fname << std::endl;
+      exit(1);
+    }
   }
 
   ~in_file() {
