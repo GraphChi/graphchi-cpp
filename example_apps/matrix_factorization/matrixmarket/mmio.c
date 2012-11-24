@@ -182,7 +182,7 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
 
 int mm_write_mtx_crd_size(FILE *f, uint M, uint N, size_t nz)
 {
-    if (fprintf(f, "%u %u %ld\n", M, N, nz) != 3)
+    if (fprintf(f, "%u %u %llu\n", M, N, (long long unsigned int)nz) != 3)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
@@ -204,7 +204,7 @@ int mm_read_mtx_crd_size(FILE *f, uint *M, uint *N, size_t *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%u %u %ld", M, N, nz) == 3)
+    if (sscanf(line, "%u %u %llu", M, N, (long long unsigned int*)nz) == 3)
         return 0;
         
     else
