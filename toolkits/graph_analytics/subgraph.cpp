@@ -179,12 +179,13 @@ int main(int argc,  const char *argv[]) {
 
   pout = new out_file(datafile +".out");
 
+  num_active = 0;
   for (iiter=0; iiter< max_iter; iiter++){
       std::cout<<mytimer.current_time() << ") Going to run k-cores iteration " << iiter << std::endl;
      /* Run */
       //while(true){
       KcoresProgram program;
-      num_active = 0;
+      //num_active = 0;
       graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
       engine.set_disable_vertexdata_storage();  
       engine.set_modifies_inedges(false);
@@ -207,6 +208,7 @@ int main(int argc,  const char *argv[]) {
  
   std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
   std::cout << "Number of passes: " << iiter<< std::endl;
+  std::cout << "Total active nodes: " << num_active << " edges: " << links << std::endl;
 
    delete pout;
    return EXIT_SUCCESS;

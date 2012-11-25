@@ -1,4 +1,6 @@
 #!/bin/bash
+# script for visualizing a subgraph
+# Written by Danny Bickson, CMU
 
 cd ../../
 GRAPHCHI_ROOT=`pwd`
@@ -102,5 +104,8 @@ echo "[creation][`date`]" >> settingA
 echo "[user][$USER]" >> settingA
 #remove intermediate files
 rm -f $GRAPHCHI_ROOT/$FILENAME.$NUM_EDGES 
-mv graph${NUM_EDGES}.csv graph1000.csv # ugly, need to find a way to pass graph name to UI
+#mv graph${NUM_EDGES}.csv graph1000.csv # ugly, need to find a way to pass graph name to UI
+
+echo "graph${NUM_EDGES}.csv" > file.txt
+
 echo "scp bickson@thrust.ml.cmu.edu:~/tmp/graph${NUM_EDGES}.csv bickson@thrust.ml.cmu.edu:~/tmp/settingA ~/Downloads/visualization_demo/gv_demo/"

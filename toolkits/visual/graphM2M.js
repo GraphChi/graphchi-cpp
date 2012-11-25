@@ -1,36 +1,65 @@
 // Adapted from http://jsfiddle.net/7HZcR/3/
 
-var w = 960,
-h = 800,
-input = "graph1000.csv";
+var w = 800,
+h = 600;
+//input = "graph1000.csv";
 
+$.get('./file.txt', function(response){
+
+	var data = [];
+	var text_arr = response.split("\n");
+	for(var i = 0; i < text_arr.length; i++) {
+		if(text_arr[i].trim().length > 0) { 
+			data.push(text_arr[i]);
+		}
+	}
+	
+	d3.select("#order")
+      .selectAll("option")
+        .data(data)
+      .enter().append("option")
+        .text(String);
+        
+  draw_graph(data[0]);		
+});
+
+			
+
+		
+				
+function draw_graph(filename){
+				
 // Read file and operate
-d3.csv(input, function(links) {
+d3.csv(filename, function(links) {
 
 // Build nodes object
 var nodes = {};
-//links = links.slice(1,80);
+links = links.slice(1,80);
 for (var i = 0; i < links.length; i++){
 	link = links[i];
 	link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
 	link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
 }
 
+d3.layout.force().stop();
+d3.layout.force().nodes([]);
+d3.layout.force().links([]);
+d3.select("#thesvg").remove();
 
 // Draw it
 var force = d3.layout.force()
 .nodes(d3.values(nodes))
 .links(links)
 .size([w, h])
-.charge(-500)
-.gravity(.3)
+.charge(-150)
+.gravity(.5)
 .on("tick", tick)
 .start();
 
 var svg = d3.select("#large_graph").append("svg:svg")
 .attr("width", w)
-.attr("height", h);
-
+.attr("height", h)
+.attr("id", "thesvg");
 
 var path = svg.append("svg:g").selectAll("path")
 .data(force.links())
@@ -81,6 +110,13 @@ function tick() {
 	});
 }
 
+}); //end of draw_graph
+
+
+d3.select("#order").on("change", function() {
+	//throw('going to draw' + this.value);
+    draw_graph(this.value);        
 });
 
 
+}
