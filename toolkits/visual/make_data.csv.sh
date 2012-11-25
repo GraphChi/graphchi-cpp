@@ -123,13 +123,16 @@ do
 
   mv graph${NUM_EDGES}.csv graph${NUM_EDGES}.$file_num.csv 
   echo "graph${NUM_EDGES}.$file_num.csv" >> file.txt
+  echo "[filename][$FILENAME]" > graph${NUM_EDGES}.$file_num.csv.txt
+  echo "[nodes][$nodes_num]" >> graph${NUM_EDGES}.$file_num.csv.txt
+  echo "[edges][$edges_num]" >>graph${NUM_EDGES}.$file_num.csv.txt
 
 done < input.files # for FILENAMES
 
 #write statistics to file
 echo "[directory][$DIRNAME]" > settingA
-echo "[nodes][$nodes_num]" >> settingA
-echo "[edges][$edges_num]" >> settingA
+#echo "[nodes][$nodes_num]" >> settingA
+#echo "[edges][$edges_num]" >> settingA
 echo "[hops][$HOPS]" >> settingA
 echo "[seeds][$SEEDS]" >> settingA
 echo "[creation][`date`]" >> settingA

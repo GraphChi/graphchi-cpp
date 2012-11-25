@@ -7,4 +7,3 @@ graph1500.6.csv
 graph1500.7.csv
 graph1500.8.csv
 graph1500.9.csv
-graph1500.10.csv
