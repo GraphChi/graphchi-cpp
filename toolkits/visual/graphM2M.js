@@ -1,6 +1,6 @@
 // Adapted from http://jsfiddle.net/7HZcR/3/
 
-var w = 800,
+var w = 600,
 h = 600;
 //input = "graph1000.csv";
 
