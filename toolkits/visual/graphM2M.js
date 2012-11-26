@@ -20,8 +20,30 @@ $.get('./file.txt', function(response){
     .text(String);
 
     draw_graph(data[0]);		
-    check_iterations(data[0] + '.txt');
-    });
+    check_iterations(d3.select("#order").node().options[0].value);
+});
+
+ $.get('graph1500.1.csv.txt',function(response){
+        var settings = parse_settings(response);
+        $('#graph_table').empty();
+        for (var ind=0; ind < settings.length-1; ind = ind+2) {
+        $("#graph_table").append("<tr><td>" + settings[ind] + "</td><td>" + settings[ind+1] + "</td></tr>");
+        }
+        });
+
+  function parse_settings(text) {
+    var text_arr = text.split(/[\[\]]/);
+    var settings_arr = [];
+    for(var i = 0; i < text_arr.length; i++) {
+      if(text_arr[i].trim().length > 0) { 
+        settings_arr.push(text_arr[i]);
+      }
+    }
+    return settings_arr;
+  }
+
+
+
 
 
 
@@ -71,7 +93,7 @@ function draw_graph(filename){
         .data(force.nodes())
         .enter().append("svg:circle").style("fill", function(d) { 
             if (d.name <10000) return "red";
-            else return "steelblue";
+            else if (d.name > 150000) return "green"; else return "steelblue";
             })
       .attr("r", function(d) {
           return d.weight;
@@ -112,7 +134,7 @@ function draw_graph(filename){
       }
 
   }); //end of draw_graph
-
+};
 
 //input = "graph1000.csv";
   function check_iterations(filename) {
@@ -145,4 +167,3 @@ function draw_graph(filename){
       });
 
 
-}
