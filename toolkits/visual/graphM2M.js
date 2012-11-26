@@ -1,7 +1,7 @@
 // Adapted from http://jsfiddle.net/7HZcR/3/
 
-var w = 600,
-    h = 600;
+var w = 500,
+    h = 500;
 
 $.get('./file.txt', function(response){
 
