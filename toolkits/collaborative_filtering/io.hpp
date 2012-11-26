@@ -238,7 +238,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
       globalMean += val; 
-      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
+      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
     }
     uint toadd = 0;
     if (implicitratingtype == IMPLICIT_RATING_RANDOM)

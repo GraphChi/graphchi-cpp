@@ -35,7 +35,7 @@ function draw_graph(filename){
 
       // Build nodes object
       var nodes = {};
-      links = links.slice(1,80);
+      //links = links.slice(1,80);
       for (var i = 0; i < links.length; i++){
       link = links[i];
       link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
