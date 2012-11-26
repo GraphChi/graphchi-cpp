@@ -20,16 +20,18 @@ $.get('./file.txt', function(response){
     .text(String);
 
     draw_graph(data[0]);		
-    check_iterations(d3.select("#order").node().options[0].value);
-});
+    check_iterations('graph1500.1.csv.txt');
+  
+   function check_iterations(filename) {
 
- $.get('graph1500.1.csv.txt',function(response){
+    $.get(filename, function(response){
         var settings = parse_settings(response);
         $('#graph_table').empty();
         for (var ind=0; ind < settings.length-1; ind = ind+2) {
         $("#graph_table").append("<tr><td>" + settings[ind] + "</td><td>" + settings[ind+1] + "</td></tr>");
         }
         });
+  } //end of check_iterations
 
   function parse_settings(text) {
     var text_arr = text.split(/[\[\]]/);
@@ -43,10 +45,7 @@ $.get('./file.txt', function(response){
   }
 
 
-
-
-
-
+});
 
 
 
@@ -134,7 +133,6 @@ function draw_graph(filename){
       }
 
   }); //end of draw_graph
-};
 
 //input = "graph1000.csv";
   function check_iterations(filename) {
@@ -166,4 +164,5 @@ function draw_graph(filename){
       check_iterations(this.value + '.txt');
       });
 
+};
 
