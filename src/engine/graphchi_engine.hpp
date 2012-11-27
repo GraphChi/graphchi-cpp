@@ -171,6 +171,8 @@ namespace graphchi {
             nedges = 0;
             scheduler = NULL;
             store_inedges = true;
+            degree_handler = NULL;
+            vertex_data_handler = NULL;
             enable_deterministic_parallelism = true;
             load_threads = get_option_int("loadthreads", 2);
             exec_threads = get_option_int("execthreads", omp_get_max_threads());
@@ -257,6 +259,7 @@ namespace graphchi {
         
         virtual void initialize_scheduler() {
             if (use_selective_scheduling) {
+                if (scheduler != NULL) delete scheduler;
                 scheduler = new bitset_scheduler((int) num_vertices());
                 scheduler->add_task_to_all();
             } else {
@@ -556,20 +559,27 @@ namespace graphchi {
          */
         void run(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram, int _niters) {
             m.start_time("runtime");
-            degree_handler = create_degree_handler();
+            if (degree_handler == NULL)
+                degree_handler = create_degree_handler();
 
             niters = _niters;
             logstream(LOG_INFO) << "GraphChi starting" << std::endl;
             logstream(LOG_INFO) << "Licensed under the Apache License 2.0" << std::endl;
             logstream(LOG_INFO) << "Copyright Aapo Kyrola et al., Carnegie Mellon University (2012)" << std::endl;
             
-            
-            vertex_data_handler = new vertex_data_store<VertexDataType>(base_filename, num_vertices(), iomgr);
+            if (vertex_data_handler == NULL)
+                vertex_data_handler = new vertex_data_store<VertexDataType>(base_filename, num_vertices(), iomgr);
+        
             initialize_before_run();
 
             
             /* Setup */
-            initialize_sliding_shards();
+            if (sliding_shards.size() == 0) {
+                initialize_sliding_shards();
+            } else {
+                logstream(LOG_DEBUG) << "Engine being restarted, do not reinitialize." << std::endl;
+            }
+                
             initialize_scheduler();
             omp_set_nested(1);
             
