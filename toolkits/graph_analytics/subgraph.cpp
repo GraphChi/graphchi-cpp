@@ -58,7 +58,8 @@ uint num_active = 0;
 uint links = 0;
 mutex mymutex;
 timer mytimer;
-out_file * pout = NULL;
+//out_file * pout = NULL;
+FILE * pfile = NULL;
 size_t edges = 1000; //number of edges to cut from graph
 size_t nodes = 0; //number of nodes in original file (optional)
 size_t orig_edges = 0; // number of edges in original file (optional)
@@ -110,15 +111,17 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
       vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       if (links >= edges)
         break;
-      fprintf(pout->outf, "%u %u\n", vertex.id()+1, vertex.edge(e)->vertex_id()+1);
+      if (other.done)
+        continue;
+      fprintf(pfile, "%u %u %u\n", vertex.id()+1, vertex.edge(e)->vertex_id()+1,iiter+1);
+      links++;
       if (!other.done){
         other.next_active = true;
       }
-      links++;
     }
-    mymutex.unlock();
-    vdata.done = true;
     vdata.active=false;
+    vdata.done = true;
+    mymutex.unlock();
   }
 
   
@@ -176,23 +179,25 @@ int main(int argc,  const char *argv[]) {
     latent_factors_inmem[node-1].active = true;
   }
  
+  unlink((datafile +".out").c_str());
+  pfile = fopen((datafile +".out").c_str(), "w");
+  std::cout<<"Writing output to: " << datafile +".out" << std::endl;
 
-  pout = new out_file(datafile +".out");
-
+  num_active = 0;
   for (iiter=0; iiter< max_iter; iiter++){
-      std::cout<<mytimer.current_time() << ") Going to run k-cores iteration " << iiter << std::endl;
+      //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
      /* Run */
       //while(true){
       KcoresProgram program;
-      num_active = 0;
+      //num_active = 0;
       graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
       engine.set_disable_vertexdata_storage();  
       engine.set_modifies_inedges(false);
       engine.set_modifies_outedges(false);
       engine.run(program, 1);
-      std::cout<< iiter << ") Number of active nodes: " << num_active <<"Number of links: " << links << std::endl;
+      std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
       for (uint i=0; i< M+N; i++){
-        if (latent_factors_inmem[i].next_active){
+        if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
           latent_factors_inmem[i].next_active = false;
           latent_factors_inmem[i].active = true;
         }
@@ -207,8 +212,10 @@ int main(int argc,  const char *argv[]) {
  
   std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
   std::cout << "Number of passes: " << iiter<< std::endl;
-
-   delete pout;
+  std::cout << "Total active nodes: " << num_active << " edges: " << links << std::endl;
+  fflush(pfile);
+   fclose(pfile);
+   //delete pout;
    return EXIT_SUCCESS;
 }
 

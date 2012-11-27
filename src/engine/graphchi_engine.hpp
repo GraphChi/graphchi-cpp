@@ -96,7 +96,8 @@ namespace graphchi {
         bool enable_deterministic_parallelism;
         bool store_inedges;
         bool disable_vertexdata_storage;
-        
+        bool preload_commit; //alow storing of modified edge data on preloaded data into memory
+
         size_t blocksize;
         int membudget_mb;
         int load_threads;
@@ -159,6 +160,7 @@ namespace graphchi {
             memoryshard = NULL;
             modifies_outedges = true;
             modifies_inedges = true;
+            preload_commit = true;
             only_adjacency = false;
             disable_vertexdata_storage = false;
             blocksize = get_option_long("blocksize", 1024 * 1024);
@@ -735,7 +737,8 @@ namespace graphchi {
             } // Iterations
             
             // Commit preloaded shards
-            iomgr->commit_preloaded();
+            if (preload_commit)
+              iomgr->commit_preloaded();
             
             m.stop_time("runtime");
 
@@ -767,6 +770,10 @@ namespace graphchi {
         
         virtual void set_only_adjacency(bool b) {
             only_adjacency = b;
+        }
+
+        virtual void set_preload_commit(bool b){
+            preload_commit = b;
         }
         
         /**
