@@ -701,7 +701,7 @@ namespace graphchi {
                     if (memoryshard->loaded()) {
                         logstream(LOG_INFO) << "Commit memshard" << std::endl;
 
-                        memoryshard->commit(modifies_inedges);
+                        memoryshard->commit(modifies_inedges, modifies_outedges);
                         sliding_shards[exec_interval]->set_offset(memoryshard->offset_for_stream_cont(), memoryshard->offset_vid_for_stream_cont(),
                                                           memoryshard->edata_ptr_for_stream_cont());
                         

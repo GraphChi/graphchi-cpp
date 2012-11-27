@@ -109,7 +109,7 @@ namespace graphchi {
             }
         }
         
-        void commit(bool all) {
+        void commit(bool write_inedges, bool write_outedges) {
             if (edgedata == NULL || only_adjacency) return; 
             assert(is_loaded);
             metrics_entry cm = m.start_time();
@@ -120,9 +120,9 @@ namespace graphchi {
               * Out-edges are in a continuous "window", while in-edges are 
               * scattered all over the shard
               */
-            if (all) {
+            if (write_inedges) {
                 iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
-            } else {
+            } else if (write_outedges) {
                 size_t last = streaming_offset_edge_ptr;
                 if (last == 0){
                     // rollback
