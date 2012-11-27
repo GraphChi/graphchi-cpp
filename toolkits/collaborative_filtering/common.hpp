@@ -88,6 +88,7 @@ void set_engine_flags(T & pengine){
   pengine.set_enable_deterministic_parallelism(false);
   pengine.set_modifies_inedges(false);
   pengine.set_modifies_outedges(false);
+  pengine.set_preload_commit(false);
 }
 
 void print_copyright(){
