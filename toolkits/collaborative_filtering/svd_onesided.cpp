@@ -350,6 +350,7 @@ int main(int argc,  const char *argv[]) {
   tol = get_option_float("tol", 1e-5);
   save_vectors = get_option_int("save_vectors", 1);
   input_cols = get_option_int("input_cols", 3);
+  max_iter = get_option_int("max_iter", max_iter);
 
   parse_command_line_args();
   parse_implicit_command_line();
@@ -403,7 +404,10 @@ int main(int argc,  const char *argv[]) {
     std::cout << "Load inital vector from file" << vecfile << std::endl;
     load_matrix_market_vector(vecfile, info, 0, true, false);
   }  
- 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  set_engine_flags(engine);
+  pengine = &engine;   
+
   vec errest;
   vec singular_values = one_sided_lanczos(info, mytimer, errest, vecfile);
  

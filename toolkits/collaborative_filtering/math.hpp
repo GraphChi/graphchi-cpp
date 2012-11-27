@@ -161,21 +161,11 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     }
     user.pvec[mi.r_offset] = val;
   } //end update
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 
 }; //end Axb
 
+Axb program;
 
 void init_math(bipartite_graph_descriptor & _info, int ortho_repeats = 3){
   info = _info;
@@ -286,10 +276,10 @@ class DistVec{
       start = vec.start;
       mi.start = start;
       mi.end = end;
-      graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-      set_engine_flags(engine);
-      Axb program;
-      engine.run(program, 1);
+      //graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+      //set_engine_flags(engine);
+      //Axb program;
+      pengine->run(program, 1);
       debug_print(name);
       mi.reset_offsets();
       return *this;
@@ -513,10 +503,10 @@ DistVec& DistVec::operator=(DistMat &mat){
   transpose = mat.transpose;
   mi.start = info.get_start_node(!transpose);
   mi.end = info.get_end_node(!transpose);
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  set_engine_flags(engine);
-  Axb program;
-  engine.run(program, 1);
+  //graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+  //set_engine_flags(engine);
+  //Axb program;
+  pengine->run(program, 1);
   debug_print(name);
   mi.reset_offsets();
   mat.transpose = false;
