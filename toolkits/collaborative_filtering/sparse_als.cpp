@@ -229,8 +229,8 @@ if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algori
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
- latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  assert(M > 0 && N > 0);
+ init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
+
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);

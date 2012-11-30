@@ -94,23 +94,6 @@ double runtime = 0;
 struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
-  /**
-   * Called before an iteration starts.
-   */
-  void before_iteration(int iteration, graphchi_context &gcontext) {
-    if (iteration == 0) {
-      latent_factors_inmem.resize(gcontext.nvertices); // Initialize in-memory vertices.
-      assert(M > 0 && N > 0);
-    }
-  }
-
-  /**
-   * Called after an iteration has finished.
-   */
-  void after_iteration(int iteration, graphchi_context &gcontext) {
-    //training_rmse(iteration);
-    //validation_rmse(&sgd_predict);
-  }
 
   /**
    *  Vertex update function.

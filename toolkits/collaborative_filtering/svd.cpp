@@ -380,15 +380,24 @@ int main(int argc,  const char *argv[]) {
  
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
-  latent_factors_inmem.resize(info.total());
+  init_feature_vectors<std::vector<vertex_data> >(info.total(), latent_factors_inmem, false);
 
   timer mytimer; mytimer.start();
   init_lanczos(info);
   init_math(info, ortho_repeats);
+
+  //read initial vector from file (optional)
   if (vecfile.size() > 0){
     std::cout << "Load inital vector from file" << vecfile << std::endl;
     load_matrix_market_vector(vecfile, info, 0, true, false);
   }  
+  //or start with a random initial vector
+  else {
+#pragma omp parallel for
+    for (uint i=0; i< M; i++)
+      latent_factors_inmem[i].pvec[0] = drand48();
+  }
+
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   set_engine_flags(engine);
   pengine = &engine;   

@@ -206,8 +206,9 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, true);
-  latent_factors_inmem.resize(M+N+K); // Initialize in-memory vertices.
-  if (load_factors_from_file){
+  init_feature_vectors<std::vector<vertex_data> >(M+N+K, latent_factors_inmem, !load_factors_from_file);
+
+if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
     load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
     load_matrix_market_matrix(training + "_T.mm", M+N, NLATENT);

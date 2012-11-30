@@ -260,6 +260,8 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
+  init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
+
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
     load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
@@ -268,7 +270,6 @@ int main(int argc, const char ** argv) {
   x1 = zeros(NLATENT);
   x2 = zeros(NLATENT);
 
-  srand(time(NULL));
 
   /* Run */
   NMFVerticesInMemProgram program;

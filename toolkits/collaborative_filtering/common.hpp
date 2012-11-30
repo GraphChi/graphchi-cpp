@@ -105,4 +105,19 @@ void print_config(){
  std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
 }
 
+template<typename T>
+void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = true){
+  assert(size > 0);
+
+  srand48(time(NULL));
+  latent_factors_inmem.resize(size); // Initialize in-memory vertices.
+  if (!randomize)
+    return;
+
+#pragma omp parallel for
+ for (uint i=0; i < size; i++){
+    for (uint j=0; j<NLATENT; j++)
+      latent_factors_inmem[i].pvec[j] = drand48();
+  } 
+}
 #endif //_COMMON_H__
