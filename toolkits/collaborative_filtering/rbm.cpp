@@ -23,7 +23,7 @@
  * @section DESCRIPTION
  * Matrix factorization using RBM (Restricted Bolzman Machines) algorithm.
  * Algorithm is described in the paper:
- *
+ * G. Hinton. A Practical Guide to Training Restricted Boltzmann Machines. University of Toronto Tech report UTML TR 2010-003
  * 
  */
 

@@ -22,7 +22,8 @@
  *
  * @section DESCRIPTION
  *
- * Tensor factorization with the Alternative Least Squares (TIMESVDPP) algorithm.
+ * time-SVD++ algorithm implementation. As described in the paper:
+ * Yehuda Koren. 2009. Collaborative filtering with temporal dynamics. In Proceedings of the 15th ACM SIGKDD international conference on Knowledge discovery and data mining (KDD '09). ACM, New York, NY, USA, 447-456. DOI=10.1145/1557019.1557072
  * 
  */
 
@@ -259,7 +260,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     //go over all user nodes
-    if ( vertex.num_outedges() > 0){
+    if (is_user(vertex.id())){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
       user.rmse = 0; 
       time_svdpp_usr usr(user);
@@ -303,10 +304,10 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
         //edge_data & edge = scope.edge_data(oedgeid);
         //float rui = edge.weight;
         float rui = vertex.edge(e)->get_data().weight; 
-        uint t = vertex.edge(e)->get_data().time;
-        assert(t>=0 && t< K);
+        uint t = vertex.edge(e)->get_data().time - 1; // we assume time bins start from 1
+        assert(t < M+N+K);
         time_svdpp_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        time_svdpp_time time(latent_factors_inmem[M+N+t]);
+        time_svdpp_time time(latent_factors_inmem[t]);
         double pui = 0; 
         time_svdpp_predict(usr, mov, time, rui, pui);
         double eui = rui - pui;
@@ -367,7 +368,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
   void after_iteration(int iteration, graphchi_context &gcontext) {
     tsp.lrate *= tsp.lrate_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse3(&time_svdpp_predict, gcontext);
+    validation_rmse3(&time_svdpp_predict, gcontext, 4, 1);
   };
 
 
@@ -445,12 +446,11 @@ void output_timesvdpp_result(std::string filename) {
   MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains TIMESVDPP output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp] (");
   MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -TIMESVDPP  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]");
   MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -TIMESVDPP  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]");
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains bias-SGD output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains bias-SGD output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
+  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains time-svd++ output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains time-svd++ output bias vector. In each row a single item bias.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.");
 
-  logstream(LOG_INFO) << "tensor - TIMESVDPP output files (in matrix market format): " << filename << "_U.mm" <<
-                                                                                          ", " << filename + "_V.mm " << filename + "_T.mm" << std::endl;
+  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << " _global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm " << std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -477,7 +477,7 @@ int main(int argc, const char ** argv) {
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket4<edge_data>(training, true);
+  int nshards = convert_matrixmarket4<edge_data>(training, false);
   init_time_svdpp();
 
   if (load_factors_from_file){
@@ -497,7 +497,7 @@ int main(int argc, const char ** argv) {
 
   /* Output test predictions in matrix-market format */
   output_timesvdpp_result(training);
-  test_predictions3(&time_svdpp_predict);    
+  test_predictions3(&time_svdpp_predict, 1);    
 
   /* Report execution metrics */
   metrics_report(m);

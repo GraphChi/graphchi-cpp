@@ -88,7 +88,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
 
-void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction)) {
+void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction), int time_offset = 0) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -129,10 +129,12 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
     int rc = fscanf(f, "%d %d %d %lg\n", &I, &J, &time, &val);
     if (rc != 4)
       logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+    if (time - time_offset < 0)
+      logstream(LOG_FATAL)<<"Error: we assume time values >= " << time_offset << std::endl;
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[time+M+N], 1, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[time+M+N-time_offset], 1, prediction);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
   }
   fclose(f);
@@ -211,7 +213,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   compute validation rmse
   */
 void validation_rmse3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction)
-    ,graphchi_context & gcontext,int tokens_per_row = 4) {
+    ,graphchi_context & gcontext,int tokens_per_row = 4, int time_offset = 0) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -257,7 +259,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time], val, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time-time_offset], val, prediction);
     dvalidation_rmse += pow(prediction - val, 2);
   }
   fclose(f);
