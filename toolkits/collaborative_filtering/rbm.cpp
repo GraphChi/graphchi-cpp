@@ -21,11 +21,8 @@
 
  *
  * @section DESCRIPTION
- *
- * Matrix factorization with the Stochastic Gradient Descent (RBM) algorithm.
- * Algorithm is described in the papers:
- * 1) Matrix Factorization Techniques for Recommender Systems Yehuda Koren, Robert Bell, Chris Volinsky. In IEEE Computer, Vol. 42, No. 8. (07 August 2009), pp. 30-37. 
- * 2) Takács, G, Pilászy, I., Németh, B. and Tikk, D. (2009). Scalable Collaborative Filtering Approaches for Large Recommender Systems. Journal of Machine Learning Research, 10, 623-656.
+ * Matrix factorization using RBM (Restricted Bolzman Machines) algorithm.
+ * Algorithm is described in the paper:
  *
  * 
  */
@@ -41,12 +38,12 @@
 #include "eigen_wrapper.hpp"
 #include "common.hpp"
 
-double rbm_alpha = 0.1;
-double rbm_beta = 0.06;
-int rbm_bins = 6;
-double rbm_scaling = 5;
+double rbm_alpha        = 0.1;
+double rbm_beta         = 0.06;
+int    rbm_bins         = 6;
+double rbm_scaling      = 1;
 double rbm_mult_step_dec= 0.9;
-int D = 20;
+int    D                = 20;
 
 void setRand2(double * a, int d, float c){
   for(int i = 0; i < d; ++i)
@@ -105,17 +102,17 @@ struct rbm_user{
  *     */
 struct rbm_movie{
   double * bi;
-  float * ni;
+  double * ni;
   double * w;
 
   rbm_movie(const vertex_data& vdata){
-    ni = (float*)&vdata.bias;
+    ni = (double*)&vdata.bias;
     bi = (double*)&vdata.pvec[0];
     w = bi + rbm_bins;
   }
 
   rbm_movie & operator=(vertex_data & data){
-    ni = (float*)&data.bias;
+    ni = (double*)&data.bias;
     bi = (double*)&data.pvec[0];
     w = bi + rbm_bins;
     return * this;
@@ -230,6 +227,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
           float observation = vertex.edge(e)->get_data();                
           int r = observation/rbm_scaling;
+          assert(r < rbm_bins);
           mov.bi[r]++;
           (*mov.ni)++;
         }
@@ -388,12 +386,12 @@ int main(int argc, const char ** argv) {
   metrics m("rbm-inmemory-factors");
 
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
-  rbm_bins    = get_option_int("rbm_bins", rbm_bins);
+  rbm_bins      = get_option_int("rbm_bins", rbm_bins);
   rbm_alpha     = get_option_float("rbm_alpha", rbm_alpha);
-  rbm_beta     = get_option_float("rbm_alpha", rbm_beta);
+  rbm_beta      = get_option_float("rbm_beta", rbm_beta);
   rbm_mult_step_dec  = get_option_float("rbm_mult_step_dec", rbm_mult_step_dec);
-  rbm_scaling = get_option_float("rbm_scaling", rbm_scaling);
-  D = get_option_int("D", D);
+  rbm_scaling   = get_option_float("rbm_scaling", rbm_scaling);
+  D             = get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();
