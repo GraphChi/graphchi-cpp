@@ -43,6 +43,7 @@ double libfm_regv = 1e-3;
 double reg0 = 0.1;
 int D = 20; //feature vector width, can be changed on runtime using --D=XX flag
 bool debug = false;
+int time_offset = 1; //time bin starts from 1?
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
@@ -68,11 +69,6 @@ struct vertex_data {
     last_item = 0;
   }
 
-  double dot(const vertex_data &oth, const vertex_data time) const {
-    double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
-    return x;
-  }
 
 };
 
@@ -88,23 +84,23 @@ struct edge_data {
 std::vector<vertex_data> last_items;
 
 struct vertex_data_libfm{
-  float * bias;
+  double * bias;
   double * v;
   int *last_item; 
-  float * rmse;
+  double * rmse;
 
   vertex_data_libfm(const vertex_data & vdata){
     v = (double*)&vdata.pvec[0];
-    bias = (float*)&vdata.bias;
+    bias = (double*)&vdata.bias;
     last_item = (int*)&vdata.last_item;
-    rmse = (float*)& vdata.rmse;
+    rmse = (double*)& vdata.rmse;
   }
 
   vertex_data_libfm & operator=(vertex_data & data){
     v = (double*)&data.pvec[0];
-    bias = (float*)&data.bias;
+    bias = (double*)&data.bias;
     last_item = (int*)&data.last_item;
-    rmse = (float*)&data.rmse;
+    rmse = (double*)&data.rmse;
     return * this;
   }   
 };
@@ -160,9 +156,7 @@ void init_libfm(){
   last_items.resize(M);
 #pragma omp parallel for
   for (uint i=0; i< M; i++){
-    for (int j=0; j < D; j++){
-      last_items[i].pvec[j] = (debug ? 0.1 : (::randu()*factor));
-    }
+      last_items[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
   latent_factors_inmem.resize(M+N+K);
 
@@ -173,9 +167,7 @@ void init_libfm(){
     vdata.pvec = zeros(D);
     vdata.bias = 0;
     vertex_data_libfm data(latent_factors_inmem[i]);
-    for (int j=0; j < D; j++){
-      latent_factors_inmem[i].pvec[j] = (debug ? 0.1 : (::randu()*factor));
-    }
+    latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D): (::randu(D)*factor));
 
   }
     assert(last_items.size() == M);
@@ -206,11 +198,13 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
     if (gcontext.iteration == 0){
     if (is_user(vertex.id())) { //user node. find the last rated item and store it
+      vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
       int max_time = 0;
       for(int e=0; e < vertex.num_outedges(); e++) {
         const edge_data & edge = vertex.edge(e)->get_data();
         if (edge.time >= max_time){
-          max_time = edge.time;
+          max_time = edge.time - time_offset;
+          *user.last_item = vertex.edge(e)->vertex_id() - M;
         }
       }
     }
@@ -220,7 +214,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
-      user.rmse = 0; 
+      *user.rmse = 0; 
       assert(*user.last_item >= 0 && *user.last_item < (int)N);
       vertex_data & last_item = last_items[*user.last_item]; 
 
@@ -230,7 +224,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         float rui = vertex.edge(e)->get_data().weight;
         double pui;
         vec sum;
-        vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time];
+        vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
         float sqErr = libfm_predict(user, movie, time, rui, pui, &sum);
         float eui = pui - rui;
 
@@ -238,6 +232,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         *user.bias -= libfm_rate * (eui + libfm_regw * *user.bias);
         *movie.bias -= libfm_rate * (eui + libfm_regw * *movie.bias);
         time.bias -= libfm_regw * (eui + libfm_regw * time.bias);
+        assert(!std::isnan(time.bias));
         last_item.bias -= libfm_regw * (eui + libfm_regw * last_item.bias);
 
         for(int f = 0; f < D; f++){
