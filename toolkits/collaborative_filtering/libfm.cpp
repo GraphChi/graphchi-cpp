@@ -81,7 +81,6 @@ struct edge_data {
   edge_data(double weight, double time) : weight(weight), time(time) { }
 };
 
-std::vector<vertex_data> last_items;
 
 struct vertex_data_libfm{
   double * bias;
@@ -105,13 +104,23 @@ struct vertex_data_libfm{
   }   
 };
 
+/**
+ * Type definitions. Remember to create suitable graph shards using the
+ * Sharder-program. 
+ */
+typedef vertex_data VertexDataType;
+typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
+
+graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+std::vector<vertex_data> latent_factors_inmem;
+
 float libfm_predict(const vertex_data_libfm& user, 
     const vertex_data_libfm& movie, 
     const vertex_data_libfm& time,
     const float rating, 
     double& prediction, vec * sum){
 
-  vertex_data & last_item = last_items[*user.last_item]; //TODO, when no ratings, last item is 0
+  vertex_data & last_item = latent_factors_inmem[M+N+K+(*user.last_item)]; //TODO, when no ratings, last item is 0
   vec sum_sqr = zeros(D);
   *sum = zeros(D);
   prediction = globalMean + *user.bias + *movie.bias + *time.bias + last_item.bias;
@@ -138,29 +147,19 @@ float libfm_predict(const vertex_data& user,
   return libfm_predict(vertex_data_libfm((vertex_data&)user), vertex_data_libfm((vertex_data&)movie), vertex_data_libfm((vertex_data&)time), rating, prediction, &sum);
 }
 
-/**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
-typedef vertex_data VertexDataType;
-typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
-
-graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
-std::vector<vertex_data> latent_factors_inmem;
 
 void init_libfm(){
 
   srand(time(NULL));
-
-  double factor = 0.1/sqrt(D);
-  last_items.resize(M);
-#pragma omp parallel for
-  for (uint i=0; i< M; i++){
-      last_items[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
-  }
-  latent_factors_inmem.resize(M+N+K);
+  latent_factors_inmem.resize(M+N+K+M);
 
   assert(D > 0);
+  double factor = 0.1/sqrt(D);
+#pragma omp parallel for
+  for (uint i=0; i< M; i++){
+      latent_factors_inmem[M+N+K+i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
+  }
+
 #pragma omp parallel for
   for (uint i=0; i<M+N; i++){
     vertex_data & vdata = latent_factors_inmem[i];
@@ -170,7 +169,6 @@ void init_libfm(){
     latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D): (::randu(D)*factor));
 
   }
-    assert(last_items.size() == M);
 
   for (uint i=0; i< K; i++){
     vertex_data & data = latent_factors_inmem[i+M+N];
@@ -216,7 +214,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
       vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
       *user.rmse = 0; 
       assert(*user.last_item >= 0 && *user.last_item < (int)N);
-      vertex_data & last_item = last_items[*user.last_item]; 
+      vertex_data & last_item = latent_factors_inmem[M+N+K+(*user.last_item)]; 
 
       for(int e=0; e < vertex.num_outedges(); e++) {
         vertex_data_libfm movie(latent_factors_inmem[vertex.edge(e)->vertex_id()]);
@@ -339,14 +337,17 @@ struct  MMOutputter{
 
 
 void output_libfm_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp] (");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]");
-  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]");
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains time-svd++ output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains time-svd++ output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.");
+  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.");
+  MMOutputter mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.");
+   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains LIBFM output bias vector. In each row a single item bias.");
+  MMOutputter_bias mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , "This file contains LIBFM output bias vector. In each row a single time bias.");
+  MMOutputter_bias mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , "This file contains LIBFM output bias vector. In each row a single last item bias.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
 
-  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << " _global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm " << std::endl;
+  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -377,10 +378,10 @@ int main(int argc, const char ** argv) {
   init_libfm();
 
   if (load_factors_from_file){
-    logstream(LOG_FATAL)<<"This operation is not supported yet" << std::endl;
-    //load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    //load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
-    //load_matrix_market_matrix(training + "_T.mm", M+N, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
+    load_matrix_market_matrix(training + "_T.mm", M+N, D);
+    load_matrix_market_matrix(training + "_L.mm", M+N+K, D);
   }
 
 

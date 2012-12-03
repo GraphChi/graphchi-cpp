@@ -55,6 +55,7 @@ bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
+
 inline double sum(double * pvec){
   double tsum = 0;
   for (int j=0; j< D; j++)
@@ -429,10 +430,9 @@ int main(int argc, const char ** argv) {
   init_time_svdpp();
 
   if (load_factors_from_file){
-    logstream(LOG_FATAL)<<"This operation is not supported yet" << std::endl;
-    //load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    //load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
-    //load_matrix_market_matrix(training + "_T.mm", M+N, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, 4*D);
+    load_matrix_market_matrix(training + "_V.mm", M, 2*D);
+    load_matrix_market_matrix(training + "_T.mm", M+N, 2*D);
   }
 
 

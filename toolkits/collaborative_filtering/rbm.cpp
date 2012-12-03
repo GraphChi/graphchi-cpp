@@ -45,6 +45,10 @@ double rbm_scaling      = 1;
 double rbm_mult_step_dec= 0.9;
 int    D                = 20;
 
+bool is_user(vid_t id){ return id < M; }
+bool is_item(vid_t id){ return id >= M && id < N; }
+bool is_time(vid_t id){ return id >= M+N; }
+
 void setRand2(double * a, int d, float c){
   for(int i = 0; i < d; ++i)
     a[i] = ((drand48() - 0.5) * c);
@@ -220,7 +224,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     if (gcontext.iteration == 0){
-      if (vertex.num_outedges() > 0){
+      if (is_user(vertex.id())){
         vertex_data &user = latent_factors_inmem[vertex.id()];
         user.pvec = zeros(D*3);
         for(int e=0; e < vertex.num_outedges(); e++) {
@@ -232,7 +236,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           (*mov.ni)++;
         }
       }
-      else if (vertex.num_inedges() > 0){
+      else if (is_item(vertex.id()) > 0){
         rbm_movie mov = latent_factors_inmem[vertex.id()]; 
         setRand2(mov.w, D*rbm_bins, 0.001);
         if((*mov.ni) == 0) 
@@ -246,7 +250,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       return; //done with initialization
     }
     //go over all user nodes
-    if ( vertex.num_outedges() > 0){
+    if (is_user(vertex.id())){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
       user.pvec = zeros(3*D);
       user.rmse = 0; 
@@ -405,9 +409,8 @@ int main(int argc, const char ** argv) {
 
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
-    logstream(LOG_FATAL)<<"operationn ot supported yet" << std::endl;
-    //load_matrix_market_matrix(training + "_U.mm", 0, D);
-    //load_matrix_market_matrix(training + "_V.mm", M, D);
+    load_matrix_market_matrix(training + "_U.mm", 0, 3*D);
+    load_matrix_market_matrix(training + "_V.mm", M, rbm_bins*(D+1));
   }
 
   print_config();
