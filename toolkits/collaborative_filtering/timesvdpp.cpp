@@ -433,7 +433,20 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_U.mm", 0, 4*D);
     load_matrix_market_matrix(training + "_V.mm", M, 2*D);
     load_matrix_market_matrix(training + "_T.mm", M+N, 2*D);
-  }
+    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    vec time_bias = load_matrix_market_vector(training+ "_T_bias.mm", false, true);
+    for (uint i=0; i<M+N+K; i++){
+      if (i < M)
+        latent_factors_inmem[i].bias = user_bias[i];
+      else if (i <M+N)
+        latent_factors_inmem[i].bias = item_bias[i-M];
+      else 
+        latent_factors_inmem[i].bias = time_bias[i-M-N];
+    }
+    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
+    globalMean = gm[0];
+ }
 
 
   /* Run */
