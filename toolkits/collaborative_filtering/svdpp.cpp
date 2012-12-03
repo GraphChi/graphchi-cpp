@@ -5,7 +5,7 @@
  *
  * @section LICENSE
  *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+ * Copyright [2012] [Carnegie Mellon University]
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

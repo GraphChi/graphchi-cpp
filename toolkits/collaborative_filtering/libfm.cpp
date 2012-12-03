@@ -1,6 +1,6 @@
 /**
  * @file
- * @author  Danny Bickson, based on code by Aapo Kyrola
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE

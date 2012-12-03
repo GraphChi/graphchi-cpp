@@ -1,6 +1,6 @@
 /**
  * @file
- * @author  Danny Bickson, based on code by Aapo Kyrola
+ * @author  Danny Bickson
  * @version 1.0
  *
  * @section LICENSE
@@ -227,20 +227,6 @@ void init_time_svdpp(){
       timenode.pt[m] = 0.001 * drand48() / (double) (k);
     }
   }
-  /* TODO
-     graph_type * validation = (graph_type*)g<graph_type>(VALIDATION);
-     if (validation != NULL && validation->num_vertices() > 0){
-     init_time_svdpp_node_data(validation); 
-     }
-     graph_type * test = (graph_type*)g<graph_type>(TEST);
-     if (test != NULL && test->num_vertices() > 0){
-     init_time_svdpp_node_data(test);
-     }
-     graph_type * test2 = (graph_type*)g<graph_type>(TEST2);
-     if (test2 != NULL && test2->num_vertices() > 0){
-     init_time_svdpp_node_data(test2);
-     }
-     */
 }
 
 
@@ -276,25 +262,6 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
         Map<vec> y(movie.y, D);
         sumY += sum(y); //y
       }
-
-      //TODO
-      /*graph_type * validation = (graph_type*)g<graph_type>(VALIDATION);
-        if (validation != NULL && validation->num_vertices() > 0){
-        foreach(graphlab::edge_id_t oedgeid, validation->out_edge_ids(id)){
-        vertex_data_svdpp movie = validation->vertex_data(validation->target(oedgeid));
-        sumY += sum(movie.weight); //y
-        }
-        }
-
-        graph_type * test = (graph_type*)g<graph_type>(TEST);
-        if (test != NULL && test->num_vertices() > 0){
-        foreach(graphlab::edge_id_t oedgeid, test->out_edge_ids(id)){
-        vertex_data_svdpp movie = test->vertex_data(test->target(oedgeid));
-        sumY += sum(movie.weight); //y
-        }
-        }
-
-*/
 
       for( int k=0; k<dim; ++k) {
         usr.ptemp[k] = usr.pu[k] + rRuNum * sumY; // pTemp = pu + rRuNum*sumY
@@ -338,25 +305,6 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
           mov.y[k] += tsp.lrate * (rRuNum * sum[k]- tsp.gamma*mov.y[k]);
         }
       }
-
-      /*if (validation != NULL && validation->num_vertices() > 0){
-        foreach(graphlab::edge_id_t oedgeid, validation->out_edge_ids(id)){
-        time_svdpp_movie mov = validation->vertex_data(validation->target(oedgeid));
-        for(int k=0;k<dim;k++){
-        mov.y[k] += tsp.lrate * (rRuNum * sum[k]- tsp.gamma*mov.y[k]);
-        }
-        }
-        }*/
-      /*
-         if (test != NULL && test->num_vertices() > 0){
-         foreach(graphlab::edge_id_t oedgeid, test->out_edge_ids(id)){
-         time_svdpp_movie mov = test->vertex_data(test->target(oedgeid));
-         for(int k=0;k<dim;k++){
-         mov.y[k] += tsp.lrate * (rRuNum * sum[k]- tsp.gamma*mov.y[k]);
-         }
-         }
-         }
-         */
 
     }
 
@@ -464,14 +412,14 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("als-tensor-inmemory-factors");
+  metrics m("time-svdpp-inmemory-factors");
 
   //specific command line parameters for time-svd++
-  tsp.lrate = get_option_float("lrate", tsp.lrate);
-  tsp.beta = get_option_float("beta", tsp.beta);
-  tsp.gamma = get_option_float("gamma", tsp.gamma);
+  tsp.lrate =   get_option_float("lrate", tsp.lrate);
+  tsp.beta =    get_option_float("beta", tsp.beta);
+  tsp.gamma =   get_option_float("gamma", tsp.gamma);
   tsp.lrate_mult_dec = get_option_float("lrate_mult_dec", tsp.lrate_mult_dec);
-  D = get_option_int("D", D);
+  D =           get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();
