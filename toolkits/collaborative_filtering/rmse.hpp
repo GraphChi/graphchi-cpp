@@ -145,7 +145,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
 
-void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & prediction), int feature_num, bool square = false) {
+void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & prediction), int feature_num, int * offsets, bool square = false) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -221,10 +221,10 @@ void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array
       }
     
     double prediction;
-    node_array[0] = &latent_factors_inmem[I];
-    node_array[1] = &latent_factors_inmem[square?J:J+M];
+    node_array[0] = &latent_factors_inmem[I] + offsets[0];
+    node_array[1] = &latent_factors_inmem[square?J:J+offsets[1]];
     for (int j=0; j< feature_num; j++){
-      node_array[j+2] = & latent_factors_inmem[valarray[j]]; //TODO
+      node_array[j+2] = & latent_factors_inmem[offsets[j+2] + valarray[j]]; 
     }
     vec sum;
     (*prediction_func)((const vertex_data**)node_array, 2+feature_num,0 , prediction);
@@ -371,7 +371,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   compute validation rmse
   */
 void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction)
-    ,graphchi_context & gcontext, int feature_num, bool square = false) {
+    ,graphchi_context & gcontext, int feature_num, int * offsets, bool square = false) {
 
   int ret_code;
   MM_typecode matcode;
@@ -445,10 +445,10 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
       }
   
     double prediction;
-    node_array[0] = &latent_factors_inmem[I];
-    node_array[1] = &latent_factors_inmem[square?J:J+M];
+    node_array[0] = &latent_factors_inmem[I + offsets[0]];
+    node_array[1] = &latent_factors_inmem[square?J:J+offsets[1]];
     for (int j=0; j< feature_num; j++){
-      node_array[j+2] = & latent_factors_inmem[valarray[j]]; //TODO
+      node_array[j+2] = & latent_factors_inmem[valarray[j]+offsets[j+2]];
     }
     (*prediction_func)((const vertex_data**)node_array, 2+feature_num, val, prediction);
     dvalidation_rmse += pow(prediction - val, 2);

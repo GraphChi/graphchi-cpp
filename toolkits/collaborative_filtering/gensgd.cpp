@@ -37,7 +37,6 @@
 #include "eigen_wrapper.hpp"
 
 #define FEATURE_WIDTH 4
-int K_size[FEATURE_WIDTH];
 float minarray[FEATURE_WIDTH];
 float maxarray[FEATURE_WIDTH];
 float meanarray[FEATURE_WIDTH];
@@ -54,10 +53,22 @@ int time_offset = 1; //time bin starts from 1?
 int num_feature_bins(){
   int sum = 0;
   for (int i=0; i< FEATURE_WIDTH; i++)
-    sum += K_size[i];
+    sum += (maxarray[i] - minarray[i]);
   assert(sum > 0);
   return sum;
 }
+int get_offset(int i){
+  int offset = 0;
+   if (i >= 1)
+     offset += M;
+   if (i >= 2)
+     offset += N;
+   for (int j=2; j < i; j++)
+     offset += (maxarray[j-2]-minarray[j-2]);
+   return offset;
+}
+int offsets[FEATURE_WIDTH+2];
+
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
@@ -142,7 +153,10 @@ void init_gensgd(){
   srand(time(NULL));
   int nodes = M+N+num_feature_bins();
   latent_factors_inmem.resize(nodes);
-
+  for (int i=0; i< FEATURE_WIDTH+2; i++){
+    offsets[i] = get_offset(i);
+    assert(offsets[i] < nodes);
+  }
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
@@ -199,7 +213,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         //vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
         vertex_data *relevant_features[FEATURE_WIDTH];
         for (int i=0; i< FEATURE_WIDTH; i++){
-          relevant_features[i] = &latent_factors_inmem[data.features[i]];
+          relevant_features[i] = &latent_factors_inmem[get_offset(i+2) + data.features[i] - minarray[i]];
         }
         float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+FEATURE_WIDTH, rui, pui, &sum);
         float eui = pui - rui;
@@ -246,7 +260,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void after_iteration(int iteration, graphchi_context &gcontext) {
     gensgd_rate *= gensgd_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH);
+    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH, offsets);
   };
 
 
@@ -394,7 +408,7 @@ int main(int argc, const char ** argv) {
 
   /* Output test predictions in matrix-market format */
   output_gensgd_result(training);
-  test_predictions_N(&gensgd_predict, FEATURE_WIDTH);    
+  test_predictions_N(&gensgd_predict, FEATURE_WIDTH, offsets);    
 
   /* Report execution metrics */
   metrics_report(m);
