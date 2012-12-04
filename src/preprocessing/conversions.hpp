@@ -120,12 +120,51 @@ namespace graphchi {
     }
     
     
+    // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
+    int getdir (std::string dir, std::vector<std::string> &files)
+    {
+        DIR *dp;
+        struct dirent *dirp;
+        if((dp  = opendir(dir.c_str())) == NULL) {
+            std::cout << "Error(" << errno << ") opening " << dir << std::endl;
+            return errno;
+        }
+        
+        while ((dirp = readdir(dp)) != NULL) {
+            files.push_back(std::string(dirp->d_name));
+        }
+        closedir(dp);
+        return 0;
+    }
+    
+    
+    std::string get_dirname(std::string arg) {
+        size_t a = arg.find_last_of("/");
+        if (a != arg.npos) {
+            std::string dir = arg.substr(0, a);
+            return dir;
+        } else {
+            assert(false);
+        }
+    }
+    
+    std::string get_filename(std::string arg) {
+        size_t a = arg.find_last_of("/");
+        if (a != arg.npos) {
+            std::string f = arg.substr(a + 1);
+            return f;
+        } else {
+            assert(false);
+        }
+    }
+    
     /**
      * Converts graph from an edge list format. Input may contain
      * value for the edges. Self-edges are ignored.
      */
     template <typename EdgeDataType>
     void convert_edgelist(std::string inputfile, sharder<EdgeDataType> &sharderobj) {
+        
         FILE * inf = fopen(inputfile.c_str(), "r");
         size_t bytesread = 0;
         size_t linenum = 0;
@@ -222,45 +261,7 @@ namespace graphchi {
         }
         free(s);
         fclose(inf);
-    }
-    
-    // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
-    int getdir (std::string dir, std::vector<std::string> &files)
-    {
-        DIR *dp;
-        struct dirent *dirp;
-        if((dp  = opendir(dir.c_str())) == NULL) {
-            std::cout << "Error(" << errno << ") opening " << dir << std::endl;
-            return errno;
-        }
-        
-        while ((dirp = readdir(dp)) != NULL) {
-            files.push_back(std::string(dirp->d_name));
-        }
-        closedir(dp);
-        return 0;
-    }
-    
-    
-    std::string get_dirname(std::string arg) {
-        size_t a = arg.find_last_of("/");
-        if (a != arg.npos) {
-            std::string dir = arg.substr(0, a);
-            return dir;
-        } else {
-            assert(false);
-        }
-    }
-    
-    std::string get_filename(std::string arg) {
-        size_t a = arg.find_last_of("/");
-        if (a != arg.npos) {
-            std::string f = arg.substr(a + 1);
-            return f;
-        } else {
-            assert(false);
-        }
-    }
+    } 
     
     /**
      * Converts a graph from cassovary's (Twitter) format. Edge values are not supported,
@@ -382,6 +383,48 @@ namespace graphchi {
         }
     }
     
+    // TODO: remove code duplication.
+    template <typename EdgeDataType>
+    void convert_binedgelistval(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+        std::vector<std::string> parts;
+        std::string dirname = get_dirname(basefilename);
+        std::string prefix =  get_filename(basefilename);
+        
+        std::cout << "dir=[" << dirname << "] prefix=[" << prefix << "]" << std::endl;
+        getdir(dirname, parts);
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find(prefix) == 0 && inputfile.find("tmp") == inputfile.npos) {
+                std::cout << "Going to process: " << inputfile << std::endl;
+            }
+        }
+        
+        for(std::vector<std::string>::iterator it=parts.begin(); it != parts.end(); ++it) {
+            std::string inputfile = *it;
+            if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
+                inputfile = dirname + "/" + inputfile;
+                std::cout << "Process: " << inputfile << std::endl;
+                FILE * inf = fopen(inputfile.c_str(), "r");
+                
+                while(!feof(inf)) {
+                    vid_t from;
+                    vid_t to;
+                    EdgeDataType edgeval;
+                    
+                    fread(&from, 1, sizeof(vid_t), inf);
+                    fread(&to, 1, sizeof(vid_t), inf);
+                    fread(&edgeval, 1, sizeof(EdgeDataType), inf);
+                    if (from != to) {
+                        sharderobj.preprocessing_add_edge(from, to, edgeval);
+                    }
+                }
+                fclose(inf);
+            }
+        }
+    }
+
+    
     
     
     /** 
@@ -411,7 +454,7 @@ namespace graphchi {
         
         if (!sharderobj.preprocessed_file_exists()) {
             std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist") {
+            if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist") {
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -423,6 +466,8 @@ namespace graphchi {
                 convert_adjlist<EdgeDataType>(basefilename, sharderobj);
             } else if (file_type_str == "edgelist") {
                 convert_edgelist<EdgeDataType>(basefilename, sharderobj);
+            } else if (file_type_str == "binedgelist") {
+                convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
             }
             
             /* Finish preprocessing */
@@ -483,6 +528,11 @@ namespace graphchi {
         if (get_option_int("skipsharding", 0) == 1) {
             std::cout << "Skip sharding..." << std::endl;
             exit(0);
+        }
+
+	vid_t max_vertex_id = get_option_int("maxvertex", 0);
+        if (max_vertex_id > 0) {
+	  sharderobj.set_max_vertex_id(max_vertex_id);
         }
         
         int nshards = sharderobj.execute_sharding(nshards_string);
