@@ -45,7 +45,7 @@ double gensgd_rate = 1e-02;
 double gensgd_mult_dec = 0.9;
 double gensgd_regw = 1e-3;
 double gensgd_regv = 1e-3;
-double gensgd_reg0 = 1e-3;
+double gensgd_reg0 = 1e-1;
 int D = 20; //feature vector width, can be changed on runtime using --D=XX flag
 bool debug = false;
 int last_item = 0;
@@ -67,7 +67,7 @@ int get_offset(int i){
      offset += ((maxarray[j-2]-minarray[j-2])+1);
    return offset;
 }
-int offsets[FEATURE_WIDTH+2];
+int * offsets;
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
@@ -123,11 +123,11 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   vec sum_sqr = zeros(D);
   *sum = zeros(D);
   prediction = globalMean;
-  for (int i=0; i< FEATURE_WIDTH; i++)
+  for (int i=0; i< node_array_size; i++)
     prediction += node_array[i]->bias;
   
   for (int j=0; j< D; j++){
-    for (int i=0; i< FEATURE_WIDTH; i++){
+    for (int i=0; i< node_array_size; i++){
       sum->operator[](j) += node_array[i]->pvec[j];
       sum_sqr[j] += pow(node_array[i]->pvec[j],2);
     }
@@ -151,12 +151,15 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 void init_gensgd(){
 
   srand(time(NULL));
-  int nodes = M+N+num_feature_bins();
+  int nodes = M+N+num_feature_bins()+last_item*M;
   latent_factors_inmem.resize(nodes);
+  offsets = new int[FEATURE_WIDTH+2+last_item];
   for (int i=0; i< FEATURE_WIDTH+2; i++){
     offsets[i] = get_offset(i);
     assert(offsets[i] < nodes);
   }
+  if (last_item)
+    offsets[2+FEATURE_WIDTH] = M+N+num_feature_bins();
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
@@ -186,8 +189,15 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   if (last_item && gcontext.iteration == 0){
     if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
-      user.last_item = vertex.edge(vertex.num_outedges()-1)->vertex_id() - M;
-    }
+      int max_time = 0;
+      for(int e=0; e < vertex.num_outedges(); e++) {
+        const edge_data & edge = vertex.edge(e)->get_data();
+        if (edge.features[0]-1 >= max_time){ //first feature is time
+          max_time = edge.features[0]-1;
+          user.last_item = vertex.edge(e)->vertex_id() - M;
+        }
+      }
+     }
     else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
       logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
     return;
@@ -213,8 +223,11 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           assert(pos >= 0 && pos < latent_factors_inmem.size());
           relevant_features[i+2] = &latent_factors_inmem[pos];
         }
-        if (last_item)
-          relevant_features[2+FEATURE_WIDTH] = &latent_factors_inmem[M+user.last_item];
+        if (last_item){
+          uint pos = M+N+num_feature_bins()+user.last_item;
+          assert(pos < latent_factors_inmem.size());
+          relevant_features[2+FEATURE_WIDTH] = &latent_factors_inmem[pos];
+        }
         float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+FEATURE_WIDTH+last_item, rui, pui, &sum);
         float eui = pui - rui;
 
@@ -223,10 +236,10 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         //movie.bias -= gensgd_rate * (eui + gensgd_regw * movie.bias);
         //time.bias -= gensgd_regw * (eui + gensgd_regw * time.bias);
         //assert(!std::isnan(time.bias));
-        for (int i=0; i < FEATURE_WIDTH; i++){
+        for (int i=0; i < FEATURE_WIDTH + last_item; i++){
           relevant_features[i]->bias -= gensgd_rate * (eui + gensgd_regw* relevant_features[i]->bias);
-        vec grad = sum - relevant_features[i]->pvec;
-        relevant_features[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * relevant_features[i]->pvec);
+          vec grad = sum - relevant_features[i]->pvec;
+          relevant_features[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * relevant_features[i]->pvec);
         }
 
         //last_item.bias -= gensgd_regw * (eui + gensgd_regw * last_item.bias);
@@ -260,7 +273,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void after_iteration(int iteration, graphchi_context &gcontext) {
     gensgd_rate *= gensgd_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH, offsets);
+    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH, last_item, offsets, minarray);
   };
 
 

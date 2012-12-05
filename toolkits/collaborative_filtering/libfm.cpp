@@ -190,6 +190,9 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         }
       }
     }
+if (is_user(vertex.id()) && vertex.num_outedges() == 0)
+      logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
+    return;
     return;
   } 
  

@@ -371,7 +371,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   compute validation rmse
   */
 void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction)
-    ,graphchi_context & gcontext, int feature_num, int * offsets, bool square = false) {
+    ,graphchi_context & gcontext, int feature_num, int last_item, int * offsets, float * minarray, bool square = false) {
 
   int ret_code;
   MM_typecode matcode;
@@ -401,12 +401,12 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
   last_validation_rmse = dvalidation_rmse;
   dvalidation_rmse = 0;   
   uint I, J;
-  char * linebuf;
+  char * linebuf = NULL;
   char linebuf_debug[1024];
   size_t linesize;
   float * valarray = new float[feature_num];
   float val;
-  vertex_data ** node_array = new vertex_data*[2+feature_num];
+  vertex_data ** node_array = new vertex_data*[2+feature_num+last_item];
 
   for (size_t i=0; i<nz; i++)
   {
@@ -448,9 +448,17 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
     node_array[0] = &latent_factors_inmem[I];
     node_array[1] = &latent_factors_inmem[square?J:J+M];
     for (int j=0; j< feature_num; j++){
-      node_array[j+2] = & latent_factors_inmem[valarray[j]+offsets[j+2]];
+      uint pos = valarray[j]+offsets[j+2]-minarray[j];
+      assert(pos >= 0 && pos < latent_factors_inmem.size());
+      node_array[j+2] = & latent_factors_inmem[pos];
     }
-    (*prediction_func)((const vertex_data**)node_array, 2+feature_num, val, prediction);
+   if (last_item){
+     uint pos = latent_factors_inmem[I].last_item + offsets[feature_num+2];
+     assert(pos < latent_factors_inmem.size());
+     node_array[feature_num+2] = &latent_factors_inmem[pos];
+   }
+
+    (*prediction_func)((const vertex_data**)node_array, 2+feature_num+last_item, val, prediction);
     dvalidation_rmse += pow(prediction - val, 2);
   }
   fclose(f);

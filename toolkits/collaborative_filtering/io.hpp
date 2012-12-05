@@ -48,17 +48,17 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n",&M, &N, &L, &feature_num);
-    if (rc != 4)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
+    int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n%lg\n",&M, &N, &L, &feature_num, &globalMean);
+    if (rc != 5)
+      logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
     for (int i=0; i< feature_num; i++){
       int rc = fscanf(inf, "%g\n%g\n%g\n", &minarray[i], &maxarray[i], &meanarray[i]);
       if (rc != 3)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
+      logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
    
     }
     fclose(inf);
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << std::endl;
+    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " globalMean: " << globalMean << std::endl;
     for (int i=0; i< feature_num; i++){
     logstream(LOG_INFO) << "Feature " << i << " min val: " << minarray[i] << " max val: " << maxarray[i] << "  mean val: " << meanarray[i] << std::endl;
     }
@@ -141,7 +141,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
       val = atof(pch);
       if (std::isnan(val))
            logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
-      
+      globalMean += val;
+
       //avoid self edges
       if (square && I == J)
         continue;
@@ -150,16 +151,20 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
     }
 
     sharderobj.end_preprocessing();
+    assert(L > 0);
     for (int i=0; i< actual_features; i++){
        meanarray[i] /= L;
     }
+    assert(globalMean != 0);
+    globalMean /= L;
+    logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
     for (int i=0; i< actual_features; i++){
     logstream(LOG_INFO) << "Feature " << i << " min val: " << minarray[i] << " max val: " << maxarray[i] << "  mean val: " << meanarray[i] << std::endl;
     }
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%d\n", M, N, L, actual_features);
+    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, actual_features, globalMean);
     for (int i=0; i < actual_features; i++){
-      fprintf(outf, "%g\n%g\n%g\n", minarray[i], maxarray[i], meanarray[i]);
+      fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", minarray[i], maxarray[i], meanarray[i]);
     }
     fclose(outf);
     delete[] valarray;
