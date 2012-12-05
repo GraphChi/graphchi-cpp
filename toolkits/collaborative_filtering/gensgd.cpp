@@ -35,11 +35,15 @@
 #include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
+#define MAX_FEATAURES 21
 #define FEATURE_WIDTH 1 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 float minarray[FEATURE_WIDTH];
 float maxarray[FEATURE_WIDTH];
 float meanarray[FEATURE_WIDTH];
 int actual_features = FEATURE_WIDTH;
+int total_features = 0;
+bool feature_selection[MAX_FEATAURES];
+std::string default_feature_str;
 
 double gensgd_rate = 1e-02;
 double gensgd_mult_dec = 0.9;
@@ -52,9 +56,10 @@ int last_item = 0;
 
 int num_feature_bins(){
   int sum = 0;
-  for (int i=0; i< actual_features; i++)
+  for (int i=0; i< total_features; i++)
     sum += ((maxarray[i] - minarray[i]) + 1);
-  assert(sum > 0);
+  if (total_features > 0)
+    assert(sum > 0);
   return sum;
 }
 int get_offset(int i){
@@ -153,13 +158,13 @@ void init_gensgd(){
   srand(time(NULL));
   int nodes = M+N+num_feature_bins()+last_item*M;
   latent_factors_inmem.resize(nodes);
-  offsets = new int[FEATURE_WIDTH+2+last_item];
-  for (int i=0; i< FEATURE_WIDTH+2; i++){
+  offsets = new int[total_features+2+last_item];
+  for (int i=0; i< total_features+2; i++){
     offsets[i] = get_offset(i);
     assert(offsets[i] < nodes);
   }
   if (last_item)
-    offsets[2+FEATURE_WIDTH] = M+N+num_feature_bins();
+    offsets[2+total_features] = M+N+num_feature_bins();
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
@@ -215,10 +220,10 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         double pui;
         vec sum;
         //vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
-        vertex_data *relevant_features[2+FEATURE_WIDTH+last_item];
+        vertex_data *relevant_features[2+total_features+last_item];
         relevant_features[0] = &user;
         relevant_features[1] = &latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        for (int i=0; i< FEATURE_WIDTH; i++){
+        for (int i=0; i< total_features; i++){
           uint pos = get_offset(i+2) + data.features[i] - minarray[i];
           assert(pos >= 0 && pos < latent_factors_inmem.size());
           relevant_features[i+2] = &latent_factors_inmem[pos];
@@ -226,9 +231,9 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         if (last_item){
           uint pos = M+N+num_feature_bins()+user.last_item;
           assert(pos < latent_factors_inmem.size());
-          relevant_features[2+FEATURE_WIDTH] = &latent_factors_inmem[pos];
+          relevant_features[2+total_features] = &latent_factors_inmem[pos];
         }
-        float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+FEATURE_WIDTH+last_item, rui, pui, &sum);
+        float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+total_features+last_item, rui, pui, &sum);
         float eui = pui - rui;
 
         globalMean -= gensgd_rate * (eui + gensgd_reg0 * globalMean);
@@ -236,7 +241,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         //movie.bias -= gensgd_rate * (eui + gensgd_regw * movie.bias);
         //time.bias -= gensgd_regw * (eui + gensgd_regw * time.bias);
         //assert(!std::isnan(time.bias));
-        for (int i=0; i < FEATURE_WIDTH + last_item; i++){
+        for (int i=0; i < total_features + last_item; i++){
           relevant_features[i]->bias -= gensgd_rate * (eui + gensgd_regw* relevant_features[i]->bias);
           vec grad = sum - relevant_features[i]->pvec;
           relevant_features[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * relevant_features[i]->pvec);
@@ -273,7 +278,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void after_iteration(int iteration, graphchi_context &gcontext) {
     gensgd_rate *= gensgd_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH, last_item, offsets, minarray);
+    validation_rmse_N(&gensgd_predict, gcontext, FEATURE_WIDTH, last_item, offsets, minarray, feature_selection, total_features);
   };
 
 
@@ -376,12 +381,34 @@ int main(int argc, const char ** argv) {
   gensgd_mult_dec = get_option_float("gensgd_mult_dec", gensgd_mult_dec);
   last_item = get_option_int("last_item", last_item);
   D = get_option_int("D", D);
+  std::string string_features = get_option_string("features", default_feature_str);
+  if (string_features != ""){
+  char * pfeatures = strdup(string_features.c_str());
+  char * pch = strtok(pfeatures, ",\n\r\t ");
+  int node = atoi(pch);
+  if (node < 0 || node >= MAX_FEATAURES)
+    logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
+  feature_selection[node] = true;
+  total_features++;
+  while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+    node = atoi(pch);
+    if (node < 0 || node >= MAX_FEATAURES)
+      logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
+    feature_selection[node] = true;
+    total_features++;
+  }
+  }
+
+  logstream(LOG_INFO) <<"Total selected features: " << total_features << " : " << std::endl;
+  for (int i=0; i < MAX_FEATAURES; i++)
+  if (feature_selection[i])
+    logstream(LOG_INFO)<<"Selected feature: " << i << std::endl;
 
   parse_command_line_args();
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket_N<edge_data>(training, false, FEATURE_WIDTH, actual_features, minarray, maxarray, meanarray);
+  int nshards = convert_matrixmarket_N<edge_data>(training, false, FEATURE_WIDTH, actual_features, minarray, maxarray, meanarray, feature_selection, total_features);
   init_gensgd();
 
   if (load_factors_from_file){
@@ -404,7 +431,7 @@ int main(int argc, const char ** argv) {
 
   /* Output test predictions in matrix-market format */
   output_gensgd_result(training);
-  test_predictions_N(&gensgd_predict, FEATURE_WIDTH, offsets);    
+  test_predictions_N(&gensgd_predict, FEATURE_WIDTH, offsets, feature_selection, total_features);    
 
   /* Report execution metrics */
   metrics_report(m);
