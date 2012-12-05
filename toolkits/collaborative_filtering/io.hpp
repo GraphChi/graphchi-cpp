@@ -31,11 +31,11 @@
  * with the same id as the row number (0-based), but vertices correponsing to columns
  * have id + num-rows.
  * Line format of the type
- * [user] [item] [feature1] [feature2] ... [featureN]
+ * [user] [item] [feature1] [feature2] ... [featureN] [rating]
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket_N(std::string base_filename, bool square, int feature_num, float * minarray, float * maxarray, float * meanarray) {
+int convert_matrixmarket_N(std::string base_filename, bool square, int feature_num, int & actual_features, float * minarray, float * maxarray, float * meanarray) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   int ret_code;
   MM_typecode matcode;
@@ -88,11 +88,12 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  char * linebuf;
+  char * linebuf = NULL;
   char linebuf_debug[1024];
   float * valarray = new float[feature_num];
   float val;
   size_t linesize;
+  actual_features = feature_num;
 
   for (int i=0; i< feature_num; i++){
     minarray[i] = 1e100;
@@ -118,17 +119,15 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
 
-      pch = strtok(NULL, "\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      val = atof(pch);
-      if (std::isnan(val))
-           logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
- 
-      for (int j=0; j< feature_num; j++){
+
+      for (int j=0; j< actual_features; j++){
         pch = strtok(NULL, "\t,\r ");
-        if (pch == NULL)
+        if (pch == NULL){
            logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+          //actual_features = j;
+          //logstream(LOG_WARNING)<<"Setting actual feature number to : " << actual_features << std::endl;
+          //break;
+        }
         valarray[j] = atof(pch); 
         if (std::isnan(valarray[j]))
            logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
@@ -136,6 +135,13 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
         maxarray[j] = std::max(maxarray[j], valarray[j]);
         meanarray[j] += valarray[j];
       }
+      pch = strtok(NULL, "\t,\r ");
+      if (pch == NULL)
+        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+      val = atof(pch);
+      if (std::isnan(val))
+           logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
+      
       //avoid self edges
       if (square && I == J)
         continue;
@@ -144,15 +150,15 @@ int convert_matrixmarket_N(std::string base_filename, bool square, int feature_n
     }
 
     sharderobj.end_preprocessing();
-    for (int i=0; i< feature_num; i++){
+    for (int i=0; i< actual_features; i++){
        meanarray[i] /= L;
     }
-    for (int i=0; i< feature_num; i++){
+    for (int i=0; i< actual_features; i++){
     logstream(LOG_INFO) << "Feature " << i << " min val: " << minarray[i] << " max val: " << maxarray[i] << "  mean val: " << meanarray[i] << std::endl;
     }
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%d\n", M, N, L, feature_num);
-    for (int i=0; i < feature_num; i++){
+    fprintf(outf, "%d\n%d\n%ld\n%d\n", M, N, L, actual_features);
+    for (int i=0; i < actual_features; i++){
       fprintf(outf, "%g\n%g\n%g\n", minarray[i], maxarray[i], meanarray[i]);
     }
     fclose(outf);

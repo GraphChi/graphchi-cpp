@@ -35,25 +35,25 @@
 #include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
-
-#define FEATURE_WIDTH 4
+#define FEATURE_WIDTH 1 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 float minarray[FEATURE_WIDTH];
 float maxarray[FEATURE_WIDTH];
 float meanarray[FEATURE_WIDTH];
+int actual_features = FEATURE_WIDTH;
 
 double gensgd_rate = 1e-02;
 double gensgd_mult_dec = 0.9;
 double gensgd_regw = 1e-3;
 double gensgd_regv = 1e-3;
-double reg0 = 0.1;
+double gensgd_reg0 = 1e-3;
 int D = 20; //feature vector width, can be changed on runtime using --D=XX flag
 bool debug = false;
-int time_offset = 1; //time bin starts from 1?
+int last_item = 0;
 
 int num_feature_bins(){
   int sum = 0;
-  for (int i=0; i< FEATURE_WIDTH; i++)
-    sum += (maxarray[i] - minarray[i]);
+  for (int i=0; i< actual_features; i++)
+    sum += ((maxarray[i] - minarray[i]) + 1);
   assert(sum > 0);
   return sum;
 }
@@ -64,7 +64,7 @@ int get_offset(int i){
    if (i >= 2)
      offset += N;
    for (int j=2; j < i; j++)
-     offset += (maxarray[j-2]-minarray[j-2]);
+     offset += ((maxarray[j-2]-minarray[j-2])+1);
    return offset;
 }
 int offsets[FEATURE_WIDTH+2];
@@ -183,27 +183,21 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
 
-    /*if (gcontext.iteration == 0){
-    if (is_user(vertex.id())) { //user node. find the last rated item and store it
-      vertex_data_gensgd user = latent_factors_inmem[vertex.id()]; 
-      int max_time = 0;
-      for(int e=0; e < vertex.num_outedges(); e++) {
-        const edge_data & edge = vertex.edge(e)->get_data();
-        if (edge.time >= max_time){
-          max_time = edge.time - time_offset;
-          *user.last_item = vertex.edge(e)->vertex_id() - M;
-        }
-      }
+  if (last_item && gcontext.iteration == 0){
+    if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
+      vertex_data& user = latent_factors_inmem[vertex.id()]; 
+      user.last_item = vertex.edge(vertex.num_outedges()-1)->vertex_id() - M;
     }
+    else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
+      logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
     return;
-  } */
+  } 
  
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
       user.rmse = 0; 
-      //assert(*user.last_item >= 0 && *user.last_item < (int)N);
-      //vertex_data & last_item = latent_factors_inmem[M+N+K+(*user.last_item)]; 
+      assert(user.last_item >= 0 && user.last_item < (int)N);
 
       for(int e=0; e < vertex.num_outedges(); e++) {
         const edge_data & data = vertex.edge(e)->get_data();
@@ -211,14 +205,20 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         double pui;
         vec sum;
         //vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
-        vertex_data *relevant_features[FEATURE_WIDTH];
+        vertex_data *relevant_features[2+FEATURE_WIDTH+last_item];
+        relevant_features[0] = &user;
+        relevant_features[1] = &latent_factors_inmem[vertex.edge(e)->vertex_id()];
         for (int i=0; i< FEATURE_WIDTH; i++){
-          relevant_features[i] = &latent_factors_inmem[get_offset(i+2) + data.features[i] - minarray[i]];
+          uint pos = get_offset(i+2) + data.features[i] - minarray[i];
+          assert(pos >= 0 && pos < latent_factors_inmem.size());
+          relevant_features[i+2] = &latent_factors_inmem[pos];
         }
-        float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+FEATURE_WIDTH, rui, pui, &sum);
+        if (last_item)
+          relevant_features[2+FEATURE_WIDTH] = &latent_factors_inmem[M+user.last_item];
+        float sqErr = gensgd_predict((const vertex_data**)relevant_features, 2+FEATURE_WIDTH+last_item, rui, pui, &sum);
         float eui = pui - rui;
 
-        globalMean -= gensgd_rate * (eui + reg0 * globalMean);
+        globalMean -= gensgd_rate * (eui + gensgd_reg0 * globalMean);
         //user.bias -= gensgd_rate * (eui + gensgd_regw * user.bias);
         //movie.bias -= gensgd_rate * (eui + gensgd_regw * movie.bias);
         //time.bias -= gensgd_regw * (eui + gensgd_regw * time.bias);
@@ -227,8 +227,8 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           relevant_features[i]->bias -= gensgd_rate * (eui + gensgd_regw* relevant_features[i]->bias);
         vec grad = sum - relevant_features[i]->pvec;
         relevant_features[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * relevant_features[i]->pvec);
-
         }
+
         //last_item.bias -= gensgd_regw * (eui + gensgd_regw * last_item.bias);
        // float grad;
         /*for(int f = 0; f < D; f++){
@@ -335,17 +335,11 @@ struct  MMOutputter{
 
 
 void output_gensgd_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.");
-  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.");
-  MMOutputter mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.");
-   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains LIBFM output bias vector. In each row a single item bias.");
-  MMOutputter_bias mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , "This file contains LIBFM output bias vector. In each row a single time bias.");
-  MMOutputter_bias mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , "This file contains LIBFM output bias vector. In each row a single last item bias.");
+  MMOutputter mmoutput(filename + "_U.mm", 0, num_feature_bins(), "This file contains LIBFM output matrices. In each row D factors of a single user node, then item nodes, then features");
+   MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains LIBFM output bias vector. In each row a single user bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
 
-  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
+  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -365,34 +359,23 @@ int main(int argc, const char ** argv) {
   gensgd_rate = get_option_float("gensgd_rate", gensgd_rate);
   gensgd_regw = get_option_float("gensgd_regw", gensgd_regw);
   gensgd_regv = get_option_float("gensgd_regv", gensgd_regv);
+  gensgd_reg0 = get_option_float("gensgd_reg0", gensgd_reg0);
   gensgd_mult_dec = get_option_float("gensgd_mult_dec", gensgd_mult_dec);
+  last_item = get_option_int("last_item", last_item);
   D = get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket_N<edge_data>(training, false, FEATURE_WIDTH, minarray, maxarray, meanarray);
+  int nshards = convert_matrixmarket_N<edge_data>(training, false, FEATURE_WIDTH, actual_features, minarray, maxarray, meanarray);
   init_gensgd();
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
-    load_matrix_market_matrix(training + "_V.mm", M, D);
-    load_matrix_market_matrix(training + "_T.mm", M+N, D);
-    load_matrix_market_matrix(training + "_L.mm", M+N+K, D);
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    vec item_bias =      load_matrix_market_vector(training +"_V_bias.mm", false, true);
-    vec time_bias =      load_matrix_market_vector(training+ "_T_bias.mm", false, true);
-    vec last_item_bias = load_matrix_market_vector(training+"_L_bias.m", false, true);
-    for (uint i=0; i<M+N+K+M; i++){
-      if (i < M)
+    for (uint i=0; num_feature_bins(); i++){
         latent_factors_inmem[i].bias = user_bias[i];
-      else if (i <M+N)
-        latent_factors_inmem[i].bias = item_bias[i-M];
-      else if (i <M+N+K)
-        latent_factors_inmem[i].bias = time_bias[i-M-N];
-      else 
-        latent_factors_inmem[i].bias = last_item_bias[i-M-N-K];
     }
     vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
     globalMean = gm[0];

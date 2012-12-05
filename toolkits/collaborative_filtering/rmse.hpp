@@ -187,39 +187,39 @@ void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array
 
   for (uint i=0; i<nz; i++)
   {
-      int rc = getline(&linebuf, &linesize, f);
-      if (rc == -1)
-        logstream(LOG_FATAL)<<"Failed to get line number: " << i << " in file: " << test <<std::endl;
-      strncpy(linebuf_debug, linebuf, 1024);
-      char *pch = strtok(linebuf,"\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = atoi(pch); I--;
-      pch = strtok(NULL, "\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = atoi(pch); J--;
-      if (I >= M)
-        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
-      if (J >= N)
-        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+    int rc = getline(&linebuf, &linesize, f);
+    if (rc == -1)
+      logstream(LOG_FATAL)<<"Failed to get line number: " << i << " in file: " << test <<std::endl;
+    strncpy(linebuf_debug, linebuf, 1024);
+    char *pch = strtok(linebuf,"\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    I = atoi(pch); I--;
+    pch = strtok(NULL, "\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    J = atoi(pch); J--;
+    if (I >= M)
+      logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+    if (J >= N)
+      logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
 
+    pch = strtok(NULL, "\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    val = atof(pch);
+    if (std::isnan(val))
+      logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
+
+    for (int j=0; j< feature_num; j++){
       pch = strtok(NULL, "\t,\r ");
       if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      val = atof(pch);
-      if (std::isnan(val))
-           logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
- 
-      for (int j=0; j< feature_num; j++){
-        pch = strtok(NULL, "\t,\r ");
-        if (pch == NULL)
-           logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-        valarray[j] = atof(pch); 
-        if (std::isnan(valarray[j]))
-           logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-      }
-    
+        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+      valarray[j] = atof(pch); 
+      if (std::isnan(valarray[j]))
+        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+    }
+
     double prediction;
     node_array[0] = &latent_factors_inmem[I] + offsets[0];
     node_array[1] = &latent_factors_inmem[square?J:J+offsets[1]];
@@ -271,10 +271,10 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   dvalidation_rmse = 0;   
   int I, J;
   double val, time = 1.0;
- 
+
   for (size_t i=0; i<nz; i++)
   {
-   int rc;
+    int rc;
     if (tokens_per_row == 3)
       rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
     else rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
@@ -296,9 +296,9 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << 
     " ratings_per_sec: " << std::setw(10) << (gcontext.iteration*L/mytimer.current_time()) << std::endl;
   if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
-       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
-       gcontext.set_last_iteration(gcontext.iteration);
-    }
+    logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+    gcontext.set_last_iteration(gcontext.iteration);
+  }
 }
 
 
@@ -336,10 +336,10 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   dvalidation_rmse = 0;   
   int I, J;
   double val, time = 1.0;
- 
+
   for (size_t i=0; i<nz; i++)
   {
-   int rc;
+    int rc;
     rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
 
     if (rc != tokens_per_row)
@@ -361,9 +361,9 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
   std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
   if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
-       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
-       gcontext.set_last_iteration(gcontext.iteration);
-    }
+    logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+    gcontext.set_last_iteration(gcontext.iteration);
+  }
 }
 
 
@@ -407,46 +407,46 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
   float * valarray = new float[feature_num];
   float val;
   vertex_data ** node_array = new vertex_data*[2+feature_num];
- 
+
   for (size_t i=0; i<nz; i++)
   {
-    
-      int rc = getline(&linebuf, &linesize, f);
-      if (rc == -1)
-        logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << validation << std::endl;
-      strncpy(linebuf_debug, linebuf, 1024);
-      char *pch = strtok(linebuf,"\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = atoi(pch); I--;
-      pch = strtok(NULL, "\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = atoi(pch); J--;
-      if (I >= M)
-        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
-      if (J >= N)
-        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
 
+    int rc = getline(&linebuf, &linesize, f);
+    if (rc == -1)
+      logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << validation << std::endl;
+    strncpy(linebuf_debug, linebuf, 1024);
+    char *pch = strtok(linebuf,"\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    I = atoi(pch); I--;
+    pch = strtok(NULL, "\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    J = atoi(pch); J--;
+    if (I >= M)
+      logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+    if (J >= N)
+      logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+
+    for (int j=0; j< feature_num; j++){
       pch = strtok(NULL, "\t,\r ");
       if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      val = atof(pch);
-      if (std::isnan(val))
-           logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
- 
-      for (int j=0; j< feature_num; j++){
-        pch = strtok(NULL, "\t,\r ");
-        if (pch == NULL)
-           logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-        valarray[j] = atof(pch); 
-        if (std::isnan(valarray[j]))
-           logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-      }
-  
+        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+      valarray[j] = atof(pch); 
+      if (std::isnan(valarray[j]))
+        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+    }
+    pch = strtok(NULL, "\t,\r ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    val = atof(pch);
+    if (std::isnan(val))
+      logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
+
+
     double prediction;
-    node_array[0] = &latent_factors_inmem[I + offsets[0]];
-    node_array[1] = &latent_factors_inmem[square?J:J+offsets[1]];
+    node_array[0] = &latent_factors_inmem[I];
+    node_array[1] = &latent_factors_inmem[square?J:J+M];
     for (int j=0; j< feature_num; j++){
       node_array[j+2] = & latent_factors_inmem[valarray[j]+offsets[j+2]];
     }
@@ -460,26 +460,26 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
   dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
   std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
   if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
-       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
-       gcontext.set_last_iteration(gcontext.iteration);
-    }
+    logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+    gcontext.set_last_iteration(gcontext.iteration);
+  }
 }
 
 
 void training_rmse(int iteration, graphchi_context &gcontext, bool items = false){
-    last_training_rmse = dtraining_rmse;
-    dtraining_rmse = 0;
-    int start = 0;
-    int end = M;
-    if (items){
-      start = M;
-      end = M+N;
-    }
+  last_training_rmse = dtraining_rmse;
+  dtraining_rmse = 0;
+  int start = 0;
+  int end = M;
+  if (items){
+    start = M;
+    end = M+N;
+  }
 #pragma omp parallel for reduction(+:dtraining_rmse)
-    for (int i=start; i< (int)end; i++){
-      dtraining_rmse += latent_factors_inmem[i].rmse;
-    }
-    dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
-    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
- }
+  for (int i=start; i< (int)end; i++){
+    dtraining_rmse += latent_factors_inmem[i].rmse;
+  }
+  dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
+  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+}
 #endif //DEF_RMSEHPP
