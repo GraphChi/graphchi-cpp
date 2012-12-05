@@ -26,178 +26,6 @@
 #include "types.hpp"
 #include "implicit.hpp"
 
-/**
- * Create a bipartite graph from a matrix. Each row corresponds to vertex
- * with the same id as the row number (0-based), but vertices correponsing to columns
- * have id + num-rows.
- * Line format of the type
- * [user] [item] [feature1] [feature2] ... [featureN] [rating]
- */
-
-template <typename als_edge_type>
-int convert_matrixmarket_N(std::string base_filename, bool square, int feature_num, int & actual_features, float * minarray, float * maxarray, float * meanarray, bool * feature_selection, int &total_features) {
-  // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  int ret_code;
-  MM_typecode matcode;
-  FILE *f;
-  size_t nz;
-  /**
-   * Create sharder object
-   */
-  int nshards;
-  if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
-    logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-    FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n%lg\n",&M, &N, &L, &total_features, &globalMean);
-    if (rc != 5)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
-    for (int i=0; i< feature_num; i++){
-      int rc = fscanf(inf, "%g\n%g\n%g\n", &minarray[i], &maxarray[i], &meanarray[i]);
-      if (rc != 3)
-        logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
-
-    }
-    fclose(inf);
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " globalMean: " << globalMean << std::endl;
-    for (int i=0; i< feature_num; i++){
-      logstream(LOG_INFO) << "Feature " << i << " min val: " << minarray[i] << " max val: " << maxarray[i] << "  mean val: " << meanarray[i] << std::endl;
-    }
-    return nshards;
-  }   
-
-  sharder<als_edge_type> sharderobj(base_filename);
-  sharderobj.start_preprocessing();
-
-
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-  }
-
-
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
-
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-
-  logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
-
-  uint I, J;
-  char * linebuf = NULL;
-  char linebuf_debug[1024];
-  float * valarray = new float[feature_num];
-  float val;
-  size_t linesize;
-  actual_features = feature_num;
-
-  for (int i=0; i< feature_num; i++){
-    minarray[i] = 1e100;
-    maxarray[i] = -1e100;
-  }
-  if (!sharderobj.preprocessed_file_exists()) {
-    for (size_t i=0; i<nz; i++)
-    {
-      /* READ LINE */
-      int rc = getline(&linebuf, &linesize, f);
-      if (rc == -1)
-        logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << base_filename <<std::endl;
-      strncpy(linebuf_debug, linebuf, 1024);
-      /** READ [FROM] */
-      char *pch = strtok(linebuf,"\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = atoi(pch); I--;
-      if (I >= M)
-        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
-      /** READ [TO] */
-      pch = strtok(NULL, "\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = atoi(pch); J--;
-      if (J >= N)
-        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-
-      /** READ FEATURES */
-      int index = 0;
-      for (int j=0; j< actual_features; j++){
-        pch = strtok(NULL, "\t,\r ");
-        if (pch == NULL){
-          logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-        }
-        if (!feature_selection[j])
-          continue;
-
-        valarray[index] = atof(pch); 
-        if (std::isnan(valarray[index]))
-          logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-
-        //calc stats about ths feature
-        minarray[index] = std::min(minarray[index], valarray[index]);
-        maxarray[index] = std::max(maxarray[index], valarray[index]);
-        meanarray[index] += valarray[index];
-        index++;
-      }
-
-      /* READ RATING VALUE*/
-      pch = strtok(NULL, "\t,\r ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      val = atof(pch);
-      if (std::isnan(val))
-        logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
-
-      //avoid self edges
-      if (square && I == J)
-        continue;
-
-      //calc stats
-      L++;
-      globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, valarray));
-    }
-
-    sharderobj.end_preprocessing();
-
-    //calc stats
-    assert(L > 0);
-    for (int i=0; i< actual_features; i++){
-      meanarray[i] /= L;
-    }
-    assert(globalMean != 0);
-    globalMean /= L;
-    logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
-
-    //print features
-    for (int i=0; i< total_features; i++){
-      logstream(LOG_INFO) << "Feature " << i << " min val: " << minarray[i] << " max val: " << maxarray[i] << "  mean val: " << meanarray[i] << std::endl;
-    }
-    FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, total_features, globalMean);
-    for (int i=0; i < actual_features; i++){
-      fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", minarray[i], maxarray[i], meanarray[i]);
-    }
-    fclose(outf);
-    delete[] valarray;
-
-  } else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
-
-  fclose(f);
-  logstream(LOG_INFO) << "Now creating shards." << std::endl;
-
-  // Shard with a specified number of shards, or determine automatically if not defined
-  nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
-
-  return nshards;
-}
-
-
 
 
 /**
@@ -236,24 +64,17 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
-
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
-
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
-
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
 
   if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
     logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
   /* find out size of sparse matrix .... */
-
   if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }

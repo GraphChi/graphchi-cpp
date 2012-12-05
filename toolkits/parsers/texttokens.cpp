@@ -25,7 +25,6 @@
 
 
 #include <cstdio>
-#include <map>
 #include <iostream>
 #include <map>
 #include <omp.h>
@@ -33,15 +32,12 @@
 #include "graphchi_basic_includes.hpp"
 #include "../collaborative_filtering/timer.hpp"
 #include "../collaborative_filtering/util.hpp"
+#include "common.hpp"
 
 using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-map<string,uint> string2nodeid;
-map<uint,string> nodeid2hash;
-uint conseq_id;
-mutex mymutex;
 timer mytime;
 size_t lines;
 unsigned long long total_lines = 0;
@@ -53,49 +49,7 @@ std::vector<std::string> in_files;
 //it is possible to add additional special characters or remove ones you want to keep
 const char spaces[] = {" \r\n\t!?@#$%^&*()-+.,~`'\";:"};
 
-void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
-    std::map<std::string,uint>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second);
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
 
-
-void save_map_to_text_file(const std::map<uint,std::string> & map, const std::string filename){
-    std::map<uint,std::string>::const_iterator it;
-    out_file fout(filename);
-    unsigned int total = 0;
-    for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%u %s\n", it->first, it->second.c_str());
-     total++;
-    } 
-    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
-}
-
-
-void assign_id(uint & outval, const string &name){
-
-  map<string,uint>::iterator it = string2nodeid.find(name);
-  if (it != string2nodeid.end()){
-    outval = it->second;
-    return;
-  }
-  mymutex.lock();
-  outval = string2nodeid[name];
-  if (outval == 0){
-    string2nodeid[name] = ++conseq_id;
-    outval = conseq_id;
-    nodeid2hash[outval] = name;
-  }
-  mymutex.unlock();
-}
-
-
- 
 void parse(int i){    
   in_file fin(in_files[i]);
   out_file fout((outdir + in_files[i] + ".out"));
@@ -115,13 +69,13 @@ void parse(int i){
 
     char *pch = strtok_r(linebuf, spaces, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(id, pch);
+    assign_id(frommap, id, pch);
     wordcount[id]+= 1;
 
     while(pch != NULL){
       pch = strtok_r(NULL, spaces ,&saveptr);
       if (pch != NULL && strlen(pch) > 1){ 
-        assign_id(id, pch);
+        assign_id(frommap, id, pch);
         wordcount[id]+= 1;
       }
     }  
@@ -138,13 +92,13 @@ void parse(int i){
       break;
 
     if (debug && (line % 50000 == 0))
-      logstream(LOG_INFO) << "Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
-    if (string2nodeid.size() % 500000 == 0)
-      logstream(LOG_INFO) << "Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
+      logstream(LOG_INFO) << "Parsed line: " << line << " map size is: " << frommap.string2nodeid.size() << std::endl;
+    if (frommap.string2nodeid.size() % 500000 == 0)
+      logstream(LOG_INFO) << "Hash map size: " << frommap.string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
   } 
 
   logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl <<
-    "total map size: " << string2nodeid.size() << endl;
+    "total map size: " << frommap.string2nodeid.size() << endl;
 
 }
 
@@ -185,8 +139,8 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
 
-  save_map_to_text_file(string2nodeid, outdir + dir + "map.text");
-  save_map_to_text_file(nodeid2hash, outdir + dir + "reverse.map.text");
+  save_map_to_text_file(frommap.string2nodeid, outdir + dir + "map.text");
+  save_map_to_text_file(frommap.nodeid2hash, outdir + dir + "reverse.map.text");
   return 0;
 }
 

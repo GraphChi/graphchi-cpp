@@ -2,6 +2,7 @@
 #define DEF_RMSEHPP
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
 /**
  * @file
  * @author  Danny Bickson
@@ -144,8 +145,6 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
 
   logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
-
-
 /**
   compute validation rmse
   */
@@ -274,8 +273,6 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     gcontext.set_last_iteration(gcontext.iteration);
   }
 }
-
-
 
 void training_rmse(int iteration, graphchi_context &gcontext, bool items = false){
   last_training_rmse = dtraining_rmse;

@@ -19,14 +19,11 @@
 
 
 #include <cstdio>
-#include <map>
 #include <iostream>
-#include <map>
 #include <omp.h>
 #include <assert.h>
 #include <algorithm>
 #include "graphchi_basic_includes.hpp"
-
 #include "../collaborative_filtering/timer.hpp"
 #include "../collaborative_filtering/util.hpp"
 
