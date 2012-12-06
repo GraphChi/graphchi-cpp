@@ -59,12 +59,14 @@ struct feature_control{
   bool feature_selection[MAX_FEATAURES];
   const std::string default_feature_str;
   int * offsets;
+  bool hash_strings;
 
   feature_control(){
-   last_item = 0;
-   total_features = 0;
-   feature_num = FEATURE_WIDTH;
-   offsets = NULL;
+    last_item = 0;
+    total_features = 0;
+    feature_num = FEATURE_WIDTH;
+    offsets = NULL;
+    hash_strings = false;
   }
 };
 
@@ -72,21 +74,34 @@ feature_control fc;
 
 int num_feature_bins(){
   int sum = 0;
-  for (int i=0; i< fc.total_features; i++)
-    sum += ((fc.maxarray[i] - fc.minarray[i]) + 1);
+  if (fc.hash_strings){
+    assert(2+fc.total_features+fc.last_item == (int)fc.maps.size());
+    for (int i=2; i < 2+fc.total_features; i++){
+      sum+= fc.maps[i].string2nodeid.size();
+    }
+  }
+  else {
+    for (int i=0; i< fc.total_features; i++)
+      sum += ((fc.maxarray[i] - fc.minarray[i]) + 1);
+  }
   if (fc.total_features > 0)
     assert(sum > 0);
   return sum;
 }
 int get_offset(int i){
   int offset = 0;
-   if (i >= 1)
-     offset += M;
-   if (i >= 2)
-     offset += N;
-   for (int j=2; j < i; j++)
-     offset += ((fc.maxarray[j-2]-fc.minarray[j-2])+1);
-   return offset;
+  if (fc.hash_strings){
+    for (uint j=0; j< i; j++)
+      offset+= fc.maps[j].string2nodeid.size();
+  } else {
+    if (i >= 1)
+      offset += M;
+    if (i >= 2)
+      offset += N;
+    for (int j=2; j < i; j++)
+      offset += ((fc.maxarray[j-2]-fc.minarray[j-2])+1);
+  }
+  return offset;
 }
 
 bool is_user(vid_t id){ return id < M; }
@@ -136,7 +151,29 @@ typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
+float get_number(char * pch, int pos, size_t i){
+  float ret;
+  //read numeric id
+  if (!fc.hash_strings){
+    ret = (pos < 2 ? atoi(pch) : atof(pch)); 
+    ret--;
+    if (pos == 0 && ret >= M)
+      logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << ret << " > " << M << " in line: " << i << std::endl;
+    else if (pos == 1 && ret >= N)
+      logstream(LOG_FATAL)<<"Col index larger than the matrix row size " << ret << " > " << N << " in line: " << i << std::endl;
 
+  }
+  //else read string id and assign numeric id
+  else {
+    uint id;
+    assign_id(fc.maps[pos], id, pch);
+    ret = id;
+    assert(id < fc.maps[pos].string2nodeid.size());
+  }
+
+  return ret;
+
+}
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -205,9 +242,11 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   float val;
   size_t linesize;
 
-  for (int i=0; i< fc.feature_num; i++){
-    fc.minarray[i] = 1e100;
-    fc.maxarray[i] = -1e100;
+  if (!fc.hash_strings){
+    for (int i=0; i< fc.feature_num; i++){
+      fc.minarray[i] = 1e100;
+      fc.maxarray[i] = -1e100;
+    }
   }
   if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
@@ -222,17 +261,13 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       char *pch = strtok(linebuf,"\t,\r ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = atoi(pch); I--;
-      if (I >= M)
-        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+      I = (uint)get_number(pch, 0, i);
 
-      /** READ [TO] */
+         /** READ [TO] */
       pch = strtok(NULL, "\t,\r ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = atoi(pch); J--;
-      if (J >= N)
-        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+      J = (uint)get_number(pch, 1, i);
 
       /** READ FEATURES */
       int index = 0;
@@ -244,14 +279,13 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
         if (!fc.feature_selection[j])
           continue;
 
-        valarray[index] = atof(pch); 
-        if (std::isnan(valarray[index]))
-          logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
-
+        valarray[index] = get_number(pch, index+2, i);
         //calc stats about ths feature
-        fc.minarray[index] = std::min(fc.minarray[index], valarray[index]);
-        fc.maxarray[index] = std::max(fc.maxarray[index], valarray[index]);
-        fc.meanarray[index] += valarray[index];
+        if (!fc.hash_strings){
+          fc.minarray[index] = std::min(fc.minarray[index], valarray[index]);
+          fc.maxarray[index] = std::max(fc.maxarray[index], valarray[index]);
+          fc.meanarray[index] += valarray[index];
+        }
         index++;
       }
 
@@ -366,17 +400,13 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
     char *pch = strtok(linebuf,"\t,\r ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-    I = atoi(pch); I--;
-    if (I >= M)
-      logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
-
+    I = (uint)get_number(pch, 0, i);
+    
     /* READ TO */
     pch = strtok(NULL, "\t,\r ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-    J = atoi(pch); J--;
-    if (J >= N)
-      logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+    J = (uint)get_number(pch, 1, i);
 
     /* READ FEATURES */
     int index = 0;
@@ -387,7 +417,7 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
       if (!fc.feature_selection[j])
         continue;
 
-      valarray[index] = atof(pch); 
+      valarray[index] = get_number(pch, index+2, i); 
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
       index++;
@@ -481,17 +511,13 @@ void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array
     char *pch = strtok(linebuf,"\t,\r ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-    I = atoi(pch); I--;
+    I = (uint)get_number(pch, 0, i);
+    
+    /* READ TO */
     pch = strtok(NULL, "\t,\r ");
-
-      /* READ TO */
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-    J = atoi(pch); J--;
-    if (I >= M)
-      logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
-    if (J >= N)
-      logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+    J = (uint)get_number(pch, 1, i);    
 
     /* READ FEATURES */
     int index = 0;
@@ -502,9 +528,7 @@ void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array
       if (!fc.feature_selection[j])
         continue;
 
-      valarray[index] = atof(pch); 
-      if (std::isnan(valarray[j]))
-        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << j << " [ " << linebuf_debug << " ] " << std::endl;
+      valarray[index] = get_number(pch, index+2, i); 
       index++;
     }
 
@@ -548,7 +572,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   prediction = globalMean;
   for (int i=0; i< node_array_size; i++)
     prediction += node_array[i]->bias;
-  
+
   for (int j=0; j< D; j++){
     for (int i=0; i< node_array_size; i++){
       sum->operator[](j) += node_array[i]->pvec[j];
@@ -567,9 +591,13 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 }
 float gensgd_predict(const vertex_data** node_array, int node_array_size,
     const float rating, double & prediction){
-   vec sum;
-   return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
+  vec sum;
+  return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
 }
+
+#include "io.hpp"
+#include "../parsers/common.hpp"
+
 
 void init_gensgd(){
 
@@ -587,13 +615,11 @@ void init_gensgd(){
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
   for (int i=0; i< nodes; i++){
-      latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
+    latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
+
 }
 
-
-#include "io.hpp"
-#include "../parsers/common.hpp"
 
 
 /**
@@ -608,23 +634,23 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
 
-  if (fc.last_item && gcontext.iteration == 0){
-    if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
-      vertex_data& user = latent_factors_inmem[vertex.id()]; 
-      int max_time = 0;
-      for(int e=0; e < vertex.num_outedges(); e++) {
-        const edge_data & edge = vertex.edge(e)->get_data();
-        if (edge.features[0]-1 >= max_time){ //first feature is time
-          max_time = edge.features[0]-1;
-          user.last_item = vertex.edge(e)->vertex_id() - M;
+    if (fc.last_item && gcontext.iteration == 0){
+      if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
+        vertex_data& user = latent_factors_inmem[vertex.id()]; 
+        int max_time = 0;
+        for(int e=0; e < vertex.num_outedges(); e++) {
+          const edge_data & edge = vertex.edge(e)->get_data();
+          if (edge.features[0]-1 >= max_time){ //first feature is time
+            max_time = edge.features[0]-1;
+            user.last_item = vertex.edge(e)->vertex_id() - M;
+          }
         }
       }
-     }
-    else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
-      logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
-    return;
-  } 
- 
+      else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
+        logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
+      return;
+    } 
+
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
@@ -747,7 +773,7 @@ struct  MMOutputter{
 
 void output_gensgd_result(std::string filename) {
   MMOutputter mmoutput(filename + "_U.mm", 0, num_feature_bins(), "This file contains LIBFM output matrices. In each row D factors of a single user node, then item nodes, then features");
-   MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains LIBFM output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains LIBFM output bias vector. In each row a single user bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
 
   logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
@@ -773,34 +799,37 @@ int main(int argc, const char ** argv) {
   gensgd_reg0 = get_option_float("gensgd_reg0", gensgd_reg0);
   gensgd_mult_dec = get_option_float("gensgd_mult_dec", gensgd_mult_dec);
   fc.last_item = get_option_int("last_item", fc.last_item);
+  fc.hash_strings = get_option_int("rehash", fc.hash_strings);
   D = get_option_int("D", D);
+
   std::string string_features = get_option_string("features", fc.default_feature_str);
   if (string_features != ""){
-  char * pfeatures = strdup(string_features.c_str());
-  char * pch = strtok(pfeatures, ",\n\r\t ");
-  int node = atoi(pch);
-  if (node < 0 || node >= MAX_FEATAURES)
-    logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
-  fc.feature_selection[node] = true;
-  fc.total_features++;
-  while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
-    node = atoi(pch);
+    char * pfeatures = strdup(string_features.c_str());
+    char * pch = strtok(pfeatures, ",\n\r\t ");
+    int node = atoi(pch);
     if (node < 0 || node >= MAX_FEATAURES)
       logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
     fc.feature_selection[node] = true;
     fc.total_features++;
-  }
+    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+      node = atoi(pch);
+      if (node < 0 || node >= MAX_FEATAURES)
+        logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
+      fc.feature_selection[node] = true;
+      fc.total_features++;
+    }
   }
 
   logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
   for (int i=0; i < fc.feature_num; i++)
-  if (fc.feature_selection[i])
-    logstream(LOG_INFO)<<"Selected feature: " << i << std::endl;
+    if (fc.feature_selection[i])
+      logstream(LOG_INFO)<<"Selected feature: " << i << std::endl;
 
   parse_command_line_args();
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
+  fc.maps.resize(2+fc.total_features+fc.last_item);
   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc);
   init_gensgd();
 
@@ -808,11 +837,11 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
     for (uint i=0; num_feature_bins(); i++){
-        latent_factors_inmem[i].bias = user_bias[i];
+      latent_factors_inmem[i].bias = user_bias[i];
     }
     vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
     globalMean = gm[0];
-}
+  }
 
 
   /* Run */
