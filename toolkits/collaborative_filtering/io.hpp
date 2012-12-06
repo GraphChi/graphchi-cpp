@@ -567,7 +567,7 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
     }
   }
   logstream(LOG_INFO) << "Factors from file: loaded matrix of size " << rows << " x " << cols << " from file: " << filename << " total of " << nnz << " entries. "<< i << std::endl;
-
+  fclose(f);
 }
 
 #endif
