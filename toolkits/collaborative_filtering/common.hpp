@@ -115,7 +115,7 @@ void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = t
     return;
 
 #pragma omp parallel for
- for (uint i=0; i < size; i++){
+ for (int i=0; i < (int)size; i++){
     for (uint j=0; j<NLATENT; j++)
       latent_factors_inmem[i].pvec[j] = drand48();
   } 

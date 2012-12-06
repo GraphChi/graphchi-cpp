@@ -25,7 +25,7 @@
  */
 #ifndef EIGEN_WRAPPER
 #define EIGEN_WRAPPER
-
+#define NDEBUG //remove this is you want to debugin the debugger or have more detailed assertions (but slower running time)
 
 /**
  * SET OF WRAPPER FUNCTIONS FOR EIGEN
@@ -650,5 +650,5 @@ double equal_greater(double x){
     return 0;
 }    
 //sort(edges.begin(), edges.end());
-
+#undef NDEBUG
 #endif

@@ -103,7 +103,7 @@ int num_feature_bins(){
   }
   else {
     for (int i=0; i< fc.total_features; i++)
-      sum += ((fc.stats_array[i].maxval - fc.stats_array[i].minval) + 1);
+      sum += (int)ceil((fc.stats_array[i].maxval - fc.stats_array[i].minval) + 1);
   }
   if (fc.total_features > 0)
     assert(sum > 0);
@@ -112,7 +112,11 @@ int num_feature_bins(){
 int get_offset(int i){
   int offset = 0;
   if (fc.hash_strings){
-    for (int j=0; j< i; j++)
+    if (i >= 1)
+      offset += M;
+    if (i >= 2)
+      offset += N;
+    for (int j=2; j< i; j++)
       offset+= fc.node_id_maps[j].string2nodeid.size();
   } else {
     if (i >= 1)
@@ -120,7 +124,7 @@ int get_offset(int i){
     if (i >= 2)
       offset += N;
     for (int j=2; j < i; j++)
-      offset += ((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
+      offset += (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
   }
   return offset;
 }
@@ -212,7 +216,7 @@ float get_feature_id(char * pch, int pos, size_t i){
 }
     
     /* READ LINE */
-bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, float * valarray, int type){
+bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, float *& valarray, int type){
 
     char * linebuf = NULL;
     size_t linesize;
@@ -318,6 +322,14 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
     }
     fclose(inf);
+
+    if (fc.hash_strings){
+    for (int i=0; i< fc.total_features+2; i++){
+      char filename[256];
+      sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
+      load_map_from_txt_file<std::map<std::string,uint> >(fc.node_id_maps[i].string2nodeid, filename, 2);
+    }
+    }
     return nshards;
   }   
 
@@ -385,6 +397,18 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     for (int i=0; i< fc.total_features; i++){
       logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
     }
+ 
+    if (fc.hash_strings){
+   /* if (M > fc.node_id_maps[0].string2nodeid.size()){
+      M = fc.node_id_maps[0].string2nodeid.size();
+      logstream(LOG_WARNING)<<"Warning, unused node IDS. Setting M to " << M << std::endl;
+    }
+    if (N > fc.node_id_maps[1].string2nodeid.size()){
+      N = fc.node_id_maps[0].string2nodeid.size();
+      logstream(LOG_WARNING)<<"Warning, unused node IDS. Setting N to " << N << std::endl;
+    }*/
+   }
+
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
     fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
     for (int i=0; i < fc.feature_num; i++){
@@ -398,8 +422,15 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   }
 
   fclose(f);
-  logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
+  if (fc.hash_strings){
+  for (int i=0; i< fc.total_features+2; i++){
+      char filename[256];
+      sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
+      save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
+  }
+  }
+  logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
 
@@ -491,7 +522,7 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
-    logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
+    logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
   Le = nz;
 
@@ -512,7 +543,7 @@ void validation_rmse_N(float (*prediction_func)(const vertex_data ** array, int 
     node_array[0] = &latent_factors_inmem[I+fc.offsets[0]];
     node_array[1] = &latent_factors_inmem[square?J:J+fc.offsets[1]];
     for (int j=0; j< fc.total_features; j++){
-      uint pos = valarray[j]+fc.offsets[j+2]-fc.stats_array[j].minval;
+      uint pos = (uint)ceil(valarray[j]+fc.offsets[j+2]-fc.stats_array[j].minval);
       assert(pos >= 0 && pos < latent_factors_inmem.size());
       node_array[j+2] = & latent_factors_inmem[pos];
     }
@@ -579,7 +610,7 @@ void test_predictions_N(float (*prediction_func)(const vertex_data ** node_array
     node_array[0] = &latent_factors_inmem[I] + fc.offsets[0];
     node_array[1] = &latent_factors_inmem[square?J:J+fc.offsets[1]];
     for (int j=0; j< fc.total_features; j++){
-      uint pos = fc.offsets[j+2] + valarray[j] - fc.stats_array[j].minval;
+      uint pos = (uint)ceil(fc.offsets[j+2] + valarray[j] - fc.stats_array[j].minval);
       assert(pos >=0 && pos < latent_factors_inmem.size());
       node_array[j+2] = & latent_factors_inmem[pos]; 
     }
@@ -642,6 +673,7 @@ void init_gensgd(){
   for (int i=0; i< fc.total_features+2; i++){
     fc.offsets[i] = get_offset(i);
     assert(fc.offsets[i] < nodes);
+    logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
   }
   if (fc.last_item)
     fc.offsets[2+fc.total_features] = M+N+num_feature_bins();
@@ -674,8 +706,8 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         int max_time = 0;
         for(int e=0; e < vertex.num_outedges(); e++) {
           const edge_data & edge = vertex.edge(e)->get_data();
-          if (edge.features[0]-1 >= max_time){ //first feature is time
-            max_time = edge.features[0]-1;
+          if (edge.features[0] >= max_time){ //first feature is time
+            max_time = (int)ceil(edge.features[0]);
             user.last_item = vertex.edge(e)->vertex_id() - M;
           }
         }
@@ -700,7 +732,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         relevant_features[0] = &user;
         relevant_features[1] = &latent_factors_inmem[vertex.edge(e)->vertex_id()];
         for (int i=0; i< fc.total_features; i++){
-          uint pos = get_offset(i+2) + data.features[i] - fc.stats_array[i].minval;
+          uint pos = (uint)ceil(get_offset(i+2) + data.features[i] - fc.stats_array[i].minval);
           assert(pos >= 0 && pos < latent_factors_inmem.size());
           relevant_features[i+2] = &latent_factors_inmem[pos];
         }
@@ -870,6 +902,7 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   fc.node_id_maps.resize(2+fc.total_features+fc.last_item);
   fc.stats_array.resize(fc.total_features);
+
   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc);
   init_gensgd();
   if (user_file != "")

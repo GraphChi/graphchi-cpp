@@ -230,7 +230,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         for(int e=0; e < vertex.num_outedges(); e++) {
           rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
           float observation = vertex.edge(e)->get_data();                
-          int r = observation/rbm_scaling;
+          int r = (int)(observation/rbm_scaling);
           assert(r < rbm_bins);
           mov.bi[r]++;
           (*mov.ni)++;
@@ -261,7 +261,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       for(int e=0; e < vertex.num_outedges(); e++) {
         float observation = vertex.edge(e)->get_data();                
         rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        int r = observation / rbm_scaling;
+        int r = (int)(observation / rbm_scaling);
         assert(r < rbm_bins);  
         for(int k=0; k < D; k++){
           usr.h[k] += mov.w[D*r + k];
@@ -283,7 +283,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         float observation = vertex.edge(e)->get_data();
         predict1(usr, mov, observation, prediction);    
-        int vi = prediction / rbm_scaling;
+        int vi = (int)(prediction / rbm_scaling);
         v1[i] = vi;
         i++;
       }
@@ -291,7 +291,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       i = 0;
       for(int e=0; e < vertex.num_outedges(); e++) {
         rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        int r = v1[i];
+        int r = (int)v1[i];
         for (int k=0; k< D;k++){
           usr.h1[k] += mov.w[r*D+k];
         }
@@ -316,7 +316,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         user.rmse += (pui - rui) * (pui - rui);
         //nn += 1.0;
         int vi0 = (int)(rui);
-        int vi1 = v1[i];
+        int vi1 = (int)v1[i];
         for (int k = 0; k < D; k++){
           mov.w[D*vi0+k] += rbm_alpha * (usr.h0[k] - rbm_beta * mov.w[vi0*D+k]);
           assert(!std::isnan(mov.w[D*vi0+k]));
@@ -393,7 +393,7 @@ void rbm_init(){
   latent_factors_inmem.resize(M+N);
 
 #pragma omp parallel for
-  for(uint i = 0; i < N; ++i){
+  for(int i = 0; i < (int)N; ++i){
     vertex_data & movie = latent_factors_inmem[M+i];
     movie.pvec = zeros(rbm_bins + D * rbm_bins);
     movie.bias = 0;
