@@ -239,6 +239,7 @@ namespace graphchi {
             
             for(int j=0; j<(int)sessions.size(); j++) {
                 if (sessions[j] != NULL) {
+                    close_session(j);
                     delete sessions[j];
                     sessions[j] = NULL;
                 }

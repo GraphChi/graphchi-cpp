@@ -467,9 +467,10 @@ namespace graphchi {
                 int ef = open(edfname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
                 if (ef < 0) {
                     logstream(LOG_ERROR) << "Could not open " << edfname << " error: " << strerror(errno) << std::endl;
-                    
                 }
                 assert(ef >= 0);
+                
+                logstream(LOG_INFO) << "File descs: " << f << ", " << ef << ", " << shovelf << std::endl;
                 
                 char * buf = (char*) malloc(SHARDER_BUFSIZE); 
                 char * bufptr = buf;
