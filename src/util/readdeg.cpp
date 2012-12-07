@@ -19,12 +19,18 @@ int main(int argc, const char ** argv) {
     
     size_t nout = 0;
     size_t nin = 0;
+    size_t nonz = 0;
+    size_t tot = 0;
     degree d;
     while(!feof(f)) {
         fread(&d, sizeof(degree), 1, f);
         nout += d.outdegree;
         nin += d.indegree;
+        tot++;
+        nonz += (d.outdegree + d.indegree) > 0;
     }
     std::cout << "Total in: " << nin << " total out: " << nout << std::endl;
+    std::cout << "Non-singleton vertices: " << nonz << std::endl;
+    std::cout << "Total vertices: " << tot << std::endl;
     
 }
