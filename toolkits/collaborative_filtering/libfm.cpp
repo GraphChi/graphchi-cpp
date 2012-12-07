@@ -156,7 +156,7 @@ void init_libfm(){
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
-  for (int i=0; i< (int)M+N+K+M; i++){
+  for (int i=0; i< (int)(M+N+K+M); i++){
       latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
 }
