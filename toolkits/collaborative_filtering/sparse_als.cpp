@@ -42,7 +42,6 @@
 using namespace graphchi;
 
 double lambda = 0.065;
-int    D      = 20;  //feature vector width
 
 struct vertex_data {
   vec pvec;
@@ -128,9 +127,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.pvec, NLATENT);
-      Xty += X * observation;
-      XtX += X * X.transpose();
+      Xty += nbr_latent.pvec * observation;
+      XtX += nbr_latent.pvec * nbr_latent.pvec.transpose();
       if (compute_rmse) {
         double prediction;
         vdata.rmse += sparse_als_predict(vdata, nbr_latent, observation, prediction);
@@ -140,16 +138,15 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     bool isuser = vertex.id() < (uint)M;
-    Map<vec> vdata_vec(vdata.pvec, NLATENT);
     if (algorithm == SPARSE_BOTH_FACTORS || (algorithm == SPARSE_USR_FACTOR && isuser) || 
         (algorithm == SPARSE_ITM_FACTOR && !isuser)){ 
       double sparsity_level = 1.0;
       if (isuser)
         sparsity_level -= user_sparsity;
       else sparsity_level -= movie_sparsity;
-      vdata_vec = CoSaMP(XtX, Xty, (int)ceil(sparsity_level*(double)NLATENT), 10, 1e-4, NLATENT); 
+      vdata.pvec = CoSaMP(XtX, Xty, (int)ceil(sparsity_level*(double)NLATENT), 10, 1e-4, NLATENT); 
     }
-    else vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
+    else vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 

@@ -32,15 +32,16 @@
 
 
 #include "common.hpp"
+#include "eigen_wrapper.hpp"
+
 double lambda = 1e-3;
-int D = 20; //feature vector width
 
 struct vertex_data {
   vec pvec;
   double rmse;
 
   vertex_data() {
-    vec = zeros(D);
+    pvec = zeros(D);
     rmse = 0;
   }
 
@@ -120,9 +121,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     for(int e=0; e < vertex.num_edges(); e++) {
       const edge_data & edge = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.pvec, NLATENT);
-      Xty += X * edge.weight * edge.time;
-      XtX.triangularView<Eigen::Upper>() += X * X.transpose() * edge.time;
+      XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose() * edge.time;
       if (compute_rmse) {
         double prediction;
         vdata.rmse += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;
@@ -131,8 +130,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     // Diagonal
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
     // Solve the least squares problem with eigen using Cholesky decomposition
-    Map<vec> vdata_vec(vdata.pvec, NLATENT);
-    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
+    vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
