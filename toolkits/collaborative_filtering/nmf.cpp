@@ -42,22 +42,14 @@
 using namespace graphchi;
 
 const double epsilon = 1e-16;
-
 struct vertex_data {
-  double pvec[NLATENT];
+  vec pvec;
   double rmse;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
-    rmse = 0;
+   pvec = zeros(D); 
+   rmse = 0;
   }
-
-  double dot(const vertex_data &oth) const {
-    double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
-    return x;
-  }
-
 };
 
 
@@ -83,7 +75,7 @@ float nmf_predict(const vertex_data& user,
     const float rating, 
     double & prediction){
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -98,8 +90,7 @@ void pre_user_iter(){
   x1 = zeros(NLATENT);
   for (uint i=M; i<M+N; i++){
     vertex_data & data = latent_factors_inmem[i];
-    Map<vec> pvec(data.pvec, NLATENT);
-    x1 += pvec;
+    x1 += data.pvec;
   }
 }
 void pre_movie_iter(){
@@ -107,8 +98,7 @@ void pre_movie_iter(){
   x2 = zeros(NLATENT);
   for (uint i=0; i<M; i++){
     vertex_data & data = latent_factors_inmem[i];
-    Map<vec> pvec(data.pvec, NLATENT);
-    x2 += pvec;
+    x2 += data.pvec;
   }
 }
 
@@ -160,7 +150,6 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     vec ret = zeros(NLATENT);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    Map<vec> pvec(vdata.pvec, NLATENT);
     vdata.rmse = 0;
     mat XtX = mat::Zero(NLATENT, NLATENT); 
     vec Xty = vec::Zero(NLATENT);
@@ -175,8 +164,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         vdata.rmse += nmf_predict(vdata, nbr_latent, observation, prediction);
       if (prediction == 0)
         logstream(LOG_FATAL)<<"Got into numerical error! Please submit a bug report." << std::endl;
-      Map<vec> nbr_pvec(nbr_latent.pvec, NLATENT);
-      ret += nbr_pvec * (observation / prediction);
+      ret += nbr_latent.pvec * (observation / prediction);
     }
     
     vec px;
@@ -186,9 +174,9 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       px = x2;
     for (int i=0; i<NLATENT; i++){
       assert(px[i] != 0);
-      pvec[i] *= ret[i] / px[i];
-      if (pvec[i] < epsilon)
-        pvec[i] = epsilon;
+      vdata.pvec[i] *= ret[i] / px[i];
+      if (vdata.pvec[i] < epsilon)
+        vdata.pvec[i] = epsilon;
     }
   }
 

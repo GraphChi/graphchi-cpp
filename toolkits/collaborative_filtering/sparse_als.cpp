@@ -42,14 +42,15 @@
 using namespace graphchi;
 
 double lambda = 0.065;
+int    D      = 20;  //feature vector width
 
 struct vertex_data {
-  double pvec[NLATENT];
+  vec pvec;
   double rmse;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
-    rmse = 0;
+   pvec = zeros(D); 
+   rmse = 0;
   }
 
   double dot(const vertex_data &oth) const {
@@ -211,6 +212,7 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   lambda        = get_option_float("lambda", 0.065);
+  D             = get_option_int("D", D);
   user_sparsity = get_option_float("user_sparsity", 0.9);
   movie_sparsity = get_option_float("movie_sparsity", 0.9);
   algorithm      = get_option_int("algorithm", SPARSE_USR_FACTOR);

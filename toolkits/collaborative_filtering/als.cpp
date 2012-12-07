@@ -59,21 +59,17 @@ using namespace graphchi;
 
 double lambda = 0.065;
 
+
+
+
 struct vertex_data {
-  double pvec[NLATENT];
+  vec pvec;
   double rmse;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
+    pvec = zeros(D);
     rmse = 0;
   }
-
-  double dot(const vertex_data &oth) const {
-    double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
-    return x;
-  }
-
 };
 
 
@@ -97,7 +93,7 @@ float als_predict(const vertex_data& user,
     double & prediction){
 
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -133,9 +129,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Map<vec> X(nbr_latent.pvec, NLATENT);
-      Xty += X * observation;
-      XtX.triangularView<Eigen::Upper>() += X * X.transpose();
+      Xty += nbr_latent.pvec * observation;
+      XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose();
       if (compute_rmse) {
         double prediction;
         vdata.rmse += als_predict(vdata, nbr_latent, observation, prediction);
@@ -145,8 +140,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     // Solve the least squares problem with eigen using Cholesky decomposition
-    Map<vec> vdata_vec(vdata.pvec, NLATENT);
-    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
+    vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
@@ -208,6 +202,7 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   lambda        = get_option_float("lambda", 0.065);
+  D             = get_option_int("D", D);
   parse_command_line_args();
   parse_implicit_command_line();
 

@@ -41,7 +41,6 @@ double libfm_mult_dec = 0.9;
 double libfm_regw = 1e-3;
 double libfm_regv = 1e-3;
 double reg0 = 0.1;
-int D = 20; //feature vector width, can be changed on runtime using --D=XX flag
 bool debug = false;
 int time_offset = 1; //time bin starts from 1?
 
@@ -156,7 +155,7 @@ void init_libfm(){
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
-  for (int i=0; i< (int)M+N+K+M; i++){
+  for (int i=0; i< (int)(M+N+K+M); i++){
       latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
 }
@@ -185,7 +184,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
       for(int e=0; e < vertex.num_outedges(); e++) {
         const edge_data & edge = vertex.edge(e)->get_data();
         if (edge.time >= max_time){
-          max_time = edge.time - time_offset;
+          max_time = (int)(edge.time - time_offset);
           *user.last_item = vertex.edge(e)->vertex_id() - M;
         }
       }
@@ -328,13 +327,13 @@ void output_libfm_result(std::string filename) {
   MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.");
   MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.");
   MMOutputter mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.");
-   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
+  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains LIBFM output bias vector. In each row a single item bias.");
   MMOutputter_bias mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , "This file contains LIBFM output bias vector. In each row a single time bias.");
   MMOutputter_bias mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , "This file contains LIBFM output bias vector. In each row a single last item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
 
-  logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
+  logstream(LOG_INFO) << " LIBFM output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -369,9 +368,9 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_V.mm", M, D);
     load_matrix_market_matrix(training + "_T.mm", M+N, D);
     load_matrix_market_matrix(training + "_L.mm", M+N+K, D);
-     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
-    vec time_bias = load_matrix_market_vector(training+ "_T_bias.mm", false, true);
+    vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    vec item_bias =      load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    vec time_bias =      load_matrix_market_vector(training+ "_T_bias.mm", false, true);
     vec last_item_bias = load_matrix_market_vector(training+"_L_bias.m", false, true);
     for (uint i=0; i<M+N+K+M; i++){
       if (i < M)

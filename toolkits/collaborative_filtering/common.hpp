@@ -56,6 +56,7 @@ bool load_factors_from_file = false;
 int unittest = 0;
 int niters = 10;
 int halt_on_rmse_increase = 0;
+int D = 20; //feature vector width
 
 void parse_command_line_args(){
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
@@ -66,6 +67,7 @@ void parse_command_line_args(){
   else training = get_option_string("training");
   validation = get_option_string("validation", "");
   test = get_option_string("test", "");
+  D    = get_option_int("D", D);
 
   if (validation == "")
     validation += training + "e";  

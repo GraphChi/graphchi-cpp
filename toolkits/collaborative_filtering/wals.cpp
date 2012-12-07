@@ -33,13 +33,14 @@
 
 #include "common.hpp"
 double lambda = 1e-3;
+int D = 20; //feature vector width
 
 struct vertex_data {
-  double pvec[NLATENT];
+  vec pvec;
   double rmse;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
+    vec = zeros(D);
     rmse = 0;
   }
 
@@ -202,6 +203,8 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   lambda        = get_option_float("lambda", 0.065);
+  D             = get_option_int("D", D);
+
   parse_command_line_args();
   parse_implicit_command_line();
   if (unittest == 1){
