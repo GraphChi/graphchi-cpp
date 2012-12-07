@@ -43,7 +43,6 @@ double rbm_beta         = 0.06;
 int    rbm_bins         = 6;
 double rbm_scaling      = 1;
 double rbm_mult_step_dec= 0.9;
-int    D                = 20;
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }

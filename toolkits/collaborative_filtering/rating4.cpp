@@ -41,7 +41,6 @@
 
 using namespace graphchi;
 
-uint D;
 int debug;
 int num_ratings;
 double knn_sample_percent = 1.0;
@@ -56,11 +55,6 @@ struct vertex_data {
   vertex_data() {
   }
 
-  double dot(const vertex_data &oth) const {
-    double x=0;
-    for(uint i=0; i< D; i++) x+= oth.pvec[i]*pvec[i];
-    return x;
-  }
 
 };
 struct edge_data {
@@ -88,7 +82,7 @@ float als_predict(const vertex_data& user,
     double & prediction){
 
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -146,21 +140,23 @@ void read_factors(std::string base_filename, bool users) {
     logstream(LOG_FATAL) << "Problem reading input file: " << base_filename << " Should be in dense matrix market format"<< std::endl;
 
   /* find out size of sparse matrix .... */
+  uint feature_width;
   if (users){
-    if ((ret_code = mm_read_mtx_array_size(f, &_M, &D)) !=0) {
+    if ((ret_code = mm_read_mtx_array_size(f, &_M, &feature_width)) !=0) {
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
     if (_M != M)
       logstream(LOG_FATAL) << "Wrong size of feature vector matrix. Should be " << M << " rows instead of " << _M << std::endl;
   }
   else {    
-    if ((ret_code = mm_read_mtx_array_size(f, &_N, &D)) !=0) {
+    if ((ret_code = mm_read_mtx_array_size(f, &_N, &feature_width)) !=0) {
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
     if (_N != N)
       logstream(LOG_FATAL) << "Wrong size of feature vector matrix. Should be " << N << " rows instead of " << _N << std::endl;
    }
 
+  D = (int)feature_width;
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << (users? M :N) << " x " << D << ", non-zeros: " << M*D << std::endl;
 
@@ -168,7 +164,7 @@ void read_factors(std::string base_filename, bool users) {
   nz = M*D;
 
   for (size_t i=(users? 0 : M); i< (users? M : M+N); i++)
-    for (size_t j=0; j < D; j++)
+    for (size_t j=0; j < (size_t)D; j++)
     {
       int rc = fscanf(f, "%lg", &val);
       if (rc != 1)
@@ -193,7 +189,7 @@ float nmf_predict(const vertex_data& user,
     const float rating, 
     double & prediction){
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);

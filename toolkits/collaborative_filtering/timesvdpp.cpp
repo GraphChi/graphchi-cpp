@@ -49,7 +49,6 @@ struct timesvdpp_params{
 };
 
 timesvdpp_params tsp;
-int D = 20; //feature vector width, can be changed on runtime using --D=XX flag
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
