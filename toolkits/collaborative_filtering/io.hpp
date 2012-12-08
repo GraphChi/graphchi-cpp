@@ -58,7 +58,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       logstream(LOG_FATAL)<<"Incorrect number of time bins K in .gm file " << base_filename << ".gm" << std::endl;
 
     logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
-    fclose(inf);
     return nshards;
   }   
 

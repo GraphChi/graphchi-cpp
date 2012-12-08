@@ -230,7 +230,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 	while (token < fc.total_features + 3){
 		/* READ FROM */
 		if (token == fc.from_pos){
-			char *pch = strtok(linebuf,"\t,\r ");
+			char *pch = strtok(linebuf,"\t,\r\n ");
 			if (pch == NULL)
 				logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 			I = (uint)get_node_id(pch, 0, i);
@@ -238,7 +238,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 		}
 		else if (token == fc.to_pos){
 			/* READ TO */
-			char * pch = strtok(NULL, "\t,\r ");
+			char * pch = strtok(NULL, "\t,\r\n ");
 			if (pch == NULL)
 				logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 			J = (uint)get_node_id(pch, 1, i);
@@ -246,7 +246,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 		}
 		else if (token == fc.val_pos){
 			/* READ RATING */
-			char * pch = strtok(NULL, "\t,\r ");
+			char * pch = strtok(NULL, "\t,\r\n ");
 			if (pch == NULL)
 				logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 			val = atof(pch);
@@ -256,7 +256,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 		}
 		else {
 			/* READ FEATURES */
-			char * pch = strtok(NULL, "\t,\r ");
+			char * pch = strtok(NULL, "\t,\r\n ");
 			if (pch == NULL)
 				logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
 			if (!fc.feature_selection[token]){
@@ -363,12 +363,31 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 	sharder<als_edge_type> sharderobj(base_filename);
 	sharderobj.start_preprocessing();
 
+  bool info_file = false;
+  FILE * ff = NULL;
+  /* auto detect presence of file named base_filename.info to find out matrix market size */
+	if ((ff = fopen((base_filename + ".info").c_str(), "r")) != NULL) {
+    info_file = true;
+   	if (mm_read_banner(ff, &matcode) != 0){
+		  logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
+    }
+	if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+		logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
+	/* find out size of sparse matrix .... */
+	if ((ret_code = mm_read_mtx_crd_size(ff, &M, &N, &nz)) !=0) {
+		logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+  	}
+  }
+    
 	if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-		logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
+		 logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
 	}
-	if (mm_read_banner(f, &matcode) != 0)
+  /* if .info file is not present, try to find matrix market header inside the base_filename file */
+  if (!info_file){
+	if (mm_read_banner(f, &matcode) != 0){
 		logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
+  }
 	if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
 		logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
@@ -376,7 +395,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 	if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
 		logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
 	}
-
+  }
 	logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
 	uint I, J;

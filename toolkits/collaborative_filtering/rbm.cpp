@@ -235,7 +235,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           (*mov.ni)++;
         }
       }
-      else if (is_item(vertex.id()) > 0){
+      else if (is_item(vertex.id())){
         rbm_movie mov = latent_factors_inmem[vertex.id()]; 
         setRand2(mov.w, D*rbm_bins, 0.001);
         if((*mov.ni) == 0) 

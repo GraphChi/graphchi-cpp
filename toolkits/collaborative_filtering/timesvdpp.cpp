@@ -181,7 +181,7 @@ std::vector<vertex_data> latent_factors_inmem;
 void init_time_svdpp_node_data(){
   int k = D;
 #pragma omp parallel for
-  for (uint u = 0; u < M; u++) {
+  for (int u = 0; u < (int)M; u++) {
     vertex_data & data = latent_factors_inmem[u];
     data.pvec = zeros(4*k);
     time_svdpp_usr usr(data);
@@ -195,7 +195,7 @@ void init_time_svdpp_node_data(){
   }
 
 #pragma omp parallel for
-  for (uint i = M; i < N+M; i++) {
+  for (int i = M; i < (int)(N+M); i++) {
     vertex_data & data = latent_factors_inmem[i];
     data.pvec = zeros(2*k);
     time_svdpp_movie movie(data);
@@ -217,7 +217,7 @@ void init_time_svdpp(){
   init_time_svdpp_node_data();
 
 #pragma omp parallel for
-  for (uint i = M+N; i < M+N+K; i++) {
+  for (int i = M+N; i < (int)(M+N+K); i++) {
     vertex_data & data = latent_factors_inmem[i];
     data.pvec = zeros(2*k);
     time_svdpp_time timenode(data);
@@ -271,7 +271,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
         //edge_data & edge = scope.edge_data(oedgeid);
         //float rui = edge.weight;
         float rui = vertex.edge(e)->get_data().weight; 
-        uint t = vertex.edge(e)->get_data().time - 1; // we assume time bins start from 1
+        uint t = (uint)(vertex.edge(e)->get_data().time - 1); // we assume time bins start from 1
         assert(t < M+N+K);
         time_svdpp_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         time_svdpp_time time(latent_factors_inmem[t]);
