@@ -217,17 +217,19 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void after_iteration(int iteration, graphchi_context &gcontext) {
     rbm_alpha *= rbm_mult_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&rbm_predict, gcontext);
+    if (iteration >= 2)
+      validation_rmse(&rbm_predict, gcontext);
   }
 
   /**
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+        
 
     if (gcontext.iteration == 0){
       if (is_user(vertex.id()) && vertex.num_outedges() > 0){
-        vertex_data &user = latent_factors_inmem[vertex.id()];
+        vertex_data& user = latent_factors_inmem[vertex.id()];
         user.pvec = zeros(D*3);
         for(int e=0; e < vertex.num_outedges(); e++) {
           rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
@@ -235,17 +237,22 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           int r = (int)(observation/rbm_scaling);
           assert(r < rbm_bins);
           mov.bi[r]++;
-          (*mov.ni)++;
         }
       }
-      else if (is_item(vertex.id()) && vertex.num_inedges() > 0){
+      return;
+    }
+    else if (gcontext.iteration == 1){
+      if (vertex.num_inedges() > 0){
         rbm_movie mov = latent_factors_inmem[vertex.id()]; 
         setRand2(mov.w, D*rbm_bins, 0.001);
-        if((*mov.ni) == 0) 
-          return;
         for(int r = 0; r < rbm_bins; ++r){
-          mov.bi[r] /= (*mov.ni);
+          mov.bi[r] /= (double)vertex.num_inedges();
           mov.bi[r] = log(1E-9 + mov.bi[r]);
+         
+          if (mov.bi[r] > 1000){
+            assert(false);
+            logstream(LOG_FATAL)<<"Numerical overflow" <<std::endl;
+          }
         }
       }
 
