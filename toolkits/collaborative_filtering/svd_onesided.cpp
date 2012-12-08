@@ -92,7 +92,6 @@ double tol = 1e-8;
 bool finished = false;
 int ortho_repeats = 3;
 bool save_vectors = false;
-std::string datafile; 
 std::string format = "matrixmarket";
 int nodes = 0;
 
@@ -104,6 +103,8 @@ int data_size = max_iter;
 
 
 void init_lanczos(bipartite_graph_descriptor & info){
+  srand48(time(NULL));
+  latent_factors_inmem.resize(info.total());
   data_size = nsv + nv+1 + max_iter;
   actual_vector_len = data_size;
   if (info.is_square())
@@ -301,7 +302,7 @@ printf("\n");
     u = u / a;
     if (save_vectors){
        char output_filename[256];
-       sprintf(output_filename, "%s.U.%d", datafile.c_str(), i);
+       sprintf(output_filename, "%s.U.%d", training.c_str(), i);
         write_output_vector(output_filename, u.to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
     }
     normret = V[i]*A._transpose() - u*sigma(i);
@@ -326,7 +327,7 @@ printf("\n");
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
     char output_filename[256];
     for (int i=0; i< nconv; i++){
-        sprintf(output_filename, "%s.V.%d", datafile.c_str(), i);
+        sprintf(output_filename, "%s.V.%d", training.c_str(), i);
         write_output_vector(output_filename, V[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix V'");
      }
   }
@@ -343,7 +344,6 @@ int main(int argc,  const char *argv[]) {
   std::string vecfile;
   vecfile       = get_option_string("initial_vector", "");
   debug         = get_option_int("debug", 0);
-  unittest      = get_option_int("unittest", 0);
   ortho_repeats = get_option_int("ortho_repeats", 3); 
   nv = get_option_int("nv", 1);
   nsv = get_option_int("nsv", 1);
@@ -355,7 +355,7 @@ int main(int argc,  const char *argv[]) {
   parse_command_line_args();
   parse_implicit_command_line();
 
-  if (nv <= nsv){
+  if (nv < nsv){
     logstream(LOG_FATAL)<<"Please set the number of vectors --nv=XX, to be greater than the number of support vectors --nsv=XX " << std::endl;
   }
 
@@ -363,28 +363,28 @@ int main(int argc,  const char *argv[]) {
 
   //unit testing
   if (unittest == 1){
-    datafile = "gklanczos_testA"; 
+    training = "gklanczos_testA"; 
     vecfile = "gklanczos_testA_v0";
     nsv = 3; nv = 3;
     debug = true;
     //TODO core.set_ncpus(1);
   }
   else if (unittest == 2){
-    datafile = "gklanczos_testB";
+    training = "gklanczos_testB";
     vecfile = "gklanczos_testB_v0";
     nsv = 10; nv = 10;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
   }
   else if (unittest == 3){
-    datafile = "gklanczos_testC";
+    training = "gklanczos_testC";
     vecfile = "gklanczos_testC_v0";
     nsv = 25; nv = 25;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
   }
 
-  std::cout << "Load matrix " << datafile << std::endl;
+  std::cout << "Load matrix " << training << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
   if (input_cols == 3)
     nshards = convert_matrixmarket<edge_data>(training);
@@ -394,7 +394,6 @@ int main(int argc,  const char *argv[]) {
 
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
-  init_feature_vectors<std::vector<vertex_data> >(info.total(), latent_factors_inmem, true); //todo: initialize only first value to be random
 
   timer mytimer; mytimer.start();
   init_lanczos(info);
@@ -408,7 +407,7 @@ int main(int argc,  const char *argv[]) {
  //or start with a random initial vector
   else {
 #pragma omp parallel for
-    for (uint i=0; i< M; i++)
+    for (int i=0; i< (int)M; i++)
       latent_factors_inmem[i].pvec[0] = drand48();
   }
 
@@ -421,7 +420,7 @@ int main(int argc,  const char *argv[]) {
  
   std::cout << "Lanczos finished in " << mytimer.current_time() << std::endl;
 
-  write_output_vector(datafile + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
+  write_output_vector(training + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
 
   if (unittest == 1){
     assert(errest.size() == 3);

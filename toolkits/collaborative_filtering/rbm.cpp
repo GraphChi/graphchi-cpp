@@ -421,7 +421,6 @@ int main(int argc, const char ** argv) {
   rbm_beta      = get_option_float("rbm_beta", rbm_beta);
   rbm_mult_step_dec  = get_option_float("rbm_mult_step_dec", rbm_mult_step_dec);
   rbm_scaling   = get_option_float("rbm_scaling", rbm_scaling);
-  D             = get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();

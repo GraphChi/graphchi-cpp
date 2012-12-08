@@ -23,16 +23,11 @@
  */
 
 
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
-
-#include "api/vertex_aggregator.hpp"
-
 #include "types.hpp"
 #include "eigen_wrapper.hpp"
 #include "timer.hpp"
 
-using namespace graphchi;
 using namespace std;
 
 
@@ -100,7 +95,6 @@ double tol = 1e-8;
 bool finished = false;
 int ortho_repeats = 3;
 bool save_vectors = false;
-std::string datafile; 
 std::string format = "matrixmarket";
 int nodes = 0;
 
@@ -109,6 +103,8 @@ int data_size = max_iter;
 #include "printouts.hpp"
 
 void init_lanczos(bipartite_graph_descriptor & info){
+  srand48(time(NULL));
+  latent_factors_inmem.resize(info.total());
   data_size = nsv + nv+1 + max_iter;
   if (info.is_square())
     data_size *= 2;
@@ -348,28 +344,28 @@ int main(int argc,  const char *argv[]) {
 
   //unit testing
   if (unittest == 1){
-    datafile = "gklanczos_testA"; 
+    training = "gklanczos_testA"; 
     vecfile = "gklanczos_testA_v0";
     nsv = 3; nv = 3;
     debug = true;
     //TODO core.set_ncpus(1);
   }
   else if (unittest == 2){
-    datafile = "gklanczos_testB";
+    training = "gklanczos_testB";
     vecfile = "gklanczos_testB_v0";
     nsv = 10; nv = 10;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
   }
   else if (unittest == 3){
-    datafile = "gklanczos_testC";
+    training = "gklanczos_testC";
     vecfile = "gklanczos_testC_v0";
     nsv = 4; nv = 10;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
   }
 
-  std::cout << "Load matrix " << datafile << std::endl;
+  std::cout << "Load matrix " << training << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
   if (input_cols == 3)
     nshards = convert_matrixmarket<edge_data>(training);
@@ -380,7 +376,6 @@ int main(int argc,  const char *argv[]) {
  
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
-  init_feature_vectors<std::vector<vertex_data> >(info.total(), latent_factors_inmem, false);
 
   timer mytimer; mytimer.start();
   init_lanczos(info);
@@ -391,10 +386,10 @@ int main(int argc,  const char *argv[]) {
     std::cout << "Load inital vector from file" << vecfile << std::endl;
     load_matrix_market_vector(vecfile, info, 0, true, false);
   }  
-  //or start with a random initial vector
+//or start with a random initial vector
   else {
 #pragma omp parallel for
-    for (uint i=0; i< M; i++)
+    for (int i=0; i< (int)M; i++)
       latent_factors_inmem[i].pvec[0] = drand48();
   }
 
