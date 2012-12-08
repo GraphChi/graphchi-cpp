@@ -134,11 +134,14 @@ float rbm_predict(const rbm_user & usr,
   double nn = 0;
   for(int r = 0; r < rbm_bins; ++r){               
     double zz = exp(mov.bi[r] + dot(usr.h, &mov.w[r*D]));
+    if (std::isinf(zz))
+      std::cout<<" mov.bi[r] " << mov.bi[r] << " dot: " << dot(usr.h, &mov.w[r*D]) << std::endl;
     ret += zz * (float)(r);
     assert(!std::isnan(ret));
     nn += zz;
   }
-  assert (std::fabs(nn) > 1e-32);
+  assert(!std::isnan(ret));
+  assert(std::fabs(nn) > 1e-32);
   ret /= nn;
   if(ret < minval) ret = minval;
   else if(ret > maxval) ret = maxval;
@@ -223,7 +226,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     if (gcontext.iteration == 0){
-      if (is_user(vertex.id())){
+      if (is_user(vertex.id()) && vertex.num_outedges() > 0){
         vertex_data &user = latent_factors_inmem[vertex.id()];
         user.pvec = zeros(D*3);
         for(int e=0; e < vertex.num_outedges(); e++) {
@@ -235,7 +238,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
           (*mov.ni)++;
         }
       }
-      else if (is_item(vertex.id())){
+      else if (is_item(vertex.id()) && vertex.num_inedges() > 0){
         rbm_movie mov = latent_factors_inmem[vertex.id()]; 
         setRand2(mov.w, D*rbm_bins, 0.001);
         if((*mov.ni) == 0) 
@@ -249,7 +252,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       return; //done with initialization
     }
     //go over all user nodes
-    if (is_user(vertex.id())){
+    if (is_user(vertex.id()) && vertex.num_outedges()){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
       user.pvec = zeros(3*D);
       user.rmse = 0; 
