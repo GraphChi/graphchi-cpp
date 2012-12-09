@@ -51,7 +51,8 @@ double gensgd_reg0 = 1e-1;
 bool debug = false;
 std::string user_file; //optional file with user features
 std::string item_file; //optional file with item features
-
+int limit_rating = 0;
+size_t vertex_with_no_edges = 0;
 enum file_types{
 	TRAINING = 0,
 	VALIDATION = 1,
@@ -322,7 +323,7 @@ float compute_prediction(
 
 /* Read input file, process it and save a binary representation for faster loading */
 template <typename als_edge_type>
-int convert_matrixmarket_N(std::string base_filename, bool square, feature_control & fc) {
+int convert_matrixmarket_N(std::string base_filename, bool square, feature_control & fc, int limit_rating = 0) {
 	// Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
 	int ret_code;
 	MM_typecode matcode;
@@ -366,7 +367,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   bool info_file = false;
   FILE * ff = NULL;
   /* auto detect presence of file named base_filename.info to find out matrix market size */
-	if ((ff = fopen((base_filename + ".info").c_str(), "r")) != NULL) {
+	if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
     info_file = true;
    	if (mm_read_banner(ff, &matcode) != 0){
 		  logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
@@ -409,6 +410,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 		}
 	}
 	if (!sharderobj.preprocessed_file_exists()) {
+    if (limit_rating > 0)
+      nz = limit_rating;
 		for (size_t i=0; i<nz; i++)
 		{
 
@@ -744,7 +747,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 				}
 			}
 			else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
-				logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
+        vertex_with_no_edges++;
 			return;
 		} 
 
@@ -789,6 +792,8 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 	 * Called after an iteration has finished.
 	 */
 	void after_iteration(int iteration, graphchi_context &gcontext) {
+    if (iteration == 1 && vertex_with_no_edges > 0)
+      logstream(LOG_WARNING)<<"There are " << vertex_with_no_edges << " users without ratings" << std::endl;
 		gensgd_rate *= gensgd_mult_dec;
 		training_rmse(iteration, gcontext);
 		validation_rmse_N(&gensgd_predict, gcontext, fc);
@@ -900,6 +905,7 @@ int main(int argc, const char ** argv) {
 	fc.from_pos = get_option_int("from_pos", fc.from_pos);
 	fc.to_pos = get_option_int("to_pos", fc.to_pos);
 	fc.val_pos = get_option_int("val_pos", fc.val_pos);
+  limit_rating = get_option_int("limit_rating", limit_rating);
 
 	std::string string_features = get_option_string("features", fc.default_feature_str);
 	if (string_features != ""){
@@ -931,7 +937,7 @@ int main(int argc, const char ** argv) {
 	fc.node_id_maps.resize(2+fc.total_features+fc.last_item);
 	fc.stats_array.resize(fc.total_features);
 
-	int nshards = convert_matrixmarket_N<edge_data>(training, false, fc);
+	int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
 	init_gensgd();
 	if (user_file != "")
 		read_node_features(user_file, false, fc, true, false);
