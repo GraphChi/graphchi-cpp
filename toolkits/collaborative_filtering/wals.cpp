@@ -121,6 +121,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     for(int e=0; e < vertex.num_edges(); e++) {
       const edge_data & edge = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+      Xty += nbr_latent.pvec * edge.weight * edge.time;      
       XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose() * edge.time;
       if (compute_rmse) {
         double prediction;
