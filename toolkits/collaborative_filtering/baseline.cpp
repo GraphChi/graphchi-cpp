@@ -174,7 +174,7 @@ struct  MMOutputter2{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
       fprintf(outf, "%1.12e\n", latent_factors_inmem[i].mean_rating);
   }
@@ -240,6 +240,7 @@ int main(int argc, const char ** argv) {
   test_predictions(&baseline_predict);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

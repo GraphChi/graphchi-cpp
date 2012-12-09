@@ -47,7 +47,7 @@ struct vertex_data {
 
   double dot(const vertex_data &oth) const {
     double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
     return x;
   }
 
@@ -113,8 +113,8 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     vdata.rmse = 0;
-    mat XtX = mat::Zero(NLATENT, NLATENT); 
-    vec Xty = vec::Zero(NLATENT);
+    mat XtX = mat::Zero(D, D); 
+    vec Xty = vec::Zero(D);
 
     bool compute_rmse = (vertex.num_outedges() > 0);
     // Compute XtX and Xty (NOTE: unweighted)
@@ -129,7 +129,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       }
     }
     // Diagonal
-    for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
     // Solve the least squares problem with eigen using Cholesky decomposition
     vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
@@ -168,9 +168,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -183,8 +183,8 @@ struct  MMOutputter{
 
 
 void output_als_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row D factors of a single item node.");
   logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                             ", " << filename + "_V.mm " << std::endl;
 }
@@ -202,7 +202,6 @@ int main(int argc, const char ** argv) {
   metrics m("als-inmemory-factors");
 
   lambda        = get_option_float("lambda", 0.065);
-  D             = get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();
@@ -216,8 +215,8 @@ int main(int argc, const char ** argv) {
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
 
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
   }
 
 
@@ -241,6 +240,7 @@ int main(int argc, const char ** argv) {
   }
  
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet) 
+    metrics_report(m);
   return 0;
 }

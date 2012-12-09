@@ -36,9 +36,6 @@
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 
-#ifndef NLATENT
-#define NLATENT 20   // Dimension of the latent factors. You can specify this in compile time as well (in make).
-#endif
 
 using namespace graphchi;
 
@@ -57,6 +54,7 @@ int unittest = 0;
 int niters = 10;
 int halt_on_rmse_increase = 0;
 int D = 20; //feature vector width
+bool quiet = false;
 
 void parse_command_line_args(){
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
@@ -76,7 +74,7 @@ void parse_command_line_args(){
 
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
-  bool quiet    = get_option_int("quiet", 0);
+  quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
@@ -99,7 +97,7 @@ void print_copyright(){
 }
 
 void print_config(){
- std::cout<<"[feature_width] => [" << NLATENT << "]" << std::endl;
+ std::cout<<"[feature_width] => [" << D << "]" << std::endl;
  std::cout<<"[users] => [" << M << "]" << std::endl;
  std::cout<<"[movies] => [" << N << "]" <<std::endl;
  std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
@@ -118,7 +116,7 @@ void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = t
 
 #pragma omp parallel for
  for (int i=0; i < (int)size; i++){
-    for (uint j=0; j<NLATENT; j++)
+    for (int j=0; j<D; j++)
       latent_factors_inmem[i].pvec[j] = drand48();
   } 
 }

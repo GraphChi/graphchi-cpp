@@ -30,19 +30,19 @@
 
 
 #include "common.hpp"
+#include "eigen_wrapper.hpp"
 
 double biassgd_lambda = 1e-3; //sgd step size
 double biassgd_gamma = 1e-3;  //sgd regularization
 double biassgd_step_dec = 0.9; //sgd step decrement
 
 struct vertex_data {
-    double pvec[NLATENT]; //storing the feature vector
+    vec pvec; //storing the feature vector
     double rmse;          //tracking rmse
     double bias;
  
     vertex_data() {
-        for(int k=0; k < NLATENT; k++) 
-           pvec[k] =  drand48(); 
+        pvec = zeros(D);
         rmse = 0;
         bias = 0;
     }
@@ -50,7 +50,7 @@ struct vertex_data {
     //dot product 
     double dot(const vertex_data &oth) const {
         double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+        for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
         return x;
     }
     
@@ -127,9 +127,6 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
           logstream(LOG_FATAL)<<"BIASSGD got into numerical error. Please tune step size using --biassgd_gamma and biassgd_lambda" << std::endl;
         user.bias += biassgd_gamma*(err - biassgd_lambda* user.bias);
         movie.bias += biassgd_gamma*(err - biassgd_lambda* movie.bias); 
-
-        Map<vec> movie_vec(movie.pvec, NLATENT);
-        Map<vec> user_vec(user.pvec, NLATENT);
  //NOTE: the following code is not thread safe, since potentially several
  //user nodes may update this item gradient vector concurrently. However in practice it
  //did not matter in terms of accuracy on a multicore machine.
@@ -137,9 +134,9 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
  //mutex mymutex;
  //
  //and then do: mymutex.lock()
-        movie_vec += biassgd_gamma*(err*user_vec - biassgd_lambda*movie_vec);
+        movie.pvec += biassgd_gamma*(err*user.pvec - biassgd_lambda*movie.pvec);
  //here add: mymutex.unlock();
-        user_vec += biassgd_gamma*(err*movie_vec - biassgd_lambda*user_vec);
+        user.pvec += biassgd_gamma*(err*movie.pvec - biassgd_lambda*user.pvec);
       }
     }
 
@@ -201,9 +198,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -217,8 +214,8 @@ struct  MMOutputter{
 
 
 void output_biassgd_result(std::string filename){
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N , "This file contains bias-SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N , "This file contains bias-SGD  output matrix V. In each row D factors of a single item node.");
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains bias-SGD output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains bias-SGD output bias vector. In each row a single item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
@@ -253,8 +250,8 @@ int main(int argc, const char ** argv) {
 
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
     vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
     for (uint i=0; i<M+N; i++){
@@ -278,6 +275,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

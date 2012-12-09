@@ -87,7 +87,7 @@ float nmf_predict(const vertex_data& user,
 }
 
 void pre_user_iter(){
-  x1 = zeros(NLATENT);
+  x1 = zeros(D);
   for (uint i=M; i<M+N; i++){
     vertex_data & data = latent_factors_inmem[i];
     x1 += data.pvec;
@@ -95,7 +95,7 @@ void pre_user_iter(){
 }
 void pre_movie_iter(){
 
-  x2 = zeros(NLATENT);
+  x2 = zeros(D);
   for (uint i=0; i<M; i++){
     vertex_data & data = latent_factors_inmem[i];
     x2 += data.pvec;
@@ -147,12 +147,12 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         (iter % 2 == 0 && isuser))
       return;
     
-    vec ret = zeros(NLATENT);
+    vec ret = zeros(D);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     vdata.rmse = 0;
-    mat XtX = mat::Zero(NLATENT, NLATENT); 
-    vec Xty = vec::Zero(NLATENT);
+    mat XtX = mat::Zero(D, D); 
+    vec Xty = vec::Zero(D);
 
     bool compute_rmse = true;
     
@@ -172,7 +172,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       px = x1;
     else 
       px = x2;
-    for (int i=0; i<NLATENT; i++){
+    for (int i=0; i<D; i++){
       assert(px[i] != 0);
       vdata.pvec[i] *= ret[i] / px[i];
       if (vdata.pvec[i] < epsilon)
@@ -206,9 +206,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -222,8 +222,8 @@ struct  MMOutputter{
 
 
 void output_nmf_result(std::string filename){
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row D factors of a single item node.");
   logstream(LOG_INFO) << "NMF output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
@@ -251,12 +251,12 @@ int main(int argc, const char ** argv) {
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
 
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
   }
 
-  x1 = zeros(NLATENT);
-  x2 = zeros(NLATENT);
+  x1 = zeros(D);
+  x2 = zeros(D);
 
 
   /* Run */
@@ -271,6 +271,7 @@ int main(int argc, const char ** argv) {
   test_predictions(&nmf_predict);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

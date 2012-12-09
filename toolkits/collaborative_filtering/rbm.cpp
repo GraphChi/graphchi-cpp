@@ -464,6 +464,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

@@ -31,6 +31,8 @@
 
 #include "graphchi_basic_includes.hpp"
 #include "common.hpp"
+#include "eigen_wrapper.hpp"
+
 using namespace graphchi;
 
 
@@ -65,16 +67,14 @@ struct svdpp_params{
 svdpp_params svdpp;
 
 struct vertex_data {
-  double pvec[NLATENT];
-  double weight[NLATENT];
+  vec pvec;
+  vec weight;
   double rmse;
   double bias;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) {
-      pvec[k] =  drand48(); 
-      weight[k] = drand48();
-    }
+    pvec = zeros(D);
+    weight = zeros(D);
     rmse = 0;
     bias = 0;
   }
@@ -104,7 +104,7 @@ float svdpp_predict(const vertex_data& user, const vertex_data& movie, const flo
   prediction += user.bias + movie.bias;
   // + q_i^T   *(p_u      +sqrt(|N(u)|)\sum y_j)
   //prediction += dot_prod(movie.pvec,(user.pvec+user.weight));
-  for (int j=0; j< NLATENT; j++)
+  for (int j=0; j< D; j++)
     prediction += movie.pvec[j] * (user.pvec[j] + user.weight[j]);
 
   prediction = std::min((double)prediction, maxval);
@@ -145,20 +145,18 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         vertex_data & user = latent_factors_inmem[vertex.id()]; 
 
         user.rmse = 0; 
-        memset(user.weight, 0, sizeof(double)*NLATENT);
+        memset(&user.weight[0], 0, sizeof(double)*D);
         for(int e=0; e < vertex.num_outedges(); e++) {
           vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()]; 
-          for (int i=0; i< NLATENT; i++)
-            user.weight[i] += movie.weight[i];
+          user.weight += movie.weight;
 
         }
         // sqrt(|N(u)|) 
         float usrNorm = double(1.0/sqrt(vertex.num_outedges()));
         //sqrt(|N(u)| * sum_j y_j
-        for (int j=0; j< NLATENT; j++)
-          user.weight[j] *= usrNorm;
+        user.weight *= usrNorm;
 
-        vec step = zeros(NLATENT);
+        vec step = zeros(D);
 
         // main algorithm, see Koren's paper, just below below equation (16)
         for(int e=0; e < vertex.num_outedges(); e++) {
@@ -169,14 +167,14 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           // e_ui = r_ui - \hat{r_ui}
           float err = observation - estScore;
           assert(!std::isnan(user.rmse));
-          vec itmFctr = init_vec(movie.pvec, NLATENT);
-          vec usrFctr = init_vec(user.pvec, NLATENT);
+          vec itmFctr = movie.pvec;
+          vec usrFctr = user.pvec;
 
           //q_i = q_i + gamma2     *(e_ui*(p_u      +  sqrt(N(U))\sum_j y_j) - gamma7    *q_i)
-          for (int j=0; j< NLATENT; j++)
+          for (int j=0; j< D; j++)
             movie.pvec[j] += svdpp.itmFctrStep*(err*(usrFctr[j] +  user.weight[j])             - svdpp.itmFctrReg*itmFctr[j]);
           //p_u = p_u + gamma2    *(e_ui*q_i   -gamma7     *p_u)
-          for (int j=0; j< NLATENT; j++)
+          for (int j=0; j< D; j++)
             user.pvec[j] += svdpp.usrFctrStep*(err *itmFctr[j] - svdpp.usrFctrReg*usrFctr[j]);
           step += err*itmFctr;
 
@@ -192,8 +190,7 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         for(int e=0; e < vertex.num_edges(); e++) {
           vertex_data&  movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
           //y_j = y_j  +   gamma2*sqrt|N(u)| * q_i - gamma7 * y_j
-          for (int j=0; j< NLATENT; j++)
-            movie.weight[j] +=  step[j]                    -  mult  * movie.weight[j];
+          movie.weight +=  step                    -  mult  * movie.weight;
         }
       }
   }
@@ -256,9 +253,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -272,8 +269,8 @@ struct  MMOutputter{
 
 
 void output_svdpp_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row D factors of a single item node.");
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains SVD++ output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", M, M+N, "This file contains SVD++ output bias vector. In each row a single item bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
@@ -316,8 +313,8 @@ int main(int argc, const char ** argv) {
 
 
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
     vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
     for (uint i=0; i<M+N; i++){
@@ -340,6 +337,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

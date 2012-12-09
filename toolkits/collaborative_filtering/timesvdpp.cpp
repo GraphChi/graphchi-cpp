@@ -74,7 +74,7 @@ struct vertex_data {
 
   double dot(const vertex_data &oth, const vertex_data time) const {
     double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
+    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
     return x;
   }
 
@@ -460,6 +460,7 @@ int main(int argc, const char ** argv) {
   test_predictions3(&time_svdpp_predict, 1);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet) 
+    metrics_report(m);
   return 0;
 }

@@ -399,6 +399,7 @@ int main(int argc, const char ** argv) {
   test_predictions3(&libfm_predict, 1);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet) 
+    metrics_report(m);
   return 0;
 }

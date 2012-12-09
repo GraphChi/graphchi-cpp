@@ -39,17 +39,17 @@ bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
 struct vertex_data {
-  double pvec[NLATENT];
+  vec pvec;
   double rmse;
 
   vertex_data() {
-    for(int k=0; k < NLATENT; k++) pvec[k] =  drand48(); 
+    pvec = zeros(D);
     rmse = 0;
   }
 
   double dot(const vertex_data &oth, const vertex_data time) const {
     double x=0;
-    for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
+    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
     return x;
   }
 
@@ -112,8 +112,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     vdata.rmse = 0;
-    mat XtX = mat::Zero(NLATENT, NLATENT); 
-    vec Xty = vec::Zero(NLATENT);
+    mat XtX = mat::Zero(D, D); 
+    vec Xty = vec::Zero(D);
 
     bool compute_rmse = is_user(vertex.id()); 
     // Compute XtX and Xty (NOTE: unweighted)
@@ -123,9 +123,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       vertex_data & time_node = latent_factors_inmem[time];
       assert(time != vertex.id() && time != vertex.edge(e)->vertex_id());
-      Map<vec> X(nbr_latent.pvec, NLATENT);
-      Map<vec> Y(time_node.pvec, NLATENT);
-      vec XY = X.cwiseProduct(Y);
+      vec XY = nbr_latent.pvec.cwiseProduct(time_node.pvec);
       Xty += XY * observation;
       XtX.triangularView<Eigen::Upper>() += XY * XY.transpose();
       if (compute_rmse) {
@@ -134,11 +132,10 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       }
     }
 
-    for(int i=0; i < NLATENT; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
 
     // Solve the least squares problem with eigen using Cholesky decomposition
-    Map<vec> vdata_vec(vdata.pvec, NLATENT);
-    vdata_vec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
+    vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
 
@@ -165,9 +162,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -180,9 +177,9 @@ struct  MMOutputter{
 
 
 void output_als_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains tensor-ALS output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains tensor-ALS  output matrix V. In each row NLATENT factors of a single item node.");
-  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains tensor-ALS  output matrix T. In each row NLATENT factors of a single time node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains tensor-ALS output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains tensor-ALS  output matrix V. In each row D factors of a single item node.");
+  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains tensor-ALS  output matrix T. In each row D factors of a single time node.");
   logstream(LOG_INFO) << "tensor - ALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << filename + "_T.mm" << std::endl;
 }
@@ -209,9 +206,9 @@ int main(int argc, const char ** argv) {
   init_feature_vectors<std::vector<vertex_data> >(M+N+K, latent_factors_inmem, !load_factors_from_file);
 
 if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
-    load_matrix_market_matrix(training + "_T.mm", M+N, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
+    load_matrix_market_matrix(training + "_T.mm", M+N, D);
   }
 
 

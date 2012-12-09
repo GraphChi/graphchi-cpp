@@ -46,13 +46,12 @@ double sgd_gamma = 1e-3;  //sgd regularization
 double sgd_step_dec = 0.9; //sgd step decrement
 
 struct vertex_data {
-    double pvec[NLATENT]; //storing the feature vector
+    vec pvec; //storing the feature vector
     double rmse;          //tracking rmse
     double bias;
  
     vertex_data() {
-        for(int k=0; k < NLATENT; k++) 
-           pvec[k] =  drand48(); 
+        pvec = zeros(D);
         rmse = 0;
         bias = 0;
     }
@@ -60,7 +59,7 @@ struct vertex_data {
     //dot product 
     double dot(const vertex_data &oth) const {
         double x=0;
-        for(int i=0; i<NLATENT; i++) x+= oth.pvec[i]*pvec[i];
+        for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
         return x;
     }
     
@@ -134,8 +133,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         double err = observation - estScore;
         if (std::isnan(err) || std::isinf(err))
           logstream(LOG_FATAL)<<"SGD got into numerical error. Please tune step size using --sgd_gamma and sgd_lambda" << std::endl;
-        Map<vec> movie_vec(movie.pvec, NLATENT);
-        Map<vec> user_vec(user.pvec, NLATENT);
         //NOTE: the following code is not thread safe, since potentially several
         //user nodes may updates this item gradient vector concurrently. However in practice it
         //did not matter in terms of accuracy on a multicore machine.
@@ -143,9 +140,9 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         //mutex mymutex;
         //
         //and then do: mymutex.lock()
-        movie_vec += sgd_gamma*(err*user_vec - sgd_lambda*movie_vec);
+        movie.pvec += sgd_gamma*(err*user.pvec - sgd_lambda*movie.pvec);
         //and here add: mymutex.unlock();
-        user_vec += sgd_gamma*(err*movie_vec - sgd_lambda*user_vec);
+        user.pvec += sgd_gamma*(err*movie.pvec - sgd_lambda*user.pvec);
       }
     }
 
@@ -164,9 +161,9 @@ struct  MMOutputter{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, NLATENT); 
+    mm_write_mtx_array_size(outf, end-start, D); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < NLATENT; j++) {
+      for(int j=0; j < D; j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
   }
@@ -180,8 +177,8 @@ struct  MMOutputter{
 
 //dump output to file
 void output_sgd_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row NLATENT factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains SGD  output matrix V. In each row NLATENT factors of a single item node.");
+  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row D factors of a single user node.");
+  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains SGD  output matrix V. In each row D factors of a single item node.");
 
   logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
@@ -216,8 +213,8 @@ int main(int argc, const char ** argv) {
 
 /* load initial state from disk (optional) */
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, NLATENT);
-    load_matrix_market_matrix(training + "_V.mm", M, NLATENT);
+    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_V.mm", M, D);
   }
 
   print_config();
@@ -235,6 +232,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }
