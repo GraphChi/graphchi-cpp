@@ -239,7 +239,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
   }
-  else {
+  else if (!info_file){
     M = N = nodes;
     nz = edges;
   }
