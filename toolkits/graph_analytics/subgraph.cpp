@@ -167,7 +167,7 @@ int main(int argc,  const char *argv[]) {
     convert_matrixmarket4<edge_data>(datafile, false, square);
   else if (tokens_per_row == 3 || tokens_per_row == 2) 
     convert_matrixmarket<edge_data>(datafile, NULL, nodes, orig_edges, tokens_per_row);
-  else logstream(LOG_FATAL)<<"Please use --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
+  else logstream(LOG_FATAL)<<"Please use --tokens_per_row=2 or --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
   char * pseeds = strdup(seeds.c_str());
