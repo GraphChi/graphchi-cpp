@@ -155,7 +155,8 @@ int main(int argc,  const char *argv[]) {
   nodes         = get_option_int("nodes", nodes);
   orig_edges         = get_option_int("orig_edges", orig_edges);
 
-  std::string seeds   = get_option_string("seeds");
+  std::string seeds   = get_option_string("seeds","");
+  std::string seed_file = get_option_string("seed_file", "");
 
  mytimer.start();
 
@@ -167,9 +168,13 @@ int main(int argc,  const char *argv[]) {
     convert_matrixmarket4<edge_data>(datafile, false, square);
   else if (tokens_per_row == 3 || tokens_per_row == 2) 
     convert_matrixmarket<edge_data>(datafile, NULL, nodes, orig_edges, tokens_per_row);
-  else logstream(LOG_FATAL)<<"Please use --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
+  else logstream(LOG_FATAL)<<"Please use --tokens_per_row=2 or --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
+
+  if (seed_file == ""){
+  if (seeds == "")
+    logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
   char * pseeds = strdup(seeds.c_str());
   char * pch = strtok(pseeds, ",\n\r\t ");
   int node = atoi(pch);
@@ -177,6 +182,14 @@ int main(int argc,  const char *argv[]) {
   while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
     node = atoi(pch);
     latent_factors_inmem[node-1].active = true;
+  }
+  }
+  else {
+   vec seeds = load_matrix_market_vector(seed_file, false, false);
+    for (int i=0; i< seeds.size(); i++){
+    assert(seeds[i] < latent_factors_inmem.size());
+    latent_factors_inmem[seeds[i] - 1].active = true;
+    }
   }
  
   unlink((datafile +".out").c_str());
@@ -208,7 +221,7 @@ int main(int argc,  const char *argv[]) {
       }
   }
       
-  std::cout<< iiter << ") Number of active nodes: " << num_active <<"Number of links: " << links << std::endl;
+  std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
  
   std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
   std::cout << "Number of passes: " << iiter<< std::endl;
