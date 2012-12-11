@@ -686,8 +686,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
 
       double prediction;
-      vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I)];
-      for (int k=0; k< calc_feature_node_array_size(I); k++)
+      vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
+      for (int k=0; k< calc_feature_node_array_size(I,J); k++)
         node_array[k] = NULL;
       vec sum;
       compute_prediction(I, J, val, prediction, valarray, prediction_func, &sum, node_array);
