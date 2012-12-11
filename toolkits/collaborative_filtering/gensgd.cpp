@@ -451,7 +451,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
 		//calc stats
 		assert(L > 0);
-		for (int i=0; i< fc.feature_num; i++){
+		for (int i=0; i< fc.total_features; i++){
 			fc.stats_array[i].meanval /= L;
 		}
 		assert(globalMean != 0);
@@ -466,7 +466,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
 		FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
 		fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
-		for (int i=0; i < fc.feature_num; i++){
+		for (int i=0; i < fc.total_features; i++){
 			fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
 		}
 		fclose(outf);
