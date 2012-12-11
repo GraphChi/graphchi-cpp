@@ -184,7 +184,7 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 int calc_feature_node_array_size(uint node){
-	return 2+fc.total_features+fc.last_item+nnz(latent_factors_inmem[node].features);
+	return 2+fc.total_features+fc.last_item+fc.node_features*nnz(latent_factors_inmem[node].features);
 }
 
 
@@ -301,6 +301,7 @@ float compute_prediction(
   int index = 0;
 	node_array[index] = &latent_factors_inmem[I+fc.offsets[index]];
   index++;
+  assert(J+fc.offsets[index] < latent_factors_inmem.size());
 	node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
   index++;
 
@@ -794,7 +795,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         vec sum;
 
 				//compute current prediction
-				user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id(), rui ,pui, data.features, gensgd_predict, &sum, node_array);
+				user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, data.features, gensgd_predict, &sum, node_array);
 				float eui = pui - rui;
 
 				//update global mean bias
