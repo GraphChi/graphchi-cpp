@@ -221,7 +221,7 @@ int main(int argc,  const char *argv[]) {
       }
   }
       
-  std::cout<< iiter << ") Number of active nodes: " << num_active <<"Number of links: " << links << std::endl;
+  std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
  
   std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
   std::cout << "Number of passes: " << iiter<< std::endl;
