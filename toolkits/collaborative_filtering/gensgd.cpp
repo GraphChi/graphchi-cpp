@@ -740,7 +740,7 @@ void test_predictions_N(
 
   mm_write_banner(fout, matcode);
   mm_write_mtx_crd_size(fout ,M,N,nz); 
-  float * valarray = new float[fc.feature_num];
+  float * valarray = new float[fc.total_features];
   float val;
   double prediction;
   uint I,J;
