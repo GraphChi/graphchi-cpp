@@ -58,6 +58,8 @@ std::string item_file; //optional file with item features
 std::string user_links; //optional file with user to user links
 int limit_rating = 0;
 size_t vertex_with_no_edges = 0;
+int calc_error = 0;
+
 enum file_types{
   TRAINING = 0,
   VALIDATION = 1,
@@ -885,10 +887,14 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
 #pragma omp parallel for reduction(+:dtraining_rmse)
   for (int i=start; i< (int)end; i++){
     dtraining_rmse += latent_factors_inmem[i].rmse;
-    total_errors += latent_factors_inmem[i].errors;
+    if (calc_error)
+      total_errors += latent_factors_inmem[i].errors;
   }
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
+  if (calc_error)
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
+  else 
+  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
 }
 
 /**
@@ -1071,7 +1077,7 @@ struct  MMOutputter{
 
 
 void output_gensgd_result(std::string filename) {
-  MMOutputter mmoutput(filename + "_U.mm", 0, num_feature_bins(), "This file contains LIBFM output matrices. In each row D factors of a single user node, then item nodes, then features");
+  MMOutputter mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains LIBFM output matrices. In each row D factors of a single user node, then item nodes, then features");
   MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains LIBFM output bias vector. In each row a single user bias.");
   MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
 
@@ -1111,6 +1117,7 @@ int main(int argc, const char ** argv) {
   fc.to_pos = get_option_int("to_pos", fc.to_pos);
   fc.val_pos = get_option_int("val_pos", fc.val_pos);
   limit_rating = get_option_int("limit_rating", limit_rating);
+  calc_error = get_option_int("calc_error", calc_error);
 
   std::string string_features = get_option_string("features", fc.default_feature_str);
   if (string_features != ""){
@@ -1152,13 +1159,6 @@ int main(int argc, const char ** argv) {
     read_node_links(user_links, false, fc, true, false);
 
   if (fc.node_features){
-    delete[] fc.offsets;
-    fc.offsets = new int[calc_feature_num()];
-    for (int i=0; i< calc_feature_num(); i++){
-      fc.offsets[i] = get_offset(i);
-      assert(fc.offsets[i] >= 0 && fc.offsets[i] < (int)latent_factors_inmem.size());
-      logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
-    }
     int last_offset = fc.node_id_maps.size();
     int toadd = 0;
     for (int i = last_offset - fc.node_features; i < last_offset; i++){
@@ -1171,6 +1171,13 @@ int main(int argc, const char ** argv) {
       for (int j=0; j < D; j++)
         data.pvec[j] = drand48();
       latent_factors_inmem.push_back(data);
+    }
+    delete[] fc.offsets;
+    fc.offsets = new int[calc_feature_num()];
+    for (int i=0; i< calc_feature_num(); i++){
+      fc.offsets[i] = get_offset(i);
+      assert(fc.offsets[i] >= 0 && fc.offsets[i] < (int)latent_factors_inmem.size());
+      logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
     }  
   }
   if (load_factors_from_file){
