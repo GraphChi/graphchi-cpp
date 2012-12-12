@@ -156,6 +156,7 @@ inline double sum(double * pvec){
 struct vertex_data {
   vec pvec;
   double rmse;
+  int errors;
   double bias;
   int last_item;
   sparse_vec features;
@@ -165,6 +166,7 @@ struct vertex_data {
     rmse = 0;
     bias = 0;
     last_item = 0;
+    errors = 0;
   }
 
 
@@ -870,6 +872,24 @@ void init_gensgd(){
 }
 
 
+void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = false){
+  last_training_rmse = dtraining_rmse;
+  dtraining_rmse = 0;
+  size_t total_errors = 0;
+  int start = 0;
+  int end = M;
+  if (items){
+    start = M;
+    end = M+N;
+  }
+#pragma omp parallel for reduction(+:dtraining_rmse)
+  for (int i=start; i< (int)end; i++){
+    dtraining_rmse += latent_factors_inmem[i].rmse;
+    total_errors += latent_factors_inmem[i].errors;
+  }
+  dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
+  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
+}
 
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -904,6 +924,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     if (is_user(vertex.id())){
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
       user.rmse = 0; 
+      user.errors = 0;
       assert(user.last_item >= 0 && user.last_item < (int)N);
 
 
@@ -921,6 +942,10 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
         //compute current prediction
         user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, data.features, gensgd_predict, &sum, node_array);
+        if (pui < 0 && rui > 0)
+          user.errors++;
+        else if (pui > 0 && rui < 0)
+          user.errors++;
         float eui = pui - rui;
 
         //update global mean bias
@@ -970,7 +995,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     gensgd_rate3 *= gensgd_mult_dec;
     gensgd_rate4 *= gensgd_mult_dec;
     gensgd_rate5 *= gensgd_mult_dec;
-    training_rmse(iteration, gcontext);
+    training_rmse_N(iteration, gcontext);
     validation_rmse_N(&gensgd_predict, gcontext, fc);
   };
 
