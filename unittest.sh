@@ -18,6 +18,7 @@ echo "TESTING RBM"
 ./toolkits/collaborative_filtering/rbm --training=smallnetflix_mm --validation=smallnetflix_mme --minval=1 --maxval=5 --max_iter=6 --quiet=1
 echo "TESTING ALS-TENSOR"  
 ./toolkits/collaborative_filtering/als_tensor --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
+rm -fR time_smallnetflix.*
 echo "TESTING TIME-SVD++"
 ./toolkits/collaborative_filtering/timesvdpp --training=time_smallnetflix --validation=time_smallnetflixe --minval=1 --maxval=5 --max_iter=6 --quiet=1
 echo "TESTING LIBFM"

@@ -548,7 +548,7 @@ void read_node_features(std::string base_filename, bool square, feature_control 
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
-    I = (uint)get_node_id(pch, 0, lines);
+    I = (uint)get_node_id(pch, user?0:1, lines);
     if (user)
       assert(I >= 0 && I < M);
     else assert(I>=0  && I< N);

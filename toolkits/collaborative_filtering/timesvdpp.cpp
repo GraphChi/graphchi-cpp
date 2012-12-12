@@ -106,7 +106,16 @@ struct time_svdpp_usr{
     ptemp = x+D;
     rmse = &vdata.rmse;
   }
-
+  time_svdpp_usr & operator = (vertex_data & vdata){
+    bu = &vdata.bias;
+    assert(vdata.pvec.size() == D*4); //TO REMOVE
+    p = &vdata.pvec[0];
+    pu = p+D;
+    x = pu+D;
+    ptemp = x+D;
+    rmse = &vdata.rmse;
+    return *this;
+  }
 };
 
 struct time_svdpp_movie{
@@ -120,6 +129,13 @@ struct time_svdpp_movie{
     q = &vdata.pvec[0];
     y = q+D;
   }
+  time_svdpp_movie & operator=(const vertex_data& vdata){
+    assert(vdata.pvec.size() == D*2);
+    bi = (double*)&vdata.bias;
+    q = (double*)&vdata.pvec[0];
+    y = (double*)(q+D);
+    return *this;
+  }
 };
 
 struct time_svdpp_time{
@@ -132,6 +148,14 @@ struct time_svdpp_time{
     z = &vdata.pvec[0];
     pt = z+D;
     assert(vdata.pvec.size() == D*2);
+  }
+  time_svdpp_time & operator=(vertex_data & vdata){
+    bt = &vdata.bias;
+    z = &vdata.pvec[0];
+    pt = z+D;
+    assert(vdata.pvec.size() == D*2);
+    return *this;
+
   }
 };
 
@@ -258,7 +282,10 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
 
       //go over all ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
-        time_svdpp_movie movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        uint pos = vertex.edge(e)->vertex_id();
+        assert(pos >= M && pos < M+N);
+        vertex_data & data = latent_factors_inmem[pos];
+        time_svdpp_movie movie(data);
         Map<vec> y(movie.y, D);
         sumY += sum(y); //y
       }
@@ -273,7 +300,8 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
         float rui = vertex.edge(e)->get_data().weight; 
         uint t = (uint)(vertex.edge(e)->get_data().time - 1); // we assume time bins start from 1
         assert(t < M+N+K);
-        time_svdpp_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        vertex_data & data = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        time_svdpp_movie mov(data);
         time_svdpp_time time(latent_factors_inmem[t]);
         double pui = 0; 
         time_svdpp_predict(usr, mov, time, rui, pui);
@@ -419,7 +447,6 @@ int main(int argc, const char ** argv) {
   tsp.beta =    get_option_float("beta", tsp.beta);
   tsp.gamma =   get_option_float("gamma", tsp.gamma);
   tsp.lrate_mult_dec = get_option_float("lrate_mult_dec", tsp.lrate_mult_dec);
-  D =           get_option_int("D", D);
 
   parse_command_line_args();
   parse_implicit_command_line();
