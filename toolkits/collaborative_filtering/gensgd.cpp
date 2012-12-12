@@ -43,7 +43,11 @@
 #define MAX_FEATAURES 21
 #define FEATURE_WIDTH 1 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
-double gensgd_rate = 1e-02;
+double gensgd_rate1 = 1e-02;
+double gensgd_rate2 = 1e-02;
+double gensgd_rate3 = 1e-02;
+double gensgd_rate4 = 1e-02;
+double gensgd_rate5 = 1e-02;
 double gensgd_mult_dec = 0.9;
 double gensgd_regw = 1e-3;
 double gensgd_regv = 1e-3;
@@ -920,10 +924,23 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         float eui = pui - rui;
 
         //update global mean bias
-        globalMean -= gensgd_rate * (eui + gensgd_reg0 * globalMean);
+        globalMean -= gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
 
         //update node biases and  vectors
         for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M); i++){
+
+          double gensgd_rate;    
+          if (i == 0)  //user
+            gensgd_rate = gensgd_rate1;
+          else if (i == 1) //item
+            gensgd_rate = gensgd_rate2;
+          else if (i < 2+fc.total_features) //rating features
+            gensgd_rate = gensgd_rate3;
+          else if (i < 2+fc.total_features+fc.node_features) //user and item features
+            gensgd_rate = gensgd_rate4;
+          else 
+            gensgd_rate = gensgd_rate5; //last item
+          
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
           assert(node_array[i]->bias < 1e3);
@@ -948,7 +965,11 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
   void after_iteration(int iteration, graphchi_context &gcontext) {
     if (iteration == 1 && vertex_with_no_edges > 0)
       logstream(LOG_WARNING)<<"There are " << vertex_with_no_edges << " users without ratings" << std::endl;
-    gensgd_rate *= gensgd_mult_dec;
+    gensgd_rate1 *= gensgd_mult_dec;
+    gensgd_rate2 *= gensgd_mult_dec;
+    gensgd_rate3 *= gensgd_mult_dec;
+    gensgd_rate4 *= gensgd_mult_dec;
+    gensgd_rate5 *= gensgd_mult_dec;
     training_rmse(iteration, gcontext);
     validation_rmse_N(&gensgd_predict, gcontext, fc);
   };
@@ -1046,7 +1067,11 @@ int main(int argc, const char ** argv) {
   metrics m("als-tensor-inmemory-factors");
 
   //specific command line parameters for gensgd
-  gensgd_rate = get_option_float("gensgd_rate", gensgd_rate);
+  gensgd_rate1 = get_option_float("gensgd_rate1", gensgd_rate1);
+  gensgd_rate2 = get_option_float("gensgd_rate2", gensgd_rate2);
+  gensgd_rate3 = get_option_float("gensgd_rate3", gensgd_rate3);
+  gensgd_rate4 = get_option_float("gensgd_rate4", gensgd_rate4);
+  gensgd_rate5 = get_option_float("gensgd_rate5", gensgd_rate5);
   gensgd_regw = get_option_float("gensgd_regw", gensgd_regw);
   gensgd_regv = get_option_float("gensgd_regv", gensgd_regv);
   gensgd_reg0 = get_option_float("gensgd_reg0", gensgd_reg0);
