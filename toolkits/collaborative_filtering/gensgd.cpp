@@ -188,6 +188,8 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 int calc_feature_node_array_size(uint node, uint item){
+  assert(node <= M);
+  assert(item <= N);
   return 2+fc.total_features+fc.last_item+nnz(latent_factors_inmem[node].features)+nnz(latent_factors_inmem[fc.offsets[1]+item].features);
 }
 
@@ -196,7 +198,10 @@ int calc_feature_node_array_size(uint node, uint item){
 /**
  * return a numeric node ID out of the string text read from file (training, validation or test)
  */
-float get_node_id(char * pch, int pos, size_t i){
+float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
+  assert(pch != NULL);
+  assert(i >= 0);
+
   float ret;
   //read numeric id
   if (!fc.hash_strings){
@@ -212,11 +217,23 @@ float get_node_id(char * pch, int pos, size_t i){
   //else read string id and assign numeric id
   else {
     uint id;
-    assign_id(fc.node_id_maps[pos], id, pch);
-    ret = id;
-    assert(id < fc.node_id_maps[pos].string2nodeid.size());
+    assert(pos < (int)fc.node_id_maps.size());
+    if (read_only){ // find if node was in map
+      std::map<std::string,uint>::iterator it = fc.node_id_maps[pos].string2nodeid.find(pch);
+      if (it != fc.node_id_maps[pos].string2nodeid.end()){
+          ret = it->second;
+          assert(ret < fc.node_id_maps[pos].string2nodeid.size());
+       }
+       else ret = -1;
+    } 
+    else { //else enter node into map (in case it did not exist) and return its position 
+      assign_id(fc.node_id_maps[pos], id, pch);
+      ret = id;
+    }
   }
 
+  if (!read_only)
+    assert(ret != -1);
   return ret;
 }
 
@@ -307,19 +324,27 @@ float compute_prediction(
 
 
   /* COMPUTE PREDICTION */
+  /* USER NODE **/
   int index = 0;
+  int loc = 0;
   node_array[index] = &latent_factors_inmem[I+fc.offsets[index]];
-  index++;
+  assert(node_array[index]->pvec[0] < 1e5);
+  index++; loc++;
+  /* 1) ITEM NODE */
   assert(J+fc.offsets[index] < latent_factors_inmem.size());
   node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
-  index++;
-
+  assert(node_array[index]->pvec[0] < 1e5);
+  index++; loc++;
+   /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
     uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     node_array[j+index] = & latent_factors_inmem[pos];
+    assert(node_array[j+index]->pvec[0] < 1e5);
   }
   index+= fc.total_features;
+  loc += fc.total_features;
+  /* 3) USER FEATURES */
   int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
     uint pos = j.index()+fc.offsets[index];
@@ -328,27 +353,34 @@ float compute_prediction(
     assert(pos >= (uint)fc.offsets[index]);
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
+    assert(node_array[i+index]->pvec[0] < 1e5);
     i++;
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
   index+= nnz(latent_factors_inmem[I+fc.offsets[0]].features);
+  loc+=1;
+  /* 4) ITEM FEATURES */
   i=0;
   FOR_ITERATOR(j, latent_factors_inmem[J+fc.offsets[1]].features){
-    uint pos = j.index()+fc.offsets[2+fc.node_features-1];
-    assert(j.index() < (int)fc.node_id_maps[2+fc.node_features-1].string2nodeid.size());
+    uint pos = j.index()+fc.offsets[loc];
+    assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
     assert(pos >= 0 && pos < latent_factors_inmem.size());
-    assert(pos >= (uint)fc.offsets[2+fc.node_features-1]);
+    assert(pos >= (uint)fc.offsets[loc]);
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
+    assert(node_array[i+index]->pvec[0] < 1e5);
     i++;
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
   index+= nnz(latent_factors_inmem[J+fc.offsets[1]].features);
+  loc+=1;
   if (fc.last_item){
     uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
     assert(pos < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[pos];
+    assert(node_array[index]->pvec[0] < 1e5);
     index++;
+    loc+=1;
   }
   assert(index == calc_feature_node_array_size(I,J));
   (*prediction_func)((const vertex_data**)node_array, calc_feature_node_array_size(I,J), val, prediction, psum);
@@ -548,7 +580,10 @@ void read_node_features(std::string base_filename, bool square, feature_control 
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
-    I = (uint)get_node_id(pch, user?0:1, lines);
+    I = (uint)get_node_id(pch, user?0:1, lines, true);
+    if (I == (uint)-1) //user id was not found in map, so we do not need this users features
+      continue;
+
     if (user)
       assert(I >= 0 && I < M);
     else assert(I>=0  && I< N);
@@ -615,7 +650,10 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
-    I = (uint)get_node_id(pch, user? 0 : 1, lines);
+    I = (uint)get_node_id(pch, user? 0 : 1, lines, true);
+    if (I == (uint)-1)//user id was not found in map, we do not need this user link features
+      continue; 
+
     if (user)
       assert(I < (uint)fc.offsets[1]);
     else assert(I < (uint)fc.offsets[2]);
@@ -782,6 +820,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   for (int j=0; j< D; j++){
     for (int i=0; i< node_array_size; i++){
       sum->operator[](j) += node_array[i]->pvec[j];
+      assert(sum->operator[](j) < 1e5);
       sum_sqr[j] += pow(node_array[i]->pvec[j],2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
@@ -866,7 +905,11 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
       //go over all observed ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
-        vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M)];
+        int howmany = calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M);
+        vertex_data ** node_array = new vertex_data*[howmany];
+        for (int i=0; i< howmany; i++)
+          node_array[i] = NULL;
+
         const edge_data & data = vertex.edge(e)->get_data();
         float rui = data.weight;
         double pui;
@@ -883,12 +926,12 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M); i++){
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
-          assert(node_array[i]->bias < 1e20);
+          assert(node_array[i]->bias < 1e3);
  
           vec grad =  sum - node_array[i]->pvec;
           node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
           assert(!std::isnan(node_array[i]->pvec[0]));
-          assert(node_array[i]->pvec[0] < 1e20);
+          assert(node_array[i]->pvec[0] < 1e3);
         }
         delete[] node_array;
 
@@ -1063,7 +1106,7 @@ int main(int argc, const char ** argv) {
     fc.offsets = new int[calc_feature_num()];
     for (int i=0; i< calc_feature_num(); i++){
       fc.offsets[i] = get_offset(i);
-      assert(fc.offsets[i] < (int)latent_factors_inmem.size());
+      assert(fc.offsets[i] >= 0 && fc.offsets[i] < (int)latent_factors_inmem.size());
       logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
     }
     int last_offset = fc.node_id_maps.size();

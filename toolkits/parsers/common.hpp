@@ -107,14 +107,11 @@ void assign_id(double_map& dmap, unsigned int & outval, const std::string &name)
   //assign a new id
   outval = dmap.string2nodeid[name];
   if (outval == 0){
-    //update the mapping between string to the id
-    dmap.string2nodeid[name] = dmap.maxid++;
-    //return the id
-    outval = dmap.maxid;
-    //store the reverse mapping between id to string
+    dmap.string2nodeid[name] = dmap.maxid;
     dmap.nodeid2hash[dmap.maxid] = name;
+    outval = dmap.maxid;
+    dmap.maxid++;
   }
   mymutex.unlock();
-  outval--;
 }
 #endif //_GRAPHCHI_PARSERS_COMMON
