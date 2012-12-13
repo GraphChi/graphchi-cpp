@@ -174,11 +174,11 @@ void parse(int i){
     assign_id(single_domain ? string2nodeid:string2nodeid2,
         single_domain ? nodeid2hash : nodeid2hash2, to, pch, single_domain ? true : false);
    if (tsv)
-      fprintf(fout.outf, "%u\t%u\t%s\n", from, to, binary? "": pch);
+      fprintf(fout.outf, "%u\t%u\n", from, to);
     else if (csv)
-      fprintf(fout.outf, "%u,%u,%s\n", from, to, binary? "" : pch);
+      fprintf(fout.outf, "%u,%un", from, to);
     else 
-      fprintf(fout.outf, "%u %u %s\n", from, to, binary? "" : pch);
+      fprintf(fout.outf, "%u %u\n", from, to);
     nnz++;
   }
 
@@ -260,7 +260,7 @@ int main(int argc,  const char *argv[]) {
   mm_set_sparse(&out_typecode); 
   mm_set_matrix(&out_typecode);
   mm_write_banner(fout.outf, out_typecode);
-  mm_write_mtx_crd_size(fout.outf, M, N, nnz);
+  mm_write_mtx_crd_size(fout.outf, M, single_domain ? M : N, nnz);
   return 0;
 }
 
