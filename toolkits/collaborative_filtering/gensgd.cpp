@@ -259,10 +259,13 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
   strncpy(linebuf_debug, linebuf, 1024);
 
+  bool first = true;
+
   while (token < fc.total_features + 3){
     /* READ FROM */
     if (token == fc.from_pos){
-      char *pch = strtok(linebuf,"\t,\r\n ");
+      char *pch = strtok(first? linebuf : NULL,"\t,\r\n ");
+      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i);
@@ -270,7 +273,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.to_pos){
       /* READ TO */
-      char * pch = strtok(NULL, "\t,\r\n ");
+      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       J = (uint)get_node_id(pch, 1, i);
@@ -278,7 +282,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.val_pos){
       /* READ RATING */
-      char * pch = strtok(NULL, "\t,\r\n ");
+      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       val = atof(pch);
@@ -288,7 +293,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else {
       /* READ FEATURES */
-      char * pch = strtok(NULL, "\t,\r\n ");
+      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
       if (!fc.feature_selection[token]){

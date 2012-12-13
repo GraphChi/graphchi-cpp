@@ -109,6 +109,8 @@ float pmf_predict(const vertex_data& user,
   float err = 0; 
   if (iiter > pmf_burn_in){
      if (pedge){
+       if (iiter == pmf_burn_in+1)
+         ((edge_data*)pedge)->avgprd = 0;
        ((edge_data*)pedge)->avgprd += prediction;
        err = pow((((edge_data*)pedge)->avgprd / (iiter - pmf_burn_in)) - rating, 2);
      }
