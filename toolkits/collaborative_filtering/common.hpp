@@ -90,6 +90,15 @@ void set_engine_flags(T & pengine){
   pengine.set_modifies_outedges(false);
   pengine.set_preload_commit(false);
 }
+template<typename T>
+void set_engine_flags(T & pengine, bool modify_outedges){
+  pengine.set_disable_vertexdata_storage();  
+  pengine.set_enable_deterministic_parallelism(false);
+  pengine.set_modifies_inedges(false);
+  pengine.set_modifies_outedges(modify_outedges);
+  pengine.set_preload_commit(false);
+}
+
 
 void print_copyright(){
   logstream(LOG_WARNING)<<"GraphChi Collaborative filtering library is written by Danny Bickson (c). Send any "

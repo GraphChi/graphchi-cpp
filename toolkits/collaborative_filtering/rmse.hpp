@@ -38,7 +38,7 @@ double last_validation_rmse = 0;
 /**
   compute predictions on test data
   */
-void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)) {
+void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), graphchi_context * gcontext = NULL, bool dosave = true, vec * avgprd = NULL, int pmf_burn_in = 0) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -48,10 +48,12 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
   }
-  FILE * fout = fopen((test + ".predict").c_str(),"w");
-  if (fout == NULL)
-    logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
-
+  FILE * fout = NULL;
+  if (dosave){
+    fout = fopen((test + ".predict").c_str(),"w");
+    if (fout == NULL)
+      logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
+  }
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
 
@@ -68,9 +70,15 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
-  mm_write_banner(fout, matcode);
-  fprintf(fout, "%%This file contains predictions of user/item pair, one prediction in each line. The first column is user id. The second column is the item id. The third column is the computed prediction.\n");
-  mm_write_mtx_crd_size(fout ,M,N,nz); 
+  if (avgprd && gcontext->iteration == 0)
+    *avgprd = zeros(nz);
+
+
+  if (dosave){
+    mm_write_banner(fout, matcode);
+    fprintf(fout, "%%This file contains predictions of user/item pair, one prediction in each line. The first column is user id. The second column is the item id. The third column is the computed prediction.\n");
+    mm_write_mtx_crd_size(fout ,M,N,nz); 
+  }
 
   for (uint i=0; i<nz; i++)
   {
@@ -83,12 +91,23 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     J--;
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
-    fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
-  }
-  fclose(f);
-  fclose(fout);
+    //for mcmc methods, store the sum of predictions
+    if (avgprd && gcontext->iteration >= pmf_burn_in)
+      avgprd->operator[](i) += prediction;
 
-  std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+    if (dosave){
+      if (avgprd)
+        prediction = avgprd->operator[](i) /(gcontext->iteration - pmf_burn_in); 
+      fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
+    }
+
+ }
+  fclose(f);
+  if (dosave) 
+    fclose(fout);
+
+  if (dosave)
+    std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
 
 void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction), int time_offset = 0) {
@@ -149,7 +168,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   compute validation rmse
   */
 void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)
-    ,graphchi_context & gcontext, int tokens_per_row = 3) {
+    ,graphchi_context & gcontext, int tokens_per_row = 3, vec * avgprd = NULL, int pmf_burn_in = 0) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -174,6 +193,9 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
   Le = nz;
+  if (avgprd != NULL && gcontext.iteration == 0)
+    *avgprd = zeros(nz);
+
 
   last_validation_rmse = dvalidation_rmse;
   dvalidation_rmse = 0;   
@@ -194,7 +216,14 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); 
+
+    //for mcmc methods, aggregate this prediction
+    if (avgprd && gcontext.iteration >= pmf_burn_in){
+      avgprd->operator[](i) += prediction;
+      prediction = avgprd->operator[](i) / (gcontext.iteration-pmf_burn_in);
+    }
+
     dvalidation_rmse += time * pow(prediction - val, 2);
   }
   fclose(f);

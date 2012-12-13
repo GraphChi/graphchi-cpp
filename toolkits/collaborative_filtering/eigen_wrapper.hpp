@@ -25,7 +25,7 @@
  */
 #ifndef EIGEN_WRAPPER
 #define EIGEN_WRAPPER
-#define NDEBUG //remove this is you want to debug in the debugger or have more detailed assertions (but slower running time)
+//#define NDEBUG //remove this is you want to debug in the debugger or have more detailed assertions (but slower running time)
 
 /**
  * SET OF WRAPPER FUNCTIONS FOR EIGEN

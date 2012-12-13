@@ -55,7 +55,13 @@ mat A_U, A_V;// A_T;
 vec mu_U, mu_V; //, mu_T;
 int iiter = 0;
 
-
+vec validation_avgprod; //vector for storing temporary aggregated predictions for the MCMC method
+vec test_avgprod; //vector for strogin temporary aggregated predictions for the MCMC method
+size_t rmse_index = 0;
+enum{
+  TRAINING = 0, VALIDATION = 1, TEST = 3
+};
+int rmse_type = 0;
 
 struct vertex_data {
   vec pvec;
@@ -71,6 +77,7 @@ struct edge_data {
    float weight;
    float avgprd;
    edge_data() { weight = 0; avgprd = 0; }
+   edge_data(double weight): weight(weight) { avgprd = 0; }
 };
 
 /**
@@ -101,15 +108,17 @@ float pmf_predict(const vertex_data& user,
 
   float err = 0; 
   if (iiter > pmf_burn_in){
-     ((edge_data*)pedge)->avgprd += prediction;
- 
-     //return the squared error
-     err = pow((((edge_data*)pedge)->avgprd / (iiter - pmf_burn_in)) - rating, 2);
-     assert(!std::isnan(err));
+     if (pedge){
+       ((edge_data*)pedge)->avgprd += prediction;
+       err = pow((((edge_data*)pedge)->avgprd / (iiter - pmf_burn_in)) - rating, 2);
+     }
   }
   else {
      err = pow(prediction - rating,2);
   }
+  assert(!std::isnan(err));
+  if (!pedge) 
+        rmse_index++;
   return err; 
 
 }
@@ -163,7 +172,7 @@ void sample_alpha(double res2){
 
     if (debug)
       std::cout<<"Sampling from alpha" <<nuAlpha_<<" "<<iWalpha<<" "<< iiWalpha_<<" "<<alpha<<endl;
-    printf("sampled alpha is %g\n", alpha); 
+    //printf("sampled alpha is %g\n", alpha); 
   }
 }
 
@@ -337,7 +346,14 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
  
     double res = training_rmse(iteration, gcontext);
     sample_hyperpriors(res);
-    validation_rmse(&pmf_predict, gcontext);
+    rmse_index = 0;
+    rmse_type = VALIDATION;
+    validation_rmse(&pmf_predict, gcontext, 3, &validation_avgprod, pmf_burn_in);
+    if (iteration >= pmf_burn_in){
+      rmse_index = 0;
+      rmse_type = TEST;
+      test_predictions(&pmf_predict, &gcontext, iiter == niters-1, &test_avgprod);
+    }
     iiter++;
   }
 
@@ -404,7 +420,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket<edge_data>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   init_pmf();
 
@@ -416,7 +432,7 @@ int main(int argc, const char ** argv) {
   /* Run */
   PMFVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  set_engine_flags(engine);
+  set_engine_flags(engine, true);
   pengine = &engine;
   engine.run(program, niters);
 
