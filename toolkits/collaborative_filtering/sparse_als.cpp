@@ -81,7 +81,8 @@ double movie_sparsity;
 float sparse_als_predict(const vertex_data& user, 
     const vertex_data& movie, 
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra = NULL){
 
 
   prediction = user.pvec.dot(movie.pvec);

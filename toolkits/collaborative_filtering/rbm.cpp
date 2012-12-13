@@ -128,7 +128,8 @@ struct rbm_movie{
 float rbm_predict(const rbm_user & usr, 
     const rbm_movie & mov, 
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra){
 
   float ret = 0;
   double nn = 0;
@@ -154,8 +155,9 @@ float rbm_predict(const rbm_user & usr,
 float rbm_predict(const vertex_data & usr, 
     const vertex_data & mov, 
     const float rating, 
-    double & prediction){
-  return rbm_predict(rbm_user((vertex_data&)usr), rbm_movie((vertex_data&)mov), rating, prediction);
+    double & prediction, 
+    void * extra){
+  return rbm_predict(rbm_user((vertex_data&)usr), rbm_movie((vertex_data&)mov), rating, prediction, NULL);
 }   
 
 float predict1(const rbm_user & usr, 
@@ -319,7 +321,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         rbm_movie mov = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         float observation = vertex.edge(e)->get_data();
         double prediction;
-        rbm_predict(user, mov, observation, prediction);
+        rbm_predict(user, mov, observation, prediction, NULL);
         double pui = prediction / rbm_scaling;
         double rui = observation / rbm_scaling;
         user.rmse += (pui - rui) * (pui - rui);

@@ -84,7 +84,8 @@ std::vector<vertex_data> latent_factors_inmem;
 float wals_predict(const vertex_data& user, 
     const vertex_data& movie, 
     const float rating, 
-    double & prediction){
+    double & prediction,
+    void * extra = NULL){
 
 
   prediction = user.dot(movie);

@@ -97,7 +97,7 @@ std::vector<vertex_data> latent_factors_inmem;
 #include "io.hpp"
 
 /** compute a missing value based on SVD++ algorithm */
-float svdpp_predict(const vertex_data& user, const vertex_data& movie, const float rating, double & prediction){
+float svdpp_predict(const vertex_data& user, const vertex_data& movie, const float rating, double & prediction, void * extra = NULL){
   //\hat(r_ui) = \mu + 
   prediction = globalMean;
   // + b_u  +    b_i +

@@ -73,7 +73,8 @@ int iter;
 float nmf_predict(const vertex_data& user, 
     const vertex_data& movie, 
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra = NULL){
 
   prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values

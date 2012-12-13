@@ -38,7 +38,7 @@ double last_validation_rmse = 0;
 /**
   compute predictions on test data
   */
-void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)) {
+void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)) {
   int ret_code;
   MM_typecode matcode;
   FILE *f;
@@ -82,7 +82,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
   }
   fclose(f);
@@ -148,7 +148,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
 /**
   compute validation rmse
   */
-void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction)
+void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)
     ,graphchi_context & gcontext, int tokens_per_row = 3) {
   int ret_code;
   MM_typecode matcode;
@@ -194,7 +194,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
     dvalidation_rmse += time * pow(prediction - val, 2);
   }
   fclose(f);
@@ -275,9 +275,10 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   }
 }
 
-void training_rmse(int iteration, graphchi_context &gcontext, bool items = false){
+double training_rmse(int iteration, graphchi_context &gcontext, bool items = false){
   last_training_rmse = dtraining_rmse;
   dtraining_rmse = 0;
+  double ret = 0;
   int start = 0;
   int end = M;
   if (items){
@@ -288,7 +289,10 @@ void training_rmse(int iteration, graphchi_context &gcontext, bool items = false
   for (int i=start; i< (int)end; i++){
     dtraining_rmse += latent_factors_inmem[i].rmse;
   }
+  ret = dtraining_rmse;
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+
+  return ret;
 }
 #endif //DEF_RMSEHPP
