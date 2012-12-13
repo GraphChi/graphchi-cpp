@@ -249,9 +249,10 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   {
     int rc;
     rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
+    time -= time_offset;
 
-    if (rc != tokens_per_row)
-      logstream(LOG_FATAL)<<"Error when reading input file on line: " << i << " . should have" << tokens_per_row << std::endl;
+    if (rc != 4)
+      logstream(LOG_FATAL)<<"Error when reading input file on line: " << i << " . should have 4 columns " << std::endl;
     if (val < minval || val > maxval)
       logstream(LOG_FATAL)<<"Value is out of range: " << val << " should be: " << minval << " to " << maxval << std::endl;
     if ((uint)time > K)
@@ -260,7 +261,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time-time_offset], val, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time], val, prediction);
     dvalidation_rmse += pow(prediction - val, 2);
   }
   fclose(f);

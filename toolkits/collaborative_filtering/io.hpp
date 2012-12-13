@@ -122,6 +122,9 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
       K = std::max((int)time, (int)K);
+      time--;
+      if (time < 0 && add_time_edges)
+        logstream(LOG_FATAL)<<"Time bins should be >= 1 in row " << i << std::endl;
       //avoid self edges
       if (square && I == J)
         continue;
