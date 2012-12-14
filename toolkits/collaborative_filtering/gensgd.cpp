@@ -40,7 +40,7 @@
 #include "eigen_wrapper.hpp"
 #include "../parsers/common.hpp"
 #include <omp.h>
-#define MAX_FEATAURES 26
+#define MAX_FEATAURES 256
 #define FEATURE_WIDTH 17 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
@@ -80,13 +80,15 @@ struct stats{
 
 struct feature_control{
   std::vector<double_map> node_id_maps;
+  double_map val_map;
+  int rehash_value;
   int last_item;
   std::vector<stats> stats_array;
   int feature_num;
   int node_features;
   int node_links;
   int total_features;
-  bool feature_selection[MAX_FEATAURES+3];
+  std::vector<bool> feature_selection;
   const std::string default_feature_str;
   int * offsets;
   bool hash_strings;
@@ -95,6 +97,7 @@ struct feature_control{
   int val_pos;
 
   feature_control(){
+    rehash_value = 0;
     last_item = 0;
     total_features = 0;
     node_features = 0;
@@ -105,6 +108,7 @@ struct feature_control{
     to_pos = 1;
     val_pos = -1;
     node_links = 0;
+    feature_selection.resize(MAX_FEATAURES+3);
   }
 };
 
@@ -250,8 +254,33 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   return ret;
 }
 
+float get_value(char * pch, bool read_only){
+  float ret;
+  if (!fc.rehash_value){
+    ret = atof(pch);
+  }
+  else {
+    uint id;
+    if (read_only){ // find if node was in map
+      std::map<std::string,uint>::iterator it = fc.val_map.string2nodeid.find(pch);
+      if (it != fc.val_map.string2nodeid.end()){
+          ret = it->second;
+       }
+       else ret = -1;
+    } 
+    else { //else enter node into map (in case it did not exist) and return its position 
+      assign_id(fc.val_map, id, pch);
+      ret = id;
+    }
+ 
+  }    
+  if (std::isnan(ret) || std::isinf(ret))
+    logstream(LOG_FATAL)<<"Failed to read value" << std::endl;
+  return ret;
+}
+
 /* Read and parse one input line from file */
-bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, float *& valarray, int type){
+bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type){
 
   char * linebuf = NULL;
   size_t linesize;
@@ -270,7 +299,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   while (token < file_columns){
     /* READ FROM */
     if (token == fc.from_pos){
-      char *pch = strtok(first? linebuf : NULL,"\t,\r\n ");
+      char *pch = strsep(&linebuf,"\t,\r\n ");
       first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
@@ -279,7 +308,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.to_pos){
       /* READ TO */
-      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      char * pch = strsep(&linebuf, "\t,\r\n ");
       first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
@@ -288,18 +317,17 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.val_pos){
       /* READ RATING */
-      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      char * pch = strsep(&linebuf, "\t,\r\n ");
       first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      val = atof(pch);
-      if (std::isnan(val))
-        logstream(LOG_FATAL)<<"Error reading line " << i << " rating "  << " [ " << linebuf_debug << " ] " << std::endl;
+
+      val = get_value(pch, type == TRAINING);
       token++;
     }
     else {
       /* READ FEATURES */
-      char * pch = strtok(first ? linebuf : NULL, "\t,\r\n ");
+      char * pch = strsep(&linebuf, "\t,\r\n ");
       first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
@@ -308,6 +336,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
         continue;
       }
 
+      assert(index < valarray.size());
       valarray[index] = get_node_id(pch, index+2, i); 
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
@@ -334,7 +363,7 @@ float compute_prediction(
     const uint J, 
     const float val, 
     double & prediction, 
-    const float * valarray, 
+    float * valarray, 
     float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, vec * psum), 
     vec * psum, 
     vertex_data **& node_array){
@@ -525,7 +554,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  float * valarray = new float[fc.total_features];
+  //float * valarray = new float[fc.total_features];
+  std::vector<float> valarray; valarray.resize(fc.total_features);
   float val;
 
   if (!fc.hash_strings){
@@ -553,7 +583,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       //calc stats
       L++;
       globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, valarray));
+      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0]));
     }
 
     sharderobj.end_preprocessing();
@@ -579,7 +609,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
     }
     fclose(outf);
-    delete[] valarray;
 
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
@@ -771,7 +800,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
-    float * valarray = new float[fc.total_features];
+    //float * valarray = new float[fc.total_features];
+    std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
     float val;
 
@@ -785,12 +815,11 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       for (int k=0; k< calc_feature_node_array_size(I,J); k++)
         node_array[k] = NULL;
       vec sum;
-      compute_prediction(I, J, val, prediction, valarray, prediction_func, &sum, node_array);
+      compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
       delete [] node_array;
       dvalidation_rmse += pow(prediction - val, 2);
     }
 
-    delete[] valarray;
     fclose(f);
 
     assert(Le > 0);
@@ -835,7 +864,9 @@ void test_predictions_N(
 
   mm_write_banner(fout, matcode);
   mm_write_mtx_crd_size(fout ,M,N,nz); 
-  float * valarray = new float[fc.total_features];
+  
+  std::vector<float> valarray;
+  valarray.resize(fc.total_features);
   float val;
   double prediction;
   uint I,J;
@@ -849,7 +880,7 @@ void test_predictions_N(
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     for (int k=0; k< calc_feature_node_array_size(I,J); k++)
       node_array[k] = NULL;
-    compute_prediction(I, J, val, prediction, valarray, prediction_func, NULL, node_array);
+    compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, NULL, node_array);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
     delete[] node_array;
   }
@@ -996,7 +1027,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         vec sum;
 
         //compute current prediction
-        user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, data.features, gensgd_predict, &sum, node_array);
+        user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
         if (pui < 0 && rui > 0)
           user.errors++;
         else if (pui > 0 && rui < 0)
@@ -1171,6 +1202,7 @@ int main(int argc, const char ** argv) {
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
+  fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
 
   parse_command_line_args();
   parse_implicit_command_line();
