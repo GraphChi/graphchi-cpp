@@ -40,7 +40,7 @@
 #include "eigen_wrapper.hpp"
 #include "../parsers/common.hpp"
 #include <omp.h>
-#define MAX_FEATAURES 256
+#define MAX_FEATAURES 26
 #define FEATURE_WIDTH 17 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
@@ -198,6 +198,8 @@ std::vector<vertex_data> latent_factors_inmem;
 int calc_feature_node_array_size(uint node, uint item){
   assert(node <= M);
   assert(item <= N);
+  assert(node < latent_factors_inmem.size());
+  assert(fc.offsets[1]+item < latent_factors_inmem.size());
   return 2+fc.total_features+fc.last_item+nnz(latent_factors_inmem[node].features)+nnz(latent_factors_inmem[fc.offsets[1]+item].features);
 }
 
@@ -261,7 +263,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 
   bool first = true;
 
-  while (token < fc.total_features + 3){
+  while (token < MAX_FEATAURES){
     /* READ FROM */
     if (token == fc.from_pos){
       char *pch = strtok(first? linebuf : NULL,"\t,\r\n ");
@@ -443,6 +445,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
         char filename[256];
         sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
         load_map_from_txt_file<std::map<std::string,uint> >(fc.node_id_maps[i].string2nodeid, filename, 2);
+        if (fc.node_id_maps[i].string2nodeid.size() == 0)
+          logstream(LOG_FATAL)<<"Failed to read " << filename << " please remove all temp files and try again" << std::endl;
       }
     }
     return nshards;
@@ -509,6 +513,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (square && I == J)
         continue;
 
+      if (I>= M || J >= N)
+        logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
+
       //calc stats
       L++;
       globalMean += val;
@@ -548,6 +555,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
   if (fc.hash_strings){
     for (int i=0; i< fc.total_features+2; i++){
+      if (fc.node_id_maps[i].string2nodeid.size() == 0)
+        logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
       char filename[256];
       sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
       save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
@@ -1144,7 +1153,7 @@ int main(int argc, const char ** argv) {
   }
 
   logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < fc.total_features; i++)
+  for (int i=0; i < MAX_FEATAURES+3; i++)
     if (fc.feature_selection[i])
       logstream(LOG_INFO)<<"Selected feature: " << i << std::endl;
 
@@ -1172,8 +1181,8 @@ int main(int argc, const char ** argv) {
     }
     logstream(LOG_DEBUG)<<"Going to add " << toadd << std::endl;
     vertex_data data;
-    data.pvec = zeros(D);
     for (int i=0; i < toadd; i++){
+      data.pvec = zeros(D);
       for (int j=0; j < D; j++)
         data.pvec[j] = drand48();
       latent_factors_inmem.push_back(data);
