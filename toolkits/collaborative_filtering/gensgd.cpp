@@ -62,6 +62,7 @@ int calc_error = 0;
 int file_columns = 0;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
+float cutoff = 0;
 
 enum file_types{
   TRAINING = 0,
@@ -322,7 +323,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 
-      val = get_value(pch, type == TRAINING);
+      val = get_value(pch, type != TRAINING);
       token++;
     }
     else {
@@ -625,6 +626,12 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
     }
   }
+  if (fc.rehash_value){
+   char filename[256];
+      sprintf(filename, "%s.feature_val.map", base_filename.c_str());
+      save_map_to_text_file(fc.val_map.string2nodeid,filename);
+  }
+    
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
@@ -1028,9 +1035,9 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
         //compute current prediction
         user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
-        if (pui < 0 && rui > 0)
+        if (pui < cutoff && rui > cutoff)
           user.errors++;
-        else if (pui > 0 && rui < 0)
+        else if (pui > cutoff && rui < cutoff)
           user.errors++;
         float eui = pui - rui;
 
@@ -1203,6 +1210,7 @@ int main(int argc, const char ** argv) {
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
+  cutoff = get_option_float("cutoff", cutoff);
 
   parse_command_line_args();
   parse_implicit_command_line();
