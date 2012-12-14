@@ -60,6 +60,8 @@ int limit_rating = 0;
 size_t vertex_with_no_edges = 0;
 int calc_error = 0;
 int file_columns = 0;
+std::vector<std::string> header_titles;
+int has_header_titles = 0;
 
 enum file_types{
   TRAINING = 0,
@@ -478,7 +480,37 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
   /* if .info file is not present, try to find matrix market header inside the base_filename file */
-  if (!info_file){
+
+  if (has_header_titles){
+    char * linebuf = NULL;
+    size_t linesize;
+    char linebuf_debug[1024];
+
+    /* READ LINE */
+    int rc = getline(&linebuf, &linesize, f);
+    if (rc == -1)
+      logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
+      
+    strncpy(linebuf_debug, linebuf, 1024);
+
+
+    /** READ [FROM] */
+    char *pch = strtok(linebuf,"\t,\r; ");
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
+      
+    header_titles.push_back(pch);
+
+    /** READ USER FEATURES */
+    while (pch != NULL){
+      pch = strtok(NULL, "\t,\r; ");
+      if (pch == NULL)
+        break;
+      header_titles.push_back(pch);
+      //update stats if needed
+    }
+  }
+  else if (!info_file){
     if (mm_read_banner(f, &matcode) != 0){
       logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
     }
@@ -1138,6 +1170,10 @@ int main(int argc, const char ** argv) {
   fc.val_pos = get_option_int("val_pos", fc.val_pos);
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
+  has_header_titles = get_option_int("has_header_titles", has_header_titles);
+
+  parse_command_line_args();
+  parse_implicit_command_line();
 
   std::string string_features = get_option_string("features", fc.default_feature_str);
   if (string_features != ""){
@@ -1156,20 +1192,11 @@ int main(int argc, const char ** argv) {
       fc.total_features++;
     }
   }
-
-  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < MAX_FEATAURES+3; i++)
-    if (fc.feature_selection[i])
-      logstream(LOG_INFO)<<"Selected feature: " << i << std::endl;
-
-  parse_command_line_args();
-  parse_implicit_command_line();
-
-  /* Preprocess data if needed, or discover preprocess files */
   fc.node_id_maps.resize(2+fc.total_features);
   fc.stats_array.resize(fc.total_features);
 
-  int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
+   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
+ 
   init_gensgd();
   if (user_file != "")
     read_node_features(user_file, false, fc, true, false);
@@ -1177,6 +1204,17 @@ int main(int argc, const char ** argv) {
     read_node_features(item_file, false, fc, false, false);
   if (user_links != "")
     read_node_links(user_links, false, fc, true, false);
+
+  if (has_header_titles && header_titles.size() == 0)
+    logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;
+
+  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
+  for (int i=0; i < MAX_FEATAURES+3; i++)
+    if (fc.feature_selection[i])
+      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
+  logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
 
   if (fc.node_features){
     int last_offset = fc.node_id_maps.size();
