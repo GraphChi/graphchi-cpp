@@ -59,6 +59,7 @@ std::string user_links; //optional file with user to user links
 int limit_rating = 0;
 size_t vertex_with_no_edges = 0;
 int calc_error = 0;
+int file_columns = 0;
 
 enum file_types{
   TRAINING = 0,
@@ -263,7 +264,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 
   bool first = true;
 
-  while (token < MAX_FEATAURES){
+  assert(file_columns >= 2);
+  while (token < file_columns){
     /* READ FROM */
     if (token == fc.from_pos){
       char *pch = strtok(first? linebuf : NULL,"\t,\r\n ");
@@ -1127,6 +1129,9 @@ int main(int argc, const char ** argv) {
   user_file = get_option_string("user_file", user_file);
   user_links = get_option_string("user_links", user_links);
   item_file = get_option_string("item_file", item_file);
+  file_columns = get_option_int("file_columns"); //get the number of columns in the edge file
+  if (file_columns < 3)
+    logstream(LOG_FATAL)<<"You must have at least 3 columns in input file: [from] [to] [value] on each line"<<std::endl;
   D = get_option_int("D", D);
   fc.from_pos = get_option_int("from_pos", fc.from_pos);
   fc.to_pos = get_option_int("to_pos", fc.to_pos);

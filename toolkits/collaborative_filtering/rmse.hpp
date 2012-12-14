@@ -219,7 +219,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); 
 
     //for mcmc methods, aggregate this prediction
-    if (avgprd && gcontext.iteration >= pmf_burn_in){
+    if (avgprd && gcontext.iteration > pmf_burn_in){
       avgprd->operator[](i) += prediction;
       prediction = avgprd->operator[](i) / (gcontext.iteration-pmf_burn_in);
     }
