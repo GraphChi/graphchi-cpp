@@ -59,7 +59,6 @@ std::string user_links; //optional file with user to user links
 int limit_rating = 0;
 size_t vertex_with_no_edges = 0;
 int calc_error = 0;
-int file_columns = 0;
 int binary = 1;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
@@ -230,6 +229,7 @@ int calc_feature_node_array_size(uint node, uint item, uint edge_size){
  */
 float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   assert(pch != NULL);
+  assert(pch[0] != 0);
   assert(i >= 0);
 
   float ret;
@@ -264,7 +264,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(*pmap, id, pch);
-      if (pos == -1 && pmap->maxid == id+1 && fc.node_id_maps.size() < pmap->maxid){//TODO debug
+      if (pos == -1 && pmap->maxid == id+1 && fc.node_id_maps.size() < pmap->maxid+2){//TODO debug
         double_map newmap;
         fc.node_id_maps.push_back(newmap);
       }
@@ -313,19 +313,17 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   char linebuf_debug[1024];
 
   int token = 0;
+  index = 0;
+
   int rc = getline(&linebuf, &linesize, f);
   if (rc == -1)
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
   strncpy(linebuf_debug, linebuf, 1024);
 
-  bool first = true;
-
-  assert(file_columns >= 2);
-  while (token < file_columns){
+  while (true){
     /* READ FROM */
     if (token == fc.from_pos){
-      char *pch = strsep(&linebuf,"\t,\r\n ");
-      first = false;
+      char *pch = strsep(&linebuf,"\t,\r\n: ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i);
@@ -333,8 +331,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.to_pos){
       /* READ TO */
-      char * pch = strsep(&linebuf, "\t,\r\n ");
-      first = false;
+      char * pch = strsep(&linebuf, "\t,\r\n: ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       J = (uint)get_node_id(pch, 1, i);
@@ -343,7 +340,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     else if (token == fc.val_pos){
       /* READ RATING */
       char * pch = strsep(&linebuf, "\t,\r\n ");
-      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 
@@ -353,22 +349,22 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     else {
       /* READ FEATURES */
       char * pch = strsep(&linebuf, "\t,\r\n:; ");
-      first = false;
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
-  
+      if (pch == NULL || pch[0] == 0)
+        break;
+          
         uint pos = get_node_id(pch, -1, false);
         assert(pos != -1 && pos < fc.index_map.size());
 
-        pch = strsep(&linebuf, "\t\r\n ");
-        if (pch == NULL)
+        char * pch2 = strsep(&linebuf, "\t\r\n ");
+        if (pch2 == NULL || pch2[0] == 0)
           logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
         
-         uint second_index = get_node_id(pch, pos, false);
+         uint second_index = get_node_id(pch2, pos+2, false);
+         assert(second_index != -1);
          assert(index< valarry.size());
          assert(index< positions.size());
          valarray[index] = second_index; 
-         positions[index] = pos;
+         positions[index] = pos+2;
          index++;
       token++;
     }
@@ -406,15 +402,15 @@ float compute_prediction(
   index++; loc++;
   
    /* 2) FEATURES GIVEN IN RATING LINE */
-  for (int j=0; j< fc.total_features; j++){
-    uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
+  for (int j=0; j< (int)edge_size; j++){
+    uint pos = fc.offsets[positions[j]] + valarray[j];
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(j+index < node_array_size);
     node_array[j+index] = & latent_factors_inmem[pos];
     assert(node_array[j+index]->pvec[0] < 1e5);
   }
-  index+= fc.total_features;
-  loc += fc.total_features;
+  index+= edge_size;
+  loc += edge_size;
   /* 3) USER FEATURES */
   /*int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
@@ -1180,9 +1176,6 @@ int main(int argc, const char ** argv) {
   user_file = get_option_string("user_file", user_file);
   user_links = get_option_string("user_links", user_links);
   item_file = get_option_string("item_file", item_file);
-  file_columns = get_option_int("file_columns"); //get the number of columns in the edge file
-  if (file_columns < 3)
-    logstream(LOG_FATAL)<<"You must have at least 3 columns in input file: [from] [to] [value] on each line"<<std::endl;
   D = get_option_int("D", D);
   fc.from_pos = get_option_int("from_pos", fc.from_pos);
   fc.to_pos = get_option_int("to_pos", fc.to_pos);
@@ -1215,7 +1208,8 @@ int main(int argc, const char ** argv) {
       fc.total_features++;
     }
   }
-  //fc.node_id_maps.resize(2+fc.total_features);
+  
+  fc.node_id_maps.resize(2); //initial place for from/to map
   //fc.stats_array.resize(fc.total_features);
 
 
