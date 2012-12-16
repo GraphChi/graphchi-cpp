@@ -63,7 +63,7 @@ int binary = 1;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
 float cutoff = 0;
-std::string format;
+std::string format = "libsvm";
 enum file_types{
   TRAINING = 0,
   VALIDATION = 1,
@@ -92,7 +92,7 @@ struct feature_control{
   int total_features;
   std::vector<bool> feature_selection;
   const std::string default_feature_str;
-  int * offsets;
+  std::vector<int> offsets;
   bool hash_strings;
   int from_pos;
   int to_pos;
@@ -104,7 +104,6 @@ struct feature_control{
     total_features = 0;
     node_features = 0;
     feature_num = FEATURE_WIDTH;
-    offsets = NULL;
     hash_strings = false;
     from_pos = 0;
     to_pos = 1;
@@ -136,20 +135,31 @@ int num_feature_bins(){
 int calc_feature_num(){
   return 2+fc.total_features+fc.last_item+fc.node_features;
 }
-int get_offset(int i){
+/*int get_offset(int i){
   int offset = 0;
   if (i >= 1)
     offset += M;
   if (i >= 2)
     offset += N;
   if (fc.hash_strings){
-    for (int j=2; j< i; j++)
+    for (int j=2; j< i; j++){
       offset+= fc.node_id_maps[j].string2nodeid.size();
+    }
   } else {
     for (int j=2; j < i; j++)
       offset += (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
   }
   return offset;
+}*/
+void get_offsets(std::vector<int> & offsets){
+  assert(offsets.size() > 3);
+  offsets[0] = 0;
+  offsets[1] = M;
+  offsets[2] = M+N;
+  for (uint i=3; i< offsets.size(); i++){
+    assert(fc.node_id_maps.size() > (uint)i);
+    offsets[i] += offsets[i-1] + fc.node_id_maps[i].string2nodeid.size();
+  }
 }
 
 bool is_user(vid_t id){ return id < M; }
@@ -320,7 +330,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
   strncpy(linebuf_debug, linebuf, 1024);
 
-  while (true){
+  while (token < FEATURE_WIDTH){
+
     /* READ FROM */
     if (token == fc.from_pos){
       char *pch = strsep(&linebuf,"\t,\r\n: ");
@@ -353,16 +364,16 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
         break;
           
         uint pos = get_node_id(pch, -1, false);
-        assert(pos != -1 && pos < fc.index_map.size());
+        assert(pos != (uint)-1 && pos < fc.index_map.string2nodeid.size());
 
         char * pch2 = strsep(&linebuf, "\t\r\n ");
         if (pch2 == NULL || pch2[0] == 0)
           logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
         
          uint second_index = get_node_id(pch2, pos+2, false);
-         assert(second_index != -1);
-         assert(index< valarry.size());
-         assert(index< positions.size());
+         assert(second_index != (uint)-1);
+         assert(index< (int)valarray.size());
+         assert(index< (int)positions.size());
          valarray[index] = second_index; 
          positions[index] = pos+2;
          index++;
@@ -405,7 +416,7 @@ float compute_prediction(
   for (int j=0; j< (int)edge_size; j++){
     uint pos = fc.offsets[positions[j]] + valarray[j];
     assert(pos >= 0 && pos < latent_factors_inmem.size());
-    assert(j+index < node_array_size);
+    assert(j+index < (int)node_array_size);
     node_array[j+index] = & latent_factors_inmem[pos];
     assert(node_array[j+index]->pvec[0] < 1e5);
   }
@@ -549,13 +560,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   std::vector<uint> positions; positions.resize(MAX_FEATAURES);
   float val;
 
-  if (!fc.hash_strings){
-    for (int i=0; i< fc.total_features; i++){
-      fc.stats_array[i].minval = 1e100;
-      fc.stats_array[i].maxval = -1e100;
-    }
-  }
-  if (!sharderobj.preprocessed_file_exists()) {
     if (limit_rating > 0)
       nz = limit_rating;
     for (size_t i=0; i<nz; i++)
@@ -591,10 +595,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
     }
     fclose(outf);
-
-  } else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
 
   fclose(f);
 
@@ -760,7 +760,6 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       feature_control & fc, 
       bool square = false) {
 
-    assert(fc.total_features <= fc.feature_num);
     int ret_code;
     MM_typecode matcode;
     FILE *f;
@@ -788,8 +787,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
     
-    std::vector<uint> valarray; valarray.resize(fc.total_features);
-    std::vector<uint> positions; positions.resize(fc.total_features);
+    std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
+    std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
     uint I, J;
     float val;
 
@@ -932,12 +931,10 @@ void init_gensgd(){
   srand(time(NULL));
   int nodes = M+N+num_feature_bins()+fc.last_item*M;
   latent_factors_inmem.resize(nodes);
-  fc.offsets = new int[calc_feature_num()];
-  for (int i=0; i< calc_feature_num(); i++){
-    fc.offsets[i] = get_offset(i);
-    assert(fc.offsets[i] < nodes);
-    logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
-  }
+  int howmany = calc_feature_num();
+  logstream(LOG_DEBUG)<<"Going to calculate: " << howmany << " offsets." << std::endl;
+  fc.offsets.resize(howmany);
+  get_offsets(fc.offsets);
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
@@ -1243,37 +1240,6 @@ int main(int argc, const char ** argv) {
   logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
   logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
 
-  if (fc.node_features){
-    int last_offset = fc.node_id_maps.size();
-    int toadd = 0;
-    for (int i = last_offset - fc.node_features; i < last_offset; i++){
-      toadd += fc.node_id_maps[i].string2nodeid.size();
-    }
-    logstream(LOG_DEBUG)<<"Going to add " << toadd << std::endl;
-    vertex_data data;
-    for (int i=0; i < toadd; i++){
-      data.pvec = zeros(D);
-      for (int j=0; j < D; j++)
-        data.pvec[j] = drand48();
-      latent_factors_inmem.push_back(data);
-    }
-    delete[] fc.offsets;
-    fc.offsets = new int[calc_feature_num()];
-    for (int i=0; i< calc_feature_num(); i++){
-      fc.offsets[i] = get_offset(i);
-      assert(fc.offsets[i] >= 0 && fc.offsets[i] < (int)latent_factors_inmem.size());
-      logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
-    }  
-  }
-  if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, D);
-    vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    for (uint i=0; num_feature_bins(); i++){
-      latent_factors_inmem[i].bias = user_bias[i];
-    }
-    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
-    globalMean = gm[0];
-  }
 
 
   /* Run */
