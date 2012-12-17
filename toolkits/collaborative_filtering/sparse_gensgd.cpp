@@ -41,7 +41,7 @@
 #include "../parsers/common.hpp"
 #include <omp.h>
 #define MAX_FEATAURES 256
-#define FEATURE_WIDTH 17 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
 double gensgd_rate2 = 1e-02;
