@@ -135,22 +135,6 @@ int num_feature_bins(){
 int calc_feature_num(){
   return 2+fc.total_features+fc.last_item+fc.node_features;
 }
-/*int get_offset(int i){
-  int offset = 0;
-  if (i >= 1)
-    offset += M;
-  if (i >= 2)
-    offset += N;
-  if (fc.hash_strings){
-    for (int j=2; j< i; j++){
-      offset+= fc.node_id_maps[j].string2nodeid.size();
-    }
-  } else {
-    for (int j=2; j < i; j++)
-      offset += (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
-  }
-  return offset;
-}*/
 void get_offsets(std::vector<int> & offsets){
   assert(offsets.size() > 3);
   offsets[0] = 0;
@@ -553,6 +537,10 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
   }
+
+  if (M == 0 && N == 0)
+    logstream(LOG_FATAL)<<"Failed to detect matrix size. Please prepare a file named: " << base_filename << ":info with matrix market header, as explained here: http://bickson.blogspot.co.il/2012/12/collaborative-filtering-3rd-generation_14.html " << std::endl;
+
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;

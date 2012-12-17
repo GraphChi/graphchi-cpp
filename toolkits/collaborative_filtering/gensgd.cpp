@@ -91,7 +91,7 @@ struct feature_control{
   int total_features;
   std::vector<bool> feature_selection;
   const std::string default_feature_str;
-  int * offsets;
+  std::vector<int> offsets;
   bool hash_strings;
   int from_pos;
   int to_pos;
@@ -103,7 +103,6 @@ struct feature_control{
     total_features = 0;
     node_features = 0;
     feature_num = FEATURE_WIDTH;
-    offsets = NULL;
     hash_strings = false;
     from_pos = 0;
     to_pos = 1;
@@ -135,21 +134,25 @@ int num_feature_bins(){
 int calc_feature_num(){
   return 2+fc.total_features+fc.last_item+fc.node_features;
 }
-int get_offset(int i){
-  int offset = 0;
-  if (i >= 1)
-    offset += M;
-  if (i >= 2)
-    offset += N;
-  if (fc.hash_strings){
-    for (int j=2; j< i; j++)
-      offset+= fc.node_id_maps[j].string2nodeid.size();
+void get_offsets(std::vector<int> & offsets){
+  assert(offsets.size() >= 3);
+  offsets[0] = 0;
+  offsets[1] = M;
+  offsets[2] = M+N;
+ if (fc.hash_strings){
+   for (uint j=2; j< offsets.size(); j++){
+         offsets[j+1] = offsets[j] + fc.node_id_maps[j].string2nodeid.size();
+          logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
+   }
   } else {
-    for (int j=2; j < i; j++)
-      offset += (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
+      for (uint j=2; j < offsets.size(); j++){
+           offsets[j+1] = offsets[j] + (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
+          logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
+      }
   }
-  return offset;
+
 }
+
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
@@ -294,14 +297,11 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
   strncpy(linebuf_debug, linebuf, 1024);
 
-  bool first = true;
-
   assert(file_columns >= 2);
   while (token < file_columns){
     /* READ FROM */
     if (token == fc.from_pos){
       char *pch = strsep(&linebuf,"\t,\r\n ");
-      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i);
@@ -310,7 +310,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     else if (token == fc.to_pos){
       /* READ TO */
       char * pch = strsep(&linebuf, "\t,\r\n ");
-      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       J = (uint)get_node_id(pch, 1, i);
@@ -319,7 +318,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     else if (token == fc.val_pos){
       /* READ RATING */
       char * pch = strsep(&linebuf, "\t,\r\n ");
-      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
 
@@ -329,7 +327,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     else {
       /* READ FEATURES */
       char * pch = strsep(&linebuf, "\t,\r\n ");
-      first = false;
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
       if (!fc.feature_selection[token]){
@@ -456,6 +453,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
    * Create sharder object
    */
   int nshards;
+/*
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
@@ -485,7 +483,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     }
     return nshards;
   }   
-
+*/
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
@@ -559,7 +557,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  //float * valarray = new float[fc.total_features];
   std::vector<float> valarray; valarray.resize(std::max(1, fc.total_features));
   float val;
 
@@ -569,7 +566,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fc.stats_array[i].maxval = -1e100;
     }
   }
-  if (!sharderobj.preprocessed_file_exists()) {
+  //if (!sharderobj.preprocessed_file_exists()) {
     if (limit_rating > 0)
       nz = limit_rating;
     for (size_t i=0; i<nz; i++)
@@ -615,9 +612,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     }
     fclose(outf);
 
-  } else {
+  /*} else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
+  }*/
 
   fclose(f);
 
@@ -625,16 +622,16 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     for (int i=0; i< fc.total_features+2; i++){
       if (fc.node_id_maps[i].string2nodeid.size() == 0)
         logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
-      char filename[256];
+      /*char filename[256];
       sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
-      save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
+      save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);*/
     }
   }
-  if (fc.rehash_value){
-   char filename[256];
+  /*if (fc.rehash_value){
+      char filename[256];
       sprintf(filename, "%s.feature_val.map", base_filename.c_str());
       save_map_to_text_file(fc.val_map.string2nodeid,filename);
-  }
+  }*/
     
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
@@ -811,7 +808,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
-    //float * valarray = new float[fc.total_features];
+    
     std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
     float val;
@@ -949,12 +946,10 @@ void init_gensgd(){
   srand(time(NULL));
   int nodes = M+N+num_feature_bins()+fc.last_item*M;
   latent_factors_inmem.resize(nodes);
-  fc.offsets = new int[calc_feature_num()];
-  for (int i=0; i< calc_feature_num(); i++){
-    fc.offsets[i] = get_offset(i);
-    assert(fc.offsets[i] < nodes);
-    logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
-  }
+  int howmany = calc_feature_num();
+  logstream(LOG_DEBUG)<<"Going to calculate: " << howmany << " offsets." << std::endl;
+  fc.offsets.resize(howmany);
+  get_offsets(fc.offsets);
   assert(D > 0);
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
@@ -978,9 +973,13 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
 #pragma omp parallel for reduction(+:dtraining_rmse)
   for (int i=start; i< (int)end; i++){
     dtraining_rmse += latent_factors_inmem[i].rmse;
-    if (calc_error)
+  }
+  if (calc_error){
+#pragma omp parallel for reduction(+:total_errors)
+  for (int i=start; i< (int)end; i++){
       total_errors += latent_factors_inmem[i].errors;
   }
+}
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
@@ -1274,13 +1273,8 @@ int main(int argc, const char ** argv) {
         data.pvec[j] = drand48();
       latent_factors_inmem.push_back(data);
     }
-    delete[] fc.offsets;
-    fc.offsets = new int[calc_feature_num()];
-    for (int i=0; i< calc_feature_num(); i++){
-      fc.offsets[i] = get_offset(i);
-      assert(fc.offsets[i] >= 0 && fc.offsets[i] < (int)latent_factors_inmem.size());
-      logstream(LOG_DEBUG)<<"Offset " << i << " is: " << fc.offsets[i] << std::endl;
-    }  
+    fc.offsets.resize(calc_feature_num());
+    get_offsets(fc.offsets);
   }
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
