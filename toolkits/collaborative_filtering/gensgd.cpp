@@ -337,7 +337,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
         continue;
       }
 
-      assert(index < valarray.size());
+      assert(index < (int)valarray.size());
       valarray[index] = get_node_id(pch, index+2, i); 
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
@@ -552,11 +552,15 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
     }
   }
+
+  if (M == 0 && N == 0)
+    logstream(LOG_FATAL)<<"Failed to detect matrix size. Please prepare a file named: " << base_filename << ":info with matrix market header, as explained here: http://bickson.blogspot.co.il/2012/12/collaborative-filtering-3rd-generation_14.html " << std::endl;
+
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
   //float * valarray = new float[fc.total_features];
-  std::vector<float> valarray; valarray.resize(fc.total_features);
+  std::vector<float> valarray; valarray.resize(std::max(1, fc.total_features));
   float val;
 
   if (!fc.hash_strings){
