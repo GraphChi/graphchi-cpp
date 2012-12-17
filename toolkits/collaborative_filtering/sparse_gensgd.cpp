@@ -90,7 +90,6 @@ struct feature_control{
   int node_features;
   int node_links;
   int total_features;
-  std::vector<bool> feature_selection;
   const std::string default_feature_str;
   std::vector<int> offsets;
   bool hash_strings;
@@ -109,7 +108,6 @@ struct feature_control{
     to_pos = 1;
     val_pos = -1;
     node_links = 0;
-    feature_selection.resize(MAX_FEATAURES+3);
   }
 };
 
@@ -300,7 +298,7 @@ float get_value(char * pch, bool read_only){
 }
 
 /* Read and parse one input line from file */
-bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<uint>& valarray, std::vector<uint>& positions, int & index, int type){
+bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<uint>& valarray, std::vector<uint>& positions, int & index, int type, int & skipped_features){
 
   char * linebuf = NULL;
   size_t linesize;
@@ -321,7 +319,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       char *pch = strsep(&linebuf,"\t,\r\n: ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = (uint)get_node_id(pch, 0, i);
+      I = (uint)get_node_id(pch, 0, i, type != TRAINING);
       token++;
     }
     else if (token == fc.to_pos){
@@ -329,7 +327,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       char * pch = strsep(&linebuf, "\t,\r\n: ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = (uint)get_node_id(pch, 1, i);
+      J = (uint)get_node_id(pch, 1, i, type != TRAINING);
       token++;
     }
     else if (token == fc.val_pos){
@@ -347,14 +345,26 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL || pch[0] == 0)
         break;
           
-        uint pos = get_node_id(pch, -1, false);
+        uint pos = get_node_id(pch, -1, i, type != TRAINING);
+        if (type != TRAINING && pos == (uint)-1){ //this feature was not observed on training, skip
+           char * pch2 = strsep(&linebuf, "\t\r\n ");
+           if (pch2 == NULL || pch2[0] == 0)
+             logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
+           skipped_features++;
+           continue;
+        
+        }
         assert(pos != (uint)-1 && pos < fc.index_map.string2nodeid.size());
 
         char * pch2 = strsep(&linebuf, "\t\r\n ");
         if (pch2 == NULL || pch2[0] == 0)
           logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
         
-         uint second_index = get_node_id(pch2, pos+2, false);
+         uint second_index = get_node_id(pch2, pos+2, i, type != TRAINING);
+         if (type != TRAINING && second_index == (uint)-1){ //this value was not observed in training, skip
+           skipped_features++;
+           continue;
+         }
          assert(second_index != (uint)-1);
          assert(index< (int)valarray.size());
          assert(index< (int)positions.size());
@@ -364,7 +374,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       token++;
     }
   }//end while
-
   return true;
 }//end read_line
 
@@ -398,6 +407,7 @@ float compute_prediction(
   
    /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< (int)edge_size; j++){
+    assert(fc.offsets.size() > positions[j]);
     uint pos = fc.offsets[positions[j]] + valarray[j];
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(j+index < (int)node_array_size);
@@ -448,6 +458,8 @@ float compute_prediction(
   (*prediction_func)((const vertex_data**)node_array, node_array_size, val, prediction, psum);
   return pow(val - prediction,2);
 } 
+#include "rmse.hpp"
+
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -543,22 +555,27 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
+
   uint I, J;
-  std::vector<uint> valarray; valarray.resize(MAX_FEATAURES);
-  std::vector<uint> positions; positions.resize(MAX_FEATAURES);
+  std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
+  std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
   float val;
 
     if (limit_rating > 0)
       nz = limit_rating;
+    int skipped_features = 0;
+    
     for (size_t i=0; i<nz; i++)
     {
       int index;
-      if (!read_line(f, base_filename, i,I, J, val, valarray, positions, index, TRAINING))
+      if (!read_line(f, base_filename, i,I, J, val, valarray, positions, index, TRAINING, skipped_features))
         logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
       if (index < 1)
         logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
-        
+  
+      if (nz > 1000000 && (i % 1000000) == 0)
+         logstream(LOG_INFO)<< mytimer.current_time() << " Finished reading " << i << " lines " << std::endl;
       //calc stats
       L++;
       globalMean += val;
@@ -734,7 +751,6 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 }
 
 
-#include "rmse.hpp"
 
 
 
@@ -753,10 +769,29 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     FILE *f;
     size_t nz;   
 
+    bool info_file = false;
+    FILE * ff = NULL;
+  /* auto detect presence of file named base_filename.info to find out matrix market size */
+  if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
+    info_file = true;
+    if (mm_read_banner(ff, &matcode) != 0){
+      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
+    }
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+
+    /* find out size of sparse matrix .... */
+    if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
+      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
+  }
+
+
     if ((f = fopen(validation.c_str(), "r")) == NULL) {
       std::cout<<std::endl;
       return; //missing validaiton data, nothing to compute
     }
+    if (!info_file){
     if (mm_read_banner(f, &matcode) != 0)
       logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
 
@@ -766,6 +801,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     /* find out size of sparse matrix .... */
     if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
     }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -779,14 +815,20 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
     uint I, J;
     float val;
+    int skipped_features = 0;
+    int skipped_nodes = 0;
+    int errors = 0; 
 
     for (size_t i=0; i<nz; i++)
     {
       int index;
-      if (!read_line(f, test, i, I, J, val, valarray, positions, index, VALIDATION))
+      if (!read_line(f, test, i, I, J, val, valarray, positions, index, VALIDATION, skipped_features))
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
 
-      assert(index >= 2);
+      if (I == (uint)-1 || J == (uint)-1){
+        skipped_nodes++;
+        continue;
+      }
 
       double prediction;
       int howmany = calc_feature_node_array_size(I,J, index);
@@ -797,17 +839,28 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
       delete [] node_array;
       dvalidation_rmse += pow(prediction - val, 2);
+      if (prediction < cutoff && val >= cutoff)
+        errors++;
+      else if (prediction >= cutoff && val < cutoff)
+        errors++;
     }
 
     fclose(f);
 
     assert(Le > 0);
     dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
-    std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
+    std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse;
+    if (calc_error)
+      std::cout<<" Validation Err: " << std::setw(10) << ((double)errors/(double)(nz-skipped_nodes)) << std::endl;
+    else std::cout<<std::endl;
     if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
       gcontext.set_last_iteration(gcontext.iteration);
     }
+    if (skipped_features > 0)
+      logstream(LOG_DEBUG)<<"Skipped " << skipped_features << " when reading from file. " << std::endl;
+    if (skipped_nodes > 0)
+      logstream(LOG_DEBUG)<<"Skipped " << skipped_nodes << " when reading from file. " << std::endl;
   }
 
 
@@ -844,16 +897,17 @@ void test_predictions_N(
   mm_write_banner(fout, matcode);
   mm_write_mtx_crd_size(fout ,M,N,nz); 
   
-  std::vector<uint> valarray; valarray.resize(MAX_FEATAURES);
-  std::vector<uint> positions; positions.resize(MAX_FEATAURES);
+  std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
+  std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
   float val;
   double prediction;
   uint I,J;
+  int skipped_features = 0;
 
   for (uint i=0; i<nz; i++)
   {
     int index;
-    if (!read_line(f, test, i, I, J, val, valarray, positions, index, TEST))
+    if (!read_line(f, test, i, I, J, val, valarray, positions, index, TEST, skipped_features))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
     assert(index >= 2);
 
@@ -869,6 +923,8 @@ void test_predictions_N(
   fclose(fout);
 
   logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+  if (skipped_features > 0)
+    logstream(LOG_DEBUG)<<"Skipped " << skipped_features << " when reading from file. " << std::endl;
 }
 
 
@@ -1176,24 +1232,6 @@ int main(int argc, const char ** argv) {
   parse_command_line_args();
   parse_implicit_command_line();
 
-  std::string string_features = get_option_string("features", fc.default_feature_str);
-  if (string_features != ""){
-    char * pfeatures = strdup(string_features.c_str());
-    char * pch = strtok(pfeatures, ",\n\r\t ");
-    int node = atoi(pch);
-    if (node < 0 || node >= MAX_FEATAURES+3)
-      logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
-    fc.feature_selection[node] = true;
-    fc.total_features++;
-    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
-      node = atoi(pch);
-      if (node < 0 || node >= MAX_FEATAURES+3)
-        logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
-      fc.feature_selection[node] = true;
-      fc.total_features++;
-    }
-  }
-  
   fc.node_id_maps.resize(2); //initial place for from/to map
   //fc.stats_array.resize(fc.total_features);
 
@@ -1220,10 +1258,6 @@ int main(int argc, const char ** argv) {
   if (has_header_titles && header_titles.size() == 0)
     logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;
 
-  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < MAX_FEATAURES+3; i++)
-    if (fc.feature_selection[i])
-      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
   logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
   logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
   logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
