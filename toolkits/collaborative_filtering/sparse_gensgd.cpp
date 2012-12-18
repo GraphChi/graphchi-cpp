@@ -59,6 +59,7 @@ std::string user_links; //optional file with user to user links
 int limit_rating = 0;
 size_t vertex_with_no_edges = 0;
 int calc_error = 0;
+int calc_roc = 0;
 int binary = 1;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
@@ -70,22 +71,19 @@ enum file_types{
   TEST =2
 };
 
-struct stats{
-  float minval;
-  float maxval;
-  float meanval;
-  stats(){
-    minval = maxval = meanval = 0;
+
+struct single_map{
+  std::map<float,uint> string2nodeid;                                                         
+  single_map(){
   }
 };
 
 struct feature_control{
-  std::vector<double_map> node_id_maps;
-  double_map val_map;
-  double_map index_map;
+  std::vector<single_map> node_id_maps;
+  single_map val_map;
+  single_map index_map;
   int rehash_value;
   int last_item;
-  std::vector<stats> stats_array;
   int feature_num;
   int node_features;
   int node_links;
@@ -121,12 +119,8 @@ int num_feature_bins(){
       sum+= fc.node_id_maps[i].string2nodeid.size();
     }
   }
-  else {
-    for (int i=0; i< fc.total_features; i++)
-      sum += (int)ceil((fc.stats_array[i].maxval - fc.stats_array[i].minval) + 1);
-  }
-  if (fc.total_features > 0)
-    assert(sum > 0);
+  else assert(false);
+
   return sum;
 }
 
@@ -148,27 +142,23 @@ bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
-inline double sum(double * pvec){
+/*inline double sum(double * pvec){
   double tsum = 0;
   for (int j=0; j< D; j++)
     tsum += pvec[j];
   return tsum;
-}
+}*/
 
 
 struct vertex_data {
-  vec pvec;
+  fvec pvec;
   double rmse;
   int errors;
   double bias;
-  int last_item;
-  sparse_vec features;
-  sparse_vec links; //links to other users or items
 
   vertex_data() {
     rmse = 0;
     bias = 0;
-    last_item = 0;
     errors = 0;
   }
 
@@ -212,7 +202,26 @@ int calc_feature_node_array_size(uint node, uint item, uint edge_size){
   assert(edge_size >= 0);
   assert(node < latent_factors_inmem.size());
   assert(fc.offsets[1]+item < latent_factors_inmem.size());
-  return 2+edge_size+fc.last_item+nnz(latent_factors_inmem[node].features)+nnz(latent_factors_inmem[fc.offsets[1]+item].features);
+  return 2+edge_size;
+}
+
+void assign_id(single_map& dmap, unsigned int & outval, const float name){
+
+  std::map<float,uint>::iterator it = dmap.string2nodeid.find(name);
+  //if an id was already assigned, return it
+  if (it != dmap.string2nodeid.end()){
+    outval = it->second - 1;
+    assert(outval < dmap.string2nodeid.size());
+    return;
+  }
+  mymutex.lock();
+  //assign a new id
+  outval = dmap.string2nodeid[name];
+  if (outval == 0){
+    dmap.string2nodeid[name] = dmap.string2nodeid.size();
+    outval = dmap.string2nodeid.size() - 1;
+  }
+  mymutex.unlock();
 }
 
 
@@ -239,25 +248,26 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   //else read string id and assign numeric id
   else {
     uint id;
+    assert(!std::isnan(atof(pch)));
     if (pos >= 0)
       assert(pos < (int)fc.node_id_maps.size());
-    double_map * pmap = NULL;
+    single_map * pmap = NULL;
     if (pos == -1)
       pmap = &fc.index_map;
     else pmap = &fc.node_id_maps[pos];
 
     if (read_only){ // find if node was in map
-      std::map<std::string,uint>::iterator it = pmap->string2nodeid.find(pch);
+      std::map<float,uint>::iterator it = pmap->string2nodeid.find(atof(pch));
       if (it != pmap->string2nodeid.end()){
-          ret = it->second;
-          assert(ret < pmap->string2nodeid.size());
-       }
-       else ret = -1;
+        ret = it->second - 1;
+        assert(ret < pmap->string2nodeid.size());
+      }
+      else ret = -1;
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
-      assign_id(*pmap, id, pch);
-      if (pos == -1 && pmap->maxid == id+1 && fc.node_id_maps.size() < pmap->maxid+2){//TODO debug
-        double_map newmap;
+      assign_id(*pmap, id, atof(pch));
+      if (pos == -1 && fc.index_map.string2nodeid.size() == id+1 && fc.node_id_maps.size() < fc.index_map.string2nodeid.size()+2){//TODO debug
+        single_map newmap;
         fc.node_id_maps.push_back(newmap);
       }
       ret = id;
@@ -280,17 +290,17 @@ float get_value(char * pch, bool read_only){
   else {
     uint id;
     if (read_only){ // find if node was in map
-      std::map<std::string,uint>::iterator it = fc.val_map.string2nodeid.find(pch);
+      std::map<float,uint>::iterator it = fc.val_map.string2nodeid.find(atof(pch));
       if (it != fc.val_map.string2nodeid.end()){
-          ret = it->second;
-       }
-       else ret = -1;
+        ret = it->second - 1;
+      }
+      else ret = -1;
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
-      assign_id(fc.val_map, id, pch);
+      assign_id(fc.val_map, id, atof(pch));
       ret = id;
     }
- 
+
   }    
   if (std::isnan(ret) || std::isinf(ret))
     logstream(LOG_FATAL)<<"Failed to read value" << std::endl;
@@ -344,33 +354,33 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       char * pch = strsep(&linebuf, "\t,\r\n:; ");
       if (pch == NULL || pch[0] == 0)
         break;
-          
-        uint pos = get_node_id(pch, -1, i, type != TRAINING);
-        if (type != TRAINING && pos == (uint)-1){ //this feature was not observed on training, skip
-           char * pch2 = strsep(&linebuf, "\t\r\n ");
-           if (pch2 == NULL || pch2[0] == 0)
-             logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
-           skipped_features++;
-           continue;
-        
-        }
-        assert(pos != (uint)-1 && pos < fc.index_map.string2nodeid.size());
 
+      uint pos = get_node_id(pch, -1, i, type != TRAINING);
+      if (type != TRAINING && pos == (uint)-1){ //this feature was not observed on training, skip
         char * pch2 = strsep(&linebuf, "\t\r\n ");
         if (pch2 == NULL || pch2[0] == 0)
           logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
-        
-         uint second_index = get_node_id(pch2, pos+2, i, type != TRAINING);
-         if (type != TRAINING && second_index == (uint)-1){ //this value was not observed in training, skip
-           skipped_features++;
-           continue;
-         }
-         assert(second_index != (uint)-1);
-         assert(index< (int)valarray.size());
-         assert(index< (int)positions.size());
-         valarray[index] = second_index; 
-         positions[index] = pos+2;
-         index++;
+        skipped_features++;
+        continue;
+
+      }
+      assert(pos != (uint)-1 && pos < fc.index_map.string2nodeid.size());
+
+      char * pch2 = strsep(&linebuf, "\t\r\n ");
+      if (pch2 == NULL || pch2[0] == 0)
+        logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
+
+      uint second_index = get_node_id(pch2, pos+2, i, type != TRAINING);
+      if (type != TRAINING && second_index == (uint)-1){ //this value was not observed in training, skip
+        skipped_features++;
+        continue;
+      }
+      assert(second_index != (uint)-1);
+      assert(index< (int)valarray.size());
+      assert(index< (int)positions.size());
+      valarray[index] = second_index; 
+      positions[index] = pos+2;
+      index++;
       token++;
     }
   }//end while
@@ -386,8 +396,8 @@ float compute_prediction(
     uint * valarray, 
     uint * positions,
     uint edge_size,
-    float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, vec * psum), 
-    vec * psum, 
+    float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, fvec * psum), 
+    fvec * psum, 
     vertex_data **& node_array,
     uint node_array_size){
 
@@ -404,8 +414,8 @@ float compute_prediction(
   node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
   assert(node_array[index]->pvec[0] < 1e5);
   index++; loc++;
-  
-   /* 2) FEATURES GIVEN IN RATING LINE */
+
+  /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< (int)edge_size; j++){
     assert(fc.offsets.size() > positions[j]);
     uint pos = fc.offsets[positions[j]] + valarray[j];
@@ -418,41 +428,41 @@ float compute_prediction(
   loc += edge_size;
   /* 3) USER FEATURES */
   /*int i = 0;
-  FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
+    FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
     uint pos = j.index()+fc.offsets[index];
     assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(pos >= (uint)fc.offsets[index]);
-    //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
-    node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
-    i++;
+  //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
+  node_array[i+index] = & latent_factors_inmem[pos];
+  assert(node_array[i+index]->pvec[0] < 1e5);
+  i++;
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
   index+= nnz(latent_factors_inmem[I+fc.offsets[0]].features);
   loc+=1;*/
   /* 4) ITEM FEATURES */
   /*i=0;
-  FOR_ITERATOR(j, latent_factors_inmem[J+fc.offsets[1]].features){
+    FOR_ITERATOR(j, latent_factors_inmem[J+fc.offsets[1]].features){
     uint pos = j.index()+fc.offsets[loc];
     assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(pos >= (uint)fc.offsets[loc]);
-    //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
-    node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
-    i++;
+  //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
+  node_array[i+index] = & latent_factors_inmem[pos];
+  assert(node_array[i+index]->pvec[0] < 1e5);
+  i++;
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
   index+= nnz(latent_factors_inmem[J+fc.offsets[1]].features);
   loc+=1;
   if (fc.last_item){
-    uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
-    assert(pos < latent_factors_inmem.size());
-    node_array[index] = &latent_factors_inmem[pos];
-    assert(node_array[index]->pvec[0] < 1e5);
-    index++;
-    loc+=1;
+  uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
+  assert(pos < latent_factors_inmem.size());
+  node_array[index] = &latent_factors_inmem[pos];
+  assert(node_array[index]->pvec[0] < 1e5);
+  index++;
+  loc+=1;
   }*/
   assert(index == calc_feature_node_array_size(I,J, edge_size));
   (*prediction_func)((const vertex_data**)node_array, node_array_size, val, prediction, psum);
@@ -517,7 +527,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     int rc = getline(&linebuf, &linesize, f);
     if (rc == -1)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
-      
+
     strncpy(linebuf_debug, linebuf, 1024);
 
 
@@ -525,7 +535,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
-      
+
     header_titles.push_back(pch);
 
     /** READ USER FEATURES */
@@ -561,63 +571,52 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
   float val;
 
-    if (limit_rating > 0)
-      nz = limit_rating;
-    int skipped_features = 0;
-    
-    for (size_t i=0; i<nz; i++)
-    {
-      int index;
-      if (!read_line(f, base_filename, i,I, J, val, valarray, positions, index, TRAINING, skipped_features))
-        logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
+  if (limit_rating > 0)
+    nz = limit_rating;
+  int skipped_features = 0;
 
-      if (index < 1)
-        logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
-  
-      if (nz > 1000000 && (i % 1000000) == 0)
-         logstream(LOG_INFO)<< mytimer.current_time() << " Finished reading " << i << " lines " << std::endl;
-      //calc stats
-      L++;
-      globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], &positions[0], index));
-    }
+  for (size_t i=0; i<nz; i++)
+  {
+    int index;
+    if (!read_line(f, base_filename, i,I, J, val, valarray, positions, index, TRAINING, skipped_features))
+      logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
-    sharderobj.end_preprocessing();
+    if (index < 1)
+      logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
+    if (nz > 1000000 && (i % 1000000) == 0)
+      logstream(LOG_INFO)<< mytimer.current_time() << " Finished reading " << i << " lines " << std::endl;
     //calc stats
-    assert(L > 0);
-    for (int i=0; i< fc.total_features; i++){
-      fc.stats_array[i].meanval /= L;
-    }
-    assert(globalMean != 0);
-    globalMean /= L;
-    logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
+    L++;
+    globalMean += val;
+    sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], &positions[0], index));
+  }
 
+  sharderobj.end_preprocessing();
 
-    FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
-    for (int i=0; i < fc.total_features; i++){
-      fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
-    }
-    fclose(outf);
+  //calc stats
+  assert(L > 0);
+  assert(globalMean != 0);
+  globalMean /= L;
+  logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
 
   fclose(f);
 
   /*if (fc.hash_strings){
     for (int i=0; i< fc.total_features+2; i++){
-      if (fc.node_id_maps[i].string2nodeid.size() == 0)
-        logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
-      char filename[256];
-      sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
-      save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
+    if (fc.node_id_maps[i].string2nodeid.size() == 0)
+    logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
+    char filename[256];
+    sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
+    save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);
     }
-  }*/
- /* if (fc.rehash_value){
-   char filename[256];
-      sprintf(filename, "%s.feature_val.map", base_filename.c_str());
-      save_map_to_text_file(fc.val_map.string2nodeid,filename);
-  }*/
-    
+    }*/
+  /* if (fc.rehash_value){
+     char filename[256];
+     sprintf(filename, "%s.feature_val.map", base_filename.c_str());
+     save_map_to_text_file(fc.val_map.string2nodeid,filename);
+     }*/
+
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
@@ -625,141 +624,20 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   return nshards;
 }
 
-/* read node features from file */
-void read_node_features(std::string base_filename, bool square, feature_control & fc, bool user, bool binary) {
-  FILE *f;
-
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-  }
-  double_map fmap;
-  fc.node_id_maps.push_back(fmap);
-  fc.node_features++;
-  stats stat;
-  fc.stats_array.push_back(stat);
-
-  uint I, J = -1;
-  char * linebuf = NULL;
-  char linebuf_debug[1024];
-  size_t linesize;
-  size_t lines = 0;
-  size_t tokens = 0;
-  float val = 1;
-
-  while(true){
-    /* READ LINE */
-    int rc = getline(&linebuf, &linesize, f);
-    if (rc == -1)
-      break;
-    strncpy(linebuf_debug, linebuf, 1024);
-    lines++;
-
-    /** READ [FROM] */
-    char *pch = strtok(linebuf,"\t,\r; ");
-    if (pch == NULL)
-      logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
-    I = (uint)get_node_id(pch, user?0:1, lines, true);
-    if (I == (uint)-1) //user id was not found in map, so we do not need this users features
-      continue;
-
-    if (user)
-      assert(I >= 0 && I < M);
-    else assert(I>=0  && I< N);
 
 
-    /** READ USER FEATURES */
-    while (pch != NULL){
-      pch = strtok(NULL, "\t,\r; ");
-      if (pch == NULL)
-        break;
-      if (binary){
-        if (atoi(pch) <= 2)
-          continue;
-        J = (uint)get_node_id(pch, 2+fc.total_features+fc.node_features-1, lines);
-      }
-      else { 
-        pch = strtok(NULL, "\t\r,;: ");
-        if (pch == NULL)
-          logstream(LOG_FATAL)<<"Failed to read feture value" << std::endl;
-        val = atof(pch);
-      }
-      set_new(latent_factors_inmem[user? I : I+M].features, J, val);
-      tokens++;
-      //update stats if needed
-    }
-  }
 
-  assert(tokens > 0);
-  logstream(LOG_DEBUG)<<"Read a total of " << lines << " node features. Tokens: " << tokens << " avg tokens: " << (lines/tokens) 
-    << " user? " << user <<  " new entries: " << fc.node_id_maps[2+fc.total_features+fc.node_features-1].string2nodeid.size() << std::endl;
+static bool mySort(const std::pair<double, double> &p1,const std::pair<double, double> &p2)
+{
+  return p1.second > p2.second;
 }
-
-
-/* read node features from file */
-void read_node_links(std::string base_filename, bool square, feature_control & fc, bool user, bool binary) {
-  FILE *f;
-
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-  }
-  //double_map fmap;
-  //fc.node_id_maps.push_back(fmap);
-  fc.node_links++;
-  //stats stat;
-  //fc.stats_array.push_back(stat);
-
-  uint I, J = -1;
-  char * linebuf = NULL;
-  char linebuf_debug[1024];
-  size_t linesize;
-  size_t lines = 0;
-  size_t tokens = 0;
-  float val = 1;
-
-  while(true){
-    /* READ LINE */
-    int rc = getline(&linebuf, &linesize, f);
-    if (rc == -1)
-      break;
-    strncpy(linebuf_debug, linebuf, 1024);
-    lines++;
-
-    /** READ [FROM] */
-    char *pch = strtok(linebuf,"\t,\r; ");
-    if (pch == NULL)
-      logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
-    I = (uint)get_node_id(pch, user? 0 : 1, lines, true);
-    if (I == (uint)-1)//user id was not found in map, we do not need this user link features
-      continue; 
-
-    if (user)
-      assert(I < (uint)fc.offsets[1]);
-    else assert(I < (uint)fc.offsets[2]);
-
-    /** READ TO */  
-    pch = strtok(NULL, "\t,\r; ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Failed to read to field [ " << linebuf_debug << " ] " << std::endl;
-
-      J = (uint)get_node_id(pch, user? 0 : 1, lines);
-      set_new(latent_factors_inmem[user? I : I+M].links, J, val);
-      tokens++;
-      //update stats if needed
-  }
-
-  logstream(LOG_DEBUG)<<"Read a total of " << lines << " node features. Tokens: " << tokens << " user? " << user <<  " new entries: " << fc.node_id_maps[user? 0 : 1].string2nodeid.size() << std::endl;
-}
-
-
-
-
 
 
 /**
   compute validation rmse
   */
   void validation_rmse_N(
-      float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, vec * psum)
+      float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, fvec * psum)
       ,graphchi_context & gcontext, 
       feature_control & fc, 
       bool square = false) {
@@ -771,20 +649,20 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     bool info_file = false;
     FILE * ff = NULL;
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-  if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    if (mm_read_banner(ff, &matcode) != 0){
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-    }
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+    /* auto detect presence of file named base_filename.info to find out matrix market size */
+    if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
+      info_file = true;
+      if (mm_read_banner(ff, &matcode) != 0){
+        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
+      }
+      if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+      /* find out size of sparse matrix .... */
+      if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
+        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+      }
     }
-  }
 
 
     if ((f = fopen(validation.c_str(), "r")) == NULL) {
@@ -792,16 +670,16 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       return; //missing validaiton data, nothing to compute
     }
     if (!info_file){
-    if (mm_read_banner(f, &matcode) != 0)
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
+      if (mm_read_banner(f, &matcode) != 0)
+        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
 
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+      if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
 
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
+      /* find out size of sparse matrix .... */
+      if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
+        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+      }
     }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -810,7 +688,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
-    
+
     std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
     std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
     uint I, J;
@@ -818,6 +696,11 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     int skipped_features = 0;
     int skipped_nodes = 0;
     int errors = 0; 
+
+    //FOR ROC. ROC code thanks to Justin Yan.
+    double _M = 0;
+    double _N = 0;
+    std::vector<std::pair<double, double> > realPrediction;
 
     for (size_t i=0; i<nz; i++)
     {
@@ -835,8 +718,10 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       vertex_data ** node_array = new vertex_data*[howmany];
       for (int k=0; k< howmany; k++)
         node_array[k] = NULL;
-      vec sum;
+      fvec sum;
       compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
+      if (calc_roc)
+        realPrediction.push_back(std::make_pair(val, prediction));
       delete [] node_array;
       dvalidation_rmse += pow(prediction - val, 2);
       if (prediction < cutoff && val >= cutoff)
@@ -851,8 +736,35 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
     std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse;
     if (calc_error)
-      std::cout<<" Validation Err: " << std::setw(10) << ((double)errors/(double)(nz-skipped_nodes)) << std::endl;
+      std::cout<<" Validation Err: " << std::setw(10) << ((double)errors/(double)(nz-skipped_nodes));
+
+    if (calc_roc){
+      double roc = 0;
+      double ret = 0;
+      std::vector<double> L;
+      std::sort(realPrediction.begin(), realPrediction.end(),mySort);
+      std::vector<std::pair<double, double> >::iterator iter;
+      for(iter=realPrediction.begin();iter!=realPrediction.end();iter++)
+      {
+        L.push_back(iter->first);
+        if(iter->first > cutoff) _M++;
+        else _N++;
+      }
+      std::vector<double>:: iterator iter2;
+      int i=0;
+      for(iter2=L.begin();iter2!=L.end();iter2++)
+      {
+        if(*iter2 > cutoff) ret += ((_M+_N) - i);
+        i++;
+      }
+      double ret2 = _M *(_M+1)/2;
+      roc= (ret-ret2)/(_M*_N);
+      std::cout<<" Validation ROC: " << roc << std::endl;
+    }
     else std::cout<<std::endl;
+
+
+
     if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
       gcontext.set_last_iteration(gcontext.iteration);
@@ -867,7 +779,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
 /* compute predictions for test data */
 void test_predictions_N(
-    float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & predictioni, vec * sum), 
+    float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & predictioni, fvec * sum), 
     feature_control & fc, 
     bool square = false) {
   int ret_code;
@@ -898,17 +810,16 @@ void test_predictions_N(
 
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
-
     return; //missing validaiton data, nothing to compute
   }
   if (!info_file){
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
+    if (mm_read_banner(f, &matcode) != 0)
+      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+    if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
+      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
   }
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
@@ -921,7 +832,7 @@ void test_predictions_N(
   mm_set_array(&matcode);
   mm_write_banner(fout, matcode);
   mm_write_mtx_array_size(fout ,nz, 1); 
-  
+
   std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
   std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
   float val;
@@ -937,17 +848,17 @@ void test_predictions_N(
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     if (I == (uint)-1 || J == (uint)-1){
-        skipped_nodes++;
-        fprintf(fout, "%d\n", 0); //features for this node are not found in the training set, write a default value
-        continue;
-      }
+      skipped_nodes++;
+      fprintf(fout, "%d\n", 0); //features for this node are not found in the training set, write a default value
+      continue;
+    }
 
     int howmany = calc_feature_node_array_size(I,J,index);
     vertex_data ** node_array = new vertex_data*[howmany];
     for (int k=0; k< index; k++)
       node_array[k] = NULL;
 
-    vec sum;
+    fvec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
     fprintf(fout, "%12.8lg\n", prediction);
     delete[] node_array;
@@ -967,10 +878,10 @@ void test_predictions_N(
 
 
 float gensgd_predict(const vertex_data** node_array, int node_array_size,
-    const float rating, double& prediction, vec* sum){
+    const float rating, double& prediction, fvec* sum){
 
-  vec sum_sqr = zeros(D);
-  *sum = zeros(D);
+  fvec sum_sqr = fzeros(D);
+  *sum = fzeros(D);
   prediction = globalMean;
   assert(!std::isnan(prediction));
   for (int i=0; i< node_array_size; i++)
@@ -997,7 +908,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 }
 float gensgd_predict(const vertex_data** node_array, int node_array_size,
     const float rating, double & prediction){
-  vec sum;
+  fvec sum;
   return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
 }
 
@@ -1018,7 +929,7 @@ void init_gensgd(){
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
   for (int i=0; i< nodes; i++){
-    latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
+    latent_factors_inmem[i].pvec = (debug ? 0.1*fones(D) : (::frandu(D)*factor));
   }
 
 }
@@ -1040,15 +951,15 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   }
   if (calc_error){
 #pragma omp parallel for reduction(+:total_errors)
-  for (int i=start; i< (int)end; i++){
+    for (int i=start; i< (int)end; i++){
       total_errors += latent_factors_inmem[i].errors;
+    }
   }
-}
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
-  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
+    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
   else 
-  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
 }
 
 /**
@@ -1069,8 +980,6 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
       user.rmse = 0; 
       user.errors = 0;
-      assert(user.last_item >= 0 && user.last_item < (int)N);
-
 
       //go over all observed ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
@@ -1082,15 +991,15 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
         float rui = data.weight;
         double pui;
-        vec sum;
+        fvec sum;
 
         //compute current prediction
         user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (uint*)data.features, (uint*)data.index, data.size, gensgd_predict, &sum, node_array, howmany);
         if (calc_error){
-        if (pui < cutoff && rui > cutoff)
-          user.errors++;
-        else if (pui > cutoff && rui < cutoff)
-          user.errors++;
+          if (pui < cutoff && rui > cutoff)
+            user.errors++;
+          else if (pui > cutoff && rui < cutoff)
+            user.errors++;
         }
         float eui = pui - rui;
 
@@ -1111,12 +1020,12 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
             gensgd_rate = gensgd_rate4;
           else 
             gensgd_rate = gensgd_rate5; //last item
-          
+
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
           assert(node_array[i]->bias < 1e3);
- 
-          vec grad =  sum - node_array[i]->pvec;
+
+          fvec grad =  sum - node_array[i]->pvec;
           node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
           assert(!std::isnan(node_array[i]->pvec[0]));
           assert(node_array[i]->pvec[0] < 1e3);
@@ -1258,6 +1167,7 @@ int main(int argc, const char ** argv) {
   fc.val_pos = get_option_int("val_pos", fc.val_pos);
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
+  calc_roc = get_option_int("calc_roc", calc_roc);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
@@ -1279,16 +1189,10 @@ int main(int argc, const char ** argv) {
     fc.hash_strings = true;
   }
 
-   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
-   fc.total_features = fc.index_map.string2nodeid.size();
- 
+  int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
+  fc.total_features = fc.index_map.string2nodeid.size();
+
   init_gensgd();
-  if (user_file != "")
-    read_node_features(user_file, false, fc, true, false);
-  if (item_file != "")
-    read_node_features(item_file, false, fc, false, false);
-  if (user_links != "")
-    read_node_links(user_links, false, fc, true, false);
 
   if (has_header_titles && header_titles.size() == 0)
     logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;

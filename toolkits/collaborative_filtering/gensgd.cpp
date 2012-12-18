@@ -851,10 +851,32 @@ void test_predictions_N(
   FILE *f;
   uint Me, Ne;
   size_t nz;   
+  bool info_file = false;
+  FILE * ff = NULL;
+
+  if (test == "")
+    logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
+
+  /* auto detect presence of file named base_filename.info to find out matrix market size */
+  if ((ff = fopen((test + ":info").c_str(), "r")) != NULL) {
+    info_file = true;
+    if (mm_read_banner(ff, &matcode) != 0){
+      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+    }
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+
+    /* find out size of sparse matrix .... */
+    if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
+      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
+  }
+
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
   }
+  if (!info_file){
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
   if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
@@ -862,7 +884,7 @@ void test_predictions_N(
   if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
   }
-
+  }
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -870,11 +892,11 @@ void test_predictions_N(
   if (fout == NULL)
     logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
 
+  mm_set_array(&matcode);
   mm_write_banner(fout, matcode);
-  mm_write_mtx_crd_size(fout ,M,N,nz); 
+  mm_write_mtx_array_size(fout ,nz, 1); 
   
-  std::vector<float> valarray;
-  valarray.resize(fc.total_features);
+  std::vector<float> valarray; valarray.resize(fc.total_features);
   float val;
   double prediction;
   uint I,J;
@@ -888,7 +910,9 @@ void test_predictions_N(
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     for (int k=0; k< calc_feature_node_array_size(I,J); k++)
       node_array[k] = NULL;
-    compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, NULL, node_array);
+
+    vec sum;
+    compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
     delete[] node_array;
   }

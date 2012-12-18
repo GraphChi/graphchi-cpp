@@ -48,6 +48,7 @@ using namespace Eigen;
 
 typedef MatrixXd mat;
 typedef VectorXd vec;
+typedef VectorXf fvec;
 typedef VectorXi ivec;
 typedef MatrixXi imat;
 typedef Matrix<size_t, Dynamic, Dynamic> matst;
@@ -99,6 +100,9 @@ inline mat eye(int size){
 }
 inline vec ones(int size){
   return vec::Ones(size);
+}
+inline fvec fones(int size){
+  return fvec::Ones(size);
 }
 inline vec init_vec(const double * array, int size){
   vec ret(size);
@@ -152,6 +156,9 @@ inline vec init_dbl_vec(const char * string, int size){
 
 inline vec zeros(int size){
   return vec::Zero(size);
+}
+inline fvec fzeros(int size){
+  return fvec::Zero(size);
 }
 inline mat zeros(int rows, int cols){
   return mat::Zero(rows, cols);
@@ -281,6 +288,9 @@ inline double max(const vec & a){
 }
 inline vec randu(int size){
   return vec::Random(size);
+}
+inline fvec frandu(int size){
+  return fvec::Random(size);
 }
 inline double randu(){
   return vec::Random(1)(0);
