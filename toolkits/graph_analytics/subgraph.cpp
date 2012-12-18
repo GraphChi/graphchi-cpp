@@ -50,6 +50,7 @@ size_t L;
 double globalMean = 0;
 int square = 0;
 int tokens_per_row = 3;
+int _degree = 0;
 
 bool debug = false;
 int max_iter = 50;
@@ -101,6 +102,12 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
    vertex_data & vdata = latent_factors_inmem[vertex.id()];
     if (debug && iiter > 99 && vertex.id() % 1000 == 0)
       std::cout<<"Entering node: " << vertex.id() << std::endl;
+
+
+    if (_degree){
+      fprintf(pfile, "%u %u\n", vertex.id()+1, vertex.num_edges());
+      return;
+    }
 
     if (!vdata.active)
       return;
@@ -154,6 +161,9 @@ int main(int argc,  const char *argv[]) {
   edges         = get_option_int("edges", 2460000000);
   nodes         = get_option_int("nodes", nodes);
   orig_edges         = get_option_int("orig_edges", orig_edges);
+  _degree =  get_option_int("degree", _degree);
+  if (_degree)
+    max_iter = 1;
 
   std::string seeds   = get_option_string("seeds","");
   std::string seed_file = get_option_string("seed_file", "");
@@ -172,6 +182,7 @@ int main(int argc,  const char *argv[]) {
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
+  if (!_degree){
   if (seed_file == ""){
   if (seeds == "")
     logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
@@ -191,7 +202,8 @@ int main(int argc,  const char *argv[]) {
     latent_factors_inmem[seeds[i] - 1].active = true;
     }
   }
- 
+  }
+
   unlink((datafile +".out").c_str());
   pfile = fopen((datafile +".out").c_str(), "w");
   std::cout<<"Writing output to: " << datafile +".out" << std::endl;
