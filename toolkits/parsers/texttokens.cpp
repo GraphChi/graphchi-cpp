@@ -44,7 +44,8 @@ unsigned long long total_lines = 0;
 string dir;
 string outdir;
 std::vector<std::string> in_files;
-
+int min_threshold = 1; //output to file, token that appear at least min_threshold times
+int max_threshold = 1234567890; //output to file tokens that appear at most max_threshold times
 //non word tokens that will be removed in the parsing
 //it is possible to add additional special characters or remove ones you want to keep
 const char spaces[] = {" \r\n\t!?@#$%^&*()-+.,~`'\";:"};
@@ -84,7 +85,8 @@ void parse(int i){
 
     std::map<uint,uint>::const_iterator it;
     for (it = wordcount.begin(); it != wordcount.end(); it++){
-       fprintf(fout.outf, "%lu %u %u\n", line, it->first, it->second);
+      if ((int)it->second >= min_threshold && (int)it->second <= max_threshold)
+        fprintf(fout.outf, "%lu %u %u\n", line, it->first, it->second);
     }
 
     line++;
@@ -115,6 +117,8 @@ int main(int argc,  const char *argv[]) {
   debug = get_option_int("debug", 0);
   dir = get_option_string("file_list");
   lines = get_option_int("lines", 0);
+  min_threshold = get_option_int("min_threshold", min_threshold);
+  max_threshold = get_option_int("max_threshold", max_threshold);
   omp_set_num_threads(get_option_int("ncpus", 1));
   mytime.start();
 

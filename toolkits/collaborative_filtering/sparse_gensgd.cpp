@@ -875,16 +875,35 @@ void test_predictions_N(
   FILE *f;
   uint Me, Ne;
   size_t nz;   
+  bool info_file = false;
+  FILE * ff = NULL;
+  /* auto detect presence of file named base_filename.info to find out matrix market size */
+  if ((ff = fopen((test + ":info").c_str(), "r")) != NULL) {
+    info_file = true;
+    if (mm_read_banner(ff, &matcode) != 0){
+      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+    }
+    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+
+    /* find out size of sparse matrix .... */
+    if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
+      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+    }
+  }
+
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
   }
+  if (!info_file){
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
   if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
     logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
   if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
+  }
   }
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
@@ -903,18 +922,25 @@ void test_predictions_N(
   double prediction;
   uint I,J;
   int skipped_features = 0;
+  int skipped_nodes = 0;
 
   for (uint i=0; i<nz; i++)
   {
     int index;
     if (!read_line(f, test, i, I, J, val, valarray, positions, index, TEST, skipped_features))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
-    assert(index >= 2);
+
+    if (I == (uint)-1 || J == (uint)-1){
+        skipped_nodes++;
+        fprintf(fout, "%d\n", 0); //features for this node are not found in the training set, write a default value
+        continue;
+      }
 
     int howmany = calc_feature_node_array_size(I,J,index);
     vertex_data ** node_array = new vertex_data*[howmany];
     for (int k=0; k< index; k++)
       node_array[k] = NULL;
+
     compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, NULL, node_array, howmany);
     fprintf(fout, "%12.8lg\n", prediction);
     delete[] node_array;
@@ -925,6 +951,8 @@ void test_predictions_N(
   logstream(LOG_INFO)<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
   if (skipped_features > 0)
     logstream(LOG_DEBUG)<<"Skipped " << skipped_features << " when reading from file. " << std::endl;
+  if (skipped_nodes > 0)
+    logstream(LOG_WARNING)<<"Skipped node in test dataset: " << skipped_nodes << std::endl;
 }
 
 
