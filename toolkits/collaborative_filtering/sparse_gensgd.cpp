@@ -877,6 +877,10 @@ void test_predictions_N(
   size_t nz;   
   bool info_file = false;
   FILE * ff = NULL;
+
+  if (test == "")
+    logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
+
   /* auto detect presence of file named base_filename.info to find out matrix market size */
   if ((ff = fopen((test + ":info").c_str(), "r")) != NULL) {
     info_file = true;
@@ -894,6 +898,7 @@ void test_predictions_N(
 
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
+
     return; //missing validaiton data, nothing to compute
   }
   if (!info_file){
@@ -913,8 +918,9 @@ void test_predictions_N(
   if (fout == NULL)
     logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
 
+  mm_set_array(&matcode);
   mm_write_banner(fout, matcode);
-  mm_write_mtx_crd_size(fout ,M,N,nz); 
+  mm_write_mtx_array_size(fout ,nz, 1); 
   
   std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
   std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
@@ -941,7 +947,8 @@ void test_predictions_N(
     for (int k=0; k< index; k++)
       node_array[k] = NULL;
 
-    compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, NULL, node_array, howmany);
+    vec sum;
+    compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
     fprintf(fout, "%12.8lg\n", prediction);
     delete[] node_array;
   }
