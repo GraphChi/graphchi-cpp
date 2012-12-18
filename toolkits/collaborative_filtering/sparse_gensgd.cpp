@@ -320,6 +320,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   int rc = getline(&linebuf, &linesize, f);
   if (rc == -1)
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
+  char * linebuf_to_free = linebuf;
   strncpy(linebuf_debug, linebuf, 1024);
 
   while (token < FEATURE_WIDTH){
@@ -384,6 +385,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       token++;
     }
   }//end while
+  free(linebuf_to_free);
   return true;
 }//end read_line
 
@@ -396,9 +398,9 @@ float compute_prediction(
     uint * valarray, 
     uint * positions,
     uint edge_size,
-    float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, fvec * psum), 
+    float (*prediction_func)(std::vector<vertex_data*>& node_array, int arraysize, float rating, double & prediction, fvec * psum), 
     fvec * psum, 
-    vertex_data **& node_array,
+    std::vector<vertex_data*>& node_array,
     uint node_array_size){
 
 
@@ -465,7 +467,7 @@ float compute_prediction(
   loc+=1;
   }*/
   assert(index == calc_feature_node_array_size(I,J, edge_size));
-  (*prediction_func)((const vertex_data**)node_array, node_array_size, val, prediction, psum);
+  (*prediction_func)(node_array, node_array_size, val, prediction, psum);
   return pow(val - prediction,2);
 } 
 #include "rmse.hpp"
@@ -637,7 +639,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
   compute validation rmse
   */
   void validation_rmse_N(
-      float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, fvec * psum)
+      float (*prediction_func)(std::vector<vertex_data*>& array, int arraysize, float rating, double & prediction, fvec * psum)
       ,graphchi_context & gcontext, 
       feature_control & fc, 
       bool square = false) {
@@ -662,6 +664,8 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
         logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
       }
+
+      fclose(ff);
     }
 
 
@@ -715,14 +719,15 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
 
       double prediction;
       int howmany = calc_feature_node_array_size(I,J, index);
-      vertex_data ** node_array = new vertex_data*[howmany];
+      std::vector<vertex_data*> node_array; node_array.resize(howmany); 
       for (int k=0; k< howmany; k++)
         node_array[k] = NULL;
+      
       fvec sum;
       compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
       if (calc_roc)
         realPrediction.push_back(std::make_pair(val, prediction));
-      delete [] node_array;
+      
       dvalidation_rmse += pow(prediction - val, 2);
       if (prediction < cutoff && val >= cutoff)
         errors++;
@@ -779,7 +784,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
 
 /* compute predictions for test data */
 void test_predictions_N(
-    float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & predictioni, fvec * sum), 
+    float (*prediction_func)(std::vector<vertex_data*>& node_array, int node_array_size, float rating, double & predictioni, fvec * sum), 
     feature_control & fc, 
     bool square = false) {
   int ret_code;
@@ -854,14 +859,13 @@ void test_predictions_N(
     }
 
     int howmany = calc_feature_node_array_size(I,J,index);
-    vertex_data ** node_array = new vertex_data*[howmany];
-    for (int k=0; k< index; k++)
+    std::vector<vertex_data*> node_array; node_array.resize(howmany);
+    for (int k=0; k< howmany; k++)
       node_array[k] = NULL;
 
     fvec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
     fprintf(fout, "%12.8lg\n", prediction);
-    delete[] node_array;
   }
   fclose(f);
   fclose(fout);
@@ -877,7 +881,7 @@ void test_predictions_N(
 
 
 
-float gensgd_predict(const vertex_data** node_array, int node_array_size,
+float gensgd_predict(std::vector<vertex_data*> & node_array, int node_array_size,
     const float rating, double& prediction, fvec* sum){
 
   fvec sum_sqr = fzeros(D);
@@ -906,7 +910,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   return err*err; 
 
 }
-float gensgd_predict(const vertex_data** node_array, int node_array_size,
+float gensgd_predict(std::vector<vertex_data*>& node_array, int node_array_size,
     const float rating, double & prediction){
   fvec sum;
   return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
@@ -985,7 +989,7 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
       for(int e=0; e < vertex.num_outedges(); e++) {
         const edge_data & data = vertex.edge(e)->get_data();
         int howmany = calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M, data.size);
-        vertex_data ** node_array = new vertex_data*[howmany];
+        std::vector<vertex_data*> node_array; node_array.resize(howmany);
         for (int i=0; i< howmany; i++)
           node_array[i] = NULL;
 
@@ -1030,7 +1034,6 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           assert(!std::isnan(node_array[i]->pvec[0]));
           assert(node_array[i]->pvec[0] < 1e3);
         }
-        delete[] node_array;
 
       }
 

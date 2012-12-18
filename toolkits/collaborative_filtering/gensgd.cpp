@@ -295,6 +295,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   int rc = getline(&linebuf, &linesize, f);
   if (rc == -1)
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
+
+  char * linebuf_to_free = linebuf;
   strncpy(linebuf_debug, linebuf, 1024);
 
   assert(file_columns >= 2);
@@ -351,7 +353,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       token++;
     }
   }//end while
-
+  free(linebuf_to_free);
   return true;
 }//end read_line
 
