@@ -220,8 +220,10 @@ int main(int argc,  const char *argv[]) {
     }
   }
 
+  vec components;
+
   if (cc != ""){
-    vec components = load_matrix_market_vector(cc, false, false);
+    components = load_matrix_market_vector(cc, false, false);
     assert((int)components.size() <= (int) latent_factors_inmem.size());
     for (uint i=0; i< components.size(); i++){
       assert(components[i] >= 0 && components[i] < nodes);
@@ -276,6 +278,7 @@ int main(int argc,  const char *argv[]) {
       }
     logstream(LOG_INFO)<<"total written components: " << total_written << std::endl;
     assert(sum(component_seeds) == 5000);
+    assert(sum(component_nodes) == components.size());
   }
   else { 
     std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;

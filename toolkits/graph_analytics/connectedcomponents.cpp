@@ -48,7 +48,8 @@
 #include <string>
 
 #include "graphchi_basic_includes.hpp"
-#include "util/labelanalysis.hpp"
+#include "label_analysis.hpp"
+#include "../collaborative_filtering/eigen_wrapper.hpp"
 
 using namespace graphchi;
 
@@ -61,87 +62,8 @@ FILE * pfile = NULL;
 typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef vid_t EdgeDataType;
 
-/**
- * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
- * class. The main logic is usually in the update function.
- */
-struct ConnectedComponentsProgram2 : public GraphChiProgram<VertexDataType, EdgeDataType> {
-    
-    /**
-     *  Vertex update function.
-     *  On first iteration ,each vertex chooses a label = the vertex id.
-     *  On subsequent iterations, each vertex chooses the minimum of the neighbor's
-     *  label (and itself). 
-     */
-    void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-        /* This program requires selective scheduling. */
-        assert(gcontext.scheduler != NULL);
-        
-        if (gcontext.iteration == 0) {
-            vertex.set_data(vertex.id());
-            gcontext.scheduler->add_task(vertex.id()); 
-        }
-        
-        /* On subsequent iterations, find the minimum label of my neighbors */
-        vid_t curmin = vertex.get_data();
-        for(int i=0; i < vertex.num_edges(); i++) {
-            vid_t nblabel = vertex.edge(i)->get_data();
-            if (gcontext.iteration == 0) nblabel = vertex.edge(i)->vertex_id();  // Note!
-            curmin = std::min(nblabel, curmin); 
-        }
-        
-        /* Check if label changed */
-        vertex.set_data(curmin);
-        
-        /** 
-         * Broadcast new label to neighbors by writing the value
-         * to the incident edges.
-         * Note: on first iteration, write only to out-edges to avoid
-         * overwriting data (this is kind of a subtle point)
-         */
-        vid_t label = vertex.get_data();
-        
-        if (gcontext.iteration > 0) {
-            for(int i=0; i < vertex.num_edges(); i++) {
-                if (label < vertex.edge(i)->get_data()) {
-                    vertex.edge(i)->set_data(label);
-                    /* Schedule neighbor for update */
-                    gcontext.scheduler->add_task(vertex.edge(i)->vertex_id()); 
-                }
-            }
-        } else if (gcontext.iteration == 0) {
-            for(int i=0; i < vertex.num_outedges(); i++) {
-                vertex.outedge(i)->set_data(label);
-            }
-        }
-    }    
-    /**
-     * Called before an iteration starts.
-     */
-    void before_iteration(int iteration, graphchi_context &info) {
-    }
-    
-    /**
-     * Called after an iteration has finished.
-     */
-    void after_iteration(int iteration, graphchi_context &ginfo) {
-    }
-    
-    /**
-     * Called before an execution interval is started.
-     */
-    void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &ginfo) {        
-    }
-    
-    /**
-     * Called after an execution interval has finished.
-     */
-    void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &ginfo) {        
-    }
-    
-};
-
-
+vec unique_labels;
+int niters;
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -162,7 +84,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
             vertex.set_data(vertex.id());
             gcontext.scheduler->add_task(vertex.id()); 
         }
-        
+    
         /* On subsequent iterations, find the minimum label of my neighbors */
         vid_t curmin = vertex.get_data();
         for(int i=0; i < vertex.num_edges(); i++) {
@@ -204,7 +126,8 @@ class OutputVertexCallback : public VCallback<VertexDataType> {
   public:
     /* print node id and then the label id */
     virtual void callback(vid_t vertex_id, VertexDataType &value) {
-        fprintf(pfile, "%u 1 %u\n", vertex_id+1, value+1); //graphchi offsets start from zero, while matlab from 1
+        fprintf(pfile, "%u 1 %u\n", vertex_id+1, value); //graphchi offsets start from zero, while matlab from 1
+        unique_labels[value] = 1;
     }
 };
 
@@ -220,7 +143,7 @@ int main(int argc, const char ** argv) {
     
     /* Basic arguments for application */
     std::string filename = get_option_string("file");  // Base filename
-    int niters           = get_option_int("niters", 10); // Number of iterations (max)
+    niters           = get_option_int("niters", 10); // Number of iterations (max)
     int output_labels    = get_option_int("output_labels", 0); //output node labels to file?
     bool scheduler       = true;    // Always run with scheduler
     
@@ -241,22 +164,19 @@ int main(int argc, const char ** argv) {
           fprintf(pfile, "%%%%MatrixMarket matrix coordinate real general\n");
           fprintf(pfile, "%lu %u %lu\n", engine.num_vertices(), 1, engine.num_vertices());
           OutputVertexCallback callback;
-          foreach_vertices<VertexDataType>(filename, 0, engine.num_vertices(), callback);
-          fclose(pfile);
-        }
+          //unique_labels = zeros(engine.num_vertices());
+          //foreach_vertices<VertexDataType>(filename, 0, engine.num_vertices(), callback);
+          //fclose(pfile);
+          logstream(LOG_INFO)<<"Found: " << sum(unique_labels) << " unique labels " << std::endl;
+   /* Run analysis of the connected components  (output is written to a file) */
+    m.start_time("label-analysis");
+    analyze_labels2<vid_t>(filename, pfile);
+    m.stop_time("label-analysis");
+    fclose(pfile); 
+     }
 
     }
     
-    /* Run analysis of the connected components  (output is written to a file) */
-    m.start_time("label-analysis");
-    
-    analyze_labels<vid_t>(filename);
-    
-    m.stop_time("label-analysis");
-   
-
-    /* Report execution metrics */
-    metrics_report(m);
     return 0;
 }
 
