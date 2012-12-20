@@ -112,16 +112,19 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     /* calc component number of nodes and edges and finish */
     else if (cc != ""){
       assert(vdata.component>= 0 && vdata.component < component_nodes.size());
+      //if (vertex.id() == 1104 || vertex.id() == 1103 || vertex.id() == 1105)
+      //  logstream(LOG_DEBUG)<<"Node 1104 has " << vertex.num_edges() << std::endl;
       component_nodes[vdata.component]++;
       for(int e=0; e < vertex.num_edges(); e++) {
         vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        if (vdata.component == other.component){
+        //if (vertex.id() ==1103 && vertex.edge(e)->vertex_id() < 100000)
+        //logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
+        if (vdata.component == other.component)
           //logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
           component_edges[vdata.component]++;
         }
-      }
       return; 
-    }
+      }
 
     if (!vdata.active)
       return;
@@ -213,33 +216,32 @@ int main(int argc,  const char *argv[]) {
   }
   else {
     vseed = load_matrix_market_vector(seed_file, false, false);
-    assert(vseed.size() == 5000);
     for (int i=0; i< vseed.size(); i++){
-      assert(vseed[i]-1 < latent_factors_inmem.size());
-      latent_factors_inmem[vseed[i] - 1].active = true;
+      assert(vseed[i] < latent_factors_inmem.size());
+      latent_factors_inmem[vseed[i]].active = true;
     }
   }
 
   vec components;
 
   if (cc != ""){
-    components = load_matrix_market_vector(cc, false, false);
+    components = load_matrix_market_vector(cc, false,true);
     assert((int)components.size() <= (int) latent_factors_inmem.size());
     for (uint i=0; i< components.size(); i++){
-      assert(components[i] >= 0 && components[i] < nodes);
-      latent_factors_inmem[i].component = components[i] - 1;
+      assert(i+1 < latent_factors_inmem.size());
+      //if (components[i] == 1104 || i == 1104 || i == 1103 || i == 1105)
+      //logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
+      latent_factors_inmem[i].component = components[i];
     }
     component_edges = zeros(nodes);
     component_nodes = zeros(nodes);
     component_seeds = zeros(nodes);
     for (uint i=0; i< vseed.size(); i++){
-      assert(vseed[i] >= 0 && vseed[i] < latent_factors_inmem.size());
-      component_seeds[latent_factors_inmem[vseed[i]].component]++;
+      assert(vseed[i] >= 1 && vseed[i] <= latent_factors_inmem.size());
+      component_seeds[latent_factors_inmem[vseed[i]-1].component]++;
     }
-    assert(sum(component_seeds) == 5000);
   }
 
-  unlink((datafile + (_degree? "-degree": ".out")).c_str());
   pfile = fopen((datafile +".out").c_str(), "w");
   std::cout<<"Writing output to: " << datafile +".out" << std::endl;
 
@@ -254,7 +256,7 @@ int main(int argc,  const char *argv[]) {
     set_engine_flags(engine);
     engine.run(program, 1);
     std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
-    for (uint i=0; i< M+N; i++){
+    for (uint i=0; i< (M==N?M:M+N); i++){
       if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
         latent_factors_inmem[i].next_active = false;
         latent_factors_inmem[i].active = true;
@@ -273,12 +275,10 @@ int main(int argc,  const char *argv[]) {
     int total_written = 0;
     for (uint i=0; i< nodes; i++)
       if (component_nodes[i] > 0 && component_edges[i] > 0){
-        fprintf(pfile, "%d %d %d %d\n", i+1, (int)component_nodes[i], (int)component_edges[i], (int)component_seeds[i]);
+        fprintf(pfile, "%d %d %d %d\n", i, (int)component_nodes[i], (int)component_edges[i], (int)component_seeds[i]);
         total_written++;
       }
-    logstream(LOG_INFO)<<"total written components: " << total_written << std::endl;
-    assert(sum(component_seeds) == 5000);
-    assert(sum(component_nodes) == components.size());
+    logstream(LOG_INFO)<<"total written components: " << total_written << " sum : " << sum(component_nodes) << std::endl;
   }
   else { 
     std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;

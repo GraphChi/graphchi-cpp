@@ -162,7 +162,7 @@ int main(int argc, const char ** argv) {
           if (!pfile)
             logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
           fprintf(pfile, "%%%%MatrixMarket matrix coordinate real general\n");
-          fprintf(pfile, "%lu %u %lu\n", engine.num_vertices(), 1, engine.num_vertices());
+          fprintf(pfile, "%lu %u %lu\n", engine.num_vertices()-1, 1, engine.num_vertices()-1);
           OutputVertexCallback callback;
           //unique_labels = zeros(engine.num_vertices());
           //foreach_vertices<VertexDataType>(filename, 0, engine.num_vertices(), callback);

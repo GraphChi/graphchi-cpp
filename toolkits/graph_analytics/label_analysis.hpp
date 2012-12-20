@@ -93,7 +93,8 @@ void analyze_labels2(std::string base_filename, FILE * pfile, int printtop = 20)
     /* Mark vertices with its own label with 0xffffffff so they will be ignored */
     for(int i=0; i < nt; i++) { 
       LabelType l = buffer[i];
-      fprintf(pfile, "%d 1 %d\n", curvid, l);
+      if (curvid > 0)
+        fprintf(pfile, "%d 1 %d\n", curvid, l);
       if (l == curvid) buffer[i] = 0xffffffff;
       curvid++;
     }
