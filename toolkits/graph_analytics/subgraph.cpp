@@ -17,10 +17,12 @@
  * For more about this software visit:
  *
  *      http://www.graphlab.ml.cmu.edu
- 
 
-   Written by Danny Bickson, CMU
-   File for extracting a subgraph out of the input graph, starting with a given set of seeds.
+
+ Written by Danny Bickson, CMU
+ 1) File for extracting a subgraph out of the input graph, starting with a given set of seeds, for X hops.
+ 2) This program also prints the degree distribution of a graph (using --degrees=1 command line argument)
+ 3) This program also counts the number of edges for each connected compoentns (using the --cc=filename command line)
  *
  */
 
@@ -31,26 +33,22 @@
 #include <limits>
 #include <iostream>
 #include "graphchi_basic_includes.hpp"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
+//#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
+//#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
 #include "../collaborative_filtering/util.hpp"
 #include "../collaborative_filtering/eigen_wrapper.hpp"
 #include "../collaborative_filtering/timer.hpp"
+#include "../collaborative_filtering/common.hpp"
 
 using namespace graphchi;
 
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, Me, Ne, Le, K;
-size_t L;
-double globalMean = 0;
 int square = 0;
 int tokens_per_row = 3;
 int _degree = 0;
+std::string cc;
 
 bool debug = false;
 int max_iter = 50;
@@ -69,8 +67,9 @@ struct vertex_data {
   bool active;
   bool done;
   bool next_active;
+  int component;
   vec pvec; //to remove
-  vertex_data() : active(false), done(false), next_active(false)  {}
+  vertex_data() : active(false), done(false), next_active(false), component(0)  {}
 
 }; // end of vertex_data
 
@@ -90,6 +89,9 @@ typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
+vec component_edges;
+vec component_nodes;
+vec component_seeds;
 #include "../collaborative_filtering/io.hpp"
 
 struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
@@ -98,15 +100,27 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
- 
-   vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    if (debug && iiter > 99 && vertex.id() % 1000 == 0)
-      std::cout<<"Entering node: " << vertex.id() << std::endl;
 
+    vertex_data & vdata = latent_factors_inmem[vertex.id()];
 
+    /* printout degree distribution and finish */
     if (_degree){
-      fprintf(pfile, "%u %u\n", vertex.id()+1, vertex.num_edges());
+      if (vertex.num_edges() > 0)
+        fprintf(pfile, "%u %u\n", vertex.id()+1, vertex.num_edges());
       return;
+    }
+    /* calc component number of nodes and edges and finish */
+    else if (cc != ""){
+      assert(vdata.component>= 0 && vdata.component < component_nodes.size());
+      component_nodes[vdata.component]++;
+      for(int e=0; e < vertex.num_edges(); e++) {
+        vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        if (vdata.component == other.component){
+          //logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
+          component_edges[vdata.component]++;
+        }
+      }
+      return; 
     }
 
     if (!vdata.active)
@@ -131,7 +145,7 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     mymutex.unlock();
   }
 
-  
+
 }; // end of  aggregator
 
 
@@ -162,13 +176,15 @@ int main(int argc,  const char *argv[]) {
   nodes         = get_option_int("nodes", nodes);
   orig_edges         = get_option_int("orig_edges", orig_edges);
   _degree =  get_option_int("degree", _degree);
-  if (_degree)
+  cc = get_option_string("cc", cc);
+
+  if (_degree || cc != "")
     max_iter = 1;
 
   std::string seeds   = get_option_string("seeds","");
   std::string seed_file = get_option_string("seed_file", "");
 
- mytimer.start();
+  mytimer.start();
 
 
   /* Preprocess data if needed, or discover preprocess files */
@@ -182,66 +198,96 @@ int main(int argc,  const char *argv[]) {
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
-  if (!_degree){
+  vec vseed;
   if (seed_file == ""){
-  if (seeds == "")
-    logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
-  char * pseeds = strdup(seeds.c_str());
-  char * pch = strtok(pseeds, ",\n\r\t ");
-  int node = atoi(pch);
-  latent_factors_inmem[node-1].active = true;
-  while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
-    node = atoi(pch);
+    if (seeds == "")
+      logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
+    char * pseeds = strdup(seeds.c_str());
+    char * pch = strtok(pseeds, ",\n\r\t ");
+    int node = atoi(pch);
     latent_factors_inmem[node-1].active = true;
-  }
-  }
-  else {
-   vec seeds = load_matrix_market_vector(seed_file, false, false);
-    for (int i=0; i< seeds.size(); i++){
-    assert(seeds[i] < latent_factors_inmem.size());
-    latent_factors_inmem[seeds[i] - 1].active = true;
+    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+      node = atoi(pch);
+      latent_factors_inmem[node-1].active = true;
     }
   }
+  else {
+    vseed = load_matrix_market_vector(seed_file, false, false);
+    assert(vseed.size() == 5000);
+    for (int i=0; i< vseed.size(); i++){
+      assert(vseed[i]-1 < latent_factors_inmem.size());
+      latent_factors_inmem[vseed[i] - 1].active = true;
+    }
   }
 
-  unlink((datafile +".out").c_str());
+  if (cc != ""){
+    vec components = load_matrix_market_vector(cc, false, false);
+    assert((int)components.size() <= (int) latent_factors_inmem.size());
+    for (uint i=0; i< components.size(); i++){
+      assert(components[i] >= 0 && components[i] < nodes);
+      latent_factors_inmem[i].component = components[i] - 1;
+    }
+    component_edges = zeros(nodes);
+    component_nodes = zeros(nodes);
+    component_seeds = zeros(nodes);
+    for (uint i=0; i< vseed.size(); i++){
+      assert(vseed[i] >= 0 && vseed[i] < latent_factors_inmem.size());
+      component_seeds[latent_factors_inmem[vseed[i]].component]++;
+    }
+    assert(sum(component_seeds) == 5000);
+  }
+
+  unlink((datafile + (_degree? "-degree": ".out")).c_str());
   pfile = fopen((datafile +".out").c_str(), "w");
   std::cout<<"Writing output to: " << datafile +".out" << std::endl;
 
   num_active = 0;
   for (iiter=0; iiter< max_iter; iiter++){
-      //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
-     /* Run */
-      //while(true){
-      KcoresProgram program;
-      //num_active = 0;
-      graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
-      engine.set_disable_vertexdata_storage();  
-      engine.set_modifies_inedges(false);
-      engine.set_modifies_outedges(false);
-      engine.run(program, 1);
-      std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
-      for (uint i=0; i< M+N; i++){
-        if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
-          latent_factors_inmem[i].next_active = false;
-          latent_factors_inmem[i].active = true;
-        }
+    //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
+    /* Run */
+    //while(true){
+    KcoresProgram program;
+    //num_active = 0;
+    graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
+    set_engine_flags(engine);
+    engine.run(program, 1);
+    std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
+    for (uint i=0; i< M+N; i++){
+      if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
+        latent_factors_inmem[i].next_active = false;
+        latent_factors_inmem[i].active = true;
       }
-      if (links >= edges){
-        std::cout<<"Grabbed enough edges!" << std::endl;
-        break;
-      }
+    }
+    if (links >= edges){
+      std::cout<<"Grabbed enough edges!" << std::endl;
+      break;
+    }
   }
-      
-  std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
- 
-  std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
-  std::cout << "Number of passes: " << iiter<< std::endl;
-  std::cout << "Total active nodes: " << num_active << " edges: " << links << std::endl;
+
+  if (cc != ""){
+    logstream(LOG_INFO)<<"component nodes sum: " << sum(component_nodes) << std::endl;
+    logstream(LOG_INFO)<<"component edges sum: " << sum(component_edges) << std::endl;
+
+    int total_written = 0;
+    for (uint i=0; i< nodes; i++)
+      if (component_nodes[i] > 0 && component_edges[i] > 0){
+        fprintf(pfile, "%d %d %d %d\n", i+1, (int)component_nodes[i], (int)component_edges[i], (int)component_seeds[i]);
+        total_written++;
+      }
+    logstream(LOG_INFO)<<"total written components: " << total_written << std::endl;
+    assert(sum(component_seeds) == 5000);
+  }
+  else { 
+    std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
+
+    std::cout << "subgraph finished in " << mytimer.current_time() << std::endl;
+    std::cout << "Number of passes: " << iiter<< std::endl;
+    std::cout << "Total active nodes: " << num_active << " edges: " << links << std::endl;
+  }
   fflush(pfile);
-   fclose(pfile);
-   //delete pout;
-   return EXIT_SUCCESS;
-}
+  fclose(pfile);
+  //delete pout;
+  return EXIT_SUCCESS;
+  }
 
 

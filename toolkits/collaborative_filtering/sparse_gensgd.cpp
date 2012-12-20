@@ -41,7 +41,7 @@
 #include "../parsers/common.hpp"
 #include <omp.h>
 #define MAX_FEATAURES 256
-#define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 21//MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
 double gensgd_rate2 = 1e-02;
@@ -61,6 +61,7 @@ size_t vertex_with_no_edges = 0;
 int calc_error = 0;
 int calc_roc = 0;
 int binary = 1;
+int round_float = 0;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
 float cutoff = 0;
@@ -248,7 +249,10 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   //else read string id and assign numeric id
   else {
     uint id;
-    assert(!std::isnan(atof(pch)));
+    float val = atof(pch);
+    assert(!std::isnan(val));
+    if (round_float)
+      val = floorf(val * 10000 + 0.5) / 10000;
     if (pos >= 0)
       assert(pos < (int)fc.node_id_maps.size());
     single_map * pmap = NULL;
@@ -257,7 +261,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
     else pmap = &fc.node_id_maps[pos];
 
     if (read_only){ // find if node was in map
-      std::map<float,uint>::iterator it = pmap->string2nodeid.find(atof(pch));
+      std::map<float,uint>::iterator it = pmap->string2nodeid.find(val);
       if (it != pmap->string2nodeid.end()){
         ret = it->second - 1;
         assert(ret < pmap->string2nodeid.size());
@@ -265,7 +269,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
       else ret = -1;
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
-      assign_id(*pmap, id, atof(pch));
+      assign_id(*pmap, id, val);
       if (pos == -1 && fc.index_map.string2nodeid.size() == id+1 && fc.node_id_maps.size() < fc.index_map.string2nodeid.size()+2){//TODO debug
         single_map newmap;
         fc.node_id_maps.push_back(newmap);
@@ -323,7 +327,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   char * linebuf_to_free = linebuf;
   strncpy(linebuf_debug, linebuf, 1024);
 
-  while (token < FEATURE_WIDTH){
+  while (index < FEATURE_WIDTH){
 
     /* READ FROM */
     if (token == fc.from_pos){
@@ -371,16 +375,16 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch2 == NULL || pch2[0] == 0)
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature2 " << index << " [ " << linebuf_debug << " ] " << std::endl;
 
-      uint second_index = get_node_id(pch2, pos+2, i, type != TRAINING);
+      uint second_index = get_node_id(pch2, pos, i, type != TRAINING);
       if (type != TRAINING && second_index == (uint)-1){ //this value was not observed in training, skip
-        skipped_features++;
-        continue;
+        second_index = 0; //skipped_features++;
+        //continue;
       }
       assert(second_index != (uint)-1);
       assert(index< (int)valarray.size());
       assert(index< (int)positions.size());
       valarray[index] = second_index; 
-      positions[index] = pos+2;
+      positions[index] = pos;
       index++;
       token++;
     }
@@ -727,7 +731,10 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany);
       if (calc_roc)
         realPrediction.push_back(std::make_pair(val, prediction));
-      
+     
+      double temp_pred = prediction;
+      temp_pred = std::min(temp_pred, maxval);
+      temp_pred = std::max(temp_pred, minval); 
       dvalidation_rmse += pow(prediction - val, 2);
       if (prediction < cutoff && val >= cutoff)
         errors++;
@@ -1171,6 +1178,7 @@ int main(int argc, const char ** argv) {
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   calc_roc = get_option_int("calc_roc", calc_roc);
+  round_float = get_option_int("round_float", round_float);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
