@@ -24,10 +24,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  * 
+ * File for aggregating and siplaying error mesasures and algorithm progress
  */
 
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
+void read_matrix_market_banner_and_size(FILE * pfile, MM_typecode & matcode, uint & M, uint & N, size_t & nz);
+FILE * open_file(const char * filename, const char * mode, bool optional);
 
 timer mytimer;
 double dtraining_rmse = 0;
@@ -35,9 +38,8 @@ double last_training_rmse = 0;
 double dvalidation_rmse = 0;
 double last_validation_rmse = 0;
 
+/* support for different loss types (for SGD variants) */
 std::string loss = "square";
-
-
 enum {
   LOGISTIC = 0, SQUARE = 1, ABS = 2
 };
@@ -46,12 +48,27 @@ int loss_type = SQUARE;
 
 int sign(double x){ if (x < 0) return -1; else if (x > 0) return 1; else return 0; }
 
+double finalize_rmse(double rmse, double num_edges){
+  double ret = 0;
+ switch(loss_type){
+    case SQUARE:
+      ret = sqrt(rmse / num_edges);
+  break;
+    case LOGISTIC:
+      ret = rmse/num_edges;
+   break;
+    case ABS:
+      ret = rmse / num_edges;
+   break;
+  }
+ return ret;
+}
+
 
 /**
   compute predictions on test data
   */
 void test_predictions(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), graphchi_context * gcontext = NULL, bool dosave = true, vec * avgprd = NULL, int pmf_burn_in = 0) {
-  int ret_code;
   MM_typecode matcode;
   FILE *f;
   uint Me, Ne;
@@ -61,23 +78,10 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     return; //missing validaiton data, nothing to compute
   }
   FILE * fout = NULL;
-  if (dosave){
-    fout = fopen((test + ".predict").c_str(),"w");
-    if (fout == NULL)
-      logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
-  }
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
+  if (dosave)
+    fout = open_file((test + ".predict").c_str(),"w", false);
+  
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -123,7 +127,6 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
 }
 
 void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction), int time_offset = 0) {
-  int ret_code;
   MM_typecode matcode;
   FILE *f;
   uint Me, Ne;
@@ -132,22 +135,9 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
   }
-  FILE * fout = fopen((test + ".predict").c_str(),"w");
-  if (fout == NULL)
-    logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
+  FILE * fout = open_file((test + ".predict").c_str(),"w", false);
 
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-
-  /*  This is how one can screen matrix types if their application */
-  /*  only supports a subset of the Matrix Market data types.      */
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -181,7 +171,6 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   */
 void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)
     ,graphchi_context & gcontext, int tokens_per_row = 3, vec * avgprd = NULL, int pmf_burn_in = 0) {
-  int ret_code;
   MM_typecode matcode;
   FILE *f;
   size_t nz;   
@@ -191,16 +180,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     return; //missing validaiton data, nothing to compute
   }
 
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -228,21 +208,19 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); 
+    dvalidation_rmse += time *(*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); 
 
     //for mcmc methods, aggregate this prediction
     if (avgprd && gcontext.iteration > pmf_burn_in){
       avgprd->operator[](i) += prediction;
       prediction = avgprd->operator[](i) / (gcontext.iteration-pmf_burn_in);
     }
-
-    dvalidation_rmse += time * pow(prediction - val, 2);
   }
   fclose(f);
 
   assert(Le > 0);
-  dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
-  std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << 
+  dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)Le);
+  std::cout<<"  Validation  " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << 
     " ratings_per_sec: " << std::setw(10) << (gcontext.iteration*L/mytimer.current_time()) << std::endl;
   if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
     logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
@@ -256,7 +234,6 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   */
 void validation_rmse3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction)
     ,graphchi_context & gcontext,int tokens_per_row = 4, int time_offset = 0) {
-  int ret_code;
   MM_typecode matcode;
   FILE *f;
   size_t nz;   
@@ -266,16 +243,8 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     return; //missing validaiton data, nothing to compute
   }
 
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-  /* find out size of sparse matrix .... */
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+  
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -302,14 +271,13 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time], val, prediction);
-    dvalidation_rmse += pow(prediction - val, 2);
+    dvalidation_rmse += (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[M+N+(uint)time], val, prediction);
   }
   fclose(f);
 
   assert(Le > 0);
-  dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
-  std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
+  dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)Le);
+  std::cout<<"  Validation " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << std::endl;
   if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
     logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
     gcontext.set_last_iteration(gcontext.iteration);
@@ -330,18 +298,7 @@ double training_rmse(int iteration, graphchi_context &gcontext, bool items = fal
   for (int i=start; i< (int)end; i++){
     dtraining_rmse += latent_factors_inmem[i].rmse;
   }
-  ret = dtraining_rmse;
-  switch(loss_type){
-    case SQUARE:
-  dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
-  break;
-    case LOGISTIC:
-    dtraining_rmse /= pengine->num_edges();
-   break;
-    case ABS:
-   dtraining_rmse /= pengine->num_edges();
-   break;
-  }
+  ret = dtraining_rmse = finalize_rmse(dtraining_rmse, pengine->num_edges());
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training " << error_names[loss_type] << ":"<< std::setw(10)<< dtraining_rmse;
 
   return ret;

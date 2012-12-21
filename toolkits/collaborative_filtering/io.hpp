@@ -26,7 +26,21 @@
 #include "types.hpp"
 #include "implicit.hpp"
 
+void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & Me, uint & Ne, size_t & nz){
 
+  if (mm_read_banner(f, &matcode) != 0)
+    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+
+  /*  This is how one can screen matrix types if their application */
+  /*  only supports a subset of the Matrix Market data types.      */
+  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
+    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+
+  /* find out size of sparse matrix .... */
+  if (mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) {
+    logstream(LOG_FATAL) << "Failed reading matrix size: error" << std::endl;
+  }
+}
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
