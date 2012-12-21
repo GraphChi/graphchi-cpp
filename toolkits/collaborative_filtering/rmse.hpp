@@ -35,6 +35,18 @@ double last_training_rmse = 0;
 double dvalidation_rmse = 0;
 double last_validation_rmse = 0;
 
+std::string loss = "square";
+
+
+enum {
+  LOGISTIC = 0, SQUARE = 1, ABS = 2
+};
+const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE"};
+int loss_type = SQUARE;
+
+int sign(double x){ if (x < 0) return -1; else if (x > 0) return 1; else return 0; }
+
+
 /**
   compute predictions on test data
   */
@@ -319,8 +331,18 @@ double training_rmse(int iteration, graphchi_context &gcontext, bool items = fal
     dtraining_rmse += latent_factors_inmem[i].rmse;
   }
   ret = dtraining_rmse;
+  switch(loss_type){
+    case SQUARE:
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
-  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+  break;
+    case LOGISTIC:
+    dtraining_rmse /= pengine->num_edges();
+   break;
+    case ABS:
+   dtraining_rmse /= pengine->num_edges();
+   break;
+  }
+  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training " << error_names[loss_type] << ":"<< std::setw(10)<< dtraining_rmse;
 
   return ret;
 }

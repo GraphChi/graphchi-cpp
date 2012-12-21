@@ -39,11 +39,13 @@ graphlab_als: example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp
 	$(CPP) $(CPPFLAGS) example_apps/matrix_factorization/graphlab_gas/als_graphlab.cpp -o bin/graphlab_als
 
 cf:
-	cd toolkits/collaborative_filtering/; bash -x ./test_eigen.sh; 
+	cd toolkits/collaborative_filtering/; bash ./test_eigen.sh; 
 	if [ $$? -ne 0 ]; then exit 1; fi
 	cd toolkits/collaborative_filtering/; make 
 cf_test:
 	cd toolkits/collaborative_filtering/; make test; 
+cfd:
+	cd toolkits/collaborative_filtering/; make -f Makefile.debug
 
 parsers:
 	cd toolkits/parsers/; make
