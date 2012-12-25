@@ -29,6 +29,7 @@
 
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
+#include "common.hpp"
 void read_matrix_market_banner_and_size(FILE * pfile, MM_typecode & matcode, uint & M, uint & N, size_t & nz);
 FILE * open_file(const char * filename, const char * mode, bool optional);
 
@@ -38,16 +39,9 @@ double last_training_rmse = 0;
 double dvalidation_rmse = 0;
 double last_validation_rmse = 0;
 
-/* support for different loss types (for SGD variants) */
-std::string loss = "square";
-enum {
-  LOGISTIC = 0, SQUARE = 1, ABS = 2
-};
-const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE"};
-int loss_type = SQUARE;
-
 int sign(double x){ if (x < 0) return -1; else if (x > 0) return 1; else return 0; }
 
+/* compute the average of the loss after aggregating it */
 double finalize_rmse(double rmse, double num_edges){
   double ret = 0;
  switch(loss_type){
@@ -62,6 +56,33 @@ double finalize_rmse(double rmse, double num_edges){
    break;
   }
  return ret;
+}
+
+/** calc the loss measure based on the cost function */
+double calc_loss(double exp_prediction, double err){
+   double ret = 0;
+  switch (loss_type){
+    case LOGISTIC: ret= (exp_prediction * log(exp_prediction) + (1-exp_prediction)*log(1-exp_prediction));
+                   break;
+    case SQUARE:   ret = err*err;
+                   break;
+    case ABS:      ret = fabs(err);
+                   break;
+  }
+  return ret;
+}
+
+/** calc prediction error based on the cost function */
+double calc_error_f(double exp_prediction, double err){
+  switch (loss_type){
+    case LOGISTIC: 
+      return err;
+    case SQUARE:   
+      return err *= (exp_prediction*(1.0-exp_prediction)*(maxval-minval));
+    case ABS:      
+      return err  = sign(err)*(exp_prediction*(1-exp_prediction)*(maxval-minval));
+  }
+  return NAN;
 }
 
 

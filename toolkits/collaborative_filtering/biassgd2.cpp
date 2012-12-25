@@ -86,30 +86,10 @@ float bias_sgd_predict(const vertex_data& user,
   if (extra != NULL)
     *(double*)extra = exp_prediction;
 
-  float ret;
-  switch (loss_type){
-    case LOGISTIC: ret= (exp_prediction * log(exp_prediction) + (1-exp_prediction)*log(1-exp_prediction));
-                   break;
-    case SQUARE:   ret = err*err;
-                   break;
-    case ABS:      ret = fabs(err);
-                   break;
-  }
-  return ret; 
+ return calc_loss(exp_prediction, err); 
 
 }
 
-double calc_error(double exp_prediction, double err){
-  switch (loss_type){
-    case LOGISTIC: 
-      return err;
-    case SQUARE:   
-      return err *= (exp_prediction*(1.0-exp_prediction)*(maxval-minval));
-    case ABS:      
-      return err  = sign(err)*(exp_prediction*(1-exp_prediction)*(maxval-minval));
-  }
-  return NAN;
-}
 
 
 /**
@@ -143,7 +123,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
         double exp_prediction;
         user.rmse += bias_sgd_predict(user, movie, observation, prediction, &exp_prediction);
         double err = observation - prediction;
-        err = calc_error(exp_prediction, err);
+        err = calc_error_f(exp_prediction, err);
 
         if (std::isnan(err) || std::isinf(err))
           logstream(LOG_FATAL)<<"BIASSGD got into numerical error. Please tune step size using --biassgd_gamma and biassgd_lambda" << std::endl;
@@ -261,15 +241,6 @@ int main(int argc, const char ** argv) {
   biassgd_lambda    = get_option_float("biassgd_lambda", 1e-3);
   biassgd_gamma     = get_option_float("biassgd_gamma", 1e-3);
   biassgd_step_dec  = get_option_float("biassgd_step_dec", 0.9);
-  loss              = get_option_string("loss", loss);
-  if (loss == "square")
-    loss_type = SQUARE;
-  else if (loss == "logistic")
-    loss_type = LOGISTIC;
-  else if (loss == "abs")
-    loss_type = ABS;
-  else logstream(LOG_FATAL)<<"Loss type should be one of [square,logistic,abs] (for example, --loss==square);" << std::endl;
-
   parse_command_line_args();
   parse_implicit_command_line();
 

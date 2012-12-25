@@ -39,8 +39,9 @@
 
 using namespace graphchi;
 
-double minval = -1e100;
-double maxval = 1e100;
+double minval = -1e100; //max allowed value in matrix
+double maxval = 1e100; //min allowed value in matrix
+double valrange = 1;   //range of allowed values in matrix
 std::string training;
 std::string validation;
 std::string test;
@@ -55,6 +56,14 @@ int niters = 10;
 int halt_on_rmse_increase = 0;
 int D = 20; //feature vector width
 bool quiet = false;
+/* support for different loss types (for SGD variants) */
+std::string loss = "square";
+enum {
+  LOGISTIC = 0, SQUARE = 1, ABS = 2
+};
+const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE"};
+int loss_type = SQUARE;
+
 
 void parse_command_line_args(){
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
@@ -74,12 +83,24 @@ void parse_command_line_args(){
 
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
+  valrange      = maxval - minval;
   quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
+
+  /* find out loss type (optional, for SGD variants only) */
+  std::string loss              = get_option_string("loss", loss);
+  if (loss == "square")
+    loss_type = SQUARE;
+  else if (loss == "logistic")
+    loss_type = LOGISTIC;
+  else if (loss == "abs")
+    loss_type = ABS;
+  else logstream(LOG_FATAL)<<"Loss type should be one of [square,logistic,abs] (for example, --loss==square);" << std::endl;
+
 }
 
 template<typename T>
