@@ -53,7 +53,6 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
 template <typename als_edge_type>
 int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  int ret_code;
   MM_typecode matcode;
   FILE *f;
   size_t nz;

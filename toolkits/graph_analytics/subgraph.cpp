@@ -113,15 +113,16 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     else if (cc != ""){
       assert(vdata.component>= 0 && vdata.component < component_nodes.size());
       //if (vertex.id() == 1104 || vertex.id() == 1103 || vertex.id() == 1105)
-      //  logstream(LOG_DEBUG)<<"Node 1104 has " << vertex.num_edges() << std::endl;
+      logstream(LOG_DEBUG)<<"Node " << vertex.id() << " has " << vertex.num_edges() << std::endl;
       component_nodes[vdata.component]++;
       for(int e=0; e < vertex.num_edges(); e++) {
         vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         //if (vertex.id() ==1103 && vertex.edge(e)->vertex_id() < 100000)
-        //logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
-        if (vdata.component == other.component)
-          //logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
+        logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
+        if (vdata.component == other.component && vertex.id() < vertex.edge(e)->vertex_id()){
+          logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
           component_edges[vdata.component]++;
+        }
         }
       return; 
       }
@@ -230,7 +231,7 @@ int main(int argc,  const char *argv[]) {
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
       //if (components[i] == 1104 || i == 1104 || i == 1103 || i == 1105)
-      //logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
+      logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];
     }
     component_edges = zeros(nodes);
