@@ -50,7 +50,7 @@ int tokens_per_row = 3;
 int _degree = 0;
 int seed_edges_only = 0;
 std::string cc;
-
+size_t singleton_nodes = 0;
 bool debug = false;
 int max_iter = 50;
 int iiter = 0; //current iteration
@@ -58,7 +58,6 @@ uint num_active = 0;
 uint links = 0;
 mutex mymutex;
 timer mytimer;
-//out_file * pout = NULL;
 FILE * pfile = NULL;
 size_t edges = 1000; //number of edges to cut from graph
 size_t nodes = 0; //number of nodes in original file (optional)
@@ -85,7 +84,7 @@ struct edge_data {
 
 
 typedef vertex_data VertexDataType;
-typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data EdgeDataType;  
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
@@ -93,9 +92,10 @@ std::vector<vertex_data> latent_factors_inmem;
 vec component_edges;
 vec component_nodes;
 vec component_seeds;
+
 #include "../collaborative_filtering/io.hpp"
 
-struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
   /**
    *  Vertex update function.
@@ -113,19 +113,35 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     /* calc component number of nodes and edges and finish */
     else if (cc != ""){
       assert(vdata.component>= 0 && vdata.component < component_nodes.size());
-      //if (vertex.id() == 1104 || vertex.id() == 1103 || vertex.id() == 1105)
       if (debug)
       logstream(LOG_DEBUG)<<"Node " << vertex.id() << " has " << vertex.num_edges() << std::endl;
+
+      if (vdata.component == 0)
+         return;
+
+      mymutex.lock();
       component_nodes[vdata.component]++;
+      mymutex.unlock();      
+
+      if (vertex.num_edges() == 0){
+        mymutex.lock();
+        singleton_nodes++;
+        mymutex.unlock();
+      }
+
       for(int e=0; e < vertex.num_edges(); e++) {
         vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        //if (vertex.id() ==1103 && vertex.edge(e)->vertex_id() < 100000)
         if (debug)
         logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
-        if (vdata.component == other.component && vertex.id() < vertex.edge(e)->vertex_id()){
+        
+        if (vdata.component != other.component)
+           logstream(LOG_FATAL)<<"BUG Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
+        if (vertex.id() < vertex.edge(e)->vertex_id()){
           if (debug)
           logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
+          mymutex.lock();
           component_edges[vdata.component]++;
+          mymutex.unlock();
         }
         }
       return; 
@@ -133,9 +149,9 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
     if (!vdata.active)
       return;
-    num_active++;
 
     mymutex.lock();
+    num_active++;
     for(int e=0; e < vertex.num_edges(); e++) {
       vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       if (links >= edges)
@@ -210,7 +226,7 @@ int main(int argc,  const char *argv[]) {
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
   vec vseed;
-  if (seed_file == ""){
+  if (seed_file == ""){/* read list of seeds from the --seeds=XX command line argument */
     if (seeds == "")
       logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
     char * pseeds = strdup(seeds.c_str());
@@ -224,6 +240,7 @@ int main(int argc,  const char *argv[]) {
   }
   else { /* load initial set of seeds from file */
     vseed = load_matrix_market_vector(seed_file, false, false);
+#pragma omp parallel for
     for (int i=0; i< vseed.size(); i++){
       assert(vseed[i] > 0 && vseed[i] <= latent_factors_inmem.size());
       latent_factors_inmem[vseed[i]-1].active = true;
@@ -232,11 +249,14 @@ int main(int argc,  const char *argv[]) {
 
   vec components;
 
+  /* read a vector of connected components for each node */
   if (cc != ""){
     components = load_matrix_market_vector(cc, false,true);
     assert((int)components.size() <= (int) latent_factors_inmem.size());
+#pragma omp parallel for
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
+      assert(components[i] >= 1 && components[i] < nodes);
       if (debug)
       logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];
@@ -248,6 +268,7 @@ int main(int argc,  const char *argv[]) {
       assert(vseed[i] >= 1 && vseed[i] <= latent_factors_inmem.size());
       component_seeds[latent_factors_inmem[vseed[i]-1].component]++;
     }
+    assert(sum(component_seeds) == vseed.size());
   }
   else if (seed_edges_only){
     for (uint i=0; i< latent_factors_inmem.size(); i++){
@@ -274,21 +295,20 @@ int main(int argc,  const char *argv[]) {
     //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
     /* Run */
     //while(true){
-    KcoresProgram program;
-    //num_active = 0;
-    graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
-    set_engine_flags(engine);
-    engine.run(program, 1);
-    std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
-    for (uint i=0; i< (M==N?M:M+N); i++){
-      if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
-        latent_factors_inmem[i].next_active = false;
-        latent_factors_inmem[i].active = true;
+      SubgraphsProgram program;
+      graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
+      set_engine_flags(engine);
+      engine.run(program, 1);
+      std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
+      for (uint i=0; i< latent_factors_inmem.size(); i++){
+        if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
+          latent_factors_inmem[i].next_active = false;
+           latent_factors_inmem[i].active = true;
+        }
       }
-    }
-    if (links >= edges){
-      std::cout<<"Grabbed enough edges!" << std::endl;
-      break;
+      if (links >= edges){
+        std::cout<<"Grabbed enough edges!" << std::endl;
+        break;
     }
   }
 
@@ -297,12 +317,27 @@ int main(int argc,  const char *argv[]) {
     logstream(LOG_INFO)<<"component edges sum: " << sum(component_edges) << std::endl;
 
     int total_written = 0;
-    for (uint i=0; i< nodes; i++)
-      if (component_nodes[i] > 0 && component_edges[i] > 0){
+    assert(sum(component_nodes) == components.size());
+    int total_seeds = 0;
+    for (uint i=0; i< component_nodes.size(); i++){
+      if (component_nodes[i] > 1 || component_edges[i] > 0){
         fprintf(pfile, "%d %d %d %d\n", i, (int)component_nodes[i], (int)component_edges[i], (int)component_seeds[i]);
         total_written++;
+        total_seeds+= component_seeds[i];
       }
+      if (component_nodes[i] > 1 && component_edges[i] == 0)
+         logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_nodes[i] << " but not edges!" <<std::endl;
+      if (component_nodes[i] == 0 && component_edges[i] > 0)
+         logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not nodes!" <<std::endl;
+      if (component_seeds[i] == 0 && component_edges[i] > 0)
+         logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not seeds!" << std::endl;
+      if (component_edges[i] < component_nodes[i] +2)
+        logstream(LOG_FATAL)<<"Bug: component " << i << " has missing edges: " << component_edges[i] << " nodes: " << component_nodes << std::endl;
+    }
+
     logstream(LOG_INFO)<<"total written components: " << total_written << " sum : " << sum(component_nodes) << std::endl;
+    logstream(LOG_INFO)<<"Singleton nodes (no edges): " << singleton_nodes << std::endl;
+    logstream(LOG_INFO)<<"Total seeds: " << total_seeds << std::endl;
   }
   else { 
     std::cout<< iiter << ") Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;

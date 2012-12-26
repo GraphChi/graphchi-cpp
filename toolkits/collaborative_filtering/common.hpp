@@ -36,6 +36,9 @@
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 
+#ifndef getline
+#include "getline.hpp" //fix for missing getline() function on MAC OS
+#endif 
 
 using namespace graphchi;
 
