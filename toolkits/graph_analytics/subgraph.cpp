@@ -142,6 +142,8 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
         break;
       if (other.done)
         continue;
+      if (square && vertex.id() > vertex.edge(e)->vertex_id())
+        continue;
       fprintf(pfile, "%u %u %u\n", vertex.id()+1, vertex.edge(e)->vertex_id()+1,iiter+1);
       links++;
       if (!other.done){
@@ -235,7 +237,6 @@ int main(int argc,  const char *argv[]) {
     assert((int)components.size() <= (int) latent_factors_inmem.size());
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
-      //if (components[i] == 1104 || i == 1104 || i == 1103 || i == 1105)
       if (debug)
       logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];
@@ -256,8 +257,17 @@ int main(int argc,  const char *argv[]) {
     }
   }
 
-  pfile = fopen((datafile +".out").c_str(), "w");
-  std::cout<<"Writing output to: " << datafile +".out" << std::endl;
+  std::string suffix;
+  if (cc != "")
+    suffix = "-cc.txt";
+  else if (seed_edges_only)
+    suffix = "-subset.txt";
+  else if (_degree)
+    suffix = "-degree.txt";
+  else suffix = "-subgraph.txt";
+
+  pfile = open_file((datafile + suffix).c_str(), "w", false);
+  std::cout<<"Writing output to: " << datafile << suffix << std::endl;
 
   num_active = 0;
   for (iiter=0; iiter< max_iter; iiter++){

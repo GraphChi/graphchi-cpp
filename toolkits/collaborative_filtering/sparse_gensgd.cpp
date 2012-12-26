@@ -648,7 +648,6 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       feature_control & fc, 
       bool square = false) {
 
-    int ret_code;
     MM_typecode matcode;
     FILE *f;
     size_t nz;   

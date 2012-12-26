@@ -25,7 +25,8 @@
  * Matrix factorization with the Bias Stochastic Gradient Descent (BIASSGD) algorithm.
  * Algorithm is described in the paper:
  * Y. Koren. Factorization Meets the Neighborhood: a Multifaceted Collaborative Filtering Model. ACM SIGKDD 2008. Equation (5).
- * 
+ * Thanks to Zeno Gantner, MyMediaLight for teaching me how to compute the derivative in case of logistic and absolute loss.
+ * http://mymedialite.net/
  */
 
 
