@@ -658,17 +658,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
       info_file = true;
-      if (mm_read_banner(ff, &matcode) != 0){
-        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-      }
-      if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-      /* find out size of sparse matrix .... */
-      if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
-        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-      }
-
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
       fclose(ff);
     }
 
@@ -678,16 +668,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       return; //missing validaiton data, nothing to compute
     }
     if (!info_file){
-      if (mm_read_banner(f, &matcode) != 0)
-        logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
-
-      if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-        logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-      /* find out size of sparse matrix .... */
-      if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-        logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-      }
+      read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
     }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;

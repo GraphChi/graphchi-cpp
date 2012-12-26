@@ -48,6 +48,7 @@ using namespace graphchi;
 int square = 0;
 int tokens_per_row = 3;
 int _degree = 0;
+int seed_edges_only = 0;
 std::string cc;
 
 bool debug = false;
@@ -113,13 +114,16 @@ struct KcoresProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     else if (cc != ""){
       assert(vdata.component>= 0 && vdata.component < component_nodes.size());
       //if (vertex.id() == 1104 || vertex.id() == 1103 || vertex.id() == 1105)
+      if (debug)
       logstream(LOG_DEBUG)<<"Node " << vertex.id() << " has " << vertex.num_edges() << std::endl;
       component_nodes[vdata.component]++;
       for(int e=0; e < vertex.num_edges(); e++) {
         vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         //if (vertex.id() ==1103 && vertex.edge(e)->vertex_id() < 100000)
+        if (debug)
         logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
         if (vdata.component == other.component && vertex.id() < vertex.edge(e)->vertex_id()){
+          if (debug)
           logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
           component_edges[vdata.component]++;
         }
@@ -181,8 +185,9 @@ int main(int argc,  const char *argv[]) {
   orig_edges         = get_option_int("orig_edges", orig_edges);
   _degree =  get_option_int("degree", _degree);
   cc = get_option_string("cc", cc);
+  seed_edges_only = get_option_int("seed_edges_only", seed_edges_only);
 
-  if (_degree || cc != "")
+  if (_degree || cc != "" || seed_edges_only)
     max_iter = 1;
 
   std::string seeds   = get_option_string("seeds","");
@@ -215,11 +220,11 @@ int main(int argc,  const char *argv[]) {
       latent_factors_inmem[node-1].active = true;
     }
   }
-  else {
+  else { /* load initial set of seeds from file */
     vseed = load_matrix_market_vector(seed_file, false, false);
     for (int i=0; i< vseed.size(); i++){
-      assert(vseed[i] < latent_factors_inmem.size());
-      latent_factors_inmem[vseed[i]].active = true;
+      assert(vseed[i] > 0 && vseed[i] <= latent_factors_inmem.size());
+      latent_factors_inmem[vseed[i]-1].active = true;
     }
   }
 
@@ -231,6 +236,7 @@ int main(int argc,  const char *argv[]) {
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
       //if (components[i] == 1104 || i == 1104 || i == 1103 || i == 1105)
+      if (debug)
       logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];
     }
@@ -240,6 +246,13 @@ int main(int argc,  const char *argv[]) {
     for (uint i=0; i< vseed.size(); i++){
       assert(vseed[i] >= 1 && vseed[i] <= latent_factors_inmem.size());
       component_seeds[latent_factors_inmem[vseed[i]-1].component]++;
+    }
+  }
+  else if (seed_edges_only){
+    for (uint i=0; i< latent_factors_inmem.size(); i++){
+      vertex_data & vdata = latent_factors_inmem[i];
+      if (!vdata.active)
+        vdata.done = true;
     }
   }
 

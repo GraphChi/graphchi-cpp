@@ -41,7 +41,7 @@
 #include "../parsers/common.hpp"
 #include <omp.h>
 #define MAX_FEATAURES 256
-#define FEATURE_WIDTH 21//MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 56//MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
 double gensgd_rate2 = 1e-02;
@@ -65,6 +65,7 @@ int round_float = 0;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
 float cutoff = 0;
+float val_cutoff = 0;
 std::string format = "libsvm";
 enum file_types{
   TRAINING = 0,
@@ -335,7 +336,14 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i, type != TRAINING);
+      uint pos = get_node_id(pch, -1, i, type != TRAINING);
       token++;
+      if (type != TRAINING && pos == (uint)-1){ //this feature was not observed on training, skip
+        continue;
+      }
+      valarray[index] = 0; 
+      positions[index] = pos;
+      index++;
     }
     else if (token == fc.to_pos){
       /* READ TO */
@@ -547,7 +555,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   assert(L > 0);
   assert(globalMean != 0);
   globalMean /= L;
-  logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
+  std::cout<<"Coputed global mean is: " << globalMean << std::endl;
 
   fclose(f);
 
@@ -632,11 +640,12 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
     double _M = 0;
     double _N = 0;
     std::vector<std::pair<double, double> > realPrediction;
+    double avg_pred = 0;
 
     for (size_t i=0; i<nz; i++)
     {
       int index;
-      if (!read_line(f, test, i, I, J, val, valarray, positions, index, VALIDATION, skipped_features))
+      if (!read_line(f, validation, i, I, J, val, valarray, positions, index, VALIDATION, skipped_features))
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
 
       if (I == (uint)-1 || J == (uint)-1){
@@ -652,24 +661,22 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       
       fvec sum;
       double exp_prediction = 0;
-      compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany, exp_prediction);
+      dvalidation_rmse += compute_prediction(I, J, val, prediction, &valarray[0], &positions[0], index, prediction_func, &sum, node_array, howmany, exp_prediction);
+      avg_pred += prediction;
       if (calc_roc)
-        realPrediction.push_back(std::make_pair(val, prediction));
+        realPrediction.push_back(std::make_pair(val, exp_prediction));
      
-      double temp_pred = prediction;
-      temp_pred = std::min(temp_pred, maxval);
-      temp_pred = std::max(temp_pred, minval); 
-      dvalidation_rmse += pow(prediction - val, 2);
-      if (prediction < cutoff && val >= cutoff)
+      if (prediction < cutoff && val >= val_cutoff)
         errors++;
-      else if (prediction >= cutoff && val < cutoff)
+      else if (prediction >= cutoff && val < val_cutoff)
         errors++;
     }
 
     fclose(f);
 
+    std::cout<<"avg validation prediction: " << avg_pred/(double)nz << std::endl;
     assert(Le > 0);
-    dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)Le);
+    dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)(Le-skipped_nodes));
     std::cout<<"  Validation " << error_names[loss_type] << " : " << std::setw(10) << dvalidation_rmse;
     if (calc_error)
       std::cout<<" Validation Err: " << std::setw(10) << ((double)errors/(double)(nz-skipped_nodes));
@@ -706,9 +713,9 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       gcontext.set_last_iteration(gcontext.iteration);
     }
     if (skipped_features > 0)
-      logstream(LOG_DEBUG)<<"Skipped " << skipped_features << " when reading from file. " << std::endl;
+      std::cout<<"Skipped " << skipped_features << " when reading from file. " << std::endl;
     if (skipped_nodes > 0)
-      logstream(LOG_DEBUG)<<"Skipped " << skipped_nodes << " when reading from file. " << std::endl;
+      std::cout<<"Skipped " << skipped_nodes << " when reading from file. " << std::endl;
   }
 
 
@@ -1095,6 +1102,7 @@ int main(int argc, const char ** argv) {
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
+  val_cutoff = get_option_float("val_cutoff", val_cutoff);
  // format = get_option_string("format", format);
   binary = get_option_int("binary", binary);
 

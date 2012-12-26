@@ -92,7 +92,7 @@ void parse_command_line_args(){
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
 
   /* find out loss type (optional, for SGD variants only) */
-  std::string loss              = get_option_string("loss", loss);
+  loss              = get_option_string("loss", loss);
   if (loss == "square")
     loss_type = SQUARE;
   else if (loss == "logistic")
