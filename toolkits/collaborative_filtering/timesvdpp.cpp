@@ -287,7 +287,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
         vertex_data & data = latent_factors_inmem[pos];
         time_svdpp_movie movie(data);
         Map<vec> y(movie.y, D);
-        sumY += sum(y); //y
+        sumY += sum((const vec&)y); //y
       }
 
       for( int k=0; k<dim; ++k) {
