@@ -318,6 +318,7 @@ int main(int argc,  const char *argv[]) {
 
     int total_written = 0;
     assert(sum(component_nodes) == components.size());
+    assert(pfile != NULL);
     int total_seeds = 0;
     for (uint i=0; i< component_nodes.size(); i++){
       if (component_nodes[i] > 1 || component_edges[i] > 0){
@@ -331,8 +332,8 @@ int main(int argc,  const char *argv[]) {
          logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not nodes!" <<std::endl;
       if (component_seeds[i] == 0 && component_edges[i] > 0)
          logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not seeds!" << std::endl;
-      if (component_edges[i] > 0 && component_edges[i] < component_nodes[i] +2)
-        logstream(LOG_FATAL)<<"Bug: component " << i << " has missing edges: " << component_edges[i] << " nodes: " << component_nodes << std::endl;
+      if (component_edges[i] > 0 && component_edges[i]+2 < component_nodes[i] )
+        logstream(LOG_FATAL)<<"Bug: component " << i << " has missing edges: " << component_edges[i] << " nodes: " << component_nodes[i] << std::endl;
     }
 
     logstream(LOG_INFO)<<"total written components: " << total_written << " sum : " << sum(component_nodes) << std::endl;
