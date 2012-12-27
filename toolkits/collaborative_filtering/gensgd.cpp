@@ -581,9 +581,12 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (square && I == J)
         continue;
 
-      if (I>= M || J >= N)
-        logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
-
+      if (I>= M || J >= N){
+        if (i == 0)
+          logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
+        else 
+          logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
+      }
       //calc stats
       L++;
       globalMean += val;

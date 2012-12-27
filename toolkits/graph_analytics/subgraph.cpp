@@ -92,12 +92,12 @@ std::vector<vertex_data> latent_factors_inmem;
 vec component_edges;
 vec component_nodes;
 vec component_seeds;
-
+size_t changes = 0;
 #include "../collaborative_filtering/io.hpp"
 
 struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
-  /**
+   /**
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
@@ -331,7 +331,7 @@ int main(int argc,  const char *argv[]) {
          logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not nodes!" <<std::endl;
       if (component_seeds[i] == 0 && component_edges[i] > 0)
          logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not seeds!" << std::endl;
-      if (component_edges[i] < component_nodes[i] +2)
+      if (component_edges[i] > 0 && component_edges[i] < component_nodes[i] +2)
         logstream(LOG_FATAL)<<"Bug: component " << i << " has missing edges: " << component_edges[i] << " nodes: " << component_nodes << std::endl;
     }
 
