@@ -240,7 +240,6 @@ int main(int argc,  const char *argv[]) {
   }
   else { /* load initial set of seeds from file */
     vseed = load_matrix_market_vector(seed_file, false, false);
-#pragma omp parallel for
     for (int i=0; i< vseed.size(); i++){
       assert(vseed[i] > 0 && vseed[i] <= latent_factors_inmem.size());
       latent_factors_inmem[vseed[i]-1].active = true;
@@ -253,7 +252,6 @@ int main(int argc,  const char *argv[]) {
   if (cc != ""){
     components = load_matrix_market_vector(cc, false,true);
     assert((int)components.size() <= (int) latent_factors_inmem.size());
-#pragma omp parallel for
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
       assert(components[i] >= 1 && components[i] < nodes);
