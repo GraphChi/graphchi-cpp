@@ -240,7 +240,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       }
       else assert(false);
 
-      if (I ==987654321)
+      if (I ==987654321 || J== 987654321) //hack - to be removed later
         continue;
       I--;  /* adjust from 1-based to 0-based */
       J--;

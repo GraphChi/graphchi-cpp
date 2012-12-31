@@ -27,36 +27,25 @@
 #include <limits>
 #include <iostream>
 #include "graphchi_basic_includes.hpp"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
 #include "../collaborative_filtering/eigen_wrapper.hpp"
 #include "../collaborative_filtering/timer.hpp"
+#include "../collaborative_filtering/common.hpp"
 
 using namespace graphchi;
 
-double minval = -1e100;
-double maxval = 1e100;
-std::string training;
-std::string validation;
-std::string test;
-uint M, N, Me, Ne, Le, K;
-size_t L;
-double globalMean = 0;
 int square = 0;
 int tokens_per_row = 3;
 
-/// RMSE computation
-double rmse=0.0;
 bool debug = false;
 int max_iter = 50;
-bool info_file = false;
 ivec active_nodes_num;
 ivec active_links_num;
 int iiter = 0; //current iteration
-int nodes = 0;
+uint nodes = 0;
+uint orig_edges = 0;
 uint num_active = 0;
 uint links = 0;
 mutex mymutex;
@@ -187,6 +176,8 @@ int main(int argc,  const char *argv[]) {
   datafile      = get_option_string("training");
   square        = get_option_int("square", 0);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  nodes = get_option_int("nodes", nodes);
+  orig_edges = get_option_int("orig_edges", orig_edges);
 
   active_nodes_num = ivec(max_iter+1);
   active_links_num = ivec(max_iter+1);
@@ -204,24 +195,22 @@ int main(int argc,  const char *argv[]) {
   int nshards = 0;
   if (tokens_per_row == 4 )
     convert_matrixmarket4<edge_data>(datafile, false, square);
-  else if (tokens_per_row == 3) 
-    convert_matrixmarket<edge_data>(datafile);
+  else if (tokens_per_row == 3 || tokens_per_row == 2) 
+    convert_matrixmarket<edge_data>(datafile, NULL, nodes, orig_edges, tokens_per_row);
   else logstream(LOG_FATAL)<<"Please use --tokens_per_row=3 or --tokens_per_row=4" << std::endl;
 
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
+  KcoresProgram program;
+  graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
+ set_engine_flags(engine);
   int pass = 0;
   for (iiter=1; iiter< max_iter+1; iiter++){
     logstream(LOG_INFO)<<mytimer.current_time() << ") Going to run k-cores iteration " << iiter << std::endl;
     while(true){
       int prev_nodes = active_nodes_num[iiter];
      /* Run */
-      KcoresProgram program;
-      graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
-      engine.set_disable_vertexdata_storage();  
-      engine.set_modifies_inedges(false);
-      engine.set_modifies_outedges(false);
-      engine.run(program, 1);
+           engine.run(program, 1);
       pass++;
       int cur_nodes = active_nodes_num[iiter];
       if (prev_nodes == cur_nodes)

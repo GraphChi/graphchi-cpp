@@ -289,14 +289,14 @@ int main(int argc,  const char *argv[]) {
   std::cout<<"Writing output to: " << datafile << suffix << std::endl;
 
   num_active = 0;
+  graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
+  set_engine_flags(engine);
+  SubgraphsProgram program;
   for (iiter=0; iiter< max_iter; iiter++){
     //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
     /* Run */
     //while(true){
-      SubgraphsProgram program;
-      graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
-      set_engine_flags(engine);
-      engine.run(program, 1);
+     engine.run(program, 1);
       std::cout<< iiter << ") " << mytimer.current_time() << " Number of active nodes: " << num_active <<" Number of links: " << links << std::endl;
       for (uint i=0; i< latent_factors_inmem.size(); i++){
         if (latent_factors_inmem[i].next_active && !latent_factors_inmem[i].done){
