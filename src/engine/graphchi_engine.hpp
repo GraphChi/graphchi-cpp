@@ -112,7 +112,7 @@ namespace graphchi {
         size_t nupdates;
         size_t nedges;
         size_t work; // work is the number of edges processed
-        
+        unsigned int maxwindow; 
         mutex modification_lock;
 
         
@@ -176,7 +176,8 @@ namespace graphchi {
             enable_deterministic_parallelism = true;
             load_threads = get_option_int("loadthreads", 2);
             exec_threads = get_option_int("execthreads", omp_get_max_threads());
-            
+            maxwindow = 40000000;
+
             /* Load graph shard interval information */
             load_vertex_intervals();
             
@@ -593,7 +594,6 @@ namespace graphchi {
             /* Print configuration */
             print_config();
             
-            unsigned int maxwindow = 40000000; // Currently hard-coded - fix!
             
             /* Main loop */
             for(iter=0; iter < niters; iter++) {
@@ -829,7 +829,10 @@ namespace graphchi {
         void set_enable_vertexdata_storage() {
             this->disable_vertexdata_storage = false;
         }
-        
+       
+        void set_maxwindow(unsigned int _maxwindow){ 
+            maxwindow = _maxwindow;
+        }; 
         
     protected:
         

@@ -204,6 +204,7 @@ int main(int argc,  const char *argv[]) {
   KcoresProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
  set_engine_flags(engine);
+  engine.set_maxwindow(nodes+1);
   int pass = 0;
   for (iiter=1; iiter< max_iter+1; iiter++){
     logstream(LOG_INFO)<<mytimer.current_time() << ") Going to run k-cores iteration " << iiter << std::endl;

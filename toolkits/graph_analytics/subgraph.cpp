@@ -291,6 +291,7 @@ int main(int argc,  const char *argv[]) {
   num_active = 0;
   graphchi_engine<VertexDataType, EdgeDataType> engine(datafile, nshards, false, m); 
   set_engine_flags(engine);
+  engine.set_maxwindow(nodes+1);
   SubgraphsProgram program;
   for (iiter=0; iiter< max_iter; iiter++){
     //std::cout<<mytimer.current_time() << ") Going to run subgraph iteration " << iiter << std::endl;
