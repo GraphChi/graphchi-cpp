@@ -224,6 +224,7 @@ if (load_factors_from_file){
   test_predictions3(&als_tensor_predict);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

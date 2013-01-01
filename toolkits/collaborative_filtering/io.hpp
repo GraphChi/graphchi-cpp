@@ -95,7 +95,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
   /* if .info file is not present, try to find matrix market header inside the base_filename file */
   if (!info_file){
-    read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
+    read_matrix_market_banner_and_size(f, matcode, M, N, nz);
   }
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
