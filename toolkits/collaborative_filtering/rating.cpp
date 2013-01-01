@@ -34,7 +34,6 @@
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
-
 #include "eigen_wrapper.hpp"
 #include "timer.hpp"
 
@@ -45,6 +44,7 @@ int num_ratings;
 double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
+int tokens_per_row = 3;
 
 struct vertex_data {
   vec ratings;
@@ -56,12 +56,30 @@ struct vertex_data {
 
 
 };
+struct edge_data {
+  double weight;
+
+  edge_data() { weight = 0; }
+
+  edge_data(double weight) : weight(weight) { }
+};
+
+struct edge_data4 {
+  double weight;
+  double time;
+
+  edge_data4() { weight = time = 0; }
+
+  edge_data4(double weight, double time) : weight(weight), time(time) { }
+};
+
+
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
@@ -119,17 +137,17 @@ void read_factors(std::string base_filename, bool users) {
   size_t nz;
   uint _M, _N;
 
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-  }
+  f = fopen(base_filename.c_str(), "r");
+  if (f == NULL)
+    logstream(LOG_FATAL) << "Could not open file: " << base_filename << std::endl;
 
   if (mm_read_banner(f, &matcode) != 0)
     logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
 
   if (!mm_is_dense(matcode))
     logstream(LOG_FATAL) << "Problem reading input file: " << base_filename << " Should be in dense matrix market format"<< std::endl;
-  uint feature_width;
   /* find out size of sparse matrix .... */
+  uint feature_width;
   if (users){
     if ((ret_code = mm_read_mtx_array_size(f, &_M, &feature_width)) !=0) {
       logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
@@ -145,9 +163,9 @@ void read_factors(std::string base_filename, bool users) {
       logstream(LOG_FATAL) << "Wrong size of feature vector matrix. Should be " << N << " rows instead of " << _N << std::endl;
    }
 
-  D = feature_width;
+  D = (int)feature_width;
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << (users? M :N) << " x " << D << ", non-zeros: " << (users? M :N)*D << std::endl;
+    << (users? M :N) << " x " << D << ", non-zeros: " << (users?M:N)*D << std::endl;
 
   double val;
   nz = M*D;
@@ -173,23 +191,6 @@ void read_factors(std::string base_filename, bool users) {
 #include "io.hpp"
 
 /** compute a missing value based on Rating algorithm */
-float nmf_predict(const vertex_data& user, 
-    const vertex_data& movie, 
-    const float rating, 
-    double & prediction){
-
-  prediction = dot_prod(user.pvec, movie.pvec);
-  //truncate prediction to allowed values
-  prediction = std::min((double)prediction, maxval);
-  prediction = std::max((double)prediction, minval);
-  //return the squared error
-  float err = rating - prediction;
-  assert(!std::isnan(err));
-  return err*err; 
-
-}
-
-
 
 
 
@@ -322,7 +323,6 @@ void output_knn_result(std::string filename) {
 int main(int argc, const char ** argv) {
 
   mytimer.start();
-  
   print_copyright();
 
   /* GraphChi initialization will read the command line 
@@ -342,15 +342,20 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"num_ratings, the number of recomended items for each user, should be >=1 " << std::endl;
 
   debug         = get_option_int("debug", 0);
+  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = 0;
+  if (tokens_per_row == 3)
+     nshards = convert_matrixmarket<edge_data>(training);
+  else if (tokens_per_row == 4)
+     nshards = convert_matrixmarket4<edge_data4>(training);
+  else logstream(LOG_FATAL)<<"--tokens_per_row should be either 3 or 4" << std::endl;
+
   assert(M > 0 && N > 0);
   latent_factors_inmem.resize(M+N); // Initialize in-memory vertices.
-  
   read_factors<vertex_data>(training + "_U.mm", true);
   read_factors<vertex_data>(training + "_V.mm", false);
-  
   if ((uint)num_ratings > N){
     logstream(LOG_WARNING)<<"num_ratings is too big - setting it to: " << N << std::endl;
     num_ratings = N;
