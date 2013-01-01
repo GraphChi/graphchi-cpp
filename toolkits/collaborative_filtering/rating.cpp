@@ -316,7 +316,7 @@ struct  MMOutputter_ids{
 void output_knn_result(std::string filename) {
   MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i.");
   MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i.");
-  logstream(LOG_INFO) << "Rating output files (in matrix market format): " << filename << ".ratings" <<
+  std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                            ", " << filename + ".ids " << std::endl;
 }
 
@@ -375,6 +375,7 @@ int main(int argc, const char ** argv) {
 
   rating_stats();
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }
