@@ -32,9 +32,8 @@
 #include <cstdio>
 #include <limits>
 #include <iostream>
+#include <set>
 #include "graphchi_basic_includes.hpp"
-//#include "../../example_apps/matrix_factorization/matrixmarket/mmio.h"
-//#include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 #include "api/chifilenames.hpp"
 #include "api/vertex_aggregator.hpp"
 #include "preprocessing/sharder.hpp"
@@ -44,11 +43,13 @@
 #include "../collaborative_filtering/common.hpp"
 
 using namespace graphchi;
+using namespace std;
 
 int square = 0;
 int tokens_per_row = 3;
 int _degree = 0;
 int seed_edges_only = 0;
+int undirected = 1;
 std::string cc;
 size_t singleton_nodes = 0;
 bool debug = false;
@@ -113,7 +114,7 @@ struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     /* calc component number of nodes and edges and finish */
     else if (cc != ""){
       assert(vdata.component>= 0 && vdata.component < component_nodes.size());
-      if (debug)
+      if (debug && vdata.component == 9322220)
       logstream(LOG_DEBUG)<<"Node " << vertex.id() << " has " << vertex.num_edges() << std::endl;
 
       if (vdata.component == 0)
@@ -131,13 +132,14 @@ struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
       for(int e=0; e < vertex.num_edges(); e++) {
         vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        if (debug)
+        if (debug && vdata.component == 9322220)
         logstream(LOG_DEBUG)<<"Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
         
         if (vdata.component != other.component)
            logstream(LOG_FATAL)<<"BUG Going over edge: " << vertex.id() << "=>" << vertex.edge(e)->vertex_id() << " component: " << vdata.component <<" : "<<other.component<< " seed? " << vdata.active << std::endl;
         if (vertex.id() < vertex.edge(e)->vertex_id()){
-          if (debug)
+
+          if (debug && other.component == 9322220)
           logstream(LOG_INFO)<<"Added an edge for component: " << other.component << std::endl;
           mymutex.lock();
           component_edges[vdata.component]++;
@@ -152,16 +154,30 @@ struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
     mymutex.lock();
     num_active++;
+  
+    std::set<uint> myset;
+    std::set<uint>::iterator it;
+
     for(int e=0; e < vertex.num_edges(); e++) {
       vertex_data & other = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      if (links >= edges)
+       if (links >= edges)
         break;
       if (other.done)
         continue;
-      if (square && vertex.id() > vertex.edge(e)->vertex_id())
+      if (seed_edges_only && !other.active)
         continue;
+      //solve a bug where an edge appear twice if A->B and B->A in the data
+      if (undirected){
+      it = myset.find(vertex.edge(e)->vertex_id());
+      if (it != myset.end())
+        continue;
+      }
       fprintf(pfile, "%u %u %u\n", vertex.id()+1, vertex.edge(e)->vertex_id()+1,iiter+1);
-      links++;
+      if (undirected)
+        myset.insert(vertex.edge(e)->vertex_id());
+      if (debug && (vertex.id()+1 == 9322220 || vertex.edge(e)->vertex_id()+1 == 9322220))
+        cout<<"Found edge: $$$$ " << vertex.id() << " => "  << vertex.edge(e)->vertex_id()+1 << " other.done " << other.done << endl;
+       links++;
       if (!other.done){
         other.next_active = true;
       }
@@ -192,6 +208,7 @@ int main(int argc,  const char *argv[]) {
   std::string datafile;
   int max_iter    = get_option_int("hops", 3);  // Number of iterations
   bool quiet    = get_option_int("quiet", 0);
+  undirected    = get_option_int("undirected", undirected);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);
   debug         = get_option_int("debug", 0);
@@ -255,7 +272,7 @@ int main(int argc,  const char *argv[]) {
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
       assert(components[i] >= 1 && components[i] < nodes);
-      if (debug)
+      if (debug && components[i] == 9322220)
       logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];
     }
@@ -333,6 +350,8 @@ int main(int argc,  const char *argv[]) {
          logstream(LOG_FATAL)<<"Bug: component " << i << " has " << component_edges[i] << " but not seeds!" << std::endl;
       if (component_edges[i] > 0 && component_edges[i]+2 < component_nodes[i] )
         logstream(LOG_FATAL)<<"Bug: component " << i << " has missing edges: " << component_edges[i] << " nodes: " << component_nodes[i] << std::endl;
+      if (component_nodes[i] == 2 && component_edges[i] == 2)
+        logstream(LOG_FATAL)<<"Bug: component " << i << " 2 nodes +2 edges: " << component_edges[i] << " nodes: " << component_nodes[i] << std::endl;
     }
 
     logstream(LOG_INFO)<<"total written components: " << total_written << " sum : " << sum(component_nodes) << std::endl;
