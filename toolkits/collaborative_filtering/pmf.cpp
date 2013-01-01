@@ -110,9 +110,9 @@ float pmf_predict(const vertex_data& user,
   if (iiter > pmf_burn_in){
      if (pedge){
        if (iiter == pmf_burn_in+1)
-         ((edge_data*)pedge)->avgprd = 0;
-       ((edge_data*)pedge)->avgprd += prediction;
-       err = pow((((edge_data*)pedge)->avgprd / (iiter - pmf_burn_in)) - rating, 2);
+         (*(float*)pedge) = 0;
+       (*(float*)pedge) += prediction;
+       err = pow(((*(float*)pedge) / (iiter - pmf_burn_in)) - rating, 2);
      }
   }
   else {
@@ -318,7 +318,7 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose();
       if (compute_rmse) {
         double prediction;
-        vdata.rmse += pmf_predict(vdata, nbr_latent, observation, prediction, (edge_data*)&edge);
+        vdata.rmse += pmf_predict(vdata, nbr_latent, observation, prediction, (void*)&edge.avgprd);
         vertex.edge(e)->set_data(edge);
       }
     }
