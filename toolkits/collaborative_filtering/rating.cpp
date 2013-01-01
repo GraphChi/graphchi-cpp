@@ -343,6 +343,7 @@ int main(int argc, const char ** argv) {
 
   debug         = get_option_int("debug", 0);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  parse_command_line_args();
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = 0;
