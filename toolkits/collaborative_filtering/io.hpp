@@ -169,7 +169,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3) {
+int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   MM_typecode matcode;
   FILE *f;
@@ -187,11 +187,17 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    int rc;
+    if (type == TRAINING)
+       rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+    else rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&Me, &Ne, &Le, &globalMean2, &K);
     if (rc != 5)
       logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename+ suffix << ".gm" << std::endl;
     fclose(inf);
-    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
+    if (type == TRAINING)
+      logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
+    else 
+      logstream(LOG_INFO) << "Opened VLIDATION matrix size: " <<Me << " x " << Ne << " Global mean is: " << globalMean2 << " time bins: " << K << " Now creating shards." << std::endl;
     return nshards;
   }   
 
@@ -204,7 +210,10 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   /* auto detect presence of file named base_filename.info to find out matrix market size */
   if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
     info_file = true;
-    read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
+    if (type == TRAINING)
+      read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
+    else
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
     fclose(ff);
   }
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
@@ -212,17 +221,30 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   }
 
   if ((nodes == 0 && edges == 0) && !info_file){
+    if (type == TRAINING)
     read_matrix_market_banner_and_size(f, matcode, M, N, nz);
+    else
+    read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
   }
   else if (!info_file){
+    if (type == TRAINING){
     M = N = nodes;
     nz = edges;
+    }
+    else {
+    Me = Ne = nodes;
+    nz = edges;
+    }
   }
-  L=nz;
+  if (type == TRAINING)
+    L=nz;
+  else Le = nz;
 
+  if (type == TRAINING)
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
-
+  else
+  logstream(LOG_INFO) << "Starting to read VALIDATION matrix-market input. Matrix dimensions: " << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
   uint I, J;
   double val = 1.0;
   if (!sharderobj.preprocessed_file_exists()) {
@@ -266,7 +288,10 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     }
 
     FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
+    if (type == TRAINING)
     fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
+    else 
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", Me, Ne, Le, globalMean2, K);
     fclose(outf);
 
 

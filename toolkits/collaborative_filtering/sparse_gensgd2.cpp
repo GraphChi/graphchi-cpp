@@ -67,11 +67,6 @@ int has_header_titles = 0;
 float cutoff = 0;
 float val_cutoff = 0;
 std::string format = "libsvm";
-enum file_types{
-  TRAINING = 0,
-  VALIDATION = 1,
-  TEST =2
-};
 
 
 struct single_map{

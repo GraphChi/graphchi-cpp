@@ -54,7 +54,6 @@
 
 #include "eigen_wrapper.hpp"
 #include "common.hpp"
-
 using namespace graphchi;
 
 double lambda = 0.065;
@@ -81,10 +80,12 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "io.hpp"
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 
 /** compute a missing value based on ALS algorithm */
 float als_predict(const vertex_data& user, 
@@ -151,7 +152,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse(&als_predict, gcontext);
+    //validation_rmse(&als_predict, gcontext);
+    run_validation(pvalidation_engine);
   }
 
 
@@ -211,7 +213,11 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-
+  int vshards = 0;
+  if (validation != ""){
+    vshards = convert_matrixmarket<float>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_predict);
+  }
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);

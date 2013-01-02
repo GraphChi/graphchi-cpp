@@ -58,9 +58,6 @@ int iiter = 0;
 vec validation_avgprod; //vector for storing temporary aggregated predictions for the MCMC method
 vec test_avgprod; //vector for strogin temporary aggregated predictions for the MCMC method
 size_t rmse_index = 0;
-enum{
-  TRAINING = 0, VALIDATION = 1, TEST = 3
-};
 int rmse_type = 0;
 
 struct vertex_data {

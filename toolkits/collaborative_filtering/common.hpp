@@ -49,9 +49,10 @@ std::string training;
 std::string validation;
 std::string test;
 uint M, N, K;
-size_t L;
-uint Me, Ne, Le;
+size_t L, Le;
+uint Me, Ne;
 double globalMean = 0;
+double globalMean2 = 0;
 double rmse=0.0;
 bool load_factors_from_file = false;
 int unittest = 0;
@@ -66,7 +67,9 @@ enum {
 };
 const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE"};
 int loss_type = SQUARE;
-
+enum {
+  TRAINING= 0, VALIDATION = 1, TEST = 2
+};
 
 void parse_command_line_args(){
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
