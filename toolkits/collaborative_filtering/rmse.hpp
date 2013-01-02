@@ -234,7 +234,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    dvalidation_rmse += time *(*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, &avgprd->operator[](i)); 
+    dvalidation_rmse += time *(*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, avgprd == NULL ? NULL : &avgprd->operator[](i)); 
 
   }
   fclose(f);
