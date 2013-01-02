@@ -134,7 +134,7 @@ void get_offsets(std::vector<int> & offsets){
   offsets[1] = M;
   offsets[2] = M+N;
  if (fc.hash_strings){
-   for (uint j=2; j< offsets.size(); j++){
+   for (uint j=2; j< offsets.size()-1; j++){
          offsets[j+1] = offsets[j] + fc.node_id_maps[j].string2nodeid.size();
           logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
    }
@@ -281,7 +281,7 @@ float get_value(char * pch, bool read_only){
 bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type){
 
   char * linebuf = NULL;
-  size_t linesize;
+  size_t linesize = 0;
   char linebuf_debug[1024];
 
   int token = 0;
