@@ -23,17 +23,11 @@
  * @section DESCRIPTION
  *
  * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm
- * using sparse factors.
+ * using sparse factors. Sparsity is obtained using the CoSaMP algorithm.
  *
  * 
  */
 
-
-
-#include <string>
-#include <algorithm>
-
-#include "graphchi_basic_includes.hpp"
 
 #include "cosamp.hpp"
 #include "eigen_wrapper.hpp"
@@ -62,6 +56,7 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "io.hpp"
@@ -76,6 +71,7 @@ double user_sparsity;
 double movie_sparsity;
 
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 
 /** compute a missing value based on ALS algorithm */
 float sparse_als_predict(const vertex_data& user, 
@@ -149,7 +145,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse(&sparse_als_predict, gcontext);
+    run_validation(pvalidation_engine, gcontext);
   }
 
 
@@ -190,8 +186,7 @@ void output_als_result(std::string filename) {
 
 int main(int argc, const char ** argv) {
 
-
-  print_copyright(); 
+  print_copyright();
  
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
@@ -219,15 +214,18 @@ if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algori
     logstream(LOG_FATAL)<<"Algorithm should be 1 for SPARSE_USR_FACTOR, 2 for SPARSE_ITM_FACTOR and 3 for SPARSE_BOTH_FACTORS" << std::endl;
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
- init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-
+  int nshards = convert_matrixmarket<EdgeDataType>(training);
+  init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &sparse_als_predict);
+  }
+ 
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
   }
-
 
   /* Run */
   ALSVerticesInMemProgram program;

@@ -468,7 +468,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   /* auto detect presence of file named base_filename.info to find out matrix market size */
   if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
     info_file = true;
-    read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
+    read_matrix_market_banner_and_size(ff, matcode, M, N, nz, base_filename);
   }
 
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
@@ -509,7 +509,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     }
   }
   else if (!info_file){
-    read_matrix_market_banner_and_size(f, matcode, M, N, nz);
+    read_matrix_market_banner_and_size(f, matcode, M, N, nz, base_filename);
   }
 
   if (M == 0 && N == 0)
@@ -603,7 +603,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
       info_file = true;
-      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, validation + ":info");
       fclose(ff);
     }
 
@@ -613,7 +613,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       return; //missing validaiton data, nothing to compute
     }
     if (!info_file){
-      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, validation);
     }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -733,14 +733,14 @@ void test_predictions_N(
   /* auto detect presence of file named base_filename.info to find out matrix market size */
   if ((ff = fopen((test + ":info").c_str(), "r")) != NULL) {
     info_file = true;
-    read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz); 
+    read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, test + ":info"); 
   }
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing validaiton data, nothing to compute
   }
   if (!info_file){
-    read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz); 
+    read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, test); 
   }
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))

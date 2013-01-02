@@ -26,10 +26,10 @@
 #include "types.hpp"
 #include "implicit.hpp"
 
-void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & Me, uint & Ne, size_t & nz){
+void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & Me, uint & Ne, size_t & nz, const std::string & filename){
 
   if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
+    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << filename << std::endl;
 
   /*  This is how one can screen matrix types if their application */
   /*  only supports a subset of the Matrix Market data types.      */
@@ -42,6 +42,46 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
   }
 }
 
+void read_global_mean(std::string base_filename, int type){
+  FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
+  int rc;
+  if (type == TRAINING)
+    rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
+  else rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&Me, &Ne, &Le, &globalMean2, &K);
+  if (rc != 5)
+    logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
+  fclose(inf);
+  if (type == TRAINING)
+    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
+  else 
+    logstream(LOG_INFO) << "Opened VLIDATION matrix size: " <<Me << " x " << Ne << " Global mean is: " << globalMean2 << " time bins: " << K << " Now creating shards." << std::endl;
+}
+
+void write_global_mean(std::string base_filename, int type){
+  FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
+  if (type == TRAINING)
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
+  else 
+    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", Me, Ne, Le, globalMean2, K);
+  fclose(outf);
+}
+
+bool try_to_detect_info_file(std::string base_filename, int type, size_t & nz){
+  MM_typecode matcode;
+  bool info_file = false;
+  FILE * ff = NULL;
+  /* auto detect presence of file named base_filename.info to find out matrix market size */
+  if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
+    info_file = true;
+    if (type == TRAINING)
+      read_matrix_market_banner_and_size(ff, matcode, M, N, nz, base_filename);
+    else
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, base_filename);
+    fclose(ff);
+  }
+  return info_file;
+}
+
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -51,7 +91,7 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false) {
+int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false, int type = TRAINING) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   MM_typecode matcode;
   FILE *f;
@@ -62,15 +102,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   int nshards;
   if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-    FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
-    if (rc != 5)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
-    fclose(inf);
-    if (K <= 0)
-      logstream(LOG_FATAL)<<"Incorrect number of time bins K in .gm file " << base_filename << ".gm" << std::endl;
-
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
+    read_global_mean(base_filename, type);
     return nshards;
   }   
 
@@ -78,30 +110,31 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   sharderobj.start_preprocessing();
 
 
-  bool info_file = false;
-  FILE * ff = NULL;
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-	if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
-    fclose(ff);
-  }
- 
-
-
+  bool info_file = try_to_detect_info_file(base_filename, type, nz);
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
+    if (type == VALIDATION){
+      logstream(LOG_INFO)<< "Did not find validation file: " << base_filename << std::endl;
+      return -1;
+    }
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
   /* if .info file is not present, try to find matrix market header inside the base_filename file */
   if (!info_file){
-    read_matrix_market_banner_and_size(f, matcode, M, N, nz);
+    read_matrix_market_banner_and_size(f, matcode, M, N, nz, base_filename);
   }
-  logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
+  if (type == TRAINING)
+    logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
+  else
+    logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
+    << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
   double val, time;
+  if (type == TRAINING)
+    L = nz;
+  else Le = nz;
 
   if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
@@ -125,7 +158,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       if (square && I == J)
         continue;
       globalMean += val; 
-      L++;
       sharderobj.preprocessing_add_edge(I, (square? J : (M + J)), als_edge_type(val, time+M+N));
       //in case of a tensor, add besides of the user-> movie edge also
       //time -> user and time-> movie edges
@@ -135,19 +167,22 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       }
     }
 
-    uint toadd = 0;
-    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+    if (type == TRAINING){
+      uint toadd = 0;
+      if (implicitratingtype == IMPLICIT_RATING_RANDOM)
       toadd = add_implicit_edges4(implicitratingtype, sharderobj);
-    globalMean += implicitratingvalue * toadd;
-    L += toadd;
+      globalMean += implicitratingvalue * toadd;
+      L += toadd;
+       globalMean /= L;
+      logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
+    }
+    else {
+      globalMean2 /= Le;
+      logstream(LOG_INFO) << "Global mean is: " << globalMean2 << " time bins: " << K << " . Now creating shards." << std::endl;
+    }
+    write_global_mean(base_filename, type);
 
     sharderobj.end_preprocessing();
-    globalMean /= L;
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
-    FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
-    fclose(outf);
-
 
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
@@ -161,7 +196,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
   return nshards;
 }
-
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
@@ -186,65 +220,50 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   int nshards;
   if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-    FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc;
-    if (type == TRAINING)
-       rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&M, &N, &L, &globalMean, &K);
-    else rc = fscanf(inf,"%d\n%d\n%ld\n%lg\n%d\n",&Me, &Ne, &Le, &globalMean2, &K);
-    if (rc != 5)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename+ suffix << ".gm" << std::endl;
-    fclose(inf);
-    if (type == TRAINING)
-      logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
-    else 
-      logstream(LOG_INFO) << "Opened VLIDATION matrix size: " <<Me << " x " << Ne << " Global mean is: " << globalMean2 << " time bins: " << K << " Now creating shards." << std::endl;
+    read_global_mean(base_filename, type);
     return nshards;
   }   
 
   sharder<als_edge_type> sharderobj(base_filename + suffix);
   sharderobj.start_preprocessing();
 
-
-  bool info_file = false;
-  FILE * ff = NULL;
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-  if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    if (type == TRAINING)
-      read_matrix_market_banner_and_size(ff, matcode, M, N, nz);
-    else
-      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
-    fclose(ff);
-  }
+  bool info_file = try_to_detect_info_file(base_filename, type, nz);
   if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
+    if (type == VALIDATION){
+      logstream(LOG_INFO)<<"Validation file: "  << base_filename << " is not found. " << std::endl;
+      return -1;
+    }
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
 
   if ((nodes == 0 && edges == 0) && !info_file){
     if (type == TRAINING)
-    read_matrix_market_banner_and_size(f, matcode, M, N, nz);
+      read_matrix_market_banner_and_size(f, matcode, M, N, nz, base_filename);
     else
-    read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+      read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, base_filename);
   }
   else if (!info_file){
     if (type == TRAINING){
-    M = N = nodes;
-    nz = edges;
+      M = N = nodes;
+      nz = edges;
     }
     else {
-    Me = Ne = nodes;
-    nz = edges;
+      Me = Ne = nodes;
+      nz = edges;
     }
   }
   if (type == TRAINING)
     L=nz;
-  else Le = nz;
+  else 
+    Le = nz;
 
   if (type == TRAINING)
-  logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << M << " x " << N << ", non-zeros: " << nz << std::endl;
+    logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
+      << M << " x " << N << ", non-zeros: " << nz << std::endl;
   else
-  logstream(LOG_INFO) << "Starting to read VALIDATION matrix-market input. Matrix dimensions: " << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
+    logstream(LOG_INFO) << "Starting to read VALIDATION matrix-market input. Matrix dimensions: "
+      << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
+
   uint I, J;
   double val = 1.0;
   if (!sharderobj.preprocessed_file_exists()) {
@@ -270,30 +289,31 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-      globalMean += val; 
+      if (type == TRAINING)
+        globalMean += val; 
+      else globalMean2 += val;
       sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
     }
-    uint toadd = 0;
-    if (implicitratingtype == IMPLICIT_RATING_RANDOM)
-      toadd = add_implicit_edges(implicitratingtype, sharderobj);
-    globalMean += implicitratingvalue * toadd;
-    L += toadd;
-
+    
+    if (type == TRAINING){
+      uint toadd = 0;
+      if (implicitratingtype == IMPLICIT_RATING_RANDOM)
+        toadd = add_implicit_edges(implicitratingtype, sharderobj);
+      globalMean += implicitratingvalue * toadd;
+      L += toadd;
+      globalMean /= L;
+      logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
+    }
+    else {
+      globalMean2 /= Le;
+      logstream(LOG_INFO) << "Global mean is: " << globalMean2 << " Now creating shards." << std::endl;
+    }
+    write_global_mean(base_filename, type); 
     sharderobj.end_preprocessing();
-    globalMean /= L;
-    logstream(LOG_INFO) << "Global mean is: " << globalMean << " Now creating shards." << std::endl;
 
     if (preprocessor != NULL) {
       preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
     }
-
-    FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    if (type == TRAINING)
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", M, N, L, globalMean, K);
-    else 
-    fprintf(outf, "%d\n%d\n%ld\n%lg\n%d\n", Me, Ne, Le, globalMean2, K);
-    fclose(outf);
-
 
   } else {
     logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;

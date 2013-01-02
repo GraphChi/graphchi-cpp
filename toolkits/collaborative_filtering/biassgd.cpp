@@ -47,18 +47,8 @@ struct vertex_data {
         bias = 0;
     }
    
-    //dot product 
-    double dot(const vertex_data &oth) const {
-        double x=0;
-        for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
-        return x;
-    }
-    
 };
 
-
-
-using namespace graphchi;
 
 
 /**
@@ -69,8 +59,10 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 #include "io.hpp"
 
 /** compute a missing value based on bias-SGD algorithm */
@@ -81,7 +73,7 @@ float bias_sgd_predict(const vertex_data& user,
     void * extra = NULL){
 
 
-  prediction = globalMean + user.bias + movie.bias + user.dot(movie);  
+  prediction = globalMean + user.bias + movie.bias + dot_prod(user.pvec, movie.pvec);  
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -108,7 +100,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
   void after_iteration(int iteration, graphchi_context &gcontext) {
     biassgd_gamma *= biassgd_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&bias_sgd_predict, gcontext);
+    run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -246,9 +238,13 @@ int main(int argc, const char ** argv) {
 
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket<EdgeDataType>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &bias_sgd_predict);
+  }
+ 
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);

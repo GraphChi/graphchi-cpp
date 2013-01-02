@@ -45,12 +45,6 @@ struct vertex_data {
     rmse = 0;
   }
 
-  double dot(const vertex_data &oth) const {
-    double x=0;
-    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
-    return x;
-  }
-
 };
 
 struct edge_data {
@@ -74,11 +68,12 @@ typedef vertex_data VertexDataType;
 typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
-
-#include "rmse.hpp"
 #include "io.hpp"
+#include "rmse.hpp"
+#include "rmse_engine4.hpp"
 
 /** compute a missing value based on WALS algorithm */
 float wals_predict(const vertex_data& user, 
@@ -88,7 +83,7 @@ float wals_predict(const vertex_data& user,
     void * extra = NULL){
 
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec, movie.pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -142,20 +137,9 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse(&wals_predict, gcontext, 4);
+    run_validation4(pvalidation_engine, gcontext);
   }
 
-  /**
-   * Called before an execution interval is started.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
-
-  /**
-   * Called after an execution interval has finished.
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-  }
 
 };
 
@@ -193,7 +177,7 @@ void output_als_result(std::string filename) {
 int main(int argc, const char ** argv) {
 
   print_copyright();
-  
+ 
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
@@ -214,6 +198,10 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
+  if (validation != ""){
+    int vshards = convert_matrixmarket4<EdgeDataType>(validation, false, M==N, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &wals_predict, true);
+  }
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
@@ -241,7 +229,7 @@ int main(int argc, const char ** argv) {
   }
  
   /* Report execution metrics */
-  if (!quiet) 
+  if (!quiet)
     metrics_report(m);
   return 0;
 }

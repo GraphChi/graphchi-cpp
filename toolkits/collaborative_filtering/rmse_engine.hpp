@@ -25,9 +25,9 @@
  */
 
 float (*pprediction_func)(const vertex_data&, const vertex_data&, const float, double &, void *) = NULL;
-mutex rmse_lock;
 vec validation_rmse_vec;
-
+bool user_nodes = true;
+int counter = 0;
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -38,12 +38,17 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
    *  compute validaton RMSE for a single user
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+    if (user_nodes && vertex.id() >= M)
+      return;
+    else if (!user_nodes && vertex.id() < M)
+      return;
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     for(int e=0; e < vertex.num_outedges(); e++) {
-      EdgeDataType observation = vertex.edge(e)->get_data();                
+      const EdgeDataType & observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
       double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, NULL);
+      assert(rmse <= pow(maxval - minval, 2));
       validation_rmse_vec[omp_get_thread_num()] += rmse;
     }
   }
@@ -66,18 +71,23 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
   }
 };
 
+
 template<typename VertexDataType, typename EdgeDataType>
 void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *& pvalidation_engine, int nshards,float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)){
   metrics * m = new metrics("validation_rmse_engine");
-  graphchi_engine<VertexDataType, EdgeDataType> * engine = new graphchi_engine<VertexDataType, EdgeDataType>(training, nshards, false, *m); 
+  graphchi_engine<VertexDataType, EdgeDataType> * engine = new graphchi_engine<VertexDataType, EdgeDataType>(validation, nshards, false, *m); 
   set_engine_flags(*engine);
   pvalidation_engine = engine;
   pprediction_func = prediction_func;
 }
 
 template<typename VertexDataType, typename EdgeDataType>
-void run_validation(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine){
+void run_validation(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine, graphchi_context & context){
+   //no validation data, no need to run validation engine calculations
+   if (pvalidation_engine == NULL)
+     return;
    ValidationRMSEProgram program;
    pvalidation_engine->run(program, 1);
 }
+
 #endif //__GRAPHCHI_RMSE_ENGINE

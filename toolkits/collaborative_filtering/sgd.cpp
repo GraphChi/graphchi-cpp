@@ -31,13 +31,6 @@
  */
 
 
-
-#include <string>
-#include <algorithm>
-#include <assert.h>
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-
 #include "eigen_wrapper.hpp"
 #include "common.hpp"
 
@@ -56,13 +49,6 @@ struct vertex_data {
         bias = 0;
     }
    
-    //dot product 
-    double dot(const vertex_data &oth) const {
-        double x=0;
-        for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i];
-        return x;
-    }
-    
 };
 
 #include "util.hpp"
@@ -75,9 +61,11 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 #include "io.hpp"
 
 /** compute a missing value based on SGD algorithm */
@@ -88,7 +76,7 @@ float sgd_predict(const vertex_data& user,
     void * extra = NULL){
 
 
-  prediction = user.dot(movie);
+  prediction = dot_prod(user.pvec,movie.pvec);
 
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
@@ -114,7 +102,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   void after_iteration(int iteration, graphchi_context &gcontext) {
     sgd_gamma *= sgd_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&sgd_predict, gcontext);
+    run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -205,14 +193,15 @@ int main(int argc, const char ** argv) {
   parse_command_line_args();
   parse_implicit_command_line();
 
-  mytimer.start();
-
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
-
+  int nshards = convert_matrixmarket<EdgeDataType>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-
-/* load initial state from disk (optional) */
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &sgd_predict);
+  }
+ 
+  /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);

@@ -16,6 +16,8 @@ echo "TESTING SVD-ONESIDED"
 ./toolkits/collaborative_filtering/svd_onesided --training=smallnetflix_mm --nsv=3 --nv=10 --max_iter=5 --quiet=1 --tol=1e-1
 echo "TESTING RBM"
 ./toolkits/collaborative_filtering/rbm --training=smallnetflix_mm --validation=smallnetflix_mme --minval=1 --maxval=5 --max_iter=6 --quiet=1
+echo "TESTING WALS"  
+./toolkits/collaborative_filtering/wals --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
 echo "TESTING ALS-TENSOR"  
 ./toolkits/collaborative_filtering/als_tensor --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
 rm -fR time_smallnetflix.*

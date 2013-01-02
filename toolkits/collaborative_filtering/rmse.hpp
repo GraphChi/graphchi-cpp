@@ -30,7 +30,7 @@
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
 #include "common.hpp"
-void read_matrix_market_banner_and_size(FILE * pfile, MM_typecode & matcode, uint & M, uint & N, size_t & nz);
+void read_matrix_market_banner_and_size(FILE * pfile, MM_typecode & matcode, uint & M, uint & N, size_t & nz, const std::string & filename);
 FILE * open_file(const char * filename, const char * mode, bool optional);
 
 timer mytimer;
@@ -102,7 +102,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   if (dosave)
     fout = open_file((test + ".predict").c_str(),"w", false);
   
-  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, test+".predict");
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -158,7 +158,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
   }
   FILE * fout = open_file((test + ".predict").c_str(),"w", false);
 
-  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, test+".predict");
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -206,7 +206,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     return; //missing validaiton data, nothing to compute
   }
 
-  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, validation);
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -234,7 +234,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    dvalidation_rmse += time *(*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); 
+    dvalidation_rmse += time *(*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, &avgprd->operator[](i)); 
 
   }
   fclose(f);
@@ -264,7 +264,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
     return; //missing validaiton data, nothing to compute
   }
 
-  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, validation);
   
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;

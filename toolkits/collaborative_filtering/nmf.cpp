@@ -62,11 +62,13 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 vec x1, x2;
 int iter;
 
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 #include "io.hpp"
 
 /** compute a missing value based on NMF algorithm */
@@ -191,7 +193,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     int now = iteration % 2;
     if (now == 0){
       training_rmse(iteration/2, gcontext);
-      validation_rmse(&nmf_predict, gcontext);
+      run_validation(pvalidation_engine, gcontext);
     }
   }
 };
@@ -250,7 +252,12 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    if (vshards != -1)
+       init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &nmf_predict);
+  }
+ 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);

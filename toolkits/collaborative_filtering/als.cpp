@@ -52,12 +52,10 @@
  */
 
 
-#include "eigen_wrapper.hpp"
 #include "common.hpp"
-using namespace graphchi;
+#include "eigen_wrapper.hpp"
 
 double lambda = 0.065;
-
 
 
 
@@ -152,8 +150,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    //validation_rmse(&als_predict, gcontext);
-    run_validation(pvalidation_engine);
+    run_validation(pvalidation_engine, gcontext);
   }
 
 
@@ -211,13 +208,13 @@ int main(int argc, const char ** argv) {
 
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket<EdgeDataType>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
-  int vshards = 0;
   if (validation != ""){
-    vshards = convert_matrixmarket<float>(validation, NULL, 0, 0, 3, VALIDATION);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_predict);
   }
+/* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
@@ -230,7 +227,6 @@ int main(int argc, const char ** argv) {
   pengine = &engine;
   engine.run(program, niters);
 
-
   /* Output latent factor matrices in matrix-market format */
   output_als_result(training);
   test_predictions(&als_predict);    
@@ -242,7 +238,7 @@ int main(int argc, const char ** argv) {
       logstream(LOG_FATAL)<<"Unit test 1 failed. Validation RMSE is: " << dvalidation_rmse << std::endl;
 
   }
-  
+ 
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);

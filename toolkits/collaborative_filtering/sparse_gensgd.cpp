@@ -652,7 +652,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((validation + ":info").c_str(), "r")) != NULL) {
       info_file = true;
-      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz);
+      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, validation + ":info");
       fclose(ff);
     }
 
@@ -662,7 +662,7 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       return; //missing validaiton data, nothing to compute
     }
     if (!info_file){
-      read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz);
+      read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, validation);
     }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
