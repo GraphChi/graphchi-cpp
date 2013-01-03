@@ -268,7 +268,14 @@ namespace graphchi {
             }
         }
         
-  
+        /**
+         * If the data is only in one shard, we can just
+         * keep running from memory.
+         */
+        bool is_inmemory_mode() {
+            return nshards == 1;
+        }
+        
         
         /**
          * Extends the window to fill the memory budget, but not over maxvid
@@ -277,21 +284,26 @@ namespace graphchi {
             /* Load degrees */
             degree_handler->load(fromvid, maxvid);
             
-            size_t memreq = 0;
-            int max_interval = maxvid - fromvid;
-            for(int i=0; i < max_interval; i++) {
-                degree deg = degree_handler->get_degree(fromvid + i);
-                int inc = deg.indegree;
-                int outc = deg.outdegree;
-                
-                // Raw data and object cost included
-                memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
-                if (memreq > membudget) {
-                    logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
-                    return fromvid + i - 1;  // Previous was enough
+            /* If is in-memory-mode, memory budget is not considered. */
+            if (is_inmemory_mode()) {
+                return maxvid;
+            } else {
+                size_t memreq = 0;
+                int max_interval = maxvid - fromvid;
+                for(int i=0; i < max_interval; i++) {
+                    degree deg = degree_handler->get_degree(fromvid + i);
+                    int inc = deg.indegree;
+                    int outc = deg.outdegree;
+                    
+                    // Raw data and object cost included
+                    memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
+                    if (memreq > membudget) {
+                        logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
+                        return fromvid + i - 1;  // Previous was enough
+                    }
                 }
+                return maxvid;
             }
-            return maxvid;
         }
         
         /** 
@@ -395,6 +407,54 @@ namespace graphchi {
             }
             m.stop_time(me, "execute-updates");
         }
+        
+        
+        /** Special method for running all iteration with the same vertex-vector.
+         This is a hacky solution.
+         FIXME:  this does not work well with deterministic parallelism. Needs a
+         a separate analysis phase to check which vertices can be run in parallel, and
+         then run it in chunks. Not difficult.
+         **/
+        void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
+                                        std::vector<svertex_t> &vertices) {
+            work = nupdates = 0;
+            for(iter=0; iter<niters; iter++) {
+                logstream(LOG_INFO) << "In-memory mode: Iteration " << iter << " starts." << std::endl;
+                chicontext.iteration = iter;
+                userprogram.before_iteration(iter, chicontext);
+                userprogram.before_exec_interval(0, (int)num_vertices(), chicontext);
+                
+                
+                if (use_selective_scheduling) {
+                    if (iter > 0 && !scheduler->has_new_tasks) {
+                        logstream(LOG_INFO) << "No new tasks to run!" << std::endl;
+                        break;
+                    }
+                    for(int i=0; i < (int)vertices.size(); i++) { // Could, should parallelize
+                        if (iter == 0 || scheduler->is_scheduled(i)) {
+                            vertices[i].scheduled =  true;
+                            nupdates++;
+                            work += vertices[i].inc + vertices[i].outc;
+                        } else {
+                            vertices[i].scheduled = false;
+                        }
+                    }
+                    
+                    scheduler->has_new_tasks = false; // Kind of misleading since scheduler may still have tasks - but no new tasks.
+                    scheduler->remove_tasks(0, (int)num_vertices());
+                } else {
+                    nupdates += num_vertices();
+                    work += num_edges();
+                }
+                
+                exec_updates(userprogram, vertices);
+                load_after_updates(vertices);
+                
+                userprogram.after_exec_interval(0, (int)num_vertices(), chicontext);
+                userprogram.after_iteration(iter, chicontext);
+            }
+        }
+        
         
         virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &edata) {
             size_t nvertices = vertices.size();
@@ -616,7 +676,8 @@ namespace graphchi {
                 chicontext.reset_deltas(exec_threads);
                 
                 /* Call iteration-begin event handler */
-                userprogram.before_iteration(iter, chicontext);
+                if (!is_inmemory_mode())  // Run sepately
+                    userprogram.before_iteration(iter, chicontext);
                 
                 /* Check scheduler. If no scheduled tasks, terminate. */
                 if (use_selective_scheduling) {
@@ -690,7 +751,14 @@ namespace graphchi {
                         
                         logstream(LOG_INFO) << "Start updates" << std::endl;
                         /* Execute updates */
-                        exec_updates(userprogram, vertices);
+                        if (!is_inmemory_mode()) {
+                            exec_updates(userprogram, vertices);
+                            /* Load phase after updates (used by the functional engine) */
+                            load_after_updates(vertices);
+                        } else {
+                            exec_updates_inmemory_mode(userprogram, vertices);
+                        }
+
                         logstream(LOG_INFO) << "Finished updates" << std::endl;
                         
                         /* Load phase after updates (used by the functional engine) */
@@ -710,7 +778,7 @@ namespace graphchi {
                         }
                     } // while subintervals
                  
-                    if (memoryshard->loaded()) {
+                    if (memoryshard->loaded() && !is_inmemory_mode()) {
                         logstream(LOG_INFO) << "Commit memshard" << std::endl;
 
                         memoryshard->commit(modifies_inedges, modifies_outedges);
@@ -724,7 +792,8 @@ namespace graphchi {
                     userprogram.after_exec_interval(interval_st, interval_en, chicontext);
                 } // For exec_interval
                 
-                userprogram.after_iteration(iter, chicontext);
+                if (!is_inmemory_mode())  // Run sepately
+                    userprogram.after_iteration(iter, chicontext);
 
                 
                 /* Move the sliding shard of the current interval to correct position and flush
