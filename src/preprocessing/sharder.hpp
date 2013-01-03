@@ -114,6 +114,7 @@ namespace graphchi {
         
         binary_adjacency_list_writer<EdgeDataType> * preproc_writer;
         
+        
     public:
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
@@ -225,7 +226,12 @@ namespace graphchi {
             m.start_time("execute_sharding");
             determine_number_of_shards(nshards_string);
             
+            if (nshards == 1) {
+                one_shard_intervals();
+            }
+            
             for(int phase=1; phase <= 2; ++phase) {
+                if (nshards == 1 && phase == 1) continue; // No need for the first phase
                 /* Start the sharing process */
                 
                 binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
@@ -316,6 +322,17 @@ namespace graphchi {
             assert(nshards == (int)intervals.size());
             
             logstream(LOG_INFO) << "Computed intervals." << std::endl;
+        }
+        
+        
+        void one_shard_intervals() {
+            assert(nshards == 1);
+            std::string fname = filename_intervals(basefilename, nshards);
+            FILE * f = fopen(fname.c_str(), "w");
+            intervals.push_back(std::pair<vid_t,vid_t>(0, max_vertex_id));
+            fprintf(f, "%u\n", max_vertex_id);
+            fclose(f);
+            assert(nshards == (int)intervals.size());
         }
         
         std::string shovel_filename(int shard) {
@@ -438,6 +455,19 @@ namespace graphchi {
          * To support different shard types, override this function!
          */
         virtual void write_shards() {
+            int membudget_mb = get_option_int("membudget_mb", 1024);
+            
+            // Check if we have enough memory to keep track
+            // of the vertex degrees in-memory (heuristic)
+            bool count_degrees_inmem = size_t(membudget_mb) * 1024 * 1024 / 3 > max_vertex_id * sizeof(degree);
+            
+            degree * degrees = NULL;
+            if (count_degrees_inmem) {
+                degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
+            }
+            
+            logstream(LOG_INFO) << "Degree file creation mode: " << (count_degrees_inmem ? "in-memory" : "memory-saving-diskbased") << std::endl;
+            
             for(int shard=0; shard < nshards; shard++) {
                 logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
                 
@@ -482,6 +512,11 @@ namespace graphchi {
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                     bwrite<EdgeDataType>(ef, ebuf, ebufptr, EdgeDataType(edge.value));
+                    
+                    if (degrees != NULL && edge.src != edge.dst) {
+                        degrees[edge.src].outdegree++;
+                        degrees[edge.dst].indegree++;
+                    }
                     
                     if ((edge.src != curvid)) {
                         // New vertex
@@ -536,7 +571,21 @@ namespace graphchi {
                 
             }
             
-            create_degree_file();
+            if (!count_degrees_inmem) {
+                // Use memory-efficient method to create degree-data
+                create_degree_file();
+            } else {
+                std::string degreefname = filename_degree_data(basefilename);
+                int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+                if (degreeOutF < 0) {
+                    logstream(LOG_ERROR) << "Could not create: " << degreeOutF << std::endl;
+                    assert(degreeOutF >= 0);
+                }
+                
+                writea(degreeOutF, degrees, sizeof(degree) * (1 + max_vertex_id));
+                free(degrees);
+                close(degreeOutF);
+            }
         }
         
         
@@ -647,7 +696,7 @@ namespace graphchi {
                     
                     for(int i=0; i<nvertices; i++) {
                         vbuf[2 * i] = vertices[i].num_inedges();
-                        vbuf[2 * i +1] = vertices[i].num_outedges();
+                        vbuf[2 * i + 1] = vertices[i].num_outedges();
                     }
                     pwritea(degreeOutF, vbuf, nvertices * sizeof(int) * 2, subinterval_st * sizeof(int) * 2);
                     
