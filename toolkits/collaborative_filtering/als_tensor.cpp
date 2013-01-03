@@ -23,12 +23,13 @@
  * @section DESCRIPTION
  *
  * Tensor factorization with the Alternative Least Squares (ALS) algorithm.
+ * Algorithm is described in: Tensor Decompositions, Alternating Least Squares and other Tales. P. Comon, X. Luciani and A. L. F. de Almeida. Special issue, Journal of Chemometrics. In memory of R. Harshman.
+ * August 16, 2009
  * 
  */
 
 
 
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
 
@@ -46,13 +47,6 @@ struct vertex_data {
     pvec = zeros(D);
     rmse = 0;
   }
-
-  double dot(const vertex_data &oth, const vertex_data time) const {
-    double x=0;
-    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
-    return x;
-  }
-
 };
 
 struct edge_data {
@@ -73,20 +67,21 @@ typedef vertex_data VertexDataType;
 typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "io.hpp"
 #include "rmse.hpp"
+#include "rmse_engine4.hpp"
 
-/** compute a missing value based on ALS algorithm */
 float als_tensor_predict(const vertex_data& user, 
     const vertex_data& movie, 
-    const vertex_data& time_node,
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra){
 
-
-  prediction = user.dot(movie, time_node);
+  vertex_data * time_node = (vertex_data*)extra;
+  prediction = dot3(user.pvec, movie.pvec, time_node->pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -117,7 +112,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
     bool compute_rmse = is_user(vertex.id()); 
     // Compute XtX and Xty (NOTE: unweighted)
-    for(int e=0; e < vertex.num_edges(); e++) {
+    for(int e=0; e < vertex.num_edges(); e++){
       float observation = vertex.edge(e)->get_data().weight;                
       uint time = (uint)vertex.edge(e)->get_data().time;
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
@@ -128,7 +123,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       XtX.triangularView<Eigen::Upper>() += XY * XY.transpose();
       if (compute_rmse) {
         double prediction;
-        vdata.rmse += als_tensor_predict(vdata, nbr_latent, time_node, observation, prediction);
+        vdata.rmse += als_tensor_predict(vdata, nbr_latent, observation, prediction, (void*)&time_node);
       }
     }
 
@@ -145,7 +140,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void after_iteration(int iteration, graphchi_context &gcontext) {
     training_rmse(iteration, gcontext);
-    validation_rmse3(&als_tensor_predict, gcontext, 4, 1);
+    run_validation4(pvalidation_engine, gcontext);
   }
 
 
@@ -204,6 +199,11 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, true);
   init_feature_vectors<std::vector<vertex_data> >(M+N+K, latent_factors_inmem, !load_factors_from_file);
+  if (validation != ""){
+    int vshards = convert_matrixmarket4<EdgeDataType>(validation, true, M==N, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_tensor_predict, false, true, 0);
+   }
+
 
 if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);

@@ -538,6 +538,12 @@ inline double dot_prod(sparse_vec &v1, sparse_vec & v2){
 inline double dot_prod(const vec &v1, const vec & v2){
   return v1.dot(v2);
 }
+inline double dot3(const vec &v1, const vec & v2, const vec & v3){
+  double ret = 0;
+  for (int i=0; i < v1.size(); i++)
+    ret+= v1[i]*v2[i]*v3[i];
+  return ret;
+}
 inline double dot_prod(sparse_vec &v1, const vec & v2){
   double sum = 0;
   for (int i=0; i< v2.size(); i++){

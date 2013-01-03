@@ -26,8 +26,77 @@
 
 float (*pprediction_func)(const vertex_data&, const vertex_data&, const float, double &, void *) = NULL;
 vec validation_rmse_vec;
+vec users_vec;
+vec sum_ap_vec;
 bool user_nodes = true;
-int counter = 0;
+
+/**
+ * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
+ * class. The main logic is usually in the update function.
+ */
+struct ValidationAPProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+
+  /**
+   *  compute validaton AP for a single user
+   */
+  void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+
+    if (user_nodes && vertex.id() >= M)
+      return;
+    else if (!user_nodes && vertex.id() < M)
+      return;
+    vertex_data & vdata = latent_factors_inmem[vertex.id()];
+    vec ratings = zeros(vertex.num_outedges());
+    vec real_vals = zeros(vertex.num_outedges());
+    if (ratings.size() > 0){
+      users_vec[omp_get_thread_num()]++;
+      int j=0;
+      int real_click_count = 0;
+      for(int e=0; e < vertex.num_outedges(); e++) {
+        const EdgeDataType & observation = vertex.edge(e)->get_data();                
+        vertex_data & pdata = latent_factors_inmem[vertex.edge(e)->vertex_id()];
+        double prediction;
+        (*pprediction_func)(vdata, pdata, observation, prediction, NULL);
+        ratings[j] = prediction;
+        real_vals[j] = observation;
+        if (observation > 0)
+          real_click_count++;
+        j++;
+      }
+      int count = 0;
+      double ap = 0;
+      ivec pos = sort_index(ratings);
+      for (int j=0; j< std::min(ap_number, (int)ratings.size()); j++){
+        if (real_vals[pos[ratings.size() - j - 1]] > 0)
+          ap += (++count * 1.0/(j+1));    
+      }
+      if (real_click_count > 0 )
+        ap /= real_click_count;
+      else ap = 0;
+      sum_ap_vec[omp_get_thread_num()] += ap;
+    }
+  }
+  void before_iteration(int iteration, graphchi_context & gcontext){
+    last_validation_rmse = dvalidation_rmse;
+    users_vec = zeros(number_of_omp_threads());
+    sum_ap_vec = zeros(number_of_omp_threads());
+  }
+  /**
+   * Called after an iteration has finished.
+   */
+  void after_iteration(int iteration, graphchi_context &gcontext) {
+    assert(Le > 0);
+    dvalidation_rmse = finalize_rmse(sum(sum_ap_vec) , (double)sum(users_vec));
+    std::cout<<"  Validation  " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << std::endl;
+    if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+      logstream(LOG_WARNING)<<"Stopping engine because of validation " << error_names[loss_type] <<  " increase" << std::endl;
+      gcontext.set_last_iteration(gcontext.iteration);
+    }
+  }
+};
+
+
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -64,9 +133,9 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
     assert(Le > 0);
     dvalidation_rmse = finalize_rmse(sum(validation_rmse_vec) , (double)Le);
     std::cout<<"  Validation  " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << std::endl;
-  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
-    logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
-    gcontext.set_last_iteration(gcontext.iteration);
+    if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+      logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
+      gcontext.set_last_iteration(gcontext.iteration);
     }
   }
 };
@@ -83,11 +152,17 @@ void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *&
 
 template<typename VertexDataType, typename EdgeDataType>
 void run_validation(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine, graphchi_context & context){
-   //no validation data, no need to run validation engine calculations
-   if (pvalidation_engine == NULL)
-     return;
-   ValidationRMSEProgram program;
-   pvalidation_engine->run(program, 1);
+  //no validation data, no need to run validation engine calculations
+  if (pvalidation_engine == NULL)
+    return;
+  if (calc_ap){ //AP
+    ValidationAPProgram program;
+    pvalidation_engine->run(program, 1);
+  }
+  else { //RMSE
+    ValidationRMSEProgram program;
+    pvalidation_engine->run(program, 1);
+  }
 }
 
 #endif //__GRAPHCHI_RMSE_ENGINE

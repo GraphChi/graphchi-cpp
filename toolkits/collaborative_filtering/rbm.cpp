@@ -27,16 +27,8 @@
  * 
  */
 
-
-
-#include <string>
-#include <algorithm>
-#include <assert.h>
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-
-#include "eigen_wrapper.hpp"
 #include "common.hpp"
+#include "eigen_wrapper.hpp"
 
 double rbm_alpha        = 0.1;
 double rbm_beta         = 0.06;
@@ -199,9 +191,11 @@ typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 #include "io.hpp"
 
 
@@ -220,7 +214,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     rbm_alpha *= rbm_mult_step_dec;
     training_rmse(iteration, gcontext);
     if (iteration >= 2)
-      validation_rmse(&rbm_predict, gcontext);
+      run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -440,6 +434,11 @@ int main(int argc, const char ** argv) {
   int nshards = convert_matrixmarket<float>(training);
 
   rbm_init();
+
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &rbm_predict);
+  }
 
   /* load initial state from disk (optional) */
   if (load_factors_from_file){

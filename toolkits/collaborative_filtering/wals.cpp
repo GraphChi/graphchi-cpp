@@ -22,7 +22,8 @@
  *
  * @section DESCRIPTION
  *
- *
+ * Matrix factorization using weighted alternating least squares algorithm (WALS)
+ * The algorithm is explained in: Collaborative Filtering for Implicit Feedback Datasets Hu, Y.; Koren, Y.; Volinsky, C. IEEE International Conference on Data Mining (ICDM 2008), IEEE (2008). 
  * @section USAGE
  *
  *
@@ -57,15 +58,12 @@ struct edge_data {
 };
 
 
-using namespace graphchi;
-
-
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
@@ -199,8 +197,8 @@ int main(int argc, const char ** argv) {
   int nshards = convert_matrixmarket4<edge_data>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
-    int vshards = convert_matrixmarket4<EdgeDataType>(validation, false, M==N, VALIDATION);
-    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &wals_predict, true);
+    int vshards = convert_matrixmarket4<EdgeDataType>(validation, false, M==N, VALIDATION, 0);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &wals_predict, true, false, 0);
   }
 
   if (load_factors_from_file){

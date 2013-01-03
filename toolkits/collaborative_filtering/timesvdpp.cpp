@@ -29,7 +29,6 @@
 
 
 
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
 
@@ -70,12 +69,6 @@ struct vertex_data {
   vertex_data() {
     rmse = 0;
     bias = 0;
-  }
-
-  double dot(const vertex_data &oth, const vertex_data time) const {
-    double x=0;
-    for(int i=0; i<D; i++) x+= oth.pvec[i]*pvec[i]*time.pvec[i];
-    return x;
   }
 
 };
@@ -186,10 +179,10 @@ float time_svdpp_predict(const time_svdpp_usr & usr,
 
 float time_svdpp_predict(const vertex_data& user, 
     const vertex_data& movie, 
-    const vertex_data& time_node,
     const float rating, 
-    double & prediction){
-  return time_svdpp_predict(time_svdpp_usr((vertex_data&)user), time_svdpp_movie((vertex_data&)movie), time_svdpp_time((vertex_data&)time_node), rating, prediction);
+    double & prediction, 
+    void * extra){
+  return time_svdpp_predict(time_svdpp_usr((vertex_data&)user), time_svdpp_movie((vertex_data&)movie), time_svdpp_time(*(vertex_data*)extra), rating, prediction);
 }
 
 /**
@@ -200,6 +193,7 @@ typedef vertex_data VertexDataType;
 typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 void init_time_svdpp_node_data(){
@@ -256,7 +250,7 @@ void init_time_svdpp(){
 
 #include "io.hpp"
 #include "rmse.hpp"
-
+#include "rmse_engine4.hpp"
 
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -344,7 +338,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
   void after_iteration(int iteration, graphchi_context &gcontext) {
     tsp.lrate *= tsp.lrate_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse3(&time_svdpp_predict, gcontext, 4, 1);
+    run_validation4(pvalidation_engine, gcontext);
   };
 
 
@@ -454,6 +448,11 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, false);
   init_time_svdpp();
+  if (validation != ""){
+    int vshards = convert_matrixmarket4<EdgeDataType>(validation, false, M==N, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &time_svdpp_predict, false, true, 0);
+   }
+
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, 4*D);

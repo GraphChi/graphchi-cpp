@@ -91,7 +91,7 @@ bool try_to_detect_info_file(std::string base_filename, int type, size_t & nz){
  */
 
 template <typename als_edge_type>
-int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false, int type = TRAINING) {
+int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false, int type = TRAINING, int matlab_time_offset = 1) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   MM_typecode matcode;
   FILE *f;
@@ -151,7 +151,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
       K = std::max((int)time, (int)K);
-      time--;
+      time -= matlab_time_offset;
       if (time < 0 && add_time_edges)
         logstream(LOG_FATAL)<<"Time bins should be >= 1 in row " << i << std::endl;
       //avoid self edges

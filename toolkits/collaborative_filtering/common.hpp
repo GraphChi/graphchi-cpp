@@ -61,13 +61,19 @@ int niters = 10;
 int halt_on_rmse_increase = 0;
 int D = 20; //feature vector width
 bool quiet = false;
+
+
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
 enum {
-  LOGISTIC = 0, SQUARE = 1, ABS = 2
+  LOGISTIC = 0, SQUARE = 1, ABS = 2, AP = 3
 };
-const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE"};
+const char * error_names[] = {"LOGISTIC LOSS", "RMSE", "MAE", "AP"};
 int loss_type = SQUARE;
+int calc_ap = 0;
+int ap_number = 3; //AP@3
+
+
 enum {
   TRAINING= 0, VALIDATION = 1, TEST = 2
 };
@@ -106,8 +112,14 @@ void parse_command_line_args(){
     loss_type = LOGISTIC;
   else if (loss == "abs")
     loss_type = ABS;
+  else if (loss == "ap")
+    loss_type = AP;
   else logstream(LOG_FATAL)<<"Loss type should be one of [square,logistic,abs] (for example, --loss==square);" << std::endl;
 
+  calc_ap      = get_option_int("calc_ap", calc_ap);
+  if (calc_ap)
+    loss_type = AP;
+  ap_number    = get_option_int("ap_number", ap_number);
 }
 
 template<typename T>

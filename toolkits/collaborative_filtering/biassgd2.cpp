@@ -49,21 +49,18 @@ struct vertex_data {
 
 };
 
-
-
-using namespace graphchi;
-
-
 /**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
+* Type definitions. Remember to create suitable graph shards using the
+* Sharder-program. 
+*/
 typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 #include "rmse.hpp"
+#include "rmse_engine.hpp"
 #include "io.hpp"
 
 /** compute a missing value based on bias-SGD algorithm */
@@ -87,7 +84,7 @@ float bias_sgd_predict(const vertex_data& user,
   if (extra != NULL)
     *(double*)extra = exp_prediction;
 
- return calc_loss(exp_prediction, err); 
+  return calc_loss(exp_prediction, err); 
 
 }
 
@@ -106,7 +103,7 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
   void after_iteration(int iteration, graphchi_context &gcontext) {
     biassgd_gamma *= biassgd_step_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse(&bias_sgd_predict, gcontext);
+    run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -245,10 +242,16 @@ int main(int argc, const char ** argv) {
   parse_command_line_args();
   parse_implicit_command_line();
 
+  if (maxval == 1e100 || minval == -1e100)
+    logstream(LOG_FATAL)<<"You must set min allowed rating and max allowed rating using the --minval and --maval flags" << std::endl;
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training);
+  int nshards = convert_matrixmarket<EdgeDataType>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &bias_sgd_predict);
+  }
 
   /* load initial state from disk (optional) */
   if (load_factors_from_file){

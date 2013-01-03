@@ -32,7 +32,6 @@
 
 
 
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
 
@@ -47,14 +46,6 @@ int time_offset = 1; //time bin starts from 1?
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
-
-inline double sum(double * pvec){
-  double tsum = 0;
-  for (int j=0; j< D; j++)
-    tsum += pvec[j];
-  return tsum;
-}
-
 
 struct vertex_data {
   vec pvec;
@@ -111,7 +102,12 @@ typedef vertex_data VertexDataType;
 typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
+graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
+
+#include "io.hpp"
+#include "rmse.hpp"
+#include "rmse_engine4.hpp"
 
 float libfm_predict(const vertex_data_libfm& user, 
     const vertex_data_libfm& movie, 
@@ -139,11 +135,11 @@ float libfm_predict(const vertex_data_libfm& user,
 }
 float libfm_predict(const vertex_data& user, 
     const vertex_data& movie, 
-    const vertex_data& time,
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra){
   vec sum; 
-  return libfm_predict(vertex_data_libfm((vertex_data&)user), vertex_data_libfm((vertex_data&)movie), vertex_data_libfm((vertex_data&)time), rating, prediction, &sum);
+  return libfm_predict(vertex_data_libfm((vertex_data&)user), vertex_data_libfm((vertex_data&)movie), vertex_data_libfm(*(vertex_data*)extra), rating, prediction, &sum);
 }
 
 
@@ -160,9 +156,6 @@ void init_libfm(){
   }
 }
 
-
-#include "io.hpp"
-#include "rmse.hpp"
 
 
 /**
@@ -248,7 +241,7 @@ if (is_user(vertex.id()) && vertex.num_outedges() == 0)
   void after_iteration(int iteration, graphchi_context &gcontext) {
     libfm_rate *= libfm_mult_dec;
     training_rmse(iteration, gcontext);
-    validation_rmse3(&libfm_predict, gcontext, 4, 1);
+    run_validation4(pvalidation_engine, gcontext);
   };
 
 
@@ -362,6 +355,11 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket4<edge_data>(training, false);
   init_libfm();
+  if (validation != ""){
+    int vshards = convert_matrixmarket4<EdgeDataType>(validation, true, M==N, VALIDATION);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &libfm_predict, false, true, 0);
+   }
+
 
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);

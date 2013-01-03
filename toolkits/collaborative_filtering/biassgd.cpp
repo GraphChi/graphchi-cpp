@@ -37,16 +37,16 @@ double biassgd_gamma = 1e-3;  //sgd regularization
 double biassgd_step_dec = 0.9; //sgd step decrement
 
 struct vertex_data {
-    vec pvec; //storing the feature vector
-    double rmse;          //tracking rmse
-    double bias;
- 
-    vertex_data() {
-        pvec = zeros(D);
-        rmse = 0;
-        bias = 0;
-    }
-   
+  vec pvec; //storing the feature vector
+  double rmse;          //tracking rmse
+  double bias;
+
+  vertex_data() {
+    pvec = zeros(D);
+    rmse = 0;
+    bias = 0;
+  }
+
 };
 
 
@@ -120,15 +120,15 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
           logstream(LOG_FATAL)<<"BIASSGD got into numerical error. Please tune step size using --biassgd_gamma and biassgd_lambda" << std::endl;
         user.bias += biassgd_gamma*(err - biassgd_lambda* user.bias);
         movie.bias += biassgd_gamma*(err - biassgd_lambda* movie.bias); 
- //NOTE: the following code is not thread safe, since potentially several
- //user nodes may update this item gradient vector concurrently. However in practice it
- //did not matter in terms of accuracy on a multicore machine.
- //if you like to defend the code, you can define a global variable
- //mutex mymutex;
- //
- //and then do: mymutex.lock()
+        //NOTE: the following code is not thread safe, since potentially several
+        //user nodes may update this item gradient vector concurrently. However in practice it
+        //did not matter in terms of accuracy on a multicore machine.
+        //if you like to defend the code, you can define a global variable
+        //mutex mymutex;
+        //
+        //and then do: mymutex.lock()
         movie.pvec += biassgd_gamma*(err*user.pvec - biassgd_lambda*movie.pvec);
- //here add: mymutex.unlock();
+        //here add: mymutex.unlock();
         user.pvec += biassgd_gamma*(err*movie.pvec - biassgd_lambda*user.pvec);
       }
     }
@@ -244,7 +244,7 @@ int main(int argc, const char ** argv) {
     int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &bias_sgd_predict);
   }
- 
+
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);

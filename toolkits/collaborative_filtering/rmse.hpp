@@ -53,6 +53,8 @@ double finalize_rmse(double rmse, double num_edges){
    break;
     case ABS:
       ret = rmse / num_edges;
+    case AP:
+      ret = rmse / num_edges;
    break;
   }
  return ret;
@@ -147,7 +149,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
 }
 
-void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, const vertex_data & time, float rating, double & prediction), int time_offset = 0) {
+void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), int time_offset = 0) {
   MM_typecode matcode;
   FILE *f;
   uint Me, Ne;
@@ -179,7 +181,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], latent_factors_inmem[time+M+N-time_offset], 1, prediction);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], 1, prediction, (void*)&latent_factors_inmem[time+M+N-time_offset]);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
   }
   fclose(f);
@@ -319,8 +321,12 @@ double training_rmse(int iteration, graphchi_context &gcontext, bool items = fal
   for (int i=start; i< (int)end; i++){
     dtraining_rmse += latent_factors_inmem[i].rmse;
   }
+  int old_loss = loss_type;
+  if (loss_type == AP)
+    loss_type = SQUARE;
   ret = dtraining_rmse = finalize_rmse(dtraining_rmse, pengine->num_edges());
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training " << error_names[loss_type] << ":"<< std::setw(10)<< dtraining_rmse;
+  loss_type = old_loss;
 
   return ret;
 }

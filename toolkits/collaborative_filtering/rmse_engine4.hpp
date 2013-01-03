@@ -29,6 +29,9 @@ vec validation_rmse_vec;
 bool user_nodes = true;
 int counter = 0;
 bool time_weighting = false;
+bool time_nodes = false;
+int matlab_time_offset = 0;
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -46,9 +49,13 @@ struct ValidationRMSEProgram4 : public GraphChiProgram<VertexDataType, EdgeDataT
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     for(int e=0; e < vertex.num_outedges(); e++) {
       double observation = vertex.edge(e)->get_data().weight;                
+      uint time = (uint)vertex.edge(e)->get_data().time;
+      vertex_data * time_node = NULL;
+      if (time_nodes)
+        time_node = &latent_factors_inmem[time];
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
-      double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, NULL);
+      double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, (void*)time_node);
       assert(rmse <= pow(maxval - minval, 2));
       if (time_weighting)
         rmse *= vertex.edge(e)->get_data().time;
@@ -76,14 +83,17 @@ struct ValidationRMSEProgram4 : public GraphChiProgram<VertexDataType, EdgeDataT
 
 
 template<typename VertexDataType, typename EdgeDataType>
-void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *& pvalidation_engine, int nshards,float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), bool _time_weighting){
+void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *& pvalidation_engine, int nshards,float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), bool _time_weighting, bool _time_nodes, int _matlab_time_offset){
   metrics * m = new metrics("validation_rmse_engine");
   graphchi_engine<VertexDataType, EdgeDataType> * engine = new graphchi_engine<VertexDataType, EdgeDataType>(validation, nshards, false, *m); 
   set_engine_flags(*engine);
   pvalidation_engine = engine;
   time_weighting = _time_weighting;
+  time_nodes = _time_nodes;
+  matlab_time_offset = _matlab_time_offset;
   pprediction_func = prediction_func;
 }
+
 
 
 template<typename VertexDataType, typename EdgeDataType>
