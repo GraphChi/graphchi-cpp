@@ -158,7 +158,7 @@ namespace graphchi {
             adjfilesize = get_filesize(filename_adj);
             
             if (!only_adjacency)
-                edata_session = iomgr->open_session(filename_edata);
+                edata_session = iomgr->open_session(filename_edata, disable_writes);
             else edata_session = -1;
             
             adjfile_session = iomgr->open_session(filename_adj, true);
