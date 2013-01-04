@@ -207,8 +207,8 @@ namespace graphchi {
             }
         }
         if (last_shard_num == start_num) {
-            logstream(LOG_ERROR) << "Could not find shards with nshards = " << start_num << std::endl;
-            logstream(LOG_ERROR) << "Please define 'nshards 0' or 'nshards auto' to automatically detect." << std::endl;
+            logstream(LOG_WARNING) << "Could not find shards with nshards = " << start_num << std::endl;
+            logstream(LOG_WARNING) << "Please define 'nshards 0' or 'nshards auto' to automatically detect." << std::endl;
         }
         return 0;
     }
