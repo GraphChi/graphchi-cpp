@@ -29,7 +29,7 @@ vec validation_rmse_vec;
 vec users_vec;
 vec sum_ap_vec;
 bool user_nodes = true;
-
+int num_threads = 1;
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -78,8 +78,8 @@ struct ValidationAPProgram : public GraphChiProgram<VertexDataType, EdgeDataType
   }
   void before_iteration(int iteration, graphchi_context & gcontext){
     last_validation_rmse = dvalidation_rmse;
-    users_vec = zeros(number_of_omp_threads());
-    sum_ap_vec = zeros(number_of_omp_threads());
+    users_vec = zeros(num_threads);
+    sum_ap_vec = zeros(num_threads);
   }
   /**
    * Called after an iteration has finished.
@@ -124,7 +124,7 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
 
   void before_iteration(int iteration, graphchi_context & gcontext){
     last_validation_rmse = dvalidation_rmse;
-    validation_rmse_vec = zeros(number_of_omp_threads());
+    validation_rmse_vec = zeros(num_threads);
   }
   /**
    * Called after an iteration has finished.
@@ -143,11 +143,14 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
 
 template<typename VertexDataType, typename EdgeDataType>
 void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *& pvalidation_engine, int nshards,float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)){
+  if (nshards == -1)
+    return;
   metrics * m = new metrics("validation_rmse_engine");
   graphchi_engine<VertexDataType, EdgeDataType> * engine = new graphchi_engine<VertexDataType, EdgeDataType>(validation, nshards, false, *m); 
   set_engine_flags(*engine);
   pvalidation_engine = engine;
   pprediction_func = prediction_func;
+  num_threads = number_of_omp_threads();
 }
 
 template<typename VertexDataType, typename EdgeDataType>
