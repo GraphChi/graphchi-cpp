@@ -223,6 +223,7 @@ namespace graphchi {
             int _nshards = find_shards<EdgeDataType>(base_filename);
             if (_nshards == 0) {
                 logstream(LOG_ERROR) << "Could not find suitable shards - maybe you need to run sharder to create them?" << std::endl;
+                logstream(LOG_ERROR) << "Was looking with filename [" << base_filename << "]" << std::endl;
                 logstream(LOG_ERROR) << "You need to create the shards with edge data-type of size " << sizeof(EdgeDataType) << " bytes." << std::endl;
                 logstream(LOG_ERROR) << "To specify the number of shards, use command-line parameter 'nshards'" << std::endl;
                 assert(0);
