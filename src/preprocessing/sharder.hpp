@@ -227,6 +227,8 @@ namespace graphchi {
             determine_number_of_shards(nshards_string);
             
             if (nshards == 1) {
+                binary_adjacency_list_reader<EdgeDataType> reader(preprocessed_name());
+                max_vertex_id = (vid_t) reader.get_max_vertex_id();
                 one_shard_intervals();
             }
             
