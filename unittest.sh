@@ -1,3 +1,8 @@
+
+# Following command makes the unittest.sh fail if any of the
+# commands fail.
+set -e
+
 echo "TESTING BASELINE"
   ./toolkits/collaborative_filtering/baseline --training=smallnetflix_mm --validation=smallnetflix_mm --minval=1 --maxval=5 --quiet=1  --algorithm=user_mean
 echo "TESTING ALS"
