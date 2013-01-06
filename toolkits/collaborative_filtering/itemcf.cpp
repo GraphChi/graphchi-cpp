@@ -23,7 +23,7 @@
  * This file implements item based collaborative filtering by comparing all item pairs which
  * are connected by one or more user nodes. 
  *
- * For the Jaccard index see: http://en.wikipedia.org/wiki/Jaccard_index
+ * For the Jackard index see: http://en.wikipedia.org/wiki/Jaccard_index
  *
  * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
  *
@@ -302,7 +302,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
         //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
         if (dist != 0){
-         fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+         int rc = fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+         if (rc <= 0){
+            perror("Failed to write output");
+            logstream(LOG_FATAL)<<"Failed to write output to: file: " << training << omp_get_thread_num() << ".out" << std::endl;  
+         }
          //where the output format is: 
          //[item A] [ item B ] [ distance ] 
           written_pairs++;
@@ -345,8 +349,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if (gcontext.iteration % 2 == 0) {
-      printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
-      printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      if (!quiet){
+        printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      }
       if (adjcontainer->pivot_st <= window_en) {
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
@@ -382,7 +388,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("item-cf");    
+  metrics m("triangle-counting");    
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   distance_metric          = get_option_int("distance", JACKARD);
@@ -406,7 +412,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training,nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
   set_engine_flags(engine);
 
   //open output files as the number of operating threads
@@ -414,22 +420,24 @@ int main(int argc, const char ** argv) {
   for (uint i=0; i< out_files.size(); i++){
     char buf[256];
     sprintf(buf, "%s.out%d", training.c_str(), i);
-    out_files[i] = fopen(buf, "w");
-    if (out_files[i] == NULL)
-      logstream(LOG_FATAL)<<"Failed to open out file " << training << ".out" << i << std::endl;
+    out_files[i] = open_file(buf, "w");
   }
 
   //run the program
   engine.run(program, niters);
 
   /* Report execution metrics */
-  metrics_report(m);
-  logstream(LOG_INFO)<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
+  if (!quiet)
+    metrics_report(m);
+  
+  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
 
-  for (uint i=0; i< out_files.size(); i++)
+  for (uint i=0; i< out_files.size(); i++){
+    fflush(out_files[i]);
     fclose(out_files[i]);
+  }
 
-  logstream(LOG_INFO)<<"Created output files with the format: " << training << "XX.out, where XX is the output thread number" << std::endl; 
+  std::cout<<"Created "  << number_of_omp_threads() << " output files with the format: " << training << ".outXX, where XX is the output thread number" << std::endl; 
 
   delete[] relevant_items;
   return 0;

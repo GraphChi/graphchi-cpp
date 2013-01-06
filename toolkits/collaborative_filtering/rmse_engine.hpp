@@ -118,6 +118,7 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
       double prediction;
       double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, NULL);
       assert(rmse <= pow(maxval - minval, 2));
+      assert(validation_rmse_vec.size() < omp_get_thread_num());
       validation_rmse_vec[omp_get_thread_num()] += rmse;
     }
   }
