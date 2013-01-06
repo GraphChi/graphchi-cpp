@@ -699,7 +699,8 @@ namespace graphchi {
                     
                     if (interval_st > interval_en) continue; // Can happen on very very small graphs.
                     
-                    userprogram.before_exec_interval(interval_st, interval_en, chicontext);
+                    if (!is_inmemory_mode())
+                        userprogram.before_exec_interval(interval_st, interval_en, chicontext);
 
                     /* Flush stream shard for the exec interval */
                     sliding_shards[exec_interval]->flush();
@@ -789,8 +790,8 @@ namespace graphchi {
                         delete memoryshard;
                         memoryshard = NULL;
                     }     
-                   
-                    userprogram.after_exec_interval(interval_st, interval_en, chicontext);
+                    if (!is_inmemory_mode())
+                        userprogram.after_exec_interval(interval_st, interval_en, chicontext);
                 } // For exec_interval
                 
                 if (!is_inmemory_mode())  // Run sepately

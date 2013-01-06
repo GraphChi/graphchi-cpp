@@ -23,7 +23,7 @@
  * This file implements item based collaborative filtering by comparing all item pairs which
  * are connected by one or more user nodes. 
  *
- * For the Jackard index see: http://en.wikipedia.org/wiki/Jaccard_index
+ * For the Jaccard index see: http://en.wikipedia.org/wiki/Jaccard_index
  *
  * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
  *
@@ -382,7 +382,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("triangle-counting");    
+  metrics m("item-cf");    
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   distance_metric          = get_option_int("distance", JACKARD);
@@ -406,7 +406,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training,nshards, true, m); 
   set_engine_flags(engine);
 
   //open output files as the number of operating threads
@@ -424,7 +424,7 @@ int main(int argc, const char ** argv) {
 
   /* Report execution metrics */
   metrics_report(m);
-  logstream(LOG_INFO)<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
+  logstream(LOG_INFO)<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
 
   for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
