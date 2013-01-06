@@ -81,6 +81,7 @@ float als_tensor_predict(const vertex_data& user,
     void * extra){
 
   vertex_data * time_node = (vertex_data*)extra;
+  assert(time_node != NULL && time_node->pvec.size() == D);
   prediction = dot3(user.pvec, movie.pvec, time_node->pvec);
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
@@ -115,6 +116,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     for(int e=0; e < vertex.num_edges(); e++){
       float observation = vertex.edge(e)->get_data().weight;                
       uint time = (uint)vertex.edge(e)->get_data().time;
+      assert(time >= 0 && time < M+N+K);
+      assert(time != vertex.id());
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       vertex_data & time_node = latent_factors_inmem[time];
       assert(time != vertex.id() && time != vertex.edge(e)->vertex_id());
@@ -201,7 +204,7 @@ int main(int argc, const char ** argv) {
   init_feature_vectors<std::vector<vertex_data> >(M+N+K, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
     int vshards = convert_matrixmarket4<EdgeDataType>(validation, true, M==N, VALIDATION);
-    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_tensor_predict, false, true, 0);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_tensor_predict, false, true, 1);
    }
 
 

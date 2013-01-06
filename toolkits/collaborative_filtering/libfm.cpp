@@ -357,7 +357,7 @@ int main(int argc, const char ** argv) {
   init_libfm();
   if (validation != ""){
     int vshards = convert_matrixmarket4<EdgeDataType>(validation, true, M==N, VALIDATION);
-    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &libfm_predict, false, true, 0);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &libfm_predict, false, true, 1);
    }
 
 

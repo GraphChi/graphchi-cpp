@@ -129,10 +129,11 @@ int calc_feature_num(){
   return 2+fc.total_features+fc.last_item+fc.node_features;
 }
 void get_offsets(std::vector<int> & offsets){
-  assert(offsets.size() >= 3);
+  assert(offsets.size() >= 2);
   offsets[0] = 0;
   offsets[1] = M;
-  offsets[2] = M+N;
+  if (offsets.size() >= 3)
+    offsets[2] = M+N;
  if (fc.hash_strings){
    for (uint j=2; j< offsets.size()-1; j++){
          offsets[j+1] = offsets[j] + fc.node_id_maps[j].string2nodeid.size();
@@ -1322,6 +1323,7 @@ int main(int argc, const char ** argv) {
   test_predictions_N(&gensgd_predict, fc);    
 
   /* Report execution metrics */
-  metrics_report(m);
+  if (!quiet)
+    metrics_report(m);
   return 0;
 }

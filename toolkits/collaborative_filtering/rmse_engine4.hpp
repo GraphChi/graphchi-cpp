@@ -31,7 +31,7 @@ int counter = 0;
 bool time_weighting = false;
 bool time_nodes = false;
 int matlab_time_offset = 0;
-
+int num_threads = 1;
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -49,23 +49,26 @@ struct ValidationRMSEProgram4 : public GraphChiProgram<VertexDataType, EdgeDataT
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     for(int e=0; e < vertex.num_outedges(); e++) {
       double observation = vertex.edge(e)->get_data().weight;                
-      uint time = (uint)vertex.edge(e)->get_data().time;
+      uint time = (uint)vertex.edge(e)->get_data().time - matlab_time_offset;
       vertex_data * time_node = NULL;
-      if (time_nodes)
+      if (time_nodes){
+        assert(time >= 0 && time < M+N+K);
         time_node = &latent_factors_inmem[time];
+      }
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
       double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, (void*)time_node);
       assert(rmse <= pow(maxval - minval, 2));
       if (time_weighting)
         rmse *= vertex.edge(e)->get_data().time;
+      assert(validation_rmse_vec.size() > omp_get_thread_num());
       validation_rmse_vec[omp_get_thread_num()] += rmse;
     }
   }
 
   void before_iteration(int iteration, graphchi_context & gcontext){
     last_validation_rmse = dvalidation_rmse;
-    validation_rmse_vec = zeros(number_of_omp_threads());
+    validation_rmse_vec = zeros(num_threads);
   }
   /**
    * Called after an iteration has finished.
@@ -92,6 +95,7 @@ void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *&
   time_nodes = _time_nodes;
   matlab_time_offset = _matlab_time_offset;
   pprediction_func = prediction_func;
+  num_threads = number_of_omp_threads();
 }
 
 

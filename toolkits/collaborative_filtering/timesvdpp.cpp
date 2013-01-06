@@ -450,7 +450,7 @@ int main(int argc, const char ** argv) {
   init_time_svdpp();
   if (validation != ""){
     int vshards = convert_matrixmarket4<EdgeDataType>(validation, false, M==N, VALIDATION);
-    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &time_svdpp_predict, false, true, 0);
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &time_svdpp_predict, false, true, 1);
    }
 
 
