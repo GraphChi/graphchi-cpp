@@ -28,6 +28,11 @@
  * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
  *
  * For the RA index see the above paper, equation (3)
+ *
+ * For Asym. Cosine see: F. Aiolli, A Preliminary Study on a Recommender System for the Million Songs Dataset Challenge
+ * Preference Learning: Problems and Applications in AI (PL-12), ECAI-12 Workshop, Montpellier
+ *
+ * Acknowledgements: thanks to Clive Cox, Rummble Labs,  for implementing Asym. Cosince metric and contributing the code.
  */
 
 
@@ -41,9 +46,10 @@
 using namespace graphchi;
 
 enum DISTANCE_METRICS{
-  JACKARD = 0,
+  JACCARD = 0,
   AA = 1,
   RA = 2,
+  ASYM_COSINE = 3,
 };
 
 int min_allowed_intersection = 1;
@@ -54,6 +60,7 @@ timer mytimer;
 bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
+float asym_cosine_alpha = 0.5;
 
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
@@ -163,6 +170,9 @@ class adjlist_container {
    *
    * 3) Using RA index:
    *      Dist_ab = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
+   *
+   * 4) Using Asym Cosine:
+   *      Dist_ab = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
    */
   double calc_distance(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
@@ -193,7 +203,7 @@ class adjlist_container {
     if (intersection_size < (double)min_allowed_intersection)
         return 0;
   
-    if (distance_metric == JACKARD){
+    if (distance_metric == JACCARD){
       uint set_a_size = v.num_edges(); //number of users connected to current item
       uint set_b_size = acount(pivot); //number of users connected to current pivot
       return intersection_size / (double)(set_a_size + set_b_size - intersection_size); //compute the distance
@@ -218,6 +228,12 @@ class adjlist_container {
        }
        return dist;
     }
+    else if (distance_metric == ASYM_COSINE){
+      uint set_a_size = v.num_edges(); //number of users connected to current item
+      uint set_b_size = acount(pivot); //number of users connected to current pivot
+      return intersection_size / (pow(set_a_size,asym_cosine_alpha) * pow(set_b_size,1-asym_cosine_alpha));
+    }
+
     return 0;
   }
 
@@ -291,8 +307,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       }
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
-        //since metric is symmetric, compare only to pivots which are smaller than this item id
-        if (i >= v.id() || (!relevant_items[i-M]))
+        //if JACCARD which is symmetric, compare only to pivots which are smaller than this item id
+        if ((distance_metric != ASYM_COSINE && i >= v.id()) || (!relevant_items[i-M]))
           continue;
         
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
@@ -391,9 +407,10 @@ int main(int argc, const char ** argv) {
   metrics m("triangle-counting");    
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
-  distance_metric          = get_option_int("distance", JACKARD);
-  if (distance_metric != JACKARD && distance_metric != AA && distance_metric != RA)
-    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACKARD, 1) AA, 2) RA" << std::endl;  
+  distance_metric          = get_option_int("distance", JACCARD);
+  asym_cosine_alpha        = get_option_float("asym_cosine_alpha", 0.5);
+  if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE)
+    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACCARD, 1) AA, 2) RA, 3) ASYM_COSINE" << std::endl;  
   parse_command_line_args();
 
   mytimer.start();
