@@ -552,9 +552,16 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       feature_control & fc, 
       bool square = false) {
 
+    if (validation == "")
+      return;
+
     FILE * f = NULL;
     size_t nz = 0;
     detect_matrix_size(validation, f, Me, Ne, nz);
+    if (f == NULL){
+        logstream(LOG_WARNING)<<"Failed to open validation file: " << validation << " -  skipping."<<std::endl;
+        return;
+    }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -660,16 +667,20 @@ void test_predictions_N(
     float (*prediction_func)(std::vector<vertex_data*>& node_array, int node_array_size, float rating, double & prediction, fvec * sum, double * exp_prediction), 
     feature_control & fc, 
     bool square = false) {
-  FILE *f;
+  FILE *f = NULL;
   uint Me, Ne;
   size_t nz;   
 
-  if (test == "")
+  if (test == ""){
     logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
+    return;
+  }
 
   detect_matrix_size(test, f, Me, Ne, nz);
-  if (f == NULL)
-    logstream(LOG_INFO)<<"Failed to open test file " << test<< " skipping test predictions " << std::endl;
+  if (f == NULL){
+    logstream(LOG_WARNING)<<"Failed to open test file " << test<< " skipping test predictions " << std::endl;
+    return;
+  }
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
@@ -817,8 +828,6 @@ struct Sparse_GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType
 
     //go over all user nodes
     if (is_user(vertex.id())){
-      vertex_data& user = latent_factors_inmem[vertex.id()]; 
-
       //go over all observed ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
         const edge_data & data = vertex.edge(e)->get_data();
@@ -997,7 +1006,7 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    assert(user_bias == num_feature_bins());
+    assert(user_bias.size() == num_feature_bins());
     for (uint i=0; num_feature_bins(); i++){
       latent_factors_inmem[i].bias = user_bias[i];
     }

@@ -661,16 +661,20 @@ void test_predictions_N(
     float (*prediction_func)(std::vector<vertex_data*>& node_array, int node_array_size, float rating, double & predictioni, fvec * sum), 
     feature_control & fc, 
     bool square = false) {
-  FILE *f;
+  FILE *f = NULL;
   uint Me, Ne;
   size_t nz;   
 
-  if (test == "")
+  if (test == ""){
     logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
+    return;
+  }
 
   detect_matrix_size(test, f, Me, Ne, nz);
-  if (f == NULL)
-    logstream(LOG_INFO)<<"Failed to open test file " << test<< " skipping test predictions " << std::endl;
+  if (f == NULL){
+    logstream(LOG_WARNING)<<"Failed to open test file " << test<< " skipping test predictions " << std::endl;
+    return;
+  }
 
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
