@@ -108,4 +108,11 @@ void run_validation4(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation
    ValidationRMSEProgram4 program;
    pvalidation_engine->run(program, 1);
 }
+
+void reset_rmse(int exec_threads){
+  logstream(LOG_DEBUG)<<"Detected number of threads: " << exec_threads << std::endl;
+  num_threads = exec_threads;
+  rmse_vec = zeros(exec_threads);
+}
+
 #endif //__GRAPHCHI_RMSE_ENGINE4

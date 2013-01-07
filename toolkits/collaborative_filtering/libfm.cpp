@@ -49,12 +49,10 @@ bool is_time(vid_t id){ return id >= M+N; }
 
 struct vertex_data {
   vec pvec;
-  double rmse;
   double bias;
   int last_item;
 
   vertex_data() {
-    rmse = 0;
     bias = 0;
     last_item = 0;
   }
@@ -76,20 +74,17 @@ struct vertex_data_libfm{
   double * bias;
   double * v;
   int *last_item; 
-  double * rmse;
 
   vertex_data_libfm(const vertex_data & vdata){
     v = (double*)&vdata.pvec[0];
     bias = (double*)&vdata.bias;
     last_item = (int*)&vdata.last_item;
-    rmse = (double*)& vdata.rmse;
   }
 
   vertex_data_libfm & operator=(vertex_data & data){
     v = (double*)&data.pvec[0];
     bias = (double*)&data.bias;
     last_item = (int*)&data.last_item;
-    rmse = (double*)&data.rmse;
     return * this;
   }   
 };
@@ -191,7 +186,6 @@ if (is_user(vertex.id()) && vertex.num_outedges() == 0)
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
-      *user.rmse = 0; 
       assert(*user.last_item >= 0 && *user.last_item < (int)N);
       vertex_data & last_item = latent_factors_inmem[M+N+K+(*user.last_item)]; 
 
@@ -228,12 +222,20 @@ if (is_user(vertex.id()) && vertex.num_outedges() == 0)
 
         }
 
-        *user.rmse += sqErr;
+        rmse_vec[omp_get_thread_num()] += sqErr;
       }
 
     }
 
   };
+
+ /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
+
 
   /**
    * Called after an iteration has finished.
@@ -269,62 +271,18 @@ struct  MMOutputter_bias{
 
 };
 
-struct  MMOutputter_global_mean {
-  FILE * outf;
-  MMOutputter_global_mean(std::string fname, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, 1, 1); 
-    fprintf(outf, "%1.12e\n", globalMean);
-  }
-
-  ~MMOutputter_global_mean() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 
 
 void output_libfm_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.");
-  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.");
-  MMOutputter mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.", latent_factors_inmem);
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains LIBFM output bias vector. In each row a single item bias.");
   MMOutputter_bias mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , "This file contains LIBFM output bias vector. In each row a single time bias.");
   MMOutputter_bias mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , "This file contains LIBFM output bias vector. In each row a single last item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " LIBFM output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
 }

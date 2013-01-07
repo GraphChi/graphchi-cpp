@@ -106,7 +106,6 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    vdata.rmse = 0;
     mat XtX = mat::Zero(D, D); 
     vec Xty = vec::Zero(D);
 
@@ -119,7 +118,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose() * edge.time;
       if (compute_rmse) {
         double prediction;
-        vdata.rmse += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;
+        rmse_vec[omp_get_thread_num()] += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;
       }
     }
     // Diagonal
@@ -128,6 +127,13 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
     vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }
 
+
+ /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
 
 
   /**
@@ -141,33 +147,11 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
 
 };
 
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, D); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < D; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 
 
 void output_als_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row D factors of a single item node.");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                             ", " << filename + "_V.mm " << std::endl;
 }

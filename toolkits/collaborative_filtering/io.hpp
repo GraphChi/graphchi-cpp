@@ -26,6 +26,14 @@
 #include "types.hpp"
 #include "implicit.hpp"
 
+void set_matcode(MM_typecode & matcode){
+  mm_initialize_typecode(&matcode);
+  mm_set_matrix(&matcode);
+  mm_set_array(&matcode);
+  mm_set_real(&matcode);
+}
+
+
 void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & Me, uint & Ne, size_t & nz, const std::string & filename){
 
   if (mm_read_banner(f, &matcode) != 0)
@@ -40,6 +48,39 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
   if (mm_read_mtx_crd_size(f, &Me, &Ne, &nz) != 0) {
     logstream(LOG_FATAL) << "Failed reading matrix size: error" << std::endl;
   }
+}
+
+void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
+
+    MM_typecode matcode;
+    bool info_file = false;
+    
+    if (nodes == 0 && edges == 0){
+    FILE * ff = NULL;
+    /* auto detect presence of file named base_filename.info to find out matrix market size */
+    if ((ff = fopen((filename + ":info").c_str(), "r")) != NULL) {
+      info_file = true;
+      read_matrix_market_banner_and_size(ff, matcode, M, N, nz, validation + ":info");
+      fclose(ff);
+    }
+    }
+    if ((f = fopen(filename.c_str(), "r")) == NULL) {
+      std::cout<<std::endl;
+      return; //missing validaiton data, nothing to compute
+    }
+    if (!info_file && nodes == 0 && edges == 0){
+      read_matrix_market_banner_and_size(f, matcode, M, N, nz, validation);
+    }
+    if (nodes > 0 && edges > 0){
+      if (type == TRAINING){
+        M = N = nodes;
+        nz = edges;
+      }
+      else {
+        Me = Ne = nodes;
+        nz = edges;
+      }
+    }
 }
 
 void read_global_mean(std::string base_filename, int type){
@@ -66,21 +107,55 @@ void write_global_mean(std::string base_filename, int type){
   fclose(outf);
 }
 
-bool try_to_detect_info_file(std::string base_filename, int type, size_t & nz){
-  MM_typecode matcode;
-  bool info_file = false;
-  FILE * ff = NULL;
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-  if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    if (type == TRAINING)
-      read_matrix_market_banner_and_size(ff, matcode, M, N, nz, base_filename);
-    else
-      read_matrix_market_banner_and_size(ff, matcode, Me, Ne, nz, base_filename);
-    fclose(ff);
+
+
+template<typename vertex_data>
+struct  MMOutputter{
+  FILE * outf;
+  MMOutputter(std::string fname, uint start, uint end, std::string comment, std::vector<vertex_data> & latent_factors_inmem)  {
+    assert(start < end);
+    MM_typecode matcode;
+    set_matcode(matcode);     
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
+    for (uint i=start; i < end; i++)
+      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
+      }
   }
-  return info_file;
-}
+
+  ~MMOutputter() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+
+struct  MMOutputter_global_mean {
+  FILE * outf;
+  MMOutputter_global_mean(std::string fname, std::string comment, double val)  {
+    MM_typecode matcode;
+    set_matcode(matcode);
+    outf = fopen(fname.c_str(), "w");
+    assert(outf != NULL);
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, 1, 1); 
+    fprintf(outf, "%1.12e\n", val);
+  }
+
+  ~MMOutputter_global_mean() {
+    if (outf != NULL) fclose(outf);
+  }
+
+};
+
+
+
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
@@ -93,7 +168,6 @@ bool try_to_detect_info_file(std::string base_filename, int type, size_t & nz){
 template <typename als_edge_type>
 int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false, int type = TRAINING, int matlab_time_offset = 1) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  MM_typecode matcode;
   FILE *f;
   size_t nz;
   /**
@@ -110,19 +184,16 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   sharderobj.start_preprocessing();
 
 
-  bool info_file = try_to_detect_info_file(base_filename, type, nz);
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
+ detect_matrix_size(base_filename, f, type == TRAINING? M:Me, type == TRAINING? N:Ne, nz); 
+ if (f == NULL){
     if (type == VALIDATION){
       logstream(LOG_INFO)<< "Did not find validation file: " << base_filename << std::endl;
       return -1;
-    }
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
+  }
+  else if (type == TRAINING)
+    logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
   }
 
-  /* if .info file is not present, try to find matrix market header inside the base_filename file */
-  if (!info_file){
-    read_matrix_market_banner_and_size(f, matcode, M, N, nz, base_filename);
-  }
   if (type == TRAINING)
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
     << M << " x " << N << ", non-zeros: " << nz << std::endl;
@@ -205,7 +276,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 template <typename als_edge_type>
 int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  MM_typecode matcode;
   FILE *f;
   size_t nz;   
 
@@ -227,32 +297,17 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   sharder<als_edge_type> sharderobj(base_filename + suffix);
   sharderobj.start_preprocessing();
 
-  bool info_file = try_to_detect_info_file(base_filename, type, nz);
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
-    if (type == VALIDATION){
+  detect_matrix_size(base_filename, f, type == TRAINING?M:Me, type == TRAINING?N:Ne, nz, nodes, edges, type);
+  if (f == NULL){
+    if (type == TRAINING){
+    logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
+   }
+   else if (type == VALIDATION){
       logstream(LOG_INFO)<<"Validation file: "  << base_filename << " is not found. " << std::endl;
       return -1;
     }
-    logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
   }
-
-  if ((nodes == 0 && edges == 0) && !info_file){
-    if (type == TRAINING)
-      read_matrix_market_banner_and_size(f, matcode, M, N, nz, base_filename);
-    else
-      read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, base_filename);
-  }
-  else if (!info_file){
-    if (type == TRAINING){
-      M = N = nodes;
-      nz = edges;
-    }
-    else {
-      Me = Ne = nodes;
-      nz = edges;
-    }
-  }
-  if (type == TRAINING)
+ if (type == TRAINING)
     L=nz;
   else 
     Le = nz;
@@ -329,13 +384,6 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
 
   return nshards;
-}
-
-void set_matcode(MM_typecode & matcode){
-  mm_initialize_typecode(&matcode);
-  mm_set_matrix(&matcode);
-  mm_set_array(&matcode);
-  mm_set_real(&matcode);
 }
 
 

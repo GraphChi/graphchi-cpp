@@ -205,6 +205,13 @@ std::vector<vertex_data> latent_factors_inmem;
  * class. The main logic is usually in the update function.
  */
 struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+  /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
+
 
 
   /**
@@ -258,7 +265,6 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if (is_user(vertex.id()) && vertex.num_outedges()){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
       user.pvec = zeros(3*D);
-      user.rmse = 0; 
       rbm_user usr(user);
 
       vec v1 = zeros(vertex.num_outedges()); 
@@ -318,7 +324,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         rbm_predict(user, mov, observation, prediction, NULL);
         double pui = prediction / rbm_scaling;
         double rui = observation / rbm_scaling;
-        user.rmse += (pui - rui) * (pui - rui);
+        rmse_vec[omp_get_thread_num()] += (pui - rui) * (pui - rui);
         //nn += 1.0;
         int vi0 = (int)(rui);
         int vi1 = (int)v1[i];
@@ -357,35 +363,11 @@ struct  MMOutputter_bias{
 };
 
 
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
 
 //dump output to file
 void output_rbm_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains RBM output bias vector. In each row a single item ni.");
 
   logstream(LOG_INFO) << "RBM output files (in matrix market format): " << filename << "_U.mm" <<

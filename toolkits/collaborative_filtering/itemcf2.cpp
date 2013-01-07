@@ -500,22 +500,22 @@ int main(int argc, const char ** argv) {
   for (uint i=0; i< out_files.size(); i++){
     char buf[256];
     sprintf(buf, "%s.out%d", training.c_str(), i);
-    out_files[i] = fopen(buf, "w");
-    if (out_files[i] == NULL)
-      logstream(LOG_FATAL)<<"Failed to open out file " << training << ".out" << i << std::endl;
+    out_files[i] = open_file(buf, "w");
   }
 
   //run the program
   engine.run(program, niters);
 
   /* Report execution metrics */
-  metrics_report(m);
-  logstream(LOG_INFO)<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
+  if (quiet)
+    metrics_report(m);
+  
+  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
 
   for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
 
-  logstream(LOG_INFO)<<"Created output files with the format: " << training << "XX.out, where XX is the output thread number" << std::endl; 
+  std::cout<<"Created output files with the format: " << training << "XX.out, where XX is the output thread number" << std::endl; 
 
   delete[] relevant_items;
   return 0;

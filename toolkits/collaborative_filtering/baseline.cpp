@@ -32,16 +32,8 @@
 
 
 
-#include "graphchi_basic_includes.hpp"
-#include <assert.h>
 #include "common.hpp"
-
-#include "api/chifilenames.hpp"
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-
 #include "eigen_wrapper.hpp"
-using namespace graphchi;
 
 //types of algorithms supported when computing prediction
 enum{
@@ -53,12 +45,10 @@ std::string algorithm;
 
 struct vertex_data {
   double mean_rating; 
-  double rmse;        
   vec pvec;
 
   vertex_data() {
     mean_rating = 0; 
-    rmse = 0;
   }
 
 };
@@ -122,7 +112,6 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
     //go over all user nodes
     if ( vertex.num_outedges() > 0 && (algo == GLOBAL_MEAN || algo == USER_MEAN)){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
-      user.rmse = 0; 
 
       //go over all ratings
       if (algo == USER_MEAN){
@@ -139,12 +128,11 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
         double prediction;
         float observation = vertex.edge(e)->get_data();                
         vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        user.rmse += baseline_predict(user, movie, observation, prediction);
+        rmse_vec[omp_get_thread_num()] += baseline_predict(user, movie, observation, prediction);
       }
     }
     else if (vertex.num_inedges() > 0 && algo == ITEM_MEAN){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
-      user.rmse = 0; 
 
       //go over all ratings
       for(int e=0; e < vertex.num_edges(); e++) {
@@ -158,7 +146,7 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
         float observation = vertex.edge(e)->get_data();                
         double prediction;
         vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        user.rmse += baseline_predict(movie, user, observation, prediction);
+        rmse_vec[omp_get_thread_num()] += baseline_predict(movie, user, observation, prediction);
       }
     }
   }
@@ -226,7 +214,7 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<float>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, false);
-
+  rmse_vec = zeros(number_of_omp_threads());
   print_config();
 
   /* Run */

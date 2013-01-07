@@ -118,7 +118,7 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
       double prediction;
       double rmse = (*pprediction_func)(vdata, nbr_latent, observation, prediction, NULL);
       assert(rmse <= pow(maxval - minval, 2));
-      assert(validation_rmse_vec.size() < omp_get_thread_num());
+      assert(validation_rmse_vec.size() > omp_get_thread_num());
       validation_rmse_vec[omp_get_thread_num()] += rmse;
     }
   }
@@ -141,6 +141,11 @@ struct ValidationRMSEProgram : public GraphChiProgram<VertexDataType, EdgeDataTy
   }
 };
 
+void reset_rmse(int exec_threads){
+  logstream(LOG_DEBUG)<<"Detected number of threads: " << exec_threads << std::endl;
+  num_threads = exec_threads;
+  rmse_vec = zeros(exec_threads);
+}
 
 template<typename VertexDataType, typename EdgeDataType>
 void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *& pvalidation_engine, int nshards,float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)){
@@ -151,7 +156,6 @@ void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *&
   set_engine_flags(*engine);
   pvalidation_engine = engine;
   pprediction_func = prediction_func;
-  num_threads = number_of_omp_threads();
 }
 
 template<typename VertexDataType, typename EdgeDataType>

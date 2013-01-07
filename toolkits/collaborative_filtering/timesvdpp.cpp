@@ -54,20 +54,10 @@ bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
 
-inline double sum(double * pvec){
-  double tsum = 0;
-  for (int j=0; j< D; j++)
-    tsum += pvec[j];
-  return tsum;
-}
-
-
 struct vertex_data {
   vec pvec;
-  double rmse;
   double bias;
   vertex_data() {
-    rmse = 0;
     bias = 0;
   }
 
@@ -88,7 +78,6 @@ struct time_svdpp_usr{
   double * pu;
   double * x;
   double * ptemp;
-  double * rmse;
 
   time_svdpp_usr(vertex_data & vdata){
     bu = &vdata.bias;
@@ -97,7 +86,6 @@ struct time_svdpp_usr{
     pu = p+D;
     x = pu+D;
     ptemp = x+D;
-    rmse = &vdata.rmse;
   }
   time_svdpp_usr & operator = (vertex_data & vdata){
     bu = &vdata.bias;
@@ -106,7 +94,6 @@ struct time_svdpp_usr{
     pu = p+D;
     x = pu+D;
     ptemp = x+D;
-    rmse = &vdata.rmse;
     return *this;
   }
 };
@@ -266,7 +253,6 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
-      user.rmse = 0; 
       time_svdpp_usr usr(user);
 
       unsigned int userRatings = vertex.num_outedges();
@@ -318,7 +304,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
           time.z[k] += tsp.lrate * (eui * xOldValue - tsp.gamma * zOldValue);
         }
 
-        *usr.rmse += eui*eui;
+         rmse_vec[omp_get_thread_num()] += eui*eui;
       }
 
       for(int e=0; e < vertex.num_edges(); e++) {  
@@ -331,6 +317,14 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
     }
 
   };
+
+ /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
+
 
   /**
    * Called after an iteration has finished.
@@ -366,59 +360,15 @@ struct  MMOutputter_bias{
 
 };
 
-struct  MMOutputter_global_mean {
-  FILE * outf;
-  MMOutputter_global_mean(std::string fname, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, 1, 1); 
-    fprintf(outf, "%1.12e\n", globalMean);
-  }
-
-  ~MMOutputter_global_mean() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 
 
 void output_timesvdpp_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains TIMESVDPP output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp] (");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -TIMESVDPP  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]");
-  MMOutputter mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -TIMESVDPP  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains TIMESVDPP output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp]", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -TIMESVDPP  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -TIMESVDPP  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]", latent_factors_inmem);
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains time-svd++ output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains time-svd++ output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << " _global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm " << std::endl;
 }

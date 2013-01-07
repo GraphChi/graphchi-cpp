@@ -29,15 +29,9 @@
 
 
 
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
-#include "api/chifilenames.hpp"
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
 #include "eigen_wrapper.hpp"
 #include "timer.hpp"
-
-using namespace graphchi;
 
 int debug;
 int num_ratings;

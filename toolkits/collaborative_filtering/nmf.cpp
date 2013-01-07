@@ -28,27 +28,15 @@
 
 
 
-#include <string>
-#include <algorithm>
-
-#include "graphchi_basic_includes.hpp"
-
 #include "common.hpp"
-#include "api/chifilenames.hpp"
-#include "api/vertex_aggregator.hpp"
-#include "preprocessing/sharder.hpp"
-
 #include "eigen_wrapper.hpp"
-using namespace graphchi;
 
 const double epsilon = 1e-16;
 struct vertex_data {
   vec pvec;
-  double rmse;
 
   vertex_data() {
    pvec = zeros(D); 
-   rmse = 0;
   }
 };
 
@@ -115,11 +103,11 @@ void pre_movie_iter(){
 struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
-
   /**
    * Called before an iteration starts.
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
     iter = iteration;
     if (iteration > 0) {
       if (iteration % 2 == 1)
@@ -153,7 +141,6 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     vec ret = zeros(D);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    vdata.rmse = 0;
     mat XtX = mat::Zero(D, D); 
     vec Xty = vec::Zero(D);
 
@@ -164,7 +151,7 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
       if (compute_rmse)
-        vdata.rmse += nmf_predict(vdata, nbr_latent, observation, prediction);
+        rmse_vec[omp_get_thread_num()] += nmf_predict(vdata, nbr_latent, observation, prediction);
       if (prediction == 0)
         logstream(LOG_FATAL)<<"Got into numerical error! Please submit a bug report." << std::endl;
       ret += nbr_latent.pvec * (observation / prediction);
@@ -198,35 +185,11 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   }
 };
 
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, D); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < D; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
 
 
 void output_nmf_result(std::string filename){
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row D factors of a single item node.");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   logstream(LOG_INFO) << "NMF output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }

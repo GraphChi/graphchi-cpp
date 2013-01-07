@@ -65,13 +65,11 @@ svdpp_params svdpp;
 struct vertex_data {
   vec pvec;
   vec weight;
-  double rmse;
   double bias;
 
   vertex_data() {
     pvec = zeros(D);
     weight = zeros(D);
-    rmse = 0;
     bias = 0;
   }
 
@@ -120,6 +118,13 @@ float svdpp_predict(const vertex_data& user, const vertex_data& movie, const flo
  */
 struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
+ /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
+
 
   /**
    * Called after an iteration has finished.
@@ -142,7 +147,6 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
       if ( vertex.num_outedges() > 0){
         vertex_data & user = latent_factors_inmem[vertex.id()]; 
 
-        user.rmse = 0; 
         memset(&user.weight[0], 0, sizeof(double)*D);
         for(int e=0; e < vertex.num_outedges(); e++) {
           vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()]; 
@@ -161,10 +165,10 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
           vertex_data & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()]; 
           float observation = vertex.edge(e)->get_data();                
           double estScore;
-          user.rmse += svdpp_predict(user, movie,observation, estScore); 
+          rmse_vec[omp_get_thread_num()] += svdpp_predict(user, movie,observation, estScore); 
           // e_ui = r_ui - \hat{r_ui}
           float err = observation - estScore;
-          assert(!std::isnan(user.rmse));
+          assert(!std::isnan(rmse_vec[omp_get_thread_num()]));
           vec itmFctr = movie.pvec;
           vec usrFctr = user.pvec;
 
@@ -220,58 +224,13 @@ struct  MMOutputter_bias{
 
 };
 
-struct  MMOutputter_global_mean {
-  FILE * outf;
-  MMOutputter_global_mean(std::string fname, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, 1, 1); 
-    fprintf(outf, "%1.12e\n", globalMean);
-  }
-
-  ~MMOutputter_global_mean() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, D); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < D; j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
 
 void output_svdpp_result(std::string filename) {
-  MMOutputter mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row D factors of a single user node.");
-  MMOutputter mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row D factors of a single item node.");
+  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains SVD++ output bias vector. In each row a single user bias.");
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", M, M+N, "This file contains SVD++ output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
                                                                              ", " << filename + "_V.mm, " << filename << "_U_bias.mm, " << filename << "_V_bias.mm, " << filename << "_global_mean.mm" << std::endl;

@@ -35,7 +35,6 @@
 
 
 #include <vector>
-#include "graphchi_basic_includes.hpp"
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
 #include "../parsers/common.hpp"
@@ -153,28 +152,18 @@ bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
-inline double sum(double * pvec){
-  double tsum = 0;
-  for (int j=0; j< D; j++)
-    tsum += pvec[j];
-  return tsum;
-}
-
+vec errors_vec;
 
 struct vertex_data {
   vec pvec;
-  double rmse;
-  int errors;
   double bias;
   int last_item;
   sparse_vec features;
   sparse_vec links; //links to other users or items
 
   vertex_data() {
-    rmse = 0;
     bias = 0;
     last_item = 0;
-    errors = 0;
   }
 
 
@@ -430,6 +419,11 @@ float compute_prediction(
   (*prediction_func)((const vertex_data**)node_array, calc_feature_node_array_size(I,J), val, prediction, psum);
   return pow(val - prediction,2);
 } 
+
+#include "io.hpp"
+#include "../parsers/common.hpp"
+
+
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
  * with the same id as the row number (0-based), but vertices correponsing to columns
@@ -442,8 +436,6 @@ float compute_prediction(
 template <typename als_edge_type>
 int convert_matrixmarket_N(std::string base_filename, bool square, feature_control & fc, int limit_rating = 0) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  int ret_code;
-  MM_typecode matcode;
   FILE *f;
   size_t nz;
   /**
@@ -484,27 +476,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
-  bool info_file = false;
-  FILE * ff = NULL;
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-  if ((ff = fopen((base_filename + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    if (mm_read_banner(ff, &matcode) != 0){
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
-    }
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(ff, &M, &N, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
-  }
-
-  if ((f = fopen(base_filename.c_str(), "r")) == NULL) {
+  detect_matrix_size(base_filename, f, M, N, nz);
+  if (f == NULL)
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
-  }
-  /* if .info file is not present, try to find matrix market header inside the base_filename file */
 
   if (has_header_titles){
     char * linebuf = NULL;
@@ -535,18 +509,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       //update stats if needed
     }
   }
-  else if (!info_file){
-    if (mm_read_banner(f, &matcode) != 0){
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << base_filename << std::endl;
-    }
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
-  }
 
   if (M == 0 && N == 0)
     logstream(LOG_FATAL)<<"Failed to detect matrix size. Please prepare a file named: " << base_filename << ":info with matrix market header, as explained here: http://bickson.blogspot.co.il/2012/12/collaborative-filtering-3rd-generation_14.html " << std::endl;
@@ -563,7 +525,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fc.stats_array[i].maxval = -1e100;
     }
   }
-  //if (!sharderobj.preprocessed_file_exists()) {
     if (limit_rating > 0)
       nz = limit_rating;
     for (size_t i=0; i<nz; i++)
@@ -612,26 +573,14 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     }
     fclose(outf);
 
-  /*} else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }*/
-
   fclose(f);
 
   if (fc.hash_strings){
     for (int i=0; i< fc.total_features+2; i++){
       if (fc.node_id_maps[i].string2nodeid.size() == 0)
         logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
-      /*char filename[256];
-      sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
-      save_map_to_text_file(fc.node_id_maps[i].string2nodeid,filename);*/
     }
   }
-  /*if (fc.rehash_value){
-      char filename[256];
-      sprintf(filename, "%s.feature_val.map", base_filename.c_str());
-      save_map_to_text_file(fc.val_map.string2nodeid,filename);
-  }*/
     
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
@@ -782,25 +731,18 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       bool square = false) {
 
     assert(fc.total_features <= fc.feature_num);
-    int ret_code;
-    MM_typecode matcode;
-    FILE *f;
+    if (validation == "")
+      return;
+
+    FILE *f = NULL;
     size_t nz;   
 
-    if ((f = fopen(validation.c_str(), "r")) == NULL) {
-      std::cout<<std::endl;
-      return; //missing validaiton data, nothing to compute
+    detect_matrix_size(validation, f, Me, Ne, nz);
+    if (f == NULL){
+       logstream(LOG_WARNING)<<"Failed to open validation data. Skipping."<<std::endl;
+       return;
     }
-    if (mm_read_banner(f, &matcode) != 0)
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << validation << std::endl;
 
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
@@ -846,52 +788,23 @@ void test_predictions_N(
     float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & predictioni, vec * sum), 
     feature_control & fc, 
     bool square = false) {
-  int ret_code;
-  MM_typecode matcode;
   FILE *f;
   uint Me, Ne;
   size_t nz;   
-  bool info_file = false;
-  FILE * ff = NULL;
 
   if (test == "")
     logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
 
-  /* auto detect presence of file named base_filename.info to find out matrix market size */
-  if ((ff = fopen((test + ":info").c_str(), "r")) != NULL) {
-    info_file = true;
-    if (mm_read_banner(ff, &matcode) != 0){
-      logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-    }
-    if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-      logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
+  detect_matrix_size(test, f, Me, Ne, nz);
+  if (f == NULL)
+     logstream(LOG_WARNING)<<"Failed to open test file. Skipping " << std::endl;
 
-    /* find out size of sparse matrix .... */
-    if ((ret_code = mm_read_mtx_crd_size(ff, &Me, &Ne, &nz)) !=0) {
-      logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-    }
-  }
-
-
-  if ((f = fopen(test.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
-  }
-  if (!info_file){
-  if (mm_read_banner(f, &matcode) != 0)
-    logstream(LOG_FATAL) << "Could not process Matrix Market banner. File: " << test << std::endl;
-  if (mm_is_complex(matcode) || !mm_is_sparse(matcode))
-    logstream(LOG_FATAL) << "Sorry, this application does not support complex values and requires a sparse matrix." << std::endl;
-  if ((ret_code = mm_read_mtx_crd_size(f, &Me, &Ne, &nz)) !=0) {
-    logstream(LOG_FATAL) << "Failed reading matrix size: error=" << ret_code << std::endl;
-  }
-  }
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
-  FILE * fout = fopen((test + ".predict").c_str(),"w");
-  if (fout == NULL)
-    logstream(LOG_FATAL)<<"Failed to open test prediction file for writing"<<std::endl;
+  FILE * fout = open_file((test + ".predict").c_str(),"w");
 
+  MM_typecode matcode;
   mm_set_array(&matcode);
   mm_write_banner(fout, matcode);
   mm_write_mtx_array_size(fout ,nz, 1); 
@@ -908,9 +821,6 @@ void test_predictions_N(
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
-    for (int k=0; k< calc_feature_node_array_size(I,J); k++)
-      node_array[k] = NULL;
-
     vec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
@@ -961,11 +871,8 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
 }
 
-#include "io.hpp"
-#include "../parsers/common.hpp"
 
-
-void init_gensgd(){
+void init_gensgd(bool load_factors_from_file){
 
   srand(time(NULL));
   int nodes = M+N+num_feature_bins()+fc.last_item*M;
@@ -975,12 +882,13 @@ void init_gensgd(){
   fc.offsets.resize(howmany);
   get_offsets(fc.offsets);
   assert(D > 0);
+  if (!load_factors_from_file){
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
   for (int i=0; i< nodes; i++){
     latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
-
+  }
 }
 
 
@@ -994,16 +902,9 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
     start = M;
     end = M+N;
   }
-#pragma omp parallel for reduction(+:dtraining_rmse)
-  for (int i=start; i< (int)end; i++){
-    dtraining_rmse += latent_factors_inmem[i].rmse;
-  }
-  if (calc_error){
-#pragma omp parallel for reduction(+:total_errors)
-  for (int i=start; i< (int)end; i++){
-      total_errors += latent_factors_inmem[i].errors;
-  }
-}
+  dtraining_rmse = sum(rmse_vec);
+  if (calc_error)
+    total_errors = sum(errors_vec);
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
@@ -1015,7 +916,7 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
  */
-struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
   /*
    *  Vertex update function - computes the least square step
@@ -1043,8 +944,6 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data& user = latent_factors_inmem[vertex.id()]; 
-      user.rmse = 0; 
-      user.errors = 0;
       assert(user.last_item >= 0 && user.last_item < (int)N);
 
 
@@ -1061,11 +960,9 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
         vec sum;
 
         //compute current prediction
-        user.rmse += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
-        if (pui < cutoff && rui > cutoff)
-          user.errors++;
-        else if (pui > cutoff && rui < cutoff)
-          user.errors++;
+        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
+        if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
+          errors_vec[omp_get_thread_num()]++;
         float eui = pui - rui;
 
         //update global mean bias
@@ -1119,6 +1016,16 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
     validation_rmse_N(&gensgd_predict, gcontext, fc);
   };
 
+  /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    rmse_vec = zeros(number_of_omp_threads());
+    if (calc_error)
+      errors_vec = zeros(number_of_omp_threads());
+  }
+
+
 
 };
 
@@ -1144,62 +1051,15 @@ struct  MMOutputter_bias{
 
 };
 
-struct  MMOutputter_global_mean {
-  FILE * outf;
-  MMOutputter_global_mean(std::string fname, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, 1, 1); 
-    fprintf(outf, "%1.12e\n", globalMean);
-  }
-
-  ~MMOutputter_global_mean() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment)  {
-    assert(start < end);
-    MM_typecode matcode;
-    set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
-    for (uint i=start; i < end; i++)
-      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
-      }
-  }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
 void output_gensgd_result(std::string filename) {
-  MMOutputter mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains LIBFM output matrices. In each row D factors of a single user node, then item nodes, then features");
-  MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains LIBFM output bias vector. In each row a single user bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.");
+  MMOutputter<vertex_data> mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
+  MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains Gensgd output bias vector. In each row a single user bias.");
+  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains Gensgd global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " GENSGD output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
 }
 
 int main(int argc, const char ** argv) {
-
 
   print_copyright();  
 
@@ -1262,9 +1122,9 @@ int main(int argc, const char ** argv) {
   fc.node_id_maps.resize(2+fc.total_features);
   fc.stats_array.resize(fc.total_features);
 
-   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
+  int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
  
-  init_gensgd();
+  init_gensgd(load_factors_from_file);
   if (user_file != "")
     read_node_features(user_file, false, fc, true, false);
   if (item_file != "")
@@ -1303,6 +1163,7 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    assert(user_bias.size() == num_feature_bins());
     for (uint i=0; num_feature_bins(); i++){
       latent_factors_inmem[i].bias = user_bias[i];
     }
@@ -1312,7 +1173,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Run */
-  LIBFMVerticesInMemProgram program;
+  GensgdVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   set_engine_flags(engine);
   pengine = &engine;
