@@ -39,4 +39,5 @@ echo "TESTING BIAS_SGD2"
 echo "TESTING PMF"
  ./toolkits/collaborative_filtering/pmf --training=smallnetflix_mm --validation=smallnetflix_mme --quiet=1 --minval=1 --maxval=5 --max_iter=10 --pmf_burn_in=5
 echo "TESTING ITEMCF"
-./toolkits/collaborative_filtering/itemcf --training=smallnetflix_mm --nshards=2 --quiet=1
+./toolkits/collaborative_filtering/itemcf --training=smallnetflix_mm --nshards=1 --quiet=1
+./toolkits/collaborative_filtering/itemcf --training=smallnetflix_mm --nshards=1 --quiet=1 --distance=3

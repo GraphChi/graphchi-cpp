@@ -1,4 +1,3 @@
-
 /**
  * @file
  * @author  Danny Bickson, based on code by Aapo Kyrola <akyrola@cs.cmu.edu>
