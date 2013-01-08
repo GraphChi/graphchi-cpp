@@ -65,18 +65,18 @@ int col = 3;
 int K = 10;
 //non word tokens that will be removed in the parsing
 //it is possible to add additional special characters or remove ones you want to keep
-const char spaces[] = {" \r\n\t!?@#$%^&*()-+.,~`'\";:"};
+const char spaces[] = {" \r\n\t;:"};
 
 void dump_entry(uint from, vec & to_vec, vec & vals_vec, int pos, FILE * out_ids, FILE * out_vals){
-   assert(pos <= K);
-   fprintf(out_ids, "%u ", from);
-   fprintf(out_vals, "%u ", from);
-   for (int i=0; i< pos; i++){
+  assert(pos <= K);
+  fprintf(out_ids, "%u ", from);
+  fprintf(out_vals, "%u ", from);
+  for (int i=0; i< pos; i++){
     fprintf(out_ids, "%u ", (uint)to_vec[i]);
     fprintf(out_vals, "%12.6g ", vals_vec[i]);
-   }
-   fprintf(out_ids, "\n");
-   fprintf(out_vals, "\n");
+  }
+  fprintf(out_ids, "\n");
+  fprintf(out_vals, "\n");
 }
 void parse(int i){    
   in_file fin(in_files[i]);
@@ -84,52 +84,53 @@ void parse(int i){
   out_file val_out((outdir + in_files[i] + ".vals"));
 
 
-   vec to_vec;
-   vec val_vec;
+  vec to_vec = zeros(K);
+  vec val_vec = zeros(K);
   int pos = 0;
   size_t linesize = 0;
   char * saveptr = NULL, * linebuf = NULL;
   size_t line = 1;
   uint from = 0, to = 0;
-  uint last_from = 0, last_to = 0;
+  uint last_from = 0;
   while(true){
     int rc = getline(&linebuf, &linesize, fin.outf);
     if (rc < 1)
       break;
 
-    char * line_to_free = linebuf;
+    //char * line_to_free = linebuf;
 
-    //identify from and to fields
+    //find from
     char *pch = strtok_r(linebuf, spaces, &saveptr);
-    if (!pch) 
+    if (!pch || atoi(pch)<= 0) 
       logstream(LOG_FATAL) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; 
     from = atoi(pch);
 
+    //find to
     pch = strtok_r(NULL, spaces ,&saveptr);
-    if (!pch)
+    if (!pch || atoi(pch)<=0)
       logstream(LOG_FATAL) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl;
     to = atoi(pch);
 
-    //go over the rest of the line
-      pch = strtok_r(NULL, spaces ,&saveptr);
-      if (!pch) 
-        logstream(LOG_FATAL) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; 
-    
-        if (from != last_from){
-             // fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
-          if (last_from != 0){
-              dump_entry(last_from, to_vec, val_vec, pos, ids_out.outf, val_out.outf);
-              pos = 0;
-          }   
-        }
-        if (pos>= K)
-              continue;   
-          val_vec[pos] = atof(pch);
-          to_vec[pos] = to;
-          pos++;
+    //find val
+    pch = strtok_r(NULL, spaces ,&saveptr);
+    if (!pch) 
+      logstream(LOG_FATAL) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; 
 
-         
-    last_from = from; last_to = to;
+    if (from != last_from){
+      // fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
+      if (last_from != 0){
+        dump_entry(last_from, to_vec, val_vec, pos, ids_out.outf, val_out.outf);
+        pos = 0;
+      }   
+    }
+    if (pos>= K)
+      continue;   
+    val_vec[pos] = atof(pch);
+    to_vec[pos] = to;
+    pos++;
+
+    //free(line_to_free);     
+    last_from = from; 
     total_lines++;
     line++;
     if (lines && line>=lines)
@@ -137,12 +138,9 @@ void parse(int i){
 
     if (debug && (line % 50000 == 0))
       logstream(LOG_INFO) << "Parsed line: " << line << std::endl;
-
-    free(line_to_free);
-  } 
-
+  }
   if (last_from != 0)
-   dump_entry(last_from, to_vec, val_vec, pos, ids_out.outf, val_out.outf); 
+    dump_entry(last_from, to_vec, val_vec, pos, ids_out.outf, val_out.outf); 
 
   logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl;
 }
@@ -159,7 +157,10 @@ int main(int argc,  const char *argv[]) {
 
   debug = get_option_int("debug", 0);
   lines = get_option_int("lines", 0);
-  col = get_option_int("col", 3);
+  K = get_option_int("K", K);
+  if (K < 1)
+    logstream(LOG_FATAL)<<"Number of top elements (--K=) should be >= 1"<<std::endl;
+
   omp_set_num_threads(get_option_int("ncpus", 1));
   mytime.start();
 

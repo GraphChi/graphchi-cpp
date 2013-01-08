@@ -7,7 +7,7 @@ TRAINING=$1
 
 FOUND=0
 rm -f *.sorted
-for i in `ls $TRAINING.out[0-1]*`1
+for i in `ls $TRAINING.out[0-9]*`1
 do
   FOUND=1
   echo "Sorting output file $i"
@@ -20,7 +20,7 @@ if [ $FOUND -eq 0 ]; then
 fi
 
 echo "Merging sorted files:"
-sort -r -g -u -k 1,1 -k 3,3 -m *.sorted > $TRAINING.topk.out
+sort -g -u -k 1,1 -k 3,3r -m *.sorted > $TRAINING.topk.out
 if [ $? -ne 0 ]; then
   echo "Error: Failed to merge!"
   exit 1
