@@ -265,8 +265,9 @@ struct  MMOutputter_ratings{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, num_ratings); 
+    mm_write_mtx_array_size(outf, end-start, num_ratings+1); 
     for (uint i=start; i < end; i++){
+      fprintf(outf, "%u ", i+1);
       for(int j=0; j < num_ratings; j++) {
         fprintf(outf, "%1.12e ", latent_factors_inmem[i].ratings[j]);
       }
@@ -290,8 +291,9 @@ struct  MMOutputter_ids{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, num_ratings); 
+    mm_write_mtx_array_size(outf, end-start, num_ratings+1); 
     for (uint i=start; i < end; i++){
+      fprintf(outf, "%u ", i+1);
       for(int j=0; j < num_ratings; j++) {
         fprintf(outf, "%u ", (int)latent_factors_inmem[i].ids[j]+1);//go back to item ids starting from 1,2,3, (and not from zero as in c)
       }
@@ -308,8 +310,8 @@ struct  MMOutputter_ids{
 
 
 void output_knn_result(std::string filename) {
-  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i.");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i.");
+  MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings)");
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                            ", " << filename + ".ids " << std::endl;
 }
