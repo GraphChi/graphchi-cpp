@@ -149,10 +149,10 @@ struct  MMOutputter_mat{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
+    mm_write_mtx_array_size(outf, end-start, size > 0 ? size : latent_factors_inmem[start].pvec.size()); 
     for (uint i=start; i < end; i++)
       for(int j=0; j < ((size > 0) ? size : latent_factors_inmem[i].pvec.size()); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
+        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(j));
       }
     fclose(outf);
   }

@@ -71,6 +71,8 @@ struct vertex_data {
   int component;
   vec pvec; //to remove
   vertex_data() : active(false), done(false), next_active(false), component(0)  {}
+  void set_val(int index, double val){};
+  float get_val(int index){ return 0; }
 
 }; // end of vertex_data
 

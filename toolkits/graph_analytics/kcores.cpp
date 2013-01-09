@@ -57,7 +57,8 @@ struct vertex_data {
   int kcore, degree;
   vec pvec; //to remove
   vertex_data() : active(true), kcore(-1), degree(0)  {}
-
+  void set_val(int index, double val){}
+  float get_val(int index){ return 0;}
 }; // end of vertex_data
 
 //edges in kcore algorithm are binary
