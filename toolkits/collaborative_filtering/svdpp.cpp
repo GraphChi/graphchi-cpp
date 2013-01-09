@@ -85,7 +85,7 @@ struct vertex_data {
       return bias;
     else if (index < D)
       return pvec[index];
-    else return weight[index];
+    else return weight[index-D];
   }
 };
 
