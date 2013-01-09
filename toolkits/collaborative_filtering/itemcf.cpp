@@ -37,6 +37,7 @@
 
 #include <set>
 #include <iomanip>
+#include <algorithm>
 #include "common.hpp"
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
@@ -53,6 +54,7 @@ enum DISTANCE_METRICS{
 
 int min_allowed_intersection = 1;
 size_t written_pairs = 0;
+size_t actual_written = 0;
 size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
@@ -243,7 +245,18 @@ class adjlist_container {
 
 
 adjlist_container * adjcontainer;
-
+struct index_val{
+  uint index;
+  float val;
+  index_val(){
+    index = -1; val = 0;
+  }
+  index_val(uint index, float val): index(index), val(val){ }
+};
+bool Greater(const index_val& a, const index_val& b)
+{
+      return a.val > b.val;
+}
 struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
@@ -304,6 +317,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       if (!relevant_items[v.id() - M]){
         return;
       }
+      std::vector<index_val> heap;
+
+      
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
         //if JACCARD which is symmetric, compare only to pivots which are smaller than this item id
@@ -314,20 +330,26 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
-        if (item_pairs_compared % 1000000 == 0)
-          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
+        if (item_pairs_compared % 10000000 == 0)
+          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " <<  std::setw(10) << actual_written << " written. " << std::endl;
 
         //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
         if (dist != 0){
-         int rc = fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+          heap.push_back(index_val(i, dist)); 
+                //where the output format is: 
+         //[item A] [ item B ] [ distance ] 
+          written_pairs++;
+        }
+      }
+      sort(heap.begin(), heap.end(), &Greater);
+      int thread_num = omp_get_thread_num();
+      for (uint i=0; i< std::min(heap.size(), (size_t)K); i++){
+          int rc = fprintf(out_files[thread_num], "%u %u %lg\n", v.id()-M+1, heap[i].index-M+1, (double)heap[i].val);//write item similarity to file
+          actual_written++;
          if (rc <= 0){
             perror("Failed to write output");
             logstream(LOG_FATAL)<<"Failed to write output to: file: " << training << omp_get_thread_num() << ".out" << std::endl;  
          }
-         //where the output format is: 
-         //[item A] [ item B ] [ distance ] 
-          written_pairs++;
-        }
       }
     }//end of iteration % 2 == 1
   }//end of update function
@@ -416,6 +438,7 @@ int main(int argc, const char ** argv) {
 
   mytimer.start();
   int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
+  K                        = get_option_int("K", K);
 
   assert(M > 0 && N > 0);
   
@@ -448,7 +471,7 @@ int main(int argc, const char ** argv) {
   if (!quiet)
     metrics_report(m);
   
-  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
+  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << std::endl;
 
   for (uint i=0; i< out_files.size(); i++){
     fflush(out_files[i]);

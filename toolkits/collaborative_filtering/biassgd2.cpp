@@ -36,6 +36,8 @@
 double biassgd_lambda = 1e-3; //sgd step size
 double biassgd_gamma = 1e-3;  //sgd regularization
 double biassgd_step_dec = 0.9; //sgd step decrement
+#define BIAS_POS -1
+
 struct vertex_data {
   vec pvec; //storing the feature vector
   double bias;
@@ -43,6 +45,17 @@ struct vertex_data {
   vertex_data() {
     pvec = zeros(D);
     bias = 0;
+  }
+
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    else pvec[index] = val;
+  }
+  float get_val(int index){
+    if (index== BIAS_POS)
+      return bias;
+    else return pvec[index];
   }
 
 };
@@ -175,11 +188,11 @@ struct  MMOutputter_bias{
 
 
 void output_biassgd_result(std::string filename){
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M, M+N , "This file contains bias-SGD  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains bias-SGD output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains bias-SGD output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.", globalMean);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M, M+N , "This file contains bias-SGD  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> user_bias_vec(filename + "_U_bias.mm", 0, M, BIAS_POS, "This file contains bias-SGD output bias vector. In each row a single user bias.",latent_factors_inmem);
+  MMOutputter_vec<vertex_data> item_bias_vec(filename + "_V_bias.mm",M ,M+N, BIAS_POS, "This file contains bias-SGD output bias vector. In each row a single item bias.", latent_factors_inmem);
+  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
                                                                              ", " << filename + "_V.mm, " << filename << "_U_bias.mm, " << filename << "_V_bias.mm, " << filename << "_global_mean.mm" << std::endl;

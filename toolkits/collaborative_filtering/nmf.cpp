@@ -38,6 +38,12 @@ struct vertex_data {
   vertex_data() {
    pvec = zeros(D); 
   }
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
 };
 
 
@@ -188,8 +194,8 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 
 void output_nmf_result(std::string filename){
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains NMF output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M, M+N, "This file contains NMF  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   logstream(LOG_INFO) << "NMF output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }

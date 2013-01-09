@@ -53,12 +53,23 @@ bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
+#define BIAS_POS -1
 
 struct vertex_data {
   vec pvec;
   double bias;
   vertex_data() {
     bias = 0;
+  }
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    else pvec[index] = val;
+  }
+  float get_val(int index){
+    if (index == BIAS_POS)
+      return bias;
+    else return pvec[index];
   }
 
 };
@@ -338,37 +349,14 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
 
 };
 
-struct  MMOutputter_bias{
-  FILE * outf;
-  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1); 
-    for (uint i=start; i< end; i++)
-      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].bias);
-  }
-
-
-  ~MMOutputter_bias() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
 
 void output_timesvdpp_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains TIMESVDPP output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp]", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -TIMESVDPP  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -TIMESVDPP  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains time-svd++ output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains time-svd++ output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.", globalMean);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains TIMESVDPP output matrix U. In each row 4xD factors of a single user node. The vectors are [p pu x ptemp]", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M ,M+N, "This file contains -TIMESVDPP  output matrix V. In each row 2xD factors of a single item node. The vectors are [q y]", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> time_mat(filename + "_T.mm", M+N ,M+N+K, "This file contains -TIMESVDPP  output matrix T. In each row 2xD factors of a single time node. The vectors are [z pt]", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_left(filename + "_U_bias.mm", 0, M, BIAS_POS, "This file contains time-svd++ output bias vector. In each row a single user bias.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , BIAS_POS, "This file contains time-svd++ output bias vector. In each row a single item bias.", latent_factors_inmem);
+  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains time-svd++ global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " time-svd++ output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << " _global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm " << std::endl;
 }

@@ -39,14 +39,18 @@ double sgd_gamma = 1e-3;  //sgd regularization
 double sgd_step_dec = 0.9; //sgd step decrement
 
 struct vertex_data {
-    vec pvec; //storing the feature vector
-    double bias;
- 
-    vertex_data() {
-        pvec = zeros(D);
-        bias = 0;
-    }
-   
+  vec pvec; //storing the feature vector
+
+  vertex_data() {
+    pvec = zeros(D);
+  }
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
+
 };
 
 #include "util.hpp"
@@ -93,7 +97,7 @@ float sgd_predict(const vertex_data& user,
  */
 struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
- /**
+  /**
    * Called before an iteration is started.
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
@@ -150,8 +154,8 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 //dump output to file
 void output_sgd_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains SGD  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains SGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M ,M+N,  "This file contains SGD  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
 
   logstream(LOG_INFO) << "SGD output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
@@ -173,7 +177,7 @@ int main(int argc, const char ** argv) {
   sgd_lambda    = get_option_float("sgd_lambda", 1e-3);
   sgd_gamma     = get_option_float("sgd_gamma", 1e-3);
   sgd_step_dec  = get_option_float("sgd_step_dec", 0.9);
-  
+
   parse_command_line_args();
   parse_implicit_command_line();
 
@@ -184,7 +188,7 @@ int main(int argc, const char ** argv) {
     int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &sgd_predict);
   }
- 
+
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);

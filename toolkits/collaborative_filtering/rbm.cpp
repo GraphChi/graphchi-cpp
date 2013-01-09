@@ -52,6 +52,7 @@ float dot(double * a, double * b){
   return ret;
 }
 
+#define BIAS_POS -1
 struct vertex_data {
   vec pvec; //storing the feature vector
   double rmse;          //tracking rmse
@@ -61,6 +62,17 @@ struct vertex_data {
     rmse = 0;
     bias = 0;
   }
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    else pvec[index] = val;
+  }
+  float get_val(int index){
+    if (index== BIAS_POS)
+      return bias;
+    else return pvec[index];
+  }
+
 };
 
 
@@ -222,6 +234,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     training_rmse(iteration, gcontext);
     if (iteration >= 2)
       run_validation(pvalidation_engine, gcontext);
+    else std::cout<<std::endl;
   }
 
   /**
@@ -366,8 +379,8 @@ struct  MMOutputter_bias{
 
 //dump output to file
 void output_rbm_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains RBM output bias vector. In each row a single item ni.");
 
   logstream(LOG_INFO) << "RBM output files (in matrix market format): " << filename << "_U.mm" <<

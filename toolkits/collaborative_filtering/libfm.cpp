@@ -46,6 +46,7 @@ int time_offset = 1; //time bin starts from 1?
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
+#define BIAS_POS -1
 
 struct vertex_data {
   vec pvec;
@@ -55,6 +56,16 @@ struct vertex_data {
   vertex_data() {
     bias = 0;
     last_item = 0;
+  }
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    else pvec[index] = val;
+  }
+  float get_val(int index){
+    if (index== BIAS_POS)
+      return bias;
+    else return pvec[index];
   }
 
 
@@ -274,15 +285,15 @@ struct  MMOutputter_bias{
 
 
 void output_libfm_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains LIBFM output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains LIBFM output bias vector. In each row a single item bias.");
-  MMOutputter_bias mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , "This file contains LIBFM output bias vector. In each row a single time bias.");
-  MMOutputter_bias mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , "This file contains LIBFM output bias vector. In each row a single last item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.", globalMean);
+  MMOutputter_mat<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains LIBFM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains -LIBFM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> mmoutput_time(filename + "_T.mm", M+N ,M+N+K, "This file contains -LIBFM  output matrix T. In each row D factors of a single time node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> mmoutput_last_item(filename + "_L.mm", M+N+K ,M+N+K+M, "This file contains -LIBFM  output matrix L. In each row D factors of a single last item node.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_left(filename + "_U_bias.mm", 0, M, BIAS_POS, "This file contains LIBFM output bias vector. In each row a single user bias.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N, BIAS_POS,  "This file contains LIBFM output bias vector. In each row a single item bias.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_time(filename + "_T_bias.mm",M+N ,M+N+K , BIAS_POS, "This file contains LIBFM output bias vector. In each row a single time bias.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias_last_item(filename + "_L_bias.mm",M+N+K ,M+N+K+M , BIAS_POS, "This file contains LIBFM output bias vector. In each row a single last item bias.", latent_factors_inmem);
+  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains LIBFM global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " LIBFM output files (in matrix market format): " << filename << "_U.mm" << ", " << filename + "_V.mm " << filename + "_T.mm, " << filename << "_L.mm, " << filename <<  "_global_mean.mm, " << filename << "_U_bias.mm " << filename << "_V_bias.mm, " << filename << "_T_bias.mm, " << filename << "_L_bias.mm " <<std::endl;
 }

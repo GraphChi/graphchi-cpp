@@ -26,6 +26,19 @@
 #include "types.hpp"
 #include "implicit.hpp"
 
+/*
+ * open a file and verify open success
+ */
+FILE * open_file(const char * name, const char * mode, bool optional = false){
+  FILE * f = fopen(name, mode);
+  if (f == NULL && !optional){
+    perror("fopen failed");
+    logstream(LOG_FATAL) <<" Failed to open file" << name << std::endl;
+  }
+  return f;
+}
+
+
 void set_matcode(MM_typecode & matcode){
   mm_initialize_typecode(&matcode);
   mm_set_matrix(&matcode);
@@ -108,48 +121,54 @@ void write_global_mean(std::string base_filename, int type){
 }
 
 
+template<typename vertex_data>
+struct  MMOutputter_vec{
+  MMOutputter_vec(std::string fname, uint start, uint end, int index, std::string comment, std::vector<vertex_data> & latent_factors_inmem)  {
+    MM_typecode matcode;
+    set_matcode(matcode);
+    FILE * outf = open_file(fname.c_str(), "w");
+    mm_write_banner(outf, matcode);
+    if (comment != "")
+      fprintf(outf, "%%%s\n", comment.c_str());
+    mm_write_mtx_array_size(outf, end-start, 1); 
+    for (uint i=start; i< end; i++)
+      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(index));
+    fclose(outf);
+  }
+
+};
+
 
 template<typename vertex_data>
-struct  MMOutputter{
-  FILE * outf;
-  MMOutputter(std::string fname, uint start, uint end, std::string comment, std::vector<vertex_data> & latent_factors_inmem)  {
+struct  MMOutputter_mat{
+  MMOutputter_mat(std::string fname, uint start, uint end, std::string comment, std::vector<vertex_data> & latent_factors_inmem, int size = 0)  {
     assert(start < end);
     MM_typecode matcode;
     set_matcode(matcode);     
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
+    FILE * outf = open_file(fname.c_str(), "w");
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
     mm_write_mtx_array_size(outf, end-start, latent_factors_inmem[start].pvec.size()); 
     for (uint i=start; i < end; i++)
-      for(int j=0; j < latent_factors_inmem[i].pvec.size(); j++) {
+      for(int j=0; j < ((size > 0) ? size : latent_factors_inmem[i].pvec.size()); j++) {
         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].pvec[j]);
       }
+    fclose(outf);
   }
-
-  ~MMOutputter() {
-    if (outf != NULL) fclose(outf);
-  }
-
 };
 
-struct  MMOutputter_global_mean {
-  FILE * outf;
-  MMOutputter_global_mean(std::string fname, std::string comment, double val)  {
+struct  MMOutputter_scalar {
+  MMOutputter_scalar(std::string fname, std::string comment, double val)  {
     MM_typecode matcode;
     set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
+    FILE * outf = open_file(fname.c_str(), "w");
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
     mm_write_mtx_array_size(outf, 1, 1); 
     fprintf(outf, "%1.12e\n", val);
-  }
-
-  ~MMOutputter_global_mean() {
-    if (outf != NULL) fclose(outf);
+    fclose(outf);
   }
 
 };
@@ -386,18 +405,6 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   return nshards;
 }
 
-
-/*
- * open a file and verify open success
- */
-FILE * open_file(const char * name, const char * mode, bool optional = false){
-  FILE * f = fopen(name, mode);
-  if (f == NULL && !optional){
-    perror("fopen failed");
-    logstream(LOG_FATAL) <<" Failed to open file" << name << std::endl;
-  }
-  return f;
-}
 
 
 void load_matrix_market_vector(const std::string & filename, const bipartite_graph_descriptor & desc, 
@@ -661,7 +668,7 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
       assert(I >= 0 && I < rows);
       assert(J >= 0 && J < cols);
       //set_val(a, I, J, val);
-      latent_factors_inmem[I+offset].pvec[J] = val;
+      latent_factors_inmem[I+offset].set_val(J,val);
     }
     else {
       rc = fscanf(f, "%lg", &val);
@@ -670,7 +677,7 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
       I = i / D;
       J = i % cols;
       //set_val(a, I, J, val);
-      latent_factors_inmem[I+offset].pvec[J] = val;
+      latent_factors_inmem[I+offset].set_val(J, val);
     }
   }
   logstream(LOG_INFO) << "Factors from file: loaded matrix of size " << rows << " x " << cols << " from file: " << filename << " total of " << nnz << " entries. "<< i << std::endl;

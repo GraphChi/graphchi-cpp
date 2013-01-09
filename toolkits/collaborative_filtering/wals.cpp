@@ -46,6 +46,13 @@ struct vertex_data {
     rmse = 0;
   }
 
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
+
 };
 
 struct edge_data {
@@ -150,8 +157,8 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
 
 
 void output_als_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains WALS output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M, M+N, "This file contains WALS  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
   logstream(LOG_INFO) << "WALS output files (in matrix market format): " << filename << "_U.mm" <<
                                                                             ", " << filename + "_V.mm " << std::endl;
 }

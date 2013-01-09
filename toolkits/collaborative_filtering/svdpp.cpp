@@ -61,6 +61,7 @@ struct svdpp_params{
 };
 
 svdpp_params svdpp;
+#define BIAS_POS -1
 
 struct vertex_data {
   vec pvec;
@@ -72,7 +73,20 @@ struct vertex_data {
     weight = zeros(D);
     bias = 0;
   }
-
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    if (index < D)
+      pvec[index] = val;
+    else weight[index-D] = val;
+  }
+  float get_val(int index){
+    if (index== BIAS_POS)
+      return bias;
+    else if (index < D)
+      return pvec[index];
+    else return weight[index];
+  }
 };
 
 
@@ -202,41 +216,34 @@ struct SVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
 };
 
-struct  MMOutputter_bias{
-  FILE * outf;
-  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1); 
-    for (uint i=start; i< end; i++)
-       fprintf(outf, "%1.12e\n", latent_factors_inmem[i].bias);
-  }
-
-
-  ~MMOutputter_bias() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
 
 void output_svdpp_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias_left(filename + "_U_bias.mm", 0, M, "This file contains SVD++ output bias vector. In each row a single user bias.");
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm", M, M+N, "This file contains SVD++ output bias vector. In each row a single item bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.", globalMean);
+  MMOutputter_mat<vertex_data> user_output(filename + "_U.mm", 0, M, "This file contains SVD++ output matrix U. In each row D factors of a single user node. Then additional D weight factors.", latent_factors_inmem, 2*D);
+  MMOutputter_mat<vertex_data> item_output(filename + "_V.mm", M ,M+N, "This file contains SVD++ output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> bias_user_vec(filename + "_U_bias.mm", 0, M, BIAS_POS, "This file contains SVD++ output bias vector. In each row a single user bias.", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> bias_mov_vec(filename + "_V_bias.mm", M, M+N, BIAS_POS, "This file contains SVD++ output bias vector. In each row a single item bias.", latent_factors_inmem);
+  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains SVD++ global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << "SVDPP output files (in matrix market format): " << filename << "_U.mm" <<
                                                                              ", " << filename + "_V.mm, " << filename << "_U_bias.mm, " << filename << "_V_bias.mm, " << filename << "_global_mean.mm" << std::endl;
 }
 
+void svdpp_init(){
+  srand48(time(NULL));
+  latent_factors_inmem.resize(M+N);
 
+#pragma omp parallel for
+  for(int i = 0; i < (int)(M+N); ++i){
+    vertex_data & data = latent_factors_inmem[i];
+    data.pvec = zeros(D);
+    if (i < (int)M) //user node
+      data.weight = zeros(D);
+    for (int j=0; j<D; j++)
+      latent_factors_inmem[i].pvec[j] = drand48();
+  }
+  logstream(LOG_INFO) << "SVD++ initialization ok" << std::endl;
+
+}
 
 int main(int argc, const char ** argv) {
 
@@ -266,16 +273,15 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = convert_matrixmarket<EdgeDataType>(training);
-  init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
     int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &svdpp_predict);
   }
 
-
+  svdpp_init();
 
   if (load_factors_from_file){
-    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    load_matrix_market_matrix(training + "_U.mm", 0, 2*D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
     vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);

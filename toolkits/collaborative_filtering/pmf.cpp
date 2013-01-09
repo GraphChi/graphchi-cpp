@@ -66,6 +66,12 @@ struct vertex_data {
   vertex_data() {
     pvec = zeros(D);
   }
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
 };
 
 struct edge_data {
@@ -284,6 +290,14 @@ void sample_hyperpriors(double res){
     //  sample_T();
 }
 
+void output_pmf_result(std::string filename) {
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M , "This file contains PMF output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M  ,M+N, "This file contains PMF  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
+  logstream(LOG_INFO) << "PMF output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                           ", " << filename + "_V.mm " << std::endl;
+}
+
+
 
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
@@ -345,8 +359,11 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if (iteration == pmf_burn_in){
       printf("Finished burn-in period. starting to aggregate samples\n");
     }
-    //TODO if (pmf_additional_output && iiter >= pmf_burn_in)
-    //    write_output();
+    if (pmf_additional_output && iiter >= pmf_burn_in){
+        char buf[256];
+        sprintf(buf, "%s-%d", training.c_str(), iiter-pmf_burn_in);
+        output_pmf_result(buf);
+    }
  
     double res = training_rmse(iteration, gcontext);
     sample_hyperpriors(res);
@@ -365,14 +382,6 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 };
 
 
-
-
-void output_pmf_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput_left(filename + "_U.mm", 0, M , "This file contains PMF output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
-  MMOutputter<vertex_data> mmoutput_right(filename + "_V.mm", M  ,M+N, "This file contains PMF  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  logstream(LOG_INFO) << "PMF output files (in matrix market format): " << filename << "_U.mm" <<
-                                                                           ", " << filename + "_V.mm " << std::endl;
-}
 
 void init_pmf(){
   init_self_pot();
@@ -417,11 +426,7 @@ int main(int argc, const char ** argv) {
   pengine = &engine;
   engine.run(program, niters);
 
-
-  /* Output latent factor matrices in matrix-market format */
-  output_pmf_result(training);
   test_predictions(&pmf_predict);    
-
   
   /* Report execution metrics */
   if (!quiet)
