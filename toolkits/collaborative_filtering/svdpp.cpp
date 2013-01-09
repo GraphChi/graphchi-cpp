@@ -76,7 +76,7 @@ struct vertex_data {
   void set_val(int index, float val){
     if (index == BIAS_POS)
       bias = val;
-    if (index < D)
+    else if (index < D)
       pvec[index] = val;
     else weight[index-D] = val;
   }
@@ -284,7 +284,9 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_U.mm", 0, 2*D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    assert(user_bias.size() == M);
     vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    assert(item_bias.size() == N);
     for (uint i=0; i<M+N; i++){
       latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
     }

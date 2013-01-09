@@ -659,6 +659,9 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
     nnz = rows * cols;
   }
 
+  if (D != cols)
+    logstream(LOG_FATAL)<<"Wrong matrix size detected, should be " << D << " instead of : " << cols << std::endl;
+
   for (i=0; i<nnz; i++){
     if (mm_is_sparse(matcode)){
       rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
@@ -674,9 +677,8 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
       rc = fscanf(f, "%lg", &val);
       if (rc != 1)
         logstream(LOG_FATAL)<<"Error reading nnz " << i << std::endl;
-      I = i / D;
+      I = i / cols;
       J = i % cols;
-      //set_val(a, I, J, val);
       latent_factors_inmem[I+offset].set_val(J, val);
     }
   }
