@@ -77,6 +77,12 @@ struct vertex_data{
    vec pvec; 
    int degree; 
    vertex_data(){ degree = 0; }
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
 };
 std::vector<vertex_data> latent_factors_inmem;
 #include "io.hpp"

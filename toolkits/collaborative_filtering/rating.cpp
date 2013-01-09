@@ -47,6 +47,12 @@ struct vertex_data {
 
   vertex_data() {
   }
+  void set_val(int index, float val){
+    pvec[index] = val;
+  }
+  float get_val(int index){
+    return pvec[index];
+  }
 
 
 };

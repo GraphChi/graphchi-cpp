@@ -153,7 +153,7 @@ bool is_item(vid_t id){ return id >= M && id < N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
 vec errors_vec;
-
+#define BIAS_POS -1
 struct vertex_data {
   vec pvec;
   double bias;
@@ -164,6 +164,16 @@ struct vertex_data {
   vertex_data() {
     bias = 0;
     last_item = 0;
+  }
+  void set_val(int index, float val){
+    if (index == BIAS_POS)
+      bias = val;
+    else pvec[index] = val;
+  }
+  float get_val(int index){
+    if (index== BIAS_POS)
+      return bias;
+    else return pvec[index];
   }
 
 
@@ -1032,32 +1042,11 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
 };
 
-struct  MMOutputter_bias{
-  FILE * outf;
-  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1); 
-    for (uint i=start; i< end; i++)
-      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].bias);
-  }
-
-
-  ~MMOutputter_bias() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
 
 void output_gensgd_result(std::string filename) {
-  MMOutputter<vertex_data> mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), "This file contains Gensgd output bias vector. In each row a single user bias.");
-  MMOutputter_global_mean gmean(filename + "_global_mean.mm", "This file contains Gensgd global mean which is required for computing predictions.", globalMean);
+  MMOutputter_mat<vertex_data> mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), BIAS_POS, "This file contains Gensgd output bias vector. In each row a single user bias.", latent_factors_inmem);
+  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains Gensgd global mean which is required for computing predictions.", globalMean);
 
   logstream(LOG_INFO) << " GENSGD output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
 }
