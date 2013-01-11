@@ -17,6 +17,8 @@ display_name "TESTING BASELINE"
   ./toolkits/collaborative_filtering/baseline --training=smallnetflix_mm --validation=smallnetflix_mm --minval=1 --maxval=5 --quiet=1  --algorithm=user_mean
 display_name "TESTING ALS"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1
+display_name "TESTING ALS - RMSE VALIDATION STOP"
+ ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.1 --minval=1 --maxval=5 --max_iter=100 --quiet=1 --halt_on_rmse_increase=3
 display_name "TESTING ALS SERIALIZATION"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
 display_name "TESTING SGD"
