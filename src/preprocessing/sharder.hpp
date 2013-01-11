@@ -513,7 +513,9 @@ namespace graphchi {
                 size_t istart = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                    bwrite<EdgeDataType>(ef, ebuf, ebufptr, EdgeDataType(edge.value));
+                    
+                    if (!edge.stopper())
+                        bwrite<EdgeDataType>(ef, ebuf, ebufptr, EdgeDataType(edge.value));
                     
                     if (degrees != NULL && edge.src != edge.dst) {
                         degrees[edge.src].outdegree++;
