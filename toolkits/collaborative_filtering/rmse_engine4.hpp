@@ -32,6 +32,8 @@ bool time_weighting = false;
 bool time_nodes = false;
 int matlab_time_offset = 0;
 int num_threads = 1;
+bool converged_engine = false;
+int cur_iteration = 0;
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
@@ -77,9 +79,9 @@ struct ValidationRMSEProgram4 : public GraphChiProgram<VertexDataType, EdgeDataT
     assert(Le > 0);
     dvalidation_rmse = finalize_rmse(sum(validation_rmse_vec) , (double)Le);
     std::cout<<"  Validation  " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << std::endl;
-  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+  if (halt_on_rmse_increase > 0 && halt_on_rmse_increase < cur_iteration && dvalidation_rmse > last_validation_rmse){
     logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
-    gcontext.set_last_iteration(gcontext.iteration);
+      converged_engine = true;
     }
   }
 };
@@ -103,10 +105,13 @@ void init_validation_rmse_engine(graphchi_engine<VertexDataType,EdgeDataType> *&
 template<typename VertexDataType, typename EdgeDataType>
 void run_validation4(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine, graphchi_context & context){
    //no validation data, no need to run validation engine calculations
+   cur_iteration = context.iteration;
    if (pvalidation_engine == NULL)
      return;
    ValidationRMSEProgram4 program;
    pvalidation_engine->run(program, 1);
+   if (converged_engine)
+     context.set_last_iteration(cur_iteration);
 }
 
 void reset_rmse(int exec_threads){

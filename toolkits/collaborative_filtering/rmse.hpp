@@ -245,7 +245,7 @@ void validation_rmse(float (*prediction_func)(const vertex_data & user, const ve
   dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)Le);
   std::cout<<"  Validation  " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << 
     " ratings_per_sec: " << std::setw(10) << (gcontext.iteration*L/mytimer.current_time()) << std::endl;
-  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+  if (halt_on_rmse_increase > 0 && halt_on_rmse_increase < gcontext.iteration && dvalidation_rmse > last_validation_rmse){
     logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
     gcontext.set_last_iteration(gcontext.iteration);
   }
@@ -301,7 +301,7 @@ void validation_rmse3(float (*prediction_func)(const vertex_data & user, const v
   assert(Le > 0);
   dvalidation_rmse = finalize_rmse(dvalidation_rmse , (double)Le);
   std::cout<<"  Validation " << error_names[loss_type] << ":" << std::setw(10) << dvalidation_rmse << std::endl;
-  if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
+  if (halt_on_rmse_increase >= gcontext.iteration && dvalidation_rmse > last_validation_rmse){
     logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
     gcontext.set_last_iteration(gcontext.iteration);
   }

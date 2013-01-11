@@ -453,6 +453,10 @@ namespace graphchi {
                 
                 userprogram.after_exec_interval(0, (int)num_vertices(), chicontext);
                 userprogram.after_iteration(iter, chicontext);
+                if (chicontext.last_iteration > 0 && chicontext.last_iteration <= iter){
+                   logstream(LOG_INFO)<<"Stopping engine since last iteration was set to: " << chicontext.last_iteration << std::endl;
+                   break;
+                }
             }
         }
         
