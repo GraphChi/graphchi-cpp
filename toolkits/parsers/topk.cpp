@@ -63,6 +63,7 @@ string outdir;
 std::vector<std::string> in_files;
 int col = 3;
 int K = 10;
+int has_value = 1;
 //non word tokens that will be removed in the parsing
 //it is possible to add additional special characters or remove ones you want to keep
 const char spaces[] = {" \r\n\t;:"};
@@ -70,13 +71,16 @@ const char spaces[] = {" \r\n\t;:"};
 void dump_entry(uint from, vec & to_vec, vec & vals_vec, int pos, FILE * out_ids, FILE * out_vals){
   assert(pos <= K);
   fprintf(out_ids, "%u ", from);
-  fprintf(out_vals, "%u ", from);
+  if (has_value)
+    fprintf(out_vals, "%u ", from);
   for (int i=0; i< pos; i++){
     fprintf(out_ids, "%u ", (uint)to_vec[i]);
-    fprintf(out_vals, "%12.6g ", vals_vec[i]);
+    if (has_value)
+      fprintf(out_vals, "%12.6g ", vals_vec[i]);
   }
   fprintf(out_ids, "\n");
-  fprintf(out_vals, "\n");
+  if (has_value) 
+     fprintf(out_vals, "\n");
 }
 void parse(int i){    
   in_file fin(in_files[i]);
@@ -112,9 +116,11 @@ void parse(int i){
     to = atoi(pch);
 
     //find val
+    if (has_value){
     pch = strtok_r(NULL, spaces ,&saveptr);
     if (!pch) 
       logstream(LOG_FATAL) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; 
+    }
 
     if (from != last_from){
       // fprintf(fout.outf, "%u %u %g\n", last_from, last_to, total);
@@ -125,7 +131,7 @@ void parse(int i){
     }
     if (pos>= K)
       continue;   
-    val_vec[pos] = atof(pch);
+    val_vec[pos] = has_value?atof(pch):1.0;
     to_vec[pos] = to;
     pos++;
 
@@ -157,7 +163,9 @@ int main(int argc,  const char *argv[]) {
 
   debug = get_option_int("debug", 0);
   lines = get_option_int("lines", 0);
+  has_value = get_option_int("has_value", has_value);
   K = get_option_int("K", K);
+
   if (K < 1)
     logstream(LOG_FATAL)<<"Number of top elements (--K=) should be >= 1"<<std::endl;
 

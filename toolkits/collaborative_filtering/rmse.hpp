@@ -314,17 +314,6 @@ double training_rmse(int iteration, graphchi_context &gcontext, bool items = fal
   last_training_rmse = dtraining_rmse;
   dtraining_rmse = 0;
   double ret = 0;
-  int start = 0;
-  int end = M;
-  if (items){
-    start = M;
-    end = M+N;
-  }
-
-//#pragma omp parallel for reduction(+:dtraining_rmse)
-//  for (int i=start; i< (int)end; i++){
-//    dtraining_rmse += latent_factors_inmem[i].rmse;
-//  }
   dtraining_rmse = sum(rmse_vec);
   int old_loss = loss_type;
   if (loss_type == AP)

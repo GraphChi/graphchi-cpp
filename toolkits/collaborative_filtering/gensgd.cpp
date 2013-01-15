@@ -390,11 +390,18 @@ float compute_prediction(
   /* 3) USER FEATURES */
   int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
-    uint pos = j.index()+fc.offsets[index];
-    assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
+    int pos;
+    if (user_links != ""){
+    pos = j.index();
+    assert(pos < M);
+    }
+    else {
+    pos = j.index()+fc.offsets[index];
+    assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(pos >= (uint)fc.offsets[index]);
-    //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
+    }
+        //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
     assert(node_array[i+index]->pvec[0] < 1e5);
     i++;
@@ -974,8 +981,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
         //compute current prediction
         rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
-        if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
-          errors_vec[omp_get_thread_num()]++;
+        if (calc_error)
+          if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
+            errors_vec[omp_get_thread_num()]++;
         float eui = pui - rui;
 
         //update global mean bias
@@ -1033,9 +1041,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    * Called before an iteration is started.
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-    rmse_vec = zeros(number_of_omp_threads());
+    rmse_vec = zeros(gcontext.execthreads);
     if (calc_error)
-      errors_vec = zeros(number_of_omp_threads());
+      errors_vec = zeros(gcontext.execthreads);
   }
 
 
