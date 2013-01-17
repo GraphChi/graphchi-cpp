@@ -196,6 +196,7 @@ namespace graphchi {
                                                         adj_filename,  
                                                         interval_st, 
                                                         interval_en,
+                                                        base_engine::blocksize,
                                                         this->m);
         }
         
@@ -457,9 +458,9 @@ namespace graphchi {
         }
         
         
-        virtual void init_vertices(std::vector<svertex_t> &vertices, 
-                                   graphchi_edge<EdgeDataType> * &edata) {
-            base_engine::init_vertices(vertices, edata);
+        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &in_edata,
+                                     graphchi_edge<EdgeDataType> * &out_edata) {
+            base_engine::init_vertices(vertices, in_edata, out_edata);
             incorporate_buffered_edges(this->exec_interval, this->sub_interval_st, this->sub_interval_en, vertices);
         }
         
@@ -520,6 +521,8 @@ namespace graphchi {
          * Code for committing changes to disk.
          */
         void commit_graph_changes() {
+            assert(false); // Does not write correct compressed shard directories yet
+            
             // Count deleted
             size_t ndeleted = 0;
             for(size_t i=0; i < deletecounts.size(); i++) {
