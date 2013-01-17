@@ -51,9 +51,7 @@
 #include "metrics/reps/file_reporter.hpp"
 #include "metrics/reps/html_reporter.hpp"
 
-#ifndef DYNAMICEDATA
 #include "preprocessing/conversions.hpp"
-#endif
 
 #include "util/cmdopts.hpp"
 
@@ -86,7 +84,9 @@ namespace graphchi {
             }
             t = strtok(NULL, delims);
         }
-    }   
+    }
+    
+    typedef uint32_t DynamicEdgeDataType;
     
 };
 

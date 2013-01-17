@@ -344,6 +344,11 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                 
                 nshards = (int) ( 2 + (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5);
+                
+#ifdef DYNAMICEDATA
+                // For dynamic edge data, more working memory is needed, thus the number of shards is larger.
+                nshards *= 4;
+#endif
 
             } else {
                 nshards = atoi(nshards_string.c_str());
@@ -561,7 +566,16 @@ namespace graphchi {
             // Check if we have enough memory to keep track
             // of the vertex degrees in-memory (heuristic)
             bool count_degrees_inmem = size_t(membudget_mb) * 1024 * 1024 / 3 > max_vertex_id * sizeof(degree);
-            
+#ifdef DYNAMICEDATA
+            if (!count_degrees_inmem) {
+                /* Temporary: force in-memory count of degrees because the PSW-based computation
+                   is not yet compatible with dynamic edge data. 
+                 */
+                logstream(LOG_WARNING) << "Dynamic edge data support only sharding when the vertex degrees can be computed in-memory." << std::endl;
+                logstream(LOG_WARNING) << "If the program gets very slow (starts swapping), the data size is too big." << std::endl;
+                count_degrees_inmem = true;
+            }
+#endif
             degree * degrees = NULL;
             if (count_degrees_inmem) {
                 degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
@@ -671,8 +685,11 @@ namespace graphchi {
             }
             
             if (!count_degrees_inmem) {
-                // Use memory-efficient method to create degree-data
+#ifndef DYNAMICEDATA
+                // Use memory-efficient (but slower) method to create degree-data
                 create_degree_file();
+#endif
+
             } else {
                 std::string degreefname = filename_degree_data(basefilename);
                 int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -694,7 +711,8 @@ namespace graphchi {
         typedef sliding_shard<int, dummy_t> slidingshard_t;
         typedef memory_shard<int, dummy_t> memshard_t;
         
-        
+  
+#ifndef DYNAMICEDATA
         void create_degree_file() {
             // Initialize IO
             stripedio * iomgr = new stripedio(m);
@@ -713,7 +731,7 @@ namespace graphchi {
             for(int p=0; p < nshards; p++) {
                 logstream(LOG_INFO) << "Initialize streaming shard: " << p << std::endl;
                 sliding_shards.push_back(
-                                         new slidingshard_t(iomgr, filename_shard_edata<EdgeDataType>(basefilename, p, nshards), 
+                                         new slidingshard_t(iomgr, filename_shard_edata<dummy_t>(basefilename, p, nshards),
                                                             filename_shard_adj(basefilename, p, nshards), intervals[p].first, 
                                                             intervals[p].second, 
                                                             blocksize, m, true, true));
@@ -722,7 +740,6 @@ namespace graphchi {
             graphchi_context ginfo;
             ginfo.nvertices = 1 + intervals[nshards - 1].second;
             ginfo.scheduler = NULL;
-            
             
             std::string outputfname = filename_degree_data(basefilename);
             
@@ -811,10 +828,10 @@ namespace graphchi {
             m.stop_time("degrees.runtime");
             delete iomgr;
         }
-        
+#endif 
+
         friend class binary_adjacency_list_reader<EdgeDataType>;
     }; // End class sharder
-    
     
     
 }; // namespace

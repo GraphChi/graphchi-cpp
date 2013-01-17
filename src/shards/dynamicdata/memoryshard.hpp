@@ -23,7 +23,8 @@
  *
  * @section DESCRIPTION
  *
- * Dynamic data version: The memory shard. This class should only be accessed internally by the GraphChi engine.
+ * Dynamic edge data version: The memory shard. 
+ * This class should only be accessed internally by the GraphChi engine.
  */
 
 #ifndef DEF_GRAPHCHI_MEMSHARD
@@ -84,6 +85,7 @@ namespace graphchi {
     public:
         bool only_adjacency;
         
+        /* Dynamic edata */ 
         memory_shard(stripedio * iomgr,
                      std::string _filename_edata,
                      std::string _filename_adj,
@@ -100,6 +102,7 @@ namespace graphchi {
             edgedata = NULL;
         }
         
+        /* Dynamic edata */ 
         ~memory_shard() {
             int nblocks = (int) block_edatasessions.size();
 
@@ -107,8 +110,11 @@ namespace graphchi {
                 if (edgedata[i] != NULL) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     iomgr->close_session(block_edatasessions[i]);
-                    delete dynamicblocks[i];
+                    
                 }
+                if (dynamicblocks[i] != NULL)
+                    delete dynamicblocks[i];
+                dynamicblocks[i] = NULL;
             }
             dynamicblocks.clear();
             if (adj_session >= 0) {
@@ -120,20 +126,26 @@ namespace graphchi {
             edgedata = NULL;
         }
         
+        /* Dynamic edata */ 
         void write_and_release_block(int i) {
             std::string block_filename = filename_shard_edata_block(filename_edata, i, blocksize);
 
             dynamicdata_block<ET> * dynblock = dynamicblocks[i];
-            uint8_t * outdata;
-            int outsize;
-            dynblock->write(&outdata, outsize);
-            write_block_uncompressed_size(block_filename, outsize);
-            iomgr->managed_pwritea_now(block_edatasessions[i], &outdata, outsize, 0);
-            iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-            iomgr->close_session(block_edatasessions[i]);
-            free(outdata);
+            if (dynblock != NULL) {
+                uint8_t * outdata;
+                int outsize;
+                dynblock->write(&outdata, outsize);
+                write_block_uncompressed_size(block_filename, outsize);
+                iomgr->managed_pwritea_now(block_edatasessions[i], &outdata, outsize, 0);
+                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                iomgr->close_session(block_edatasessions[i]);
+                free(outdata);
+                delete dynblock;
+            }
+            dynamicblocks[i] = NULL;
         }
         
+        /* Dynamic edata */ 
         void commit(bool all) {
             if (block_edatasessions.size() == 0 || only_adjacency) return;
             assert(is_loaded);
@@ -148,14 +160,10 @@ namespace graphchi {
             int nblocks = (int) block_edatasessions.size();
 
             if (all) {
-                //iomgr->managed_pwritea_now(edata_iosession, &edgedata, edatafilesize, 0);
-                int start_stream_block = (int) (range_start_edge_ptr / blocksize);
-
                 for(int i=0; i < nblocks; i++) {
                     /* NOTE: WRITE ALL BLOCKS SYNCHRONOUSLY */
                     write_and_release_block(i);
                     edgedata[i] = NULL;
-
                 }
             } else {
                 size_t last = streaming_offset_edge_ptr;
@@ -195,6 +203,7 @@ namespace graphchi {
         
     private:
         
+        /* Dynamic edata */ 
         void load_edata() {
             bool async_inedgedata_loading = false; // Not supported with dynamic edgedata
             assert(blocksize % sizeof(int) == 0);
@@ -212,9 +221,6 @@ namespace graphchi {
                     int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                     block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
-                    // Ugly
-                    int nedges = std::min(edatafilesize - blocksize * blockid, blocksize) / sizeof(int);
-                    
                     edgedata[blockid] = NULL;
                     iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
                     if (async_inedgedata_loading) {
@@ -222,7 +228,7 @@ namespace graphchi {
                     } else {
                         iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
                     }
-                    dynamicblocks.push_back(new dynamicdata_block<ET>(nedges, (uint8_t*) edgedata[blockid], fsize));
+                    dynamicblocks.push_back(NULL);
 
                     blockid++;
 
@@ -238,10 +244,20 @@ namespace graphchi {
                             " number of blocks: " << nblocks << std::endl;
         }
         
+        /* Initialize a dynamic block if required */
+        void check_block_initialized(int blockid) {
+            if (dynamicblocks[blockid] == NULL) {
+                std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
+                size_t fsize = get_block_uncompressed_size(block_filename, std::min(edatafilesize - blocksize * blockid, blocksize)); //std::min(edatafilesize - blocksize * blockid, blocksize);
+                int nedges = std::min(edatafilesize - blocksize * blockid, blocksize) / sizeof(int);
+                dynamicblocks[blockid] = new dynamicdata_block<ET>(nedges, (uint8_t*) edgedata[blockid], fsize);
+            }
+        }
+        
         
     public:
         
-        // TODO: recycle ptr!
+        /* Dynamic edata */ 
         void load() {
             is_loaded = true;
             adjfilesize = get_filesize(filename_adj);
@@ -266,7 +282,7 @@ namespace graphchi {
         }
         
         
-        
+        /* Dynamic edata */ 
         inline void check_stream_progress(int toread, size_t pos) {
             if (adj_stream_session.curpos == adjfilesize) return;
             
@@ -276,10 +292,9 @@ namespace graphchi {
             }
         }
         
+        /* Dynamic edata */ 
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
-            bool async_edata_loading = !svertex_t().computational_edges();
-
             std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
             
             m.start_time("memoryshard_create_edges");
@@ -351,6 +366,7 @@ namespace graphchi {
                     ptr += sizeof(vid_t);
                     if (vertex != NULL && outedges)
                     {
+                        check_block_initialized(blockid);
                         vertex->add_outedge(target, (only_adjacency ? NULL : dynamicblocks[blockid]->edgevec((edgeptr % blocksize)/sizeof(int))), false);
                     }
                     
@@ -361,6 +377,7 @@ namespace graphchi {
                                 if (dstvertex.scheduled) {
                                     any_edges = true;
                                     //  assert(only_adjacency ||  edgeptr < edatafilesize);
+                                    check_block_initialized(blockid);
                                     ET * eptr = (only_adjacency ? NULL  : dynamicblocks[blockid]->edgevec((edgeptr % blocksize)/sizeof(int)));
 
                                     dstvertex.add_inedge(vid,  (only_adjacency ? NULL : eptr), false);

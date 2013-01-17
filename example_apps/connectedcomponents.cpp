@@ -90,7 +90,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
             curmin = std::min(nblabel, curmin); 
         }
         
-        /* Check if label changed */
+        /* Set my label */
         vertex.set_data(curmin);
         
         /** 

@@ -85,9 +85,14 @@ namespace graphchi {
     static std::string filename_shard_edata(std::string basefilename, int p, int nshards) {
         std::stringstream ss;
         ss << basefilename;
-        ss << ".edata_azv.";
+#ifdef DYNAMICEDATA
+        ss << ".dynamic.";
+#else
+        ss << ".edata.";
+#endif
         ss << "e" << sizeof(EdgeDataType) << "B.";
         ss << p << "_" << nshards;
+
         return ss.str();
     }
     

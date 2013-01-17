@@ -103,8 +103,9 @@ namespace graphchi {
         }
         
         ~dynamicdata_block() {
-            if (chivecs != NULL)
+            if (chivecs != NULL) {
                 delete [] chivecs;
+            }
         }
         
     };

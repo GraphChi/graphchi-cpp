@@ -44,9 +44,7 @@ typedef vid_t VertexDataType;
 typedef chivector<vid_t>  EdgeDataType;
 
 /**
- * Smoke test. On every iteration, each vertex sets its id to be
- * id + iteration number. Vertices check whether their neighbors were
- * set correctly. This assumes that the vertices are executed in round-robin order.
+ * Smoke test.
  */
 struct DynamicDataSmokeTestProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
@@ -142,8 +140,8 @@ int main(int argc, const char ** argv) {
     int niters           = get_option_int("niters", 4); // Number of iterations
     bool scheduler       = false;                       // Whether to use selective scheduling
     
-    /* Detect the number of shards or preprocess an input to creae them */
-    int nshards          = get_option_int("nshards", 3);
+    /* Detect the number of shards or preprocess an input to create them */
+    int nshards          = convert_if_notexists<DynamicEdgeDataType>(filename, get_option_string("nshards", "auto"));
     
     /* Run */
     DynamicDataSmokeTestProgram program;

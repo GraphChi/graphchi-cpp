@@ -38,6 +38,16 @@ namespace graphchi {
     
 #define MINCAPACITY 2
     
+
+/**
+  * Pool the extension parts of chi-vectors
+  */
+template <typename T>
+class extension_pool {
+        
+};
+    
+    
 template <typename T>
 class chivector {
 
@@ -50,13 +60,22 @@ class chivector {
 public:
     typedef T element_type_t;
     typedef uint32_t sizeword_t;
-    chivector() {}
+    chivector() {
+        extensions = NULL;
+    }
     
     chivector(uint16_t sz, uint16_t cap, T * dataptr) : data(dataptr) {
         origsize = sz;
         nsize = origsize;
         ncapacity = cap;
         extensions = NULL;
+    }
+    
+    ~chivector() {
+        if (extensions != NULL) {
+            delete extensions;
+            extensions = NULL;
+        }
     }
     
     void write(T * dest) {
@@ -66,7 +85,6 @@ public:
         }
     }
     
-public:
     uint16_t size() {
         return nsize;
     }
@@ -84,6 +102,8 @@ public:
             data[nsize - 1] = val;
         }
     }
+    
+    // TODO: addmany()
     
     T get(int idx) {
         if (idx >= ncapacity) {
@@ -107,10 +127,7 @@ public:
     }
     
     // TODO: iterators
-
     
-    
-      
 };
     
 }

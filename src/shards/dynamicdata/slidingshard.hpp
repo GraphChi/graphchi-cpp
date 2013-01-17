@@ -75,10 +75,13 @@ namespace graphchi {
         sblock(int wdesc, int rdesc, bool is_edata_block, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
         is_edata_block(is_edata_block), blockfilename(blockfilename) {
             assert(is_edata_block == true);
-            data = NULL; }
+            data = NULL;
+            dynblock = NULL;
+        }
         
         void commit_async(stripedio * iomgr) {
             commit_now(iomgr); // TODO: async
+            release(iomgr);   // Note!
         }
         
         void commit_now(stripedio * iomgr) {
@@ -114,10 +117,13 @@ namespace graphchi {
         void release(stripedio * iomgr) {
             if (data != NULL) {
                 iomgr->managed_release(readdesc, &data);
-                if (is_edata_block) {
-                    iomgr->close_session(readdesc);
-                    delete dynblock;
-                }
+            }
+            if (is_edata_block) {
+                iomgr->close_session(readdesc);
+            }
+            if (dynblock != NULL) {
+                delete dynblock;
+                dynblock = NULL;
             }
             data = NULL;
             

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5F3D4F12164DF5C2003A50A6 /* inmemconncomp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */; };
 		5F54B85315FD4DBC00B3842C /* dynamicdata_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F54B84715FD4C1900B3842C /* dynamicdata_smoketest.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
@@ -206,6 +207,7 @@
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
 		5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = binary_adjacency_list.hpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
+		5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomp.cpp; sourceTree = "<group>"; };
 		5F54B84615FD4B2500B3842C /* chivector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chivector.hpp; sourceTree = "<group>"; };
 		5F54B84715FD4C1900B3842C /* dynamicdata_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = dynamicdata_smoketest.cpp; sourceTree = "<group>"; };
 		5F54B85115FD4D9F00B3842C /* test_dynamicedata */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_dynamicedata; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -809,6 +811,7 @@
 				5FCC1EC11599F59A0003D0E9 /* pagerank_functional.cpp */,
 				5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */,
 				5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */,
+				5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */,
 			);
 			name = example_apps;
 			path = ../example_apps;
@@ -1148,6 +1151,7 @@
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
 				5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */,
+				5F3D4F12164DF5C2003A50A6 /* inmemconncomp.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
