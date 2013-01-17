@@ -19,6 +19,7 @@ clean:
 	cd toolkits/graph_analytics/; make clean; cd ../../
 
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
+	@mkdir -p bin
 	$(CPP) $(CPPFLAGS) src/preprocessing/sharder_basic.cpp -o bin/sharder_basic
 
 example_apps/% : example_apps/%.cpp $(HEADERS)
