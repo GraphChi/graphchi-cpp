@@ -222,7 +222,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   if (!fc.hash_strings){
     ret = (pos < 2 ? atoi(pch) : atof(pch)); 
     if (pos < 2)
-      ret--;
+      ret-=input_file_offset;
     if (pos == 0 && ret >= M)
       logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << ret << " > " << M << " in line: " << i << std::endl;
     else if (pos == 1 && ret >= N)
@@ -390,11 +390,18 @@ float compute_prediction(
   /* 3) USER FEATURES */
   int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
-    uint pos = j.index()+fc.offsets[index];
-    assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
+    int pos;
+    if (user_links != ""){
+    pos = j.index();
+    assert(pos < M);
+    }
+    else {
+    pos = j.index()+fc.offsets[index];
+    assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     assert(pos >= (uint)fc.offsets[index]);
-    //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
+    }
+        //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
     assert(node_array[i+index]->pvec[0] < 1e5);
     i++;
@@ -760,6 +767,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
+    double validation_error = 0;
     
     std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
@@ -778,13 +786,19 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
       delete [] node_array;
       dvalidation_rmse += pow(prediction - val, 2);
+      if (calc_error) 
+        if ((prediction < cutoff && val > cutoff) || (prediction > cutoff && val < cutoff))
+          validation_error++;
     }
 
     fclose(f);
 
     assert(Le > 0);
     dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
-    std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse << std::endl;
+    std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse;
+    if (!calc_error)
+      std::cout << std::endl;
+    else std::cout << " Validation error: " << std::setw(10) << validation_error/Le << std::endl;
     if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
       gcontext.set_last_iteration(gcontext.iteration);
@@ -974,8 +988,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
         //compute current prediction
         rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
-        if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
-          errors_vec[omp_get_thread_num()]++;
+        if (calc_error)
+          if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
+            errors_vec[omp_get_thread_num()]++;
         float eui = pui - rui;
 
         //update global mean bias
@@ -1033,9 +1048,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    * Called before an iteration is started.
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-    rmse_vec = zeros(number_of_omp_threads());
+    rmse_vec = zeros(gcontext.execthreads);
     if (calc_error)
-      errors_vec = zeros(number_of_omp_threads());
+      errors_vec = zeros(gcontext.execthreads);
   }
 
 
