@@ -49,6 +49,8 @@
 #include "api/chifilenames.hpp"
 #include "api/graphchi_context.hpp"
 #include "graphchi_types.hpp"
+#include "engine/auxdata/degree_data.hpp"
+
 #include "io/stripedio.hpp"
 #include "logger/logger.hpp"
 #include "metrics/metrics.hpp"
