@@ -472,9 +472,8 @@ namespace graphchi {
         }
         
         
-        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &in_edata,
-                                     graphchi_edge<EdgeDataType> * &out_edata) {
-            base_engine::init_vertices(vertices, in_edata, out_edata);
+        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &edata) {
+            base_engine::init_vertices(vertices, edata);
             incorporate_buffered_edges(this->exec_interval, this->sub_interval_st, this->sub_interval_en, vertices);
         }
         
