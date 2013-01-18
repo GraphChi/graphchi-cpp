@@ -66,16 +66,14 @@ namespace graphchi {
         
 
         /* Override - do not allocate edge data */
-        virtual void init_vertices(std::vector<fvertex_t> &vertices, graphchi_edge<EdgeDataType> * &in_edata,
-                                    graphchi_edge<EdgeDataType> * &out_edata) {
+        virtual void init_vertices(std::vector<fvertex_t> &vertices, graphchi_edge<EdgeDataType> * &e) {
             size_t nvertices = vertices.size();
             
             /* Compute number of edges */
-            size_t num_inedges, num_outedges;
-            size_t num_edges = this->num_edges_subinterval(this->sub_interval_st, this->sub_interval_en, num_inedges, num_outedges);
+            size_t num_edges = this->num_edges_subinterval(this->sub_interval_st, this->sub_interval_en);
             
              /* Assign vertex edge array pointers */
-            size_t inecounter = 0, outecounter = 0;
+            size_t ecounter = 0;
             for(int i=0; i < (int)nvertices; i++) {
                 degree d = this->degree_handler->get_degree(this->sub_interval_st + i);
                 int inc = d.indegree;
@@ -87,20 +85,15 @@ namespace graphchi {
                     if (is_sched) {
                         vertices[i].scheduled =  true;
                         this->nupdates++;
-                        inecounter += inc;
-                        outecounter += outc;
+                        ecounter += inc + outc;
                     }
                 } else {
                     this->nupdates++;
                     vertices[i].scheduled =  true;
-                    inecounter += inc;
-                    outecounter += outc;
+                    ecounter += inc + outc;
                 }
             }
-            this->work += num_inedges + num_outedges;
-            assert(inecounter <= num_inedges);
-            assert(outecounter <=  num_outedges);
-            assert(num_edges == num_inedges + num_outedges);
+            this->work += num_edges;
         }        
 
         
