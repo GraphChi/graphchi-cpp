@@ -647,7 +647,7 @@ namespace graphchi {
                     typename base_engine::slidingshard_t * curshard = 
                     new typename base_engine::slidingshard_t(this->iomgr, origshardfile, origadjfile, 
                                                              this->intervals[shard].first, this->intervals[shard].second, 
-                                                             1024 * 1024, this->m, true);
+                                                             base_engine::blocksize, this->m, true);
                     
                     
                     std::string suffix = "";
