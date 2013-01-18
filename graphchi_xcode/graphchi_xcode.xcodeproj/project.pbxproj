@@ -136,6 +136,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5F0A1FBC16A9FBA50066FB56 /* randomwalks.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = randomwalks.cpp; sourceTree = "<group>"; };
 		5F10BC8E159FA36F00694F2E /* basic_dynamicengine_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = basic_dynamicengine_smoketest.cpp; sourceTree = "<group>"; };
 		5F10BC8F15A0A99400694F2E /* basic_dynamicengine_smoketest2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = basic_dynamicengine_smoketest2.cpp; sourceTree = "<group>"; };
 		5F10BC9715A3DB8D00694F2E /* chi_httpadmin.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chi_httpadmin.hpp; sourceTree = "<group>"; };
@@ -812,6 +813,7 @@
 				5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */,
 				5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */,
 				5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */,
+				5F0A1FBC16A9FBA50066FB56 /* randomwalks.cpp */,
 			);
 			name = example_apps;
 			path = ../example_apps;

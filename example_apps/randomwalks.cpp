@@ -153,11 +153,15 @@ int main(int argc, const char ** argv) {
     bool scheduler       = true;                       // Whether to use selective scheduling
     
     /* Detect the number of shards or preprocess an input to create them */
-    int nshards          = convert_if_notexists<DynamicEdgeDataType>(filename, get_option_string("nshards", "auto"));
+    bool preexisting_shards;
+    int nshards          = convert_if_notexists<DynamicEdgeDataType>(filename, get_option_string("nshards", "auto"), preexisting_shards);
     
     /* Run */
     RandomWalkProgram program;
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, scheduler, m);
+    if (preexisting_shards) {
+        engine.reinitialize_edge_data(0);
+    }
     engine.run(program, niters);
     
     /* List top 20 */

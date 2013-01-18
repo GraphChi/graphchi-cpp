@@ -287,8 +287,11 @@ namespace graphchi {
             return &this->outedges_ptr[i];
         }        
         
-     
-        
+        graphchi_edge<EdgeDataType> * random_outedge() {
+            if (this->outc == 0) return NULL;
+            return outedge((int) (std::abs(random()) % this->outc));
+        }
+            
         /** 
           * Get the value of vertex
           */

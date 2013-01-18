@@ -544,7 +544,8 @@ namespace graphchi {
     
     
     template <typename EdgeDataType>
-    int convert_if_notexists(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
+                                SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         int nshards;
         std::string suffix = "";
         if (preprocessor != NULL) {
@@ -554,14 +555,22 @@ namespace graphchi {
         /* Check if input file is already sharded */
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
+            didexist = true;
             return nshards;
         }
+        didexist = false;
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
         nshards = convert<EdgeDataType>(basefilename, nshards_string, preprocessor);
         return nshards;
+    }
+    
+    template <typename EdgeDataType>
+    int convert_if_notexists(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+        bool b;
+        return convert_if_notexists<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
     }
     
     /** 

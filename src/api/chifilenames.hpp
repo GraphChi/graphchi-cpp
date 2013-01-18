@@ -176,6 +176,8 @@ namespace graphchi {
             return true;
         }
     }
+
+
     
         /**
      * Returns the number of shards if a file has been already

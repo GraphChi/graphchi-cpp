@@ -290,6 +290,7 @@ namespace graphchi {
         }
         
         
+              
         
         /**
          * Extends the window to fill the memory budget, but not over maxvid
@@ -923,6 +924,41 @@ namespace graphchi {
         std::map<std::string, std::string> json_params;
         
     public:
+        
+        /**
+         * Replace all shards with zero values in edges.
+         */
+        template<typename ET>
+        void reinitialize_edge_data(ET zerovalue) {
+            
+            for(int p=0; p < nshards; p++) {
+                std::string edatashardname =  filename_shard_edata<ET>(base_filename, p, nshards);
+                std::string dirname = dirname_shard_edata_block(edatashardname, blocksize);
+                size_t edatasize = get_shard_edata_filesize<ET>(edatashardname);
+                logstream(LOG_INFO) << "Clearing data: " << edatashardname << " bytes: " << edatasize << std::endl;
+                int nblocks = (edatasize / blocksize) + (edatasize % blocksize == 0 ? 0 : 1);
+                for(int i=0; i < nblocks; i++) {
+                    std::string block_filename = filename_shard_edata_block(edatashardname, i, blocksize);
+                    int len = (int) std::min(edatasize - i * blocksize, blocksize);
+                    int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+                    ET * buf =  (ET *) malloc(len);
+                    for(int i=0; i < (int) (len / sizeof(ET)); i++) {
+                        buf[i] = zerovalue;
+                    }
+                    write_compressed(f, buf, len);
+                    close(f);
+                    
+#ifdef DYNAMICEDATA
+                    write_block_uncompressed_size(block_filename, len);
+#endif
+                    
+                }
+            }
+        }
+        
+        
+
+        
         
         /**
          * HTTP admin management
