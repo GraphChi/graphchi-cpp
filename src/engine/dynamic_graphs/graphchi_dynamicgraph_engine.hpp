@@ -603,14 +603,12 @@ namespace graphchi {
                 std::string origadjfile = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
                 
                 // Get file size
-                int of = open(origshardfile.c_str(), O_RDONLY);
-                off_t sz = lseek(of, 0, SEEK_END);
-                lseek(of, 0, SEEK_SET);
-                close(of);
+                off_t sz = get_shard_edata_filesize<EdgeDataType>(origshardfile);
                 
                 int outparts = ( sz >= (off_t) maxshardsize ? 2 : 1);
                 
                 vid_t splitpos = 0;
+                std::cout << "Size: " << sz << " vs. maxshardsize: " << maxshardsize << std::endl;
                 if (sz > (off_t)maxshardsize) {
                     rangeschanged = true;
                     // Compute number edges (not including ingested ones!)

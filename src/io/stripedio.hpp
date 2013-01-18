@@ -708,7 +708,7 @@ namespace graphchi {
         iotask task;
         thrinfo * info = (thrinfo*)_info;
         int ntasks = 0;
-        logstream(LOG_INFO) << "Thread for multiplex :" << info->mplex << " starting." << std::endl;
+        // logstream(LOG_INFO) << "Thread for multiplex :" << info->mplex << " starting." << std::endl;
         while(info->running) {
             bool success;
             if (info->pending_reads>0) {  // Prioritize read queue
@@ -766,7 +766,7 @@ namespace graphchi {
                 usleep(50000); // 50 ms
             }
         }
-        logstream(LOG_INFO) << "I/O thread exists. Handled " << ntasks << " i/o tasks." << std::endl;
+        // logstream(LOG_INFO) << "I/O thread exists. Handled " << ntasks << " i/o tasks." << std::endl;
         return NULL;
     }
     
