@@ -533,9 +533,7 @@ namespace graphchi {
         /**
          * Code for committing changes to disk.
          */
-        void commit_graph_changes() {
-            assert(false); // Does not write correct compressed shard directories yet
-            
+        void commit_graph_changes() {            
             // Count deleted
             size_t ndeleted = 0;
             for(size_t i=0; i < deletecounts.size(); i++) {
