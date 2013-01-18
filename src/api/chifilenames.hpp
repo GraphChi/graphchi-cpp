@@ -166,8 +166,8 @@ namespace graphchi {
     }
     
     
-    static bool shard_file_exists(std::string sname);
-    static bool shard_file_exists(std::string sname) {
+    static bool file_exists(std::string sname);
+    static bool file_exists(std::string sname) {
         int tryf = open(sname.c_str(), O_RDONLY);
         if (tryf < 0) {
             return false;
@@ -213,14 +213,14 @@ namespace graphchi {
                 for(int p=0; p < nshards_candidate; p++) {
                     std::string sname = filename_shard_edata_block(
                             filename_shard_edata<EdgeDataType>(base_filename, p, nshards_candidate), 0, blocksize);
-                    if (!shard_file_exists(sname)) {
+                    if (!file_exists(sname)) {
                         logstream(LOG_DEBUG) << "Missing directory file: " << sname << std::endl;
                         success = false;
                         break;
                     }
                     
                     sname = filename_shard_adj(base_filename, p, nshards_candidate);
-                    if (!shard_file_exists(sname)) {
+                    if (!file_exists(sname)) {
                         logstream(LOG_DEBUG) << "Missing shard file: " << sname << std::endl;
                         success = false;
                         break;
@@ -229,14 +229,14 @@ namespace graphchi {
                 
                 // Check degree file
                 std::string degreefname = filename_degree_data(base_filename);
-                if (!shard_file_exists(degreefname)) {
+                if (!file_exists(degreefname)) {
                     logstream(LOG_ERROR) << "Missing degree file: " << degreefname << std::endl;
                     logstream(LOG_ERROR) << "You need to preprocess (sharder) your file again!" << std::endl;
                     return 0;
                 }
                 
                 std::string intervalfname = filename_intervals(base_filename, nshards_candidate);
-                if (!shard_file_exists(intervalfname)) {
+                if (!file_exists(intervalfname)) {
                     logstream(LOG_ERROR) << "Missing intervals file: " << intervalfname << std::endl;
                     logstream(LOG_ERROR) << "You need to preprocess (sharder) your file again!" << std::endl;
                     return 0;
