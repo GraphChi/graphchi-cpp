@@ -642,7 +642,7 @@ namespace graphchi {
                             }
                         }
                         
-                        for(size_t j=istart; j<i; j++) {
+                        for(size_t j=istart; j < i; j++) {
                             bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                         }
                         
@@ -652,7 +652,7 @@ namespace graphchi {
                         if (!edge.stopper()) {
                             if (edge.src - curvid > 1 || (i == 0 && edge.src>0)) {
                                 int nz = edge.src-curvid-1;
-                                if (i == 0 && edge.src>0) nz = edge.src; // border case with the first one
+                                if (i == 0 && edge.src > 0) nz = edge.src; // border case with the first one
                                 do {
                                     bwrite<uint8_t>(f, buf, bufptr, 0);
                                     nz--;

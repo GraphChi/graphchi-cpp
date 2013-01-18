@@ -81,6 +81,7 @@ namespace graphchi {
         int adj_session;
         streaming_task adj_stream_session;
         
+        bool async_edata_loading;
         bool is_loaded;
         size_t blocksize;
         metrics &m;
@@ -103,6 +104,8 @@ namespace graphchi {
             adj_session = -1;
             edgedata = NULL;
             doneptr = NULL;
+            async_edata_loading = !svertex_t().computational_edges();
+
         }
         
         ~memory_shard() {
@@ -248,7 +251,7 @@ namespace graphchi {
             adjfilesize = get_filesize(filename_adj);
             
 #ifdef SUPPORT_DELETIONS
-            async_inedgedata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),
+            async_edata_loading = false;  // Currently we encode the deleted status of an edge into the edge value (should be changed!),
             // so we need the edge data while loading
 #endif
             
@@ -279,7 +282,6 @@ namespace graphchi {
         
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
-            bool async_edata_loading = !svertex_t().computational_edges();
 
             std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
             
