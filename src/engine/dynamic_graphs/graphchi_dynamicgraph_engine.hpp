@@ -184,7 +184,21 @@ namespace graphchi {
             close(of);
             free(buf);
             return len;
-        } 
+        }
+        
+        // Copy the edata directory
+        void cpedata(std::string origfile, std::string dstfile, bool zeroout=false) {
+            cp(origfile + ".size", dstfile + ".size");
+            std::string dirname = dirname_shard_edata_block(dstfile, base_engine::blocksize);
+            mkdir(dirname.c_str(), 0777);
+            size_t edatasize = get_shard_edata_filesize<EdgeDataType>(origfile);
+            int nblocks = (edatasize / base_engine::blocksize) + (edatasize % base_engine::blocksize == 0 ? 0 : 1);
+            for(int i=0; i < nblocks; i++) {
+                std::string origblockname = filename_shard_edata_block(origfile, i, base_engine::blocksize);
+                std::string dstblockname = filename_shard_edata_block(dstfile, i, base_engine::blocksize);
+                cp(origblockname, dstblockname);
+            }
+        }
         
         
         virtual typename base_engine::memshard_t * create_memshard(vid_t interval_st, vid_t interval_en) {
@@ -254,7 +268,7 @@ namespace graphchi {
                 std::string dest_adj = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];          
                 std::string dest_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
                 
-                cp(edata_filename, dest_edata, true);
+                cpedata(edata_filename, dest_edata, true);
                 cp(adj_filename, dest_adj);
             }
         }

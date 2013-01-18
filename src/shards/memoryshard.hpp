@@ -105,7 +105,9 @@ namespace graphchi {
             edgedata = NULL;
             doneptr = NULL;
             async_edata_loading = !svertex_t().computational_edges();
-
+#ifdef SUPPORT_DELETIONS
+            async_edata_loading = false; // See comment above for memshard, async_edata_loading = false;
+#endif
         }
         
         ~memory_shard() {
@@ -199,14 +201,13 @@ namespace graphchi {
     private:
         
         void load_edata() {
-            bool async_inedgedata_loading = !svertex_t().computational_edges();
             assert(blocksize % sizeof(ET) == 0);
             int nblocks = (int) (edatafilesize / blocksize + (edatafilesize % blocksize != 0));
             edgedata = (char **) calloc(nblocks, sizeof(char*));
             size_t compressedsize = 0;
             int blockid = 0;
             
-            if (!async_inedgedata_loading) {
+            if (!async_edata_loading) {
                 doneptr = (int *) malloc(nblocks * sizeof(int));
                 for(int i=0; i < nblocks; i++) doneptr[i] = 1;
             }
@@ -222,7 +223,7 @@ namespace graphchi {
                     
                     edgedata[blockid] = NULL;
                     iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
-                    if (async_inedgedata_loading) {
+                    if (async_edata_loading) {
                         iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
                     } else {
                         iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);

@@ -206,9 +206,7 @@ namespace graphchi {
             save_offset();
             
             async_edata_loading = false; // With dynamic edge data size, do not load
-#ifdef SUPPORT_DELETIONS
-            async_edata_loading = false; // See comment above for memshard, async_edata_loading = false;
-#endif
+
         }
         
         ~sliding_shard() {

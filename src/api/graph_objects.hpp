@@ -317,7 +317,7 @@ namespace graphchi {
         /**
          * Sorts all the edges. Note: this will destroy information
          * about the in/out direction of an edge. Do use only if you
-         * ignore the egde direction.
+         * ignore the edge direction.
          */
         void VARIABLE_IS_NOT_USED sort_edges_indirect() {
             // Check for deleted edges first...
