@@ -65,10 +65,10 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
 
 void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
 
-    MM_typecode matcode;
-    bool info_file = false;
-    
-    if (nodes == 0 && edges == 0){
+  MM_typecode matcode;
+  bool info_file = false;
+
+  if (nodes == 0 && edges == 0){
     FILE * ff = NULL;
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((filename + ":info").c_str(), "r")) != NULL) {
@@ -76,24 +76,24 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t
       read_matrix_market_banner_and_size(ff, matcode, M, N, nz, validation + ":info");
       fclose(ff);
     }
+  }
+  if ((f = fopen(filename.c_str(), "r")) == NULL) {
+    std::cout<<std::endl;
+    return; //missing validaiton data, nothing to compute
+  }
+  if (!info_file && nodes == 0 && edges == 0){
+    read_matrix_market_banner_and_size(f, matcode, M, N, nz, validation);
+  }
+  if (nodes > 0 && edges > 0){
+    if (type == TRAINING){
+      M = N = nodes;
+      nz = edges;
     }
-    if ((f = fopen(filename.c_str(), "r")) == NULL) {
-      std::cout<<std::endl;
-      return; //missing validaiton data, nothing to compute
+    else {
+      Me = Ne = nodes;
+      nz = edges;
     }
-    if (!info_file && nodes == 0 && edges == 0){
-      read_matrix_market_banner_and_size(f, matcode, M, N, nz, validation);
-    }
-    if (nodes > 0 && edges > 0){
-      if (type == TRAINING){
-        M = N = nodes;
-        nz = edges;
-      }
-      else {
-        Me = Ne = nodes;
-        nz = edges;
-      }
-    }
+  }
 }
 
 void read_global_mean(std::string base_filename, int type){
@@ -187,7 +187,7 @@ struct  MMOutputter_scalar {
 template <typename als_edge_type>
 int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false, bool square = false, int type = TRAINING, int matlab_time_offset = 1) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
-  FILE *f;
+  FILE *f = NULL;
   size_t nz;
   /**
    * Create sharder object
@@ -203,22 +203,22 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   sharderobj.start_preprocessing();
 
 
- detect_matrix_size(base_filename, f, type == TRAINING? M:Me, type == TRAINING? N:Ne, nz); 
- if (f == NULL){
+  detect_matrix_size(base_filename, f, type == TRAINING? M:Me, type == TRAINING? N:Ne, nz); 
+  if (f == NULL){
     if (type == VALIDATION){
       logstream(LOG_INFO)<< "Did not find validation file: " << base_filename << std::endl;
       return -1;
-  }
-  else if (type == TRAINING)
-    logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
+    }
+    else if (type == TRAINING)
+      logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
   }
 
   if (type == TRAINING)
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << M << " x " << N << ", non-zeros: " << nz << std::endl;
+      << M << " x " << N << ", non-zeros: " << nz << std::endl;
   else
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
-    << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
+      << Me << " x " << Ne << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
   double val, time;
@@ -260,10 +260,10 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
     if (type == TRAINING){
       uint toadd = 0;
       if (implicitratingtype == IMPLICIT_RATING_RANDOM)
-      toadd = add_implicit_edges4(implicitratingtype, sharderobj);
+        toadd = add_implicit_edges4(implicitratingtype, sharderobj);
       globalMean += implicitratingvalue * toadd;
       L += toadd;
-       globalMean /= L;
+      globalMean /= L;
       logstream(LOG_INFO) << "Global mean is: " << globalMean << " time bins: " << K << " . Now creating shards." << std::endl;
     }
     else {
@@ -286,6 +286,107 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
   return nshards;
 }
+
+/**
+ * Create a bipartite graph from a matrix. Each row corresponds to vertex
+ * with the same id as the row number (0-based), but vertices correponsing to columns
+ * have id + num-rows.
+ */
+template <typename als_edge_type>
+int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row = 3) {
+  FILE *f = NULL, *fsim = NULL;
+  size_t nz, nz_sim;   
+  uint Nt;
+  /**
+   * Create sharder object
+   */
+  int nshards;
+  if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+    logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
+    read_global_mean(base_filename, TRAINING);
+    return nshards;
+  }   
+
+  sharder<als_edge_type> sharderobj(base_filename);
+  sharderobj.start_preprocessing();
+
+  detect_matrix_size(base_filename, f, M, N, nz);
+  if (f == NULL)
+    logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
+  detect_matrix_size(base_filename, fsim, Ne, Nt, nz_sim);
+  if (fsim == NULL)
+    logstream(LOG_FATAL)<<"Failed to open item similarity input file: " << similarity_file << std::endl;
+  if (Ne != N || Nt != N)
+    logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << Ne <<" x " << Nt << "  Instead of " << N << " x " << N << std::endl;
+  L=nz;
+
+  uint I, J;
+  double val = 1.0;
+  if (!sharderobj.preprocessed_file_exists()) {
+    logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
+      << M << " x " << N << ", non-zeros: " << nz << std::endl;
+
+    for (size_t i=0; i<nz; i++){
+      if (tokens_per_row == 3){
+        int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+        if (rc != 3)
+          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      }
+      else if (tokens_per_row == 2){
+        int rc = fscanf(f, "%u %u\n", &I, &J);
+        if (rc != 2)
+          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      }
+      else assert(false);
+
+      I-=input_file_offset;  /* adjust from 1-based to 0-based */
+      J-=input_file_offset;
+      if (I >= M)
+        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+      if (J >= N)
+        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
+    }
+    for (size_t i=0; i<nz_sim; i++){
+      if (tokens_per_row == 3){
+        int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+        if (rc != 3)
+          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      }
+      else if (tokens_per_row == 2){
+        int rc = fscanf(f, "%u %u\n", &I, &J);
+        if (rc != 2)
+          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      }
+      else assert(false);
+
+      I-=input_file_offset;  /* adjust from 1-based to 0-based */
+      J-=input_file_offset;
+      if (I >= N)
+        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+      if (J >= N)
+        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+      sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type((float)val));
+    }
+
+    write_global_mean(base_filename, TRAINING); 
+    sharderobj.end_preprocessing();
+  } else {
+    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
+  }
+  fclose(f);
+  fclose(fsim);
+
+  logstream(LOG_INFO) << "Now creating shards." << std::endl;
+
+  // Shard with a specified number of shards, or determine automatically if not defined
+  nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
+  logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename << std::endl;
+  logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
+
+  return nshards;
+}
+
 
 /**
  * Create a bipartite graph from a matrix. Each row corresponds to vertex
@@ -319,14 +420,14 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   detect_matrix_size(base_filename, f, type == TRAINING?M:Me, type == TRAINING?N:Ne, nz, nodes, edges, type);
   if (f == NULL){
     if (type == TRAINING){
-    logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
-   }
-   else if (type == VALIDATION){
+      logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
+    }
+    else if (type == VALIDATION){
       logstream(LOG_INFO)<<"Validation file: "  << base_filename << " is not found. " << std::endl;
       return -1;
     }
   }
- if (type == TRAINING)
+  if (type == TRAINING)
     L=nz;
   else 
     Le = nz;
@@ -368,7 +469,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       else globalMean2 += val;
       sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
     }
-    
+
     if (type == TRAINING){
       uint toadd = 0;
       if (implicitratingtype == IMPLICIT_RATING_RANDOM)

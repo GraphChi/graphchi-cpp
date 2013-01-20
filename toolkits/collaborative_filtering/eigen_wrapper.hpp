@@ -144,11 +144,11 @@ inline vec init_vec(const char * string, int size){
   char *pch = strtok (buf," \r\n\t;");
   int i=0;
   while (pch != NULL)
-    {
-      out(i) =atof(pch);
-      pch = strtok (NULL, " \r\n\t;");
-      i++;
-    }
+  {
+    out(i) =atof(pch);
+    pch = strtok (NULL, " \r\n\t;");
+    i++;
+  }
   assert(i == size);
   return out;
 }
@@ -192,9 +192,9 @@ inline ivec sort_index(const vec&a){
     D.push_back(std::make_pair<double,int>(a.coeff(i),i));
   std::sort(D.begin(),D.end());
   for (int i=0;i<a.size();i++)
-    { 
-      ret[i]=D[i].second;
-    } 
+  { 
+    ret[i]=D[i].second;
+  } 
   return ret;
 }
 inline void dot2(const vec&  x1, const vec& x3, mat & Q, int j, int len){
@@ -355,7 +355,7 @@ inline const double * data(const vec &v){
 class it_file{
   std::fstream fb;
 
-public:
+  public:
   it_file(const char * name){
     fb.open(name, std::fstream::in);
     fb.close();
@@ -367,13 +367,13 @@ public:
     else {
       fb.open(name, std::fstream::in);
     }
-   
+
     if (!fb.is_open()){
       perror("Failed opening file ");
       printf("filename is: %s\n", name);
       assert(false);
     }
-  
+
   };
   std::fstream & operator<<(const std::string str){
     int size = str.size();
@@ -416,7 +416,7 @@ public:
       perror("Failed reading file");
       assert(false);
     }
-     
+
     char buf[256];
     fb.read(buf, std::min(256,size));
     assert(!fb.fail());
@@ -660,13 +660,29 @@ inline ivec reverse_sort_index2(const vec&a, const ivec&indices, vec & out, int 
   } 
   return ret;
 }
+inline ivec reverse_sort_index(const vec& a, int K){
+  assert(K > 0);
+  int size = std::min((unsigned int)a.size(), (unsigned int)K);
+  ivec ret(size); 
+  std::vector<std::pair<double,int> > D;
+
+  D.reserve(a.size());
+  for (int i=0;i<a.size();i++)
+    D.push_back(std::make_pair<double,int>(a[i],i));
+  std::partial_sort(D.begin(),D.begin() + size, D.end(), pair_compare);
+  for (int i=0;i< size;i++)
+  { 
+    ret[i]=D[i].second;
+  } 
+  return ret;
+}
 //define function to be applied coefficient-wise
-double equal_greater(double x){
-  if (x != 0)
-    return 1;
-  else 
-    return 0;
-}    
+  double equal_greater(double x){
+    if (x != 0)
+      return 1;
+    else 
+      return 0;
+  }    
 //sort(edges.begin(), edges.end());
 #undef NDEBUG
 #endif
