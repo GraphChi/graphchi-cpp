@@ -78,11 +78,14 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t
     }
   }
   if ((f = fopen(filename.c_str(), "r")) == NULL) {
-    std::cout<<std::endl;
-    return; //missing validaiton data, nothing to compute
+    if (type == VALIDATION){
+      std::cout<<std::endl;
+      return; //missing validaiton data
+    }
+    else logstream(LOG_FATAL)<<"Failed to open input file: " << filename << std::endl;
   }
   if (!info_file && nodes == 0 && edges == 0){
-    read_matrix_market_banner_and_size(f, matcode, M, N, nz, validation);
+    read_matrix_market_banner_and_size(f, matcode, M, N, nz, filename);
   }
   if (nodes > 0 && edges > 0){
     if (type == TRAINING){

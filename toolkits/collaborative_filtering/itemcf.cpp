@@ -54,6 +54,7 @@ enum DISTANCE_METRICS{
 
 int min_allowed_intersection = 1;
 size_t written_pairs = 0;
+size_t zero_dist = 0;
 size_t actual_written = 0;
 size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
@@ -346,6 +347,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
          //[item A] [ item B ] [ distance ] 
           written_pairs++;
         }
+        else zero_dist++;
       }
       sort(heap.begin(), heap.end(), &Greater);
       int thread_num = omp_get_thread_num();
@@ -477,7 +479,7 @@ int main(int argc, const char ** argv) {
   if (!quiet)
     metrics_report(m);
   
-  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << std::endl;
+  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << " pairs with zero distance: " << zero_dist << std::endl;
 
   for (uint i=0; i< out_files.size(); i++){
     fflush(out_files[i]);
