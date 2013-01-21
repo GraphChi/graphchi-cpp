@@ -125,7 +125,7 @@ int main(int argc, const char ** argv) {
     
     /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-    metrics m("smoketest");
+    metrics m("test-dynamicedata");
     
     /* Basic arguments for application */
     system("rm -rf /tmp/__chi_dyntest"); // Remove old
