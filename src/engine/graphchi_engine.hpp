@@ -929,6 +929,14 @@ namespace graphchi {
          * mode. Default true.
          */
         void set_enable_deterministic_parallelism(bool b) {
+#ifdef DYNAMICEDATA
+            if (!b) {
+                assert(false);
+                logstream(LOG_ERROR) << "With dynamic edge data, you cannot disable determinic parallelism." << std::endl;
+                logstream(LOG_ERROR) << "Otherwise race conditions would corrupt the structure of the data." << std::endl;
+                return;
+            }
+#endif
             enable_deterministic_parallelism = b;
         }
       
