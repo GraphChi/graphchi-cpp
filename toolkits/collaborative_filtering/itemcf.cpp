@@ -446,7 +446,11 @@ int main(int argc, const char ** argv) {
 
   mytimer.start();
   int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
+  if (nshards != 1)
+    logstream(LOG_FATAL)<<"This application currently supports only 1 shard" << std::endl;
   K                        = get_option_int("K", K);
+  if (K <= 0)
+    logstream(LOG_FATAL)<<"Please specify the number of ratings to generate for each user using the --K command" << std::endl;
 
   assert(M > 0 && N > 0);
   

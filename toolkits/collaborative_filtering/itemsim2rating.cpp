@@ -160,16 +160,25 @@ class adjlist_container {
       if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection)
         return 0;
 
-      double intersection_size = 0;
+      std::vector<vid_t> edges;
+    edges.resize(num_edges);
+    for(int i=0; i < num_edges; i++) {
+      vid_t other_vertex = item.edge(i)->vertexid;
+      edges[i] = other_vertex;
+    }
+    sort(edges.begin(), edges.end());
+ 
       for(int i=0; i < num_edges; i++){
-        if (is_item(item.edge(i)->vertex_id()) && !get_val(pivot_edges.edges,(int) item.edge(i)->vertex_id())){
-          intersection_size++;
-          pivot_edges.ratings[item.edge(i)->vertex_id()-M] += item.edge(i)->get_data();
+        if (is_item(edges[i]) && !get_val(pivot_edges.edges,(int) edges[i])){
+          //skip duplicate edges (if any)
+          if (i > 0 && edges[i] == edges[i-1])
+            continue;
+          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data();
           if (debug)
-            logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << item.edge(i)->vertex_id()-M << std::endl;
+            logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
         }
         else if (debug)
-          logstream(LOG_DEBUG)<<"Skpping edge to: " << item.edge(i)->vertex_id() << " connected? " << get_val(pivot_edges.edges,(int) item.edge(i)->vertex_id()) << std::endl;
+          logstream(LOG_DEBUG)<<"Skpping edge to: " << edges[i] << " connected? " << get_val(pivot_edges.edges, edges[i]) << std::endl;
       }
 
       //not enough user nodes rated both items, so the pairs of items are not compared.
@@ -346,9 +355,12 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           for (int j=0; j < positions.size(); j++){
             assert(positions[j] >= 0);
             assert(positions[j] < (int)N);
+            if (user.ratings[positions[j]] == 0)
+              break;
             //assert(user.ratings[positions[j]]> 0);
             int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, user.ratings[positions[j]]);//write item similarity to file
             assert(rc > 0);
+            written_pairs++;
           }
         }
       }
@@ -393,6 +405,7 @@ int main(int argc, const char ** argv) {
   ItemDistanceProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
   set_engine_flags(engine);
+  engine.set_maxwindow(M+N+1);
 
   char buf[256];
   sprintf(buf, "%s.out", training.c_str());
