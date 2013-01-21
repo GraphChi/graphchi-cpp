@@ -179,7 +179,12 @@ namespace graphchi {
                     edgedata[i] = NULL;
                     iomgr->close_session(block_edatasessions[i]);
                 }
+            } else {
+              for(int i=0; i < nblocks; i++) {
+                  iomgr->close_session(block_edatasessions[i]);
+              }
             }
+            
             m.stop_time(cm, "memshard_commit");
             
             iomgr->managed_release(adj_session, &adjdata);
