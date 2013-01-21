@@ -40,7 +40,7 @@ display_name "TESTING SVD-ONESIDED"
 display_name "TESTING RBM"
 ./toolkits/collaborative_filtering/rbm --training=smallnetflix_mm --validation=smallnetflix_mme --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING WALS"  
-rm -f time_smallnetflix.* time_smallnetflixe.*
+rm -fr time_smallnetflix.* time_smallnetflixe.*
 ./toolkits/collaborative_filtering/wals --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
 display_name "TESTING ALS-TENSOR"  
 ./toolkits/collaborative_filtering/als_tensor --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
