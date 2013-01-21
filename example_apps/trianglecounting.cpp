@@ -468,8 +468,8 @@ int main(int argc, const char ** argv) {
     std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
 
     /* write the output */
-    OutputVertexCallback callback;
-    foreach_vertices<VertexDataType>(filename + "_degord", 0, engine.num_vertices(), callback);
+   // OutputVertexCallback callback;
+  //  foreach_vertices<VertexDataType>(filename + "_degord", 0, engine.num_vertices(), callback);
 
     return 0;
 }
