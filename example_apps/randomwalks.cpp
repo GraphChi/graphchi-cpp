@@ -50,7 +50,7 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program.
  */
-typedef vid_t VertexDataType;
+typedef unsigned int VertexDataType;
 typedef chivector<vid_t>  EdgeDataType;
 
  
@@ -154,7 +154,7 @@ int main(int argc, const char ** argv) {
     
     /* Detect the number of shards or preprocess an input to create them */
     bool preexisting_shards;
-    int nshards          = convert_if_notexists<int>(filename, get_option_string("nshards", "auto"), preexisting_shards);
+    int nshards          = convert_if_notexists<vid_t>(filename, get_option_string("nshards", "auto"), preexisting_shards);
     
     /* Run */
     RandomWalkProgram program;
