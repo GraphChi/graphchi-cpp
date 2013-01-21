@@ -946,37 +946,7 @@ namespace graphchi {
         }; 
         
     protected:
-        
-<<<<<<< local
-        /** 
-         * Loads vertex intervals.
-         */
-        virtual void load_vertex_intervals() {
-            char partstr[128];
-            sprintf(partstr, ".%d", nshards);
-            
-            std::string intervalsFilename = filename_intervals(base_filename, nshards);
-            std::ifstream intervalsF(intervalsFilename.c_str());
-            
-            if (!intervalsF.good()) {
-                logstream(LOG_ERROR) << "Could not load intervals-file: " << intervalsFilename << std::endl;
-            }
-            assert(intervalsF.good());
-            
-            intervals.clear();
-            
-            vid_t st=0, en;            
-            for(int i=0; i < nshards; i++) {
-                assert(!intervalsF.eof());
-                intervalsF >> en;
-                intervals.push_back(std::pair<vid_t,vid_t>(std::min(st, en), en));
-                st = en + 1;
-            }
-            for(int i=0; i < nshards; i++) {
-                logstream(LOG_INFO) << "shard: " << intervals[i].first << " - " << intervals[i].second << std::endl;
-            }
-            
-        
+              
         virtual void _load_vertex_intervals() {
             load_vertex_intervals(base_filename, nshards, intervals);
         }

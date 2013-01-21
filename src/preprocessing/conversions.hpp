@@ -121,6 +121,7 @@ namespace graphchi {
     
     
     // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
+    int getdir (std::string dir, std::vector<std::string> &files);
     int getdir (std::string dir, std::vector<std::string> &files)
     {
         DIR *dp;
@@ -137,7 +138,7 @@ namespace graphchi {
         return 0;
     }
     
-    
+    std::string get_dirname(std::string arg);
     std::string get_dirname(std::string arg) {
         size_t a = arg.find_last_of("/");
         if (a != arg.npos) {
@@ -510,6 +511,7 @@ namespace graphchi {
      * Converts a graph input to shards with no edge values. Preprocessing has several steps, 
      * see sharder.hpp for more information.
      */
+    int convert_none(std::string basefilename, std::string nshards_string);
     int convert_none(std::string basefilename, std::string nshards_string) {
         std::string suffix = "";
         sharder<dummy> sharderobj(basefilename + suffix);
