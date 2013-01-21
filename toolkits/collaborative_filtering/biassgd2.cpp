@@ -207,7 +207,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("biassgd-inmemory-factors");
+  metrics m("biassgd2");
 
   biassgd_lambda    = get_option_float("biassgd_lambda", 1e-3);
   biassgd_gamma     = get_option_float("biassgd_gamma", 1e-3);

@@ -435,7 +435,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("triangle-counting");    
+  metrics m("item-cf");    
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   distance_metric          = get_option_int("distance", JACCARD);
@@ -461,7 +461,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, true, m); 
   set_engine_flags(engine);
 
   //open output files as the number of operating threads

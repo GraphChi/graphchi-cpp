@@ -309,7 +309,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("als-tensor-inmemory-factors");
+  metrics m("libfm");
 
   //specific command line parameters for libfm
   libfm_rate = get_option_float("libfm_rate", libfm_rate);

@@ -250,10 +250,6 @@
 		5F7B653C1594D17E0032CE47 /* html_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = html_reporter.hpp; sourceTree = "<group>"; };
 		5F7B653D1594D17E0032CE47 /* null_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = null_reporter.hpp; sourceTree = "<group>"; };
 		5F7B65C41594D8860032CE47 /* logger.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = logger.hpp; sourceTree = "<group>"; };
-		5F87A76B15DFE6DA008C8337 /* als.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = als.hpp; sourceTree = "<group>"; };
-		5F87A76C15DFE6DA008C8337 /* als_vertices_inmem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = als_vertices_inmem.cpp; sourceTree = "<group>"; };
-		5F87A76D15DFE6DA008C8337 /* sgd.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sgd.hpp; sourceTree = "<group>"; };
-		5F87A76E15DFE6DA008C8337 /* sgd_vertices_inmem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sgd_vertices_inmem.cpp; sourceTree = "<group>"; };
 		5F8DD041159DDABC0034C889 /* connectedcomponents */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = connectedcomponents; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8DD06C15A4DDF80034C889 /* plotter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = plotter.hpp; sourceTree = "<group>"; };
 		5F9EBAAC1593F87D0092F7E2 /* chifilenames.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chifilenames.hpp; sourceTree = "<group>"; };
@@ -292,6 +288,106 @@
 		5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = streaming_pagerank.cpp; sourceTree = "<group>"; };
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FE3D5AE15FD5E520061B039 /* dynamicblock.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = dynamicblock.hpp; sourceTree = "<group>"; };
+		5FE8000016ACEFCD00C68BE0 /* sparse_als.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sparse_als.cpp; sourceTree = "<group>"; };
+		5FE8000116ACEFCD00C68BE0 /* sparse_als.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = sparse_als.dSYM; sourceTree = "<group>"; };
+		5FE8000216ACEFCD00C68BE0 /* sparse_gensgd */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = sparse_gensgd; sourceTree = "<group>"; };
+		5FE8000316ACEFCD00C68BE0 /* sparse_gensgd.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sparse_gensgd.cpp; sourceTree = "<group>"; };
+		5FE8000416ACEFCD00C68BE0 /* sparse_gensgd.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = sparse_gensgd.dSYM; sourceTree = "<group>"; };
+		5FE8000516ACEFCD00C68BE0 /* sparse_gensgd2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = sparse_gensgd2; sourceTree = "<group>"; };
+		5FE8000616ACEFCD00C68BE0 /* sparse_gensgd2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sparse_gensgd2.cpp; sourceTree = "<group>"; };
+		5FE8000716ACEFCD00C68BE0 /* sparse_gensgd2.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = sparse_gensgd2.dSYM; sourceTree = "<group>"; };
+		5FE8000816ACEFCD00C68BE0 /* svd */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = svd; sourceTree = "<group>"; };
+		5FE8000916ACEFCD00C68BE0 /* svd.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = svd.cpp; sourceTree = "<group>"; };
+		5FE8000A16ACEFCD00C68BE0 /* svd.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = svd.dSYM; sourceTree = "<group>"; };
+		5FE8000B16ACEFCD00C68BE0 /* svd_onesided */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = svd_onesided; sourceTree = "<group>"; };
+		5FE8000C16ACEFCD00C68BE0 /* svd_onesided.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = svd_onesided.cpp; sourceTree = "<group>"; };
+		5FE8000D16ACEFCD00C68BE0 /* svd_onesided.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = svd_onesided.dSYM; sourceTree = "<group>"; };
+		5FE8000E16ACEFCD00C68BE0 /* svdpp */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = svdpp; sourceTree = "<group>"; };
+		5FE8000F16ACEFCD00C68BE0 /* svdpp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = svdpp.cpp; sourceTree = "<group>"; };
+		5FE8001016ACEFCD00C68BE0 /* svdpp.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = svdpp.dSYM; sourceTree = "<group>"; };
+		5FE8001116ACEFCD00C68BE0 /* test_als */ = {isa = PBXFileReference; lastKnownFileType = text; path = test_als; sourceTree = "<group>"; };
+		5FE8001216ACEFCD00C68BE0 /* test_alse */ = {isa = PBXFileReference; lastKnownFileType = text; path = test_alse; sourceTree = "<group>"; };
+		5FE8001316ACEFCD00C68BE0 /* test_eigen.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = test_eigen.sh; sourceTree = "<group>"; };
+		5FE8001416ACEFCD00C68BE0 /* test_wals */ = {isa = PBXFileReference; lastKnownFileType = text; path = test_wals; sourceTree = "<group>"; };
+		5FE8001516ACEFCD00C68BE0 /* test_walse */ = {isa = PBXFileReference; lastKnownFileType = text; path = test_walse; sourceTree = "<group>"; };
+		5FE8001616ACEFCD00C68BE0 /* timer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = timer.hpp; sourceTree = "<group>"; };
+		5FE8001716ACEFCD00C68BE0 /* timesvdpp */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = timesvdpp; sourceTree = "<group>"; };
+		5FE8001816ACEFCD00C68BE0 /* timesvdpp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = timesvdpp.cpp; sourceTree = "<group>"; };
+		5FE8001916ACEFCD00C68BE0 /* timesvdpp.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = timesvdpp.dSYM; sourceTree = "<group>"; };
+		5FE8001A16ACEFCD00C68BE0 /* topk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = topk.sh; sourceTree = "<group>"; };
+		5FE8001B16ACEFCD00C68BE0 /* types.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = types.hpp; sourceTree = "<group>"; };
+		5FE8001C16ACEFCD00C68BE0 /* util.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = util.hpp; sourceTree = "<group>"; };
+		5FE8001D16ACEFCD00C68BE0 /* wals */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = wals; sourceTree = "<group>"; };
+		5FE8001E16ACEFCD00C68BE0 /* wals.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wals.cpp; sourceTree = "<group>"; };
+		5FE8001F16ACEFCD00C68BE0 /* wals.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = wals.dSYM; sourceTree = "<group>"; };
+		5FE8FFBC16ACEFCD00C68BE0 /* als */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = als; sourceTree = "<group>"; };
+		5FE8FFBD16ACEFCD00C68BE0 /* als.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = als.cpp; sourceTree = "<group>"; };
+		5FE8FFBE16ACEFCD00C68BE0 /* als.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = als.dSYM; sourceTree = "<group>"; };
+		5FE8FFBF16ACEFCD00C68BE0 /* als_tensor */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = als_tensor; sourceTree = "<group>"; };
+		5FE8FFC016ACEFCD00C68BE0 /* als_tensor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = als_tensor.cpp; sourceTree = "<group>"; };
+		5FE8FFC116ACEFCD00C68BE0 /* als_tensor.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = als_tensor.dSYM; sourceTree = "<group>"; };
+		5FE8FFC216ACEFCD00C68BE0 /* baseline */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = baseline; sourceTree = "<group>"; };
+		5FE8FFC316ACEFCD00C68BE0 /* baseline.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = baseline.cpp; sourceTree = "<group>"; };
+		5FE8FFC416ACEFCD00C68BE0 /* baseline.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = baseline.dSYM; sourceTree = "<group>"; };
+		5FE8FFC516ACEFCD00C68BE0 /* biassgd */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = biassgd; sourceTree = "<group>"; };
+		5FE8FFC616ACEFCD00C68BE0 /* biassgd.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = biassgd.cpp; sourceTree = "<group>"; };
+		5FE8FFC716ACEFCD00C68BE0 /* biassgd.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = biassgd.dSYM; sourceTree = "<group>"; };
+		5FE8FFC816ACEFCD00C68BE0 /* biassgd2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = biassgd2; sourceTree = "<group>"; };
+		5FE8FFC916ACEFCD00C68BE0 /* biassgd2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = biassgd2.cpp; sourceTree = "<group>"; };
+		5FE8FFCA16ACEFCD00C68BE0 /* biassgd2.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = biassgd2.dSYM; sourceTree = "<group>"; };
+		5FE8FFCB16ACEFCD00C68BE0 /* common.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = common.hpp; sourceTree = "<group>"; };
+		5FE8FFCC16ACEFCD00C68BE0 /* cosamp.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = cosamp.hpp; sourceTree = "<group>"; };
+		5FE8FFCD16ACEFCD00C68BE0 /* distance.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = distance.hpp; sourceTree = "<group>"; };
+		5FE8FFCE16ACEFCD00C68BE0 /* eigen_wrapper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = eigen_wrapper.hpp; sourceTree = "<group>"; };
+		5FE8FFCF16ACEFCD00C68BE0 /* gensgd */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = gensgd; sourceTree = "<group>"; };
+		5FE8FFD016ACEFCD00C68BE0 /* gensgd.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gensgd.cpp; sourceTree = "<group>"; };
+		5FE8FFD116ACEFCD00C68BE0 /* gensgd.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = gensgd.dSYM; sourceTree = "<group>"; };
+		5FE8FFD216ACEFCD00C68BE0 /* getline.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = getline.hpp; sourceTree = "<group>"; };
+		5FE8FFD316ACEFCD00C68BE0 /* implicit.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = implicit.hpp; sourceTree = "<group>"; };
+		5FE8FFD416ACEFCD00C68BE0 /* io.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = io.hpp; sourceTree = "<group>"; };
+		5FE8FFD516ACEFCD00C68BE0 /* itemcf */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = itemcf; sourceTree = "<group>"; };
+		5FE8FFD616ACEFCD00C68BE0 /* itemcf.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = itemcf.cpp; sourceTree = "<group>"; };
+		5FE8FFD716ACEFCD00C68BE0 /* itemcf.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = itemcf.dSYM; sourceTree = "<group>"; };
+		5FE8FFD816ACEFCD00C68BE0 /* itemcf2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = itemcf2; sourceTree = "<group>"; };
+		5FE8FFD916ACEFCD00C68BE0 /* itemcf2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = itemcf2.cpp; sourceTree = "<group>"; };
+		5FE8FFDA16ACEFCD00C68BE0 /* itemcf2.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = itemcf2.dSYM; sourceTree = "<group>"; };
+		5FE8FFDB16ACEFCD00C68BE0 /* itemsim2rating */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = itemsim2rating; sourceTree = "<group>"; };
+		5FE8FFDC16ACEFCD00C68BE0 /* itemsim2rating.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = itemsim2rating.cpp; sourceTree = "<group>"; };
+		5FE8FFDD16ACEFCD00C68BE0 /* itemsim2rating.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = itemsim2rating.dSYM; sourceTree = "<group>"; };
+		5FE8FFDE16ACEFCD00C68BE0 /* libfm */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = libfm; sourceTree = "<group>"; };
+		5FE8FFDF16ACEFCD00C68BE0 /* libfm.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libfm.cpp; sourceTree = "<group>"; };
+		5FE8FFE016ACEFCD00C68BE0 /* libfm.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = libfm.dSYM; sourceTree = "<group>"; };
+		5FE8FFE116ACEFCD00C68BE0 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5FE8FFE216ACEFCD00C68BE0 /* Makefile.debug */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.debug; sourceTree = "<group>"; };
+		5FE8FFE316ACEFCD00C68BE0 /* Makefile.orig */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.orig; sourceTree = "<group>"; };
+		5FE8FFE416ACEFCD00C68BE0 /* math.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = math.hpp; sourceTree = "<group>"; };
+		5FE8FFE516ACEFCD00C68BE0 /* metric_eval */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = metric_eval; sourceTree = "<group>"; };
+		5FE8FFE616ACEFCD00C68BE0 /* metric_eval.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = metric_eval.cpp; sourceTree = "<group>"; };
+		5FE8FFE716ACEFCD00C68BE0 /* metric_eval.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = metric_eval.dSYM; sourceTree = "<group>"; };
+		5FE8FFE816ACEFCD00C68BE0 /* metrics.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = metrics.hpp; sourceTree = "<group>"; };
+		5FE8FFE916ACEFCD00C68BE0 /* nmf */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = nmf; sourceTree = "<group>"; };
+		5FE8FFEA16ACEFCD00C68BE0 /* nmf.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = nmf.cpp; sourceTree = "<group>"; };
+		5FE8FFEB16ACEFCD00C68BE0 /* nmf.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = nmf.dSYM; sourceTree = "<group>"; };
+		5FE8FFEC16ACEFCD00C68BE0 /* pmf */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pmf; sourceTree = "<group>"; };
+		5FE8FFED16ACEFCD00C68BE0 /* pmf.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = pmf.cpp; sourceTree = "<group>"; };
+		5FE8FFEE16ACEFCD00C68BE0 /* pmf.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = pmf.dSYM; sourceTree = "<group>"; };
+		5FE8FFEF16ACEFCD00C68BE0 /* printouts.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = printouts.hpp; sourceTree = "<group>"; };
+		5FE8FFF016ACEFCD00C68BE0 /* prob.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = prob.hpp; sourceTree = "<group>"; };
+		5FE8FFF116ACEFCD00C68BE0 /* rating */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = rating; sourceTree = "<group>"; };
+		5FE8FFF216ACEFCD00C68BE0 /* rating.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = rating.cpp; sourceTree = "<group>"; };
+		5FE8FFF316ACEFCD00C68BE0 /* rating.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = rating.dSYM; sourceTree = "<group>"; };
+		5FE8FFF416ACEFCD00C68BE0 /* rating4 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = rating4; sourceTree = "<group>"; };
+		5FE8FFF516ACEFCD00C68BE0 /* rbm */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = rbm; sourceTree = "<group>"; };
+		5FE8FFF616ACEFCD00C68BE0 /* rbm.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = rbm.cpp; sourceTree = "<group>"; };
+		5FE8FFF716ACEFCD00C68BE0 /* rbm.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = rbm.dSYM; sourceTree = "<group>"; };
+		5FE8FFF816ACEFCD00C68BE0 /* rmse.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = rmse.hpp; sourceTree = "<group>"; };
+		5FE8FFF916ACEFCD00C68BE0 /* rmse_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = rmse_engine.hpp; sourceTree = "<group>"; };
+		5FE8FFFA16ACEFCD00C68BE0 /* rmse_engine4.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = rmse_engine4.hpp; sourceTree = "<group>"; };
+		5FE8FFFB16ACEFCD00C68BE0 /* runtests.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = runtests.sh; sourceTree = "<group>"; };
+		5FE8FFFC16ACEFCD00C68BE0 /* sgd */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = sgd; sourceTree = "<group>"; };
+		5FE8FFFD16ACEFCD00C68BE0 /* sgd.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sgd.cpp; sourceTree = "<group>"; };
+		5FE8FFFE16ACEFCD00C68BE0 /* sgd.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; path = sgd.dSYM; sourceTree = "<group>"; };
+		5FE8FFFF16ACEFCD00C68BE0 /* sparse_als */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = sparse_als; sourceTree = "<group>"; };
 		5FEC749815D884560050EC64 /* filechecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = filechecker.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -777,21 +873,10 @@
 		5F87A76915DFE6DA008C8337 /* toolkits */ = {
 			isa = PBXGroup;
 			children = (
-				5F87A76A15DFE6DA008C8337 /* collaborative_filtering */,
+				5FE8FFBB16ACEFCD00C68BE0 /* collaborative_filtering */,
 			);
 			name = toolkits;
 			path = ../toolkits;
-			sourceTree = "<group>";
-		};
-		5F87A76A15DFE6DA008C8337 /* collaborative_filtering */ = {
-			isa = PBXGroup;
-			children = (
-				5F87A76B15DFE6DA008C8337 /* als.hpp */,
-				5F87A76C15DFE6DA008C8337 /* als_vertices_inmem.cpp */,
-				5F87A76D15DFE6DA008C8337 /* sgd.hpp */,
-				5F87A76E15DFE6DA008C8337 /* sgd_vertices_inmem.cpp */,
-			);
-			path = collaborative_filtering;
 			sourceTree = "<group>";
 		};
 		5FB782F4159E22B300816BDE /* dynamic_graphs */ = {
@@ -861,6 +946,113 @@
 				5F74B04615D35B6400ED3EA9 /* random.cpp */,
 			);
 			path = graphlab2_1_GAS_api;
+			sourceTree = "<group>";
+		};
+		5FE8FFBB16ACEFCD00C68BE0 /* collaborative_filtering */ = {
+			isa = PBXGroup;
+			children = (
+				5FE8FFBC16ACEFCD00C68BE0 /* als */,
+				5FE8FFBD16ACEFCD00C68BE0 /* als.cpp */,
+				5FE8FFBE16ACEFCD00C68BE0 /* als.dSYM */,
+				5FE8FFBF16ACEFCD00C68BE0 /* als_tensor */,
+				5FE8FFC016ACEFCD00C68BE0 /* als_tensor.cpp */,
+				5FE8FFC116ACEFCD00C68BE0 /* als_tensor.dSYM */,
+				5FE8FFC216ACEFCD00C68BE0 /* baseline */,
+				5FE8FFC316ACEFCD00C68BE0 /* baseline.cpp */,
+				5FE8FFC416ACEFCD00C68BE0 /* baseline.dSYM */,
+				5FE8FFC516ACEFCD00C68BE0 /* biassgd */,
+				5FE8FFC616ACEFCD00C68BE0 /* biassgd.cpp */,
+				5FE8FFC716ACEFCD00C68BE0 /* biassgd.dSYM */,
+				5FE8FFC816ACEFCD00C68BE0 /* biassgd2 */,
+				5FE8FFC916ACEFCD00C68BE0 /* biassgd2.cpp */,
+				5FE8FFCA16ACEFCD00C68BE0 /* biassgd2.dSYM */,
+				5FE8FFCB16ACEFCD00C68BE0 /* common.hpp */,
+				5FE8FFCC16ACEFCD00C68BE0 /* cosamp.hpp */,
+				5FE8FFCD16ACEFCD00C68BE0 /* distance.hpp */,
+				5FE8FFCE16ACEFCD00C68BE0 /* eigen_wrapper.hpp */,
+				5FE8FFCF16ACEFCD00C68BE0 /* gensgd */,
+				5FE8FFD016ACEFCD00C68BE0 /* gensgd.cpp */,
+				5FE8FFD116ACEFCD00C68BE0 /* gensgd.dSYM */,
+				5FE8FFD216ACEFCD00C68BE0 /* getline.hpp */,
+				5FE8FFD316ACEFCD00C68BE0 /* implicit.hpp */,
+				5FE8FFD416ACEFCD00C68BE0 /* io.hpp */,
+				5FE8FFD516ACEFCD00C68BE0 /* itemcf */,
+				5FE8FFD616ACEFCD00C68BE0 /* itemcf.cpp */,
+				5FE8FFD716ACEFCD00C68BE0 /* itemcf.dSYM */,
+				5FE8FFD816ACEFCD00C68BE0 /* itemcf2 */,
+				5FE8FFD916ACEFCD00C68BE0 /* itemcf2.cpp */,
+				5FE8FFDA16ACEFCD00C68BE0 /* itemcf2.dSYM */,
+				5FE8FFDB16ACEFCD00C68BE0 /* itemsim2rating */,
+				5FE8FFDC16ACEFCD00C68BE0 /* itemsim2rating.cpp */,
+				5FE8FFDD16ACEFCD00C68BE0 /* itemsim2rating.dSYM */,
+				5FE8FFDE16ACEFCD00C68BE0 /* libfm */,
+				5FE8FFDF16ACEFCD00C68BE0 /* libfm.cpp */,
+				5FE8FFE016ACEFCD00C68BE0 /* libfm.dSYM */,
+				5FE8FFE116ACEFCD00C68BE0 /* Makefile */,
+				5FE8FFE216ACEFCD00C68BE0 /* Makefile.debug */,
+				5FE8FFE316ACEFCD00C68BE0 /* Makefile.orig */,
+				5FE8FFE416ACEFCD00C68BE0 /* math.hpp */,
+				5FE8FFE516ACEFCD00C68BE0 /* metric_eval */,
+				5FE8FFE616ACEFCD00C68BE0 /* metric_eval.cpp */,
+				5FE8FFE716ACEFCD00C68BE0 /* metric_eval.dSYM */,
+				5FE8FFE816ACEFCD00C68BE0 /* metrics.hpp */,
+				5FE8FFE916ACEFCD00C68BE0 /* nmf */,
+				5FE8FFEA16ACEFCD00C68BE0 /* nmf.cpp */,
+				5FE8FFEB16ACEFCD00C68BE0 /* nmf.dSYM */,
+				5FE8FFEC16ACEFCD00C68BE0 /* pmf */,
+				5FE8FFED16ACEFCD00C68BE0 /* pmf.cpp */,
+				5FE8FFEE16ACEFCD00C68BE0 /* pmf.dSYM */,
+				5FE8FFEF16ACEFCD00C68BE0 /* printouts.hpp */,
+				5FE8FFF016ACEFCD00C68BE0 /* prob.hpp */,
+				5FE8FFF116ACEFCD00C68BE0 /* rating */,
+				5FE8FFF216ACEFCD00C68BE0 /* rating.cpp */,
+				5FE8FFF316ACEFCD00C68BE0 /* rating.dSYM */,
+				5FE8FFF416ACEFCD00C68BE0 /* rating4 */,
+				5FE8FFF516ACEFCD00C68BE0 /* rbm */,
+				5FE8FFF616ACEFCD00C68BE0 /* rbm.cpp */,
+				5FE8FFF716ACEFCD00C68BE0 /* rbm.dSYM */,
+				5FE8FFF816ACEFCD00C68BE0 /* rmse.hpp */,
+				5FE8FFF916ACEFCD00C68BE0 /* rmse_engine.hpp */,
+				5FE8FFFA16ACEFCD00C68BE0 /* rmse_engine4.hpp */,
+				5FE8FFFB16ACEFCD00C68BE0 /* runtests.sh */,
+				5FE8FFFC16ACEFCD00C68BE0 /* sgd */,
+				5FE8FFFD16ACEFCD00C68BE0 /* sgd.cpp */,
+				5FE8FFFE16ACEFCD00C68BE0 /* sgd.dSYM */,
+				5FE8FFFF16ACEFCD00C68BE0 /* sparse_als */,
+				5FE8000016ACEFCD00C68BE0 /* sparse_als.cpp */,
+				5FE8000116ACEFCD00C68BE0 /* sparse_als.dSYM */,
+				5FE8000216ACEFCD00C68BE0 /* sparse_gensgd */,
+				5FE8000316ACEFCD00C68BE0 /* sparse_gensgd.cpp */,
+				5FE8000416ACEFCD00C68BE0 /* sparse_gensgd.dSYM */,
+				5FE8000516ACEFCD00C68BE0 /* sparse_gensgd2 */,
+				5FE8000616ACEFCD00C68BE0 /* sparse_gensgd2.cpp */,
+				5FE8000716ACEFCD00C68BE0 /* sparse_gensgd2.dSYM */,
+				5FE8000816ACEFCD00C68BE0 /* svd */,
+				5FE8000916ACEFCD00C68BE0 /* svd.cpp */,
+				5FE8000A16ACEFCD00C68BE0 /* svd.dSYM */,
+				5FE8000B16ACEFCD00C68BE0 /* svd_onesided */,
+				5FE8000C16ACEFCD00C68BE0 /* svd_onesided.cpp */,
+				5FE8000D16ACEFCD00C68BE0 /* svd_onesided.dSYM */,
+				5FE8000E16ACEFCD00C68BE0 /* svdpp */,
+				5FE8000F16ACEFCD00C68BE0 /* svdpp.cpp */,
+				5FE8001016ACEFCD00C68BE0 /* svdpp.dSYM */,
+				5FE8001116ACEFCD00C68BE0 /* test_als */,
+				5FE8001216ACEFCD00C68BE0 /* test_alse */,
+				5FE8001316ACEFCD00C68BE0 /* test_eigen.sh */,
+				5FE8001416ACEFCD00C68BE0 /* test_wals */,
+				5FE8001516ACEFCD00C68BE0 /* test_walse */,
+				5FE8001616ACEFCD00C68BE0 /* timer.hpp */,
+				5FE8001716ACEFCD00C68BE0 /* timesvdpp */,
+				5FE8001816ACEFCD00C68BE0 /* timesvdpp.cpp */,
+				5FE8001916ACEFCD00C68BE0 /* timesvdpp.dSYM */,
+				5FE8001A16ACEFCD00C68BE0 /* topk.sh */,
+				5FE8001B16ACEFCD00C68BE0 /* types.hpp */,
+				5FE8001C16ACEFCD00C68BE0 /* util.hpp */,
+				5FE8001D16ACEFCD00C68BE0 /* wals */,
+				5FE8001E16ACEFCD00C68BE0 /* wals.cpp */,
+				5FE8001F16ACEFCD00C68BE0 /* wals.dSYM */,
+			);
+			path = collaborative_filtering;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

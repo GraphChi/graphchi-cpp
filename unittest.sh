@@ -12,7 +12,7 @@ function display_name {
 }
 
 
-rm -f smallnetflix_mm.*
+rm -fr smallnetflix_mm.*
 display_name "TESTING BASELINE"
   ./toolkits/collaborative_filtering/baseline --training=smallnetflix_mm --validation=smallnetflix_mm --minval=1 --maxval=5 --quiet=1  --algorithm=user_mean
 display_name "TESTING ALS"
