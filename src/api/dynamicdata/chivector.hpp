@@ -68,6 +68,7 @@ public:
         origsize = sz;
         nsize = origsize;
         ncapacity = cap;
+        assert(cap >= nsize);
         extensions = NULL;
     }
     

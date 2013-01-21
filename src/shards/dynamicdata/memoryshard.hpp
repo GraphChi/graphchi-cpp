@@ -240,7 +240,7 @@ namespace graphchi {
                 }
             }
             assert(blockid == nblocks);
-            std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
+            logstream(LOG_DEBUG) << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
                             " number of blocks: " << nblocks << std::endl;
         }
         
@@ -294,9 +294,7 @@ namespace graphchi {
         
         /* Dynamic edata */ 
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
-            /* Find file size */
-            std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
-            
+            /* Find file size */            
             m.start_time("memoryshard_create_edges");
             
             assert(adjdata != NULL);

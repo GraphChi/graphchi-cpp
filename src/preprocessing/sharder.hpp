@@ -75,7 +75,17 @@ namespace graphchi {
         vid_t dst;
         EdgeDataType value;
         
-        edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {}
+#ifdef DYNAMICEDATA
+        // For dynamic edge data, we need to know if the value needs to be added
+        // to the vector, or are we storing an empty vector.
+        bool is_chivec_value;
+#endif
+        
+        edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {
+#ifdef DYNAMICEDATA
+            is_chivec_value = false;
+#endif
+        }
         
         bool stopper() { return src == 0 && dst == 0; }
     };
@@ -114,6 +124,9 @@ namespace graphchi {
         int * bufptrs;
         size_t bufsize;
         size_t edgedatasize;
+        size_t ebuffer_size;
+        size_t edges_per_block;
+
         
         vid_t filter_max_vertex;
         
@@ -122,13 +135,14 @@ namespace graphchi {
         metrics m;
         
         binary_adjacency_list_writer<EdgeDataType> * preproc_writer;
-        
+                
     public:
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder"), preproc_writer(NULL) {            bufs = NULL;
             edgedatasize = sizeof(EdgeDataType);
             no_edgevalues = false;
             compressed_block_size = 4096 * 1024;
+            edges_per_block = compressed_block_size / sizeof(EdgeDataType);
             filter_max_vertex = 0;
             while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
         }
@@ -206,7 +220,7 @@ namespace graphchi {
         }
         
         /**
-         * Add edge to be preprocessed
+         * Add edge to be preprocessed with a value.
          */
         void preprocessing_add_edge(vid_t from, vid_t to, EdgeDataType val) {
             preproc_writer->add_edge(from, to, val);
@@ -232,26 +246,44 @@ namespace graphchi {
             bufptr += sizeof(T);
         }
         
+        int blockid;
+        
         template <typename T>
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
-            int blockid = (int) (totbytes - sizeof(T)) / compressed_block_size;
             int len = (int) (bufptr - buf);
-            assert(len <= compressed_block_size);
 
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             write_compressed(f, buf, len);
             close(f);
+            
+#ifdef DYNAMICEDATA
+            // Write block's uncompressed size
+            write_block_uncompressed_size(block_filename, len);
+
+#endif
+            
+            blockid++;
         }
         
         template <typename T>
-        void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {
+        void bwrite_edata(char * &buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename,
+                        size_t & edgecounter) {
             if (no_edgevalues) return;
             
-            if (bufptr + sizeof(T) - buf > compressed_block_size) {
+            if (edgecounter == edges_per_block) {
                 edata_flush<T>(buf, bufptr, shard_filename, totbytes);
                 bufptr = buf;
+                edgecounter = 0;
             }
+            
+            // Check if buffer is big enough
+            if (bufptr - buf + sizeof(T) > ebuffer_size) {
+                ebuffer_size *= 2;
+                logstream(LOG_DEBUG) << "Increased buffer size to: " << ebuffer_size << std::endl;
+                buf = (char *) realloc(buf, ebuffer_size);
+            }
+            
             totbytes += sizeof(T);
             *((T*)bufptr) = val;
             bufptr += sizeof(T);
@@ -299,7 +331,7 @@ namespace graphchi {
                 
                 if (phase == 1) {
                     if (try_load_intervals()) {  // Hack: if intervals already computed, can skip that phase
-                        std::cout << "Found intervals-file, skipping that step!" << std::endl;
+                        logstream(LOG_INFO) << "Found intervals-file, skipping that step!" << std::endl;
                         continue; 
                     }
                 }
@@ -347,7 +379,7 @@ namespace graphchi {
                 
 #ifdef DYNAMICEDATA
                 // For dynamic edge data, more working memory is needed, thus the number of shards is larger.
-                nshards *= 4;
+                nshards = (int) ( 2 + 4 * (numedges * sizeof(EdgeDataType) / max_shardsize) + 0.5);
 #endif
 
             } else {
@@ -484,14 +516,15 @@ namespace graphchi {
                 shovelsizes[shard] += len;
                 shovelblocksidxs[shard] ++;
                 
-                std::cout << "Flushed " << shovelfblockname << " bufsize: " << bufsize << "/" << wcompressed << " ("
+                logstream(LOG_DEBUG) << "Flushed " << shovelfblockname << " bufsize: " << bufsize << "/" << wcompressed << " ("
                         << (wcompressed * 1.0 / bufsize) << ")" << std::endl;
             }
         }
         
-                 
-    
-        void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
+        
+
+        
+        void receive_edge(vid_t from, vid_t to, EdgeDataType value, bool input_value) {
             if (to == from) {
                 logstream(LOG_WARNING) << "Tried to add self-edge " << from << "->" << to << std::endl;
                 return;
@@ -515,7 +548,11 @@ namespace graphchi {
                     for(int i=0; i < nshards; i++) {
                         int shard = (lastpart + i) % nshards;
                         if (to >= intervals[shard].first && to <= intervals[shard].second) {
-                            swrite(shard, edge_t(from, to, value));
+                            edge_t e(from, to, value);
+#ifdef DYNAMICEDATA
+                            e.is_chivec_value = input_value;
+#endif
+                            swrite(shard, e);
                             lastpart = shard;  // Small optimizations, which works if edges are in order for each vertex - not much though
                             found = true;
                             break;
@@ -561,6 +598,7 @@ namespace graphchi {
          * To support different shard types, override this function!
          */
         virtual void write_shards() {
+            
             int membudget_mb = get_option_int("membudget_mb", 1024);
             
             // Check if we have enough memory to keep track
@@ -580,8 +618,11 @@ namespace graphchi {
             if (count_degrees_inmem) {
                 degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
             }
-            
+                        
             for(int shard=0; shard < nshards; shard++) {
+                blockid = 0;
+                size_t edgecounter = 0;
+                
                 logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
                 
                 std::string fname = filename_shard_adj(basefilename, shard, nshards);
@@ -609,9 +650,11 @@ namespace graphchi {
                 int trerr = ftruncate(f, 0);
                 assert(trerr == 0);
                 
-                char * buf = (char*) malloc(SHARDER_BUFSIZE); 
+                char * buf = (char*) malloc(SHARDER_BUFSIZE);
                 char * bufptr = buf;
+                
                 char * ebuf = (char*) malloc(compressed_block_size);
+                ebuffer_size = compressed_block_size;
                 char * ebufptr = ebuf;
                 
                 vid_t curvid=0;
@@ -621,8 +664,26 @@ namespace graphchi {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                     
                     
-                    if (!edge.stopper())
-                        bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname);
+                    if (!edge.stopper()) {
+#ifndef DYNAMICEDATA
+                        bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname, edgecounter);
+#else
+                        /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
+                        if (edge.is_chivec_value) {
+                            // Currently support only one value per edge. TODO: add consequtive
+                            // values for same edge int oa vector.
+                            typename chivector<EdgeDataType>::sizeword_t szw;
+                            ((uint16_t *) &szw)[0] = 1;  // Sizeword with length and capacity = 1
+                            ((uint16_t *) &szw)[1] = 1;
+                             bwrite_edata<typename chivector<EdgeDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
+                             bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(edge.value), tot_edatabytes, edfname, edgecounter);
+                        } else {
+                            // Just write size word with zero
+                            bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
+                         }
+#endif
+                        edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two calls to bwrite_edata before incrementing
+                    }
                     if (degrees != NULL && edge.src != edge.dst) {
                         degrees[edge.src].outdegree++;
                         degrees[edge.dst].indegree++;
@@ -678,7 +739,12 @@ namespace graphchi {
 
                     std::string sizefilename = edfname + ".size";
                     std::ofstream ofs(sizefilename.c_str());
+#ifndef DYNAMICEDATA
                     ofs << tot_edatabytes;
+#else 
+                    ofs << numedges * sizeof(int); // For dynamic edge data, write the number of edges.
+#endif
+
                     ofs.close();
                 }
                 free(ebuf);                

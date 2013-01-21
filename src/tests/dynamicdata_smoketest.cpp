@@ -141,7 +141,7 @@ int main(int argc, const char ** argv) {
     bool scheduler       = false;                       // Whether to use selective scheduling
     
     /* Detect the number of shards or preprocess an input to create them */
-    int nshards          = convert_if_notexists<DynamicEdgeDataType>(filename, get_option_string("nshards", "auto"));
+    int nshards          = convert_if_notexists<vid_t>(filename, get_option_string("nshards", "auto"));
     
     /* Run */
     DynamicDataSmokeTestProgram program;

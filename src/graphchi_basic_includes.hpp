@@ -86,7 +86,6 @@ namespace graphchi {
         }
     }
     
-    typedef uint32_t DynamicEdgeDataType;
     
 };
 

@@ -54,6 +54,10 @@ namespace graphchi {
     static std::map<std::string, std::string> conf;
     
     
+    static void VARIABLE_IS_NOT_USED set_conf(std::string key, std::string value) {
+        conf[key] = value;
+    }
+    
     // Config file
     static std::string VARIABLE_IS_NOT_USED get_config_option_string(const char *option_name) {
         if (conf.find(option_name) != conf.end()) {
@@ -178,7 +182,10 @@ namespace graphchi {
         for (i = _argc - 2; i >= 0; i -= 1)
             if (strcmp(_argv[i], option_name) == 0)
                 return std::string(_argv[i + 1]);
-        
+        if (conf.find(option_name) != conf.end()) {
+            return conf[option_name];
+        } 
+
         std::cout << "Please enter value for command-line argument [" << std::string(option_name) << "]"<< std::endl;
         std::cout << "  (Options are: " << options << ")" << std::endl;
         

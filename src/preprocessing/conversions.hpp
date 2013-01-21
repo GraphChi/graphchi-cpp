@@ -194,14 +194,17 @@ namespace graphchi {
             
             /* Check if has value */
             t = strtok(NULL, delims);
+            
             EdgeDataType val;
             if (t != NULL) {
                 parse(val, (const char*) t);
-            } else {
-                val = EdgeDataType();
-            }
+            } 
             if (from != to) {
-                sharderobj.preprocessing_add_edge(from, to, val);
+                if (t != NULL) {
+                    sharderobj.preprocessing_add_edge(from, to, val);
+                } else {
+                    sharderobj.preprocessing_add_edge(from, to);
+                }
             }
         }
         fclose(inf);
@@ -632,7 +635,7 @@ namespace graphchi {
          * In the next face, they are written out to the degree-ordered data.
          * Note: this version does not preserve edge values!
          */
-        void receive_edge(vid_t from, vid_t to, EdgeDataType value) {
+        void receive_edge(vid_t from, vid_t to, EdgeDataType value, bool is_value) {
             if (phase == 0) {
                 degarray[from].deg++;
                 degarray[to].deg++;

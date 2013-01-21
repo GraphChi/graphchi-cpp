@@ -237,7 +237,7 @@ namespace graphchi {
                     break;
                 }
             }
-            std::cout << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
+            logstream(LOG_DEBUG) << "Compressed/full size: " << compressedsize * 1.0 / edatafilesize <<
                             " number of blocks: " << nblocks << std::endl;
             assert(blockid == nblocks);
 
