@@ -50,7 +50,7 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program.
  */
-typedef vid_t VertexDataType;
+typedef unsigned int VertexDataType;
 typedef chivector<vid_t>  EdgeDataType;
 
  
