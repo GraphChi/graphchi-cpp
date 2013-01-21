@@ -146,7 +146,7 @@ namespace graphchi {
         }
         
         /* Dynamic edata */ 
-        void commit(bool all) {
+        void commit(bool commit_inedges, bool commit_outedges) {
             if (block_edatasessions.size() == 0 || only_adjacency) return;
             assert(is_loaded);
             metrics_entry cm = m.start_time();
@@ -159,13 +159,13 @@ namespace graphchi {
              */
             int nblocks = (int) block_edatasessions.size();
 
-            if (all) {
+            if (commit_inedges) {
                 for(int i=0; i < nblocks; i++) {
                     /* NOTE: WRITE ALL BLOCKS SYNCHRONOUSLY */
                     write_and_release_block(i);
                     edgedata[i] = NULL;
                 }
-            } else {
+            } else if (commit_outedges) {
                 size_t last = streaming_offset_edge_ptr;
                 if (last == 0){
                     // rollback
