@@ -90,7 +90,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
             curmin = std::min(nblabel, curmin); 
         }
         
-        /* Check if label changed */
+        /* Set my label */
         vertex.set_data(curmin);
         
         /** 
@@ -156,7 +156,7 @@ int main(int argc, const char ** argv) {
     bool scheduler       = true;    // Always run with scheduler
     
     /* Process input file - if not already preprocessed */
-    int nshards             = convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
+    int nshards             = (int) convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
     
     if (get_option_int("onlyresult", 0) == 0) {
         /* Run */

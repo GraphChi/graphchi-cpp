@@ -64,18 +64,22 @@ namespace graphchi {
             this->iomgr->wait_for_reads();
         }
         
-        
+
         /* Override - do not allocate edge data */
-        virtual void init_vertices(std::vector<fvertex_t> &vertices, 
-                                   graphchi_edge<EdgeDataType> * &edata) {
-            int nvertices = vertices.size();
-                      /* Assign vertex edge array pointers */
-            int ecounter = 0;
-            for(int i=0; i < nvertices; i++) {
+        virtual void init_vertices(std::vector<fvertex_t> &vertices, graphchi_edge<EdgeDataType> * &e) {
+            size_t nvertices = vertices.size();
+            
+            /* Compute number of edges */
+            size_t num_edges = this->num_edges_subinterval(this->sub_interval_st, this->sub_interval_en);
+            
+             /* Assign vertex edge array pointers */
+            size_t ecounter = 0;
+            for(int i=0; i < (int)nvertices; i++) {
                 degree d = this->degree_handler->get_degree(this->sub_interval_st + i);
                 int inc = d.indegree;
                 int outc = d.outdegree;
                 vertices[i] = fvertex_t(this->chicontext, this->sub_interval_st + i, inc, outc);
+
                 if (this->scheduler != NULL) {
                     bool is_sched = this->scheduler->is_scheduled(this->sub_interval_st + i);
                     if (is_sched) {
@@ -84,13 +88,13 @@ namespace graphchi {
                         ecounter += inc + outc;
                     }
                 } else {
-                    this->nupdates++; 
+                    this->nupdates++;
                     vertices[i].scheduled =  true;
                     ecounter += inc + outc;
                 }
-            }                   
-            this->work += ecounter;
-        }
+            }
+            this->work += num_edges;
+        }        
 
         
         /* Override - now load sliding shards, to write (broadcast) to out vertices */

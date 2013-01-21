@@ -75,6 +75,12 @@ namespace graphchi {
         metrics m("toplist");
         stripedio * iomgr = new stripedio(m);
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
+        
+        if (!file_exists(filename)) {
+            std::cout << "Vertex data file does not exist (yet)";
+            return std::vector<vertex_value<VertexDataType> >();
+        }
+        
         int f = iomgr->open_session(filename, true);
         
         size_t sz = get_filesize(filename);

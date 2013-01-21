@@ -24,12 +24,8 @@
  *
  * @section DESCRIPTION
  *
- * The sliding shard.
+ * Dynamic data version: The sliding shard.
  */
-
-#ifdef DYNAMICEDATA
-#include "shards/dynamicdata/slidingshard.hpp"
-#else
 
 #ifndef DEF_GRAPHCHI_SLIDINGSHARD
 #define DEF_GRAPHCHI_SLIDINGSHARD
@@ -50,15 +46,16 @@
 #include "io/stripedio.hpp"
 #include "graphchi_types.hpp"
 
+#include "api/dynamicdata/chivector.hpp"
+#include "shards/dynamicdata/dynamicblock.hpp"
+
 
 namespace graphchi {
-    
-    
-    
-    
+        
     /**
      * A streaming block.
      */
+    template <typename ET>
     struct sblock {
         
         int writedesc;
@@ -69,20 +66,22 @@ namespace graphchi {
         uint8_t * ptr;
         bool active;
         bool is_edata_block;
+        std::string blockfilename;
+        dynamicdata_block<ET> * dynblock;
         
-        sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; }
+        sblock() : writedesc(0), readdesc(0), active(false) { data = NULL; dynblock = NULL; }
         sblock(int wdesc, int rdesc, bool is_edata_block=false) : writedesc(wdesc), readdesc(rdesc), active(false),
-        is_edata_block(is_edata_block){ data = NULL; }
+        is_edata_block(is_edata_block){ data = NULL; dynblock = NULL; }
+        sblock(int wdesc, int rdesc, bool is_edata_block, std::string blockfilename) : writedesc(wdesc), readdesc(rdesc), active(false),
+        is_edata_block(is_edata_block), blockfilename(blockfilename) {
+            assert(is_edata_block == true);
+            data = NULL;
+            dynblock = NULL;
+        }
         
         void commit_async(stripedio * iomgr) {
-            if (active && data != NULL && writedesc >= 0) {
-                if (is_edata_block) {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
-                    data = NULL;
-                } else {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
-                }
-            }
+            commit_now(iomgr); // TODO: async
+            release(iomgr);   // Note!
         }
         
         void commit_now(stripedio * iomgr) {
@@ -90,34 +89,41 @@ namespace graphchi {
                 size_t len = ptr-data;
                 if (len > end-offset) len = end-offset;
                 if (is_edata_block) {
-                    iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
+                    uint8_t * outdata = NULL;
+                    int realsize;
+                    dynblock->write(&outdata, realsize);
+                    write_block_uncompressed_size(blockfilename, realsize);
+                    iomgr->managed_pwritea_now(writedesc, &outdata, realsize, 0); /* Need to write whole block in the compressed regime */
+                    free(outdata);
                 } else {
                     iomgr->managed_pwritea_now(writedesc, &data, len, offset);
                 }
             }
         }
         void read_async(stripedio * iomgr) {
-            if (is_edata_block) {
-                iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
-                
-            } else {
-                iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
-            }
+            assert(false);
         }
         void read_now(stripedio * iomgr) {
             if (is_edata_block) {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
+                int realsize = get_block_uncompressed_size(blockfilename, end-offset);
+                iomgr->managed_preada_now(readdesc, &data, realsize, 0);
+                int nedges = (end - offset) / sizeof(int); // Ugly
+                dynblock = new dynamicdata_block<ET>(nedges, (uint8_t *) data, realsize);
             } else {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+                iomgr->managed_preada_now(readdesc, &data, end - offset, offset);
             }
         }
         
         void release(stripedio * iomgr) {
             if (data != NULL) {
                 iomgr->managed_release(readdesc, &data);
-                if (is_edata_block) {
-                    iomgr->close_session(readdesc);
-                }
+            }
+            if (is_edata_block) {
+                iomgr->close_session(readdesc);
+            }
+            if (dynblock != NULL) {
+                delete dynblock;
+                dynblock = NULL;
             }
             data = NULL;
             
@@ -134,6 +140,7 @@ namespace graphchi {
      * Graph shard that is streamed. I.e, it can only read in one direction, a chunk
      * a time.
      */
+    // ET must be a chivector<T>
     template <typename VT, typename ET, typename svertex_t = graphchi_vertex<VT, ET>, typename ETspecial = ET>
     class sliding_shard {
         
@@ -148,11 +155,11 @@ namespace graphchi {
         size_t adjoffset, edataoffset, adjfilesize, edatafilesize;
         size_t window_start_edataoffset;
         
-        std::vector<sblock> activeblocks;
+        std::vector<sblock<ET> > activeblocks;
         int adjfile_session;
         int writedesc;
-        sblock * curblock;
-        sblock * curadjblock;
+        sblock<ET> * curblock;
+        sblock<ET> * curadjblock;
         metrics &m;
         
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
@@ -184,12 +191,12 @@ namespace graphchi {
             window_start_edataoffset = 0;
             
             
-            while(blocksize % sizeof(ET) != 0) blocksize++;
-            assert(blocksize % sizeof(ET)==0);
+            while(blocksize % sizeof(int) != 0) blocksize++;
+            assert(blocksize % sizeof(int)==0);
             
             adjfilesize = get_filesize(filename_adj);
+            edatafilesize = get_shard_edata_filesize<int>(filename_edata);
             if (!only_adjacency) {
-                edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
                 logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize << std::endl;
             } else {
                 // Nothing
@@ -198,10 +205,8 @@ namespace graphchi {
             adjfile_session = iomgr->open_session(filename_adj, true);
             save_offset();
             
-            async_edata_loading = !svertex_t().computational_edges();
-#ifdef SUPPORT_DELETIONS
-            async_edata_loading = false; // See comment above for memshard, async_edata_loading = false;
-#endif
+            async_edata_loading = false; // With dynamic edge data size, do not load
+
         }
         
         ~sliding_shard() {
@@ -272,7 +277,7 @@ namespace graphchi {
                 // Load next
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
                 int edata_session = iomgr->open_session(blockfilename, false, true);
-                sblock newblock(edata_session, edata_session, true);
+                sblock<ET> newblock(edata_session, edata_session, true, blockfilename);
                 
                 // We align blocks always to the blocksize, even if that requires
                 // allocating and reading some unnecessary data.
@@ -280,10 +285,13 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);
-                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
+                int realsize = get_block_uncompressed_size(blockfilename, newblock.end - newblock.offset);
+                iomgr->managed_malloc(edata_session, &newblock.data, realsize, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
                 curblock = &activeblocks[activeblocks.size()-1];
+                curblock->active = true;
+                curblock->read_now(iomgr);
             }
         }
         
@@ -294,7 +302,7 @@ namespace graphchi {
                     delete curadjblock;
                     curadjblock = NULL;
                 }
-                sblock * newblock = new sblock(0, adjfile_session);
+                sblock<ET> * newblock = new sblock<ET>(0, adjfile_session);
                 newblock->offset = adjoffset;
                 newblock->end = std::min(adjfilesize, adjoffset+blocksize);
                 assert(newblock->end > 0);
@@ -317,14 +325,14 @@ namespace graphchi {
             return res;
         }
         
-        template <typename U>
-        inline U * read_edgeptr() {
+        inline ET * read_edgeptr() {
             if (only_adjacency) return NULL;
-            check_curblock(sizeof(U));
-            U * resptr = ((U*)curblock->ptr);
-            edataoffset += sizeof(U);
-            curblock->ptr += sizeof(U);
-            return resptr;
+            check_curblock(sizeof(int));
+            edataoffset += sizeof(int);
+            int blockedgeidx = (curblock->ptr - curblock->data) / sizeof(int);
+            curblock->ptr += sizeof(int);
+            assert(curblock->dynblock != NULL);
+            return curblock->dynblock->edgevec(blockedgeidx);
         }
         
         inline void skip(int n, int sz) {
@@ -332,9 +340,9 @@ namespace graphchi {
             adjoffset += tot;
             if (curadjblock != NULL)
                 curadjblock->ptr += tot;
-            edataoffset += sizeof(ET)*n;
+            edataoffset += sizeof(int) * n;
             if (curblock != NULL)
-                curblock->ptr += sizeof(ET)*n;
+                curblock->ptr += sizeof(int) * n;
         }
         
     public:
@@ -395,19 +403,9 @@ namespace graphchi {
                         while(--n >= 0) {
                             bool special_edge = false;
                             vid_t target = (sizeof(ET) == sizeof(ETspecial) ? read_val<vid_t>() : translate_edge(read_val<vid_t>(), special_edge));
-                            ET * evalue = (special_edge ? (ET*)read_edgeptr<ETspecial>(): read_edgeptr<ET>());
+                            ET * evalue = read_edgeptr();
+
                             
-                            if (!only_adjacency) {
-                                if (!curblock->active) {
-                                    if (async_edata_loading) {
-                                        curblock->read_async(iomgr);
-                                    } else {
-                                        curblock->read_now(iomgr);
-                                    }
-                                }
-                                // Note: this needs to be set always because curblock might change during this loop.
-                                curblock->active = true; // This block has an scheduled vertex - need to commit
-                            }
                             vertex.add_outedge(target, evalue, special_edge);
                             
                             if (!((target >= range_st && target <= range_end))) {
@@ -432,7 +430,7 @@ namespace graphchi {
         /**
          * Commit modifications.
          */
-        void commit(sblock &b, bool synchronously, bool disable_writes=false) {
+        void commit(sblock<ET> &b, bool synchronously, bool disable_writes=false) {
             if (synchronously) {
                 metrics_entry me = m.start_time();
                 if (!disable_writes) b.commit_now(iomgr);
@@ -475,7 +473,7 @@ namespace graphchi {
          */
         void release_prior_to_offset(bool all=false, bool disable_writes=false) { // disable writes is for the dynamic case
             for(int i=(int)activeblocks.size() - 1; i >= 0; i--) {
-                sblock &b = activeblocks[i];
+                sblock<ET> &b = activeblocks[i];
                 if (b.end <= edataoffset || all) {
                     commit(b, all, disable_writes);
                     activeblocks.erase(activeblocks.begin() + (unsigned int)i);
@@ -506,6 +504,6 @@ namespace graphchi {
 };
 
 
-#endif
+
 #endif
 

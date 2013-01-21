@@ -184,7 +184,21 @@ namespace graphchi {
             close(of);
             free(buf);
             return len;
-        } 
+        }
+        
+        // Copy the edata directory
+        void cpedata(std::string origfile, std::string dstfile, bool zeroout=false) {
+            cp(origfile + ".size", dstfile + ".size");
+            std::string dirname = dirname_shard_edata_block(dstfile, base_engine::blocksize);
+            mkdir(dirname.c_str(), 0777);
+            size_t edatasize = get_shard_edata_filesize<EdgeDataType>(origfile);
+            int nblocks = (edatasize / base_engine::blocksize) + (edatasize % base_engine::blocksize == 0 ? 0 : 1);
+            for(int i=0; i < nblocks; i++) {
+                std::string origblockname = filename_shard_edata_block(origfile, i, base_engine::blocksize);
+                std::string dstblockname = filename_shard_edata_block(dstfile, i, base_engine::blocksize);
+                cp(origblockname, dstblockname);
+            }
+        }
         
         
         virtual typename base_engine::memshard_t * create_memshard(vid_t interval_st, vid_t interval_en) {
@@ -196,6 +210,7 @@ namespace graphchi {
                                                         adj_filename,  
                                                         interval_st, 
                                                         interval_en,
+                                                        base_engine::blocksize,
                                                         this->m);
         }
         
@@ -253,7 +268,7 @@ namespace graphchi {
                 std::string dest_adj = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];          
                 std::string dest_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
                 
-                cp(edata_filename, dest_edata, true);
+                cpedata(edata_filename, dest_edata, true);
                 cp(adj_filename, dest_adj);
             }
         }
@@ -457,8 +472,7 @@ namespace graphchi {
         }
         
         
-        virtual void init_vertices(std::vector<svertex_t> &vertices, 
-                                   graphchi_edge<EdgeDataType> * &edata) {
+        virtual void init_vertices(std::vector<svertex_t> &vertices, graphchi_edge<EdgeDataType> * &edata) {
             base_engine::init_vertices(vertices, edata);
             incorporate_buffered_edges(this->exec_interval, this->sub_interval_st, this->sub_interval_en, vertices);
         }
@@ -519,7 +533,7 @@ namespace graphchi {
         /**
          * Code for committing changes to disk.
          */
-        void commit_graph_changes() {
+        void commit_graph_changes() {            
             // Count deleted
             size_t ndeleted = 0;
             for(size_t i=0; i < deletecounts.size(); i++) {
@@ -589,14 +603,12 @@ namespace graphchi {
                 std::string origadjfile = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
                 
                 // Get file size
-                int of = open(origshardfile.c_str(), O_RDONLY);
-                off_t sz = lseek(of, 0, SEEK_END);
-                lseek(of, 0, SEEK_SET);
-                close(of);
+                off_t sz = get_shard_edata_filesize<EdgeDataType>(origshardfile);
                 
                 int outparts = ( sz >= (off_t) maxshardsize ? 2 : 1);
                 
                 vid_t splitpos = 0;
+                std::cout << "Size: " << sz << " vs. maxshardsize: " << maxshardsize << std::endl;
                 if (sz > (off_t)maxshardsize) {
                     rangeschanged = true;
                     // Compute number edges (not including ingested ones!)
@@ -633,7 +645,7 @@ namespace graphchi {
                     typename base_engine::slidingshard_t * curshard = 
                     new typename base_engine::slidingshard_t(this->iomgr, origshardfile, origadjfile, 
                                                              this->intervals[shard].first, this->intervals[shard].second, 
-                                                             1024 * 1024, this->m, true);
+                                                             base_engine::blocksize, this->m, true);
                     
                     
                     std::string suffix = "";
@@ -646,7 +658,9 @@ namespace graphchi {
                     }
                     suffix = suffix + ".i" + std::string(iterstr);
                     newsuffices.push_back(suffix);
-                    std::string outfile_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + suffix;             
+                    std::string outfile_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + suffix;
+                    std::string outfile_edata_dirname = dirname_shard_edata_block(outfile_edata, base_engine::blocksize);
+                    mkdir(outfile_edata_dirname.c_str(), 0777);
                     std::string outfile_adj = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + suffix;
                     
                     vid_t splitstart = this->intervals[shard].first;
@@ -678,6 +692,7 @@ namespace graphchi {
                     char * bufptr = buf;
                     char * ebuf = (char*) malloc(BBUF);
                     char * ebufptr = ebuf;
+                    size_t tot_edatabytes = 0;
                     
                     // Now create a new shard file window by window
                     for(int window=0; window < this->nshards; window++) {
@@ -795,7 +810,7 @@ namespace graphchi {
                                             } 
 #endif
                                             bwrite(f, buf, bufptr,  vertex.outedge(i)->vertexid);
-                                            bwrite<EdgeDataType>(ef, ebuf, ebufptr, vertex.outedge(i)->get_data());
+                                            bwrite_edata<EdgeDataType>(ebuf, ebufptr, vertex.outedge(i)->get_data(), tot_edatabytes, outfile_edata);
                                             ne++;
                                         } else assert(outparts == 2);
                                     }
@@ -810,12 +825,18 @@ namespace graphchi {
                     
                     // Flush buffers
                     writea(f, buf, bufptr-buf);
-                    writea(ef, ebuf, ebufptr-ebuf);
                     
+                    edata_flush<EdgeDataType>(ebuf, ebufptr, outfile_edata, tot_edatabytes);
+                    
+                    // Write .size file for the edata firectory
+                    std::string sizefilename = outfile_edata + ".size";
+                    std::ofstream ofs(sizefilename.c_str());
+                    ofs << tot_edatabytes;
+                    ofs.close();
+
                     // Release
                     free(buf); 
                     free(ebuf);
-                    
                     
                     delete curshard;
                     close(f);
@@ -827,8 +848,13 @@ namespace graphchi {
                 // Delete old shard
                 std::string old_file_adj = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];          
                 std::string old_file_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
+                std::string old_blockdir =  dirname_shard_edata_block(old_file_edata, base_engine::blocksize);
+
                 remove(old_file_adj.c_str());
-                remove(old_file_edata.c_str());
+                remove(old_blockdir.c_str());
+                
+                std::string old_sizefilename = old_file_edata + ".size";
+                remove(old_sizefilename.c_str());
             }
             
             // Clear buffers
@@ -871,6 +897,8 @@ namespace graphchi {
             init_buffers();
             this->modification_lock.unlock();
         }
+        
+        
         template <typename T>
         void bwrite(int f, char * buf, char * &bufptr, T val) {
             if (bufptr+sizeof(T)-buf>=BBUF) {
@@ -880,6 +908,32 @@ namespace graphchi {
             *((T*)bufptr) = val;
             bufptr += sizeof(T);
         }
+        
+        
+        template <typename T>
+        void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
+            int blockid = (int) (totbytes - sizeof(T)) / base_engine::blocksize;
+            int len = (int) (bufptr - buf);
+            assert(len <= (int)base_engine::blocksize);
+            
+            std::string block_filename = filename_shard_edata_block(shard_filename, blockid, base_engine::blocksize);
+            int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+            write_compressed(f, buf, len);
+            close(f);
+        }
+        
+        template <typename T>
+        void bwrite_edata(char * buf, char * &bufptr, T val, size_t & totbytes, std::string & shard_filename) {            
+            if ((int) (bufptr + sizeof(T) - buf) > (int)base_engine::blocksize) {
+                edata_flush<T>(buf, bufptr, shard_filename, totbytes);
+                bufptr = buf;
+            }
+            totbytes += sizeof(T);
+            *((T*)bufptr) = val;
+            bufptr += sizeof(T);
+        }
+        
+
         
         /** 
           * HTTP admin

@@ -50,7 +50,9 @@
 #include "metrics/reps/basic_reporter.hpp"
 #include "metrics/reps/file_reporter.hpp"
 #include "metrics/reps/html_reporter.hpp"
+
 #include "preprocessing/conversions.hpp"
+
 #include "util/cmdopts.hpp"
 
 
@@ -59,8 +61,8 @@ namespace graphchi {
     /**
       * Helper for metrics.
       */
-    void metrics_report(metrics &m);
-    void metrics_report(metrics &m) {
+    static void metrics_report(metrics &m);
+    static void metrics_report(metrics &m) {
         std::string reporters = get_option_string("metrics.reporter", "console");
         char * creps = (char*)reporters.c_str();
         const char * delims = ",";
@@ -82,7 +84,8 @@ namespace graphchi {
             }
             t = strtok(NULL, delims);
         }
-    }   
+    }
+    
     
 };
 

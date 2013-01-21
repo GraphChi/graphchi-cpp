@@ -145,11 +145,17 @@ namespace graphchi {
                     if (header.contains_edge_values) {
                         val = read_val<EdgeDataType>();
                     }
-                    callback->receive_edge(from, to, val);
+                    
+                    callback->receive_edge(from, to, val, header.contains_edge_values);
+
                     nedges++;
                 }
                 
             } while (nedges < header.numedges);
+        }
+        
+        bool has_edge_values() {
+            return header.contains_edge_values;
         }
         
         size_t get_max_vertex_id() {
@@ -190,6 +196,7 @@ namespace graphchi {
                 logstream(LOG_FATAL) << "Could not open file " << filename << " for writing. " <<
                 " Error: " << strerror(errno) << std::endl;
             }
+            ftruncate(fd, 0);
             
             header.format_version = FORMAT_VERSION;
             header.max_vertex_id = 0;
@@ -281,6 +288,10 @@ namespace graphchi {
             
             assert(!header.contains_edge_values);
             _addedge(from, to, EdgeDataType());
+        }
+        
+        bool has_edge_values() {
+            return header.contains_edge_values;
         }
         
         void finish() {

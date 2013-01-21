@@ -63,7 +63,7 @@ namespace graphchi {
         graphchi_edge(vid_t _vertexid, EdgeDataType * edata_ptr) : vertexid(_vertexid), data_ptr(edata_ptr) {
         }
         
-        
+#ifndef DYNAMICEDATA
         EdgeDataType get_data() {
             return * data_ptr;
         }
@@ -71,6 +71,11 @@ namespace graphchi {
         void set_data(EdgeDataType x) {
             *data_ptr = x;
         }
+#else 
+        EdgeDataType * get_vector() {  // EdgeDataType is a chivector
+            return data_ptr;
+        }
+#endif
         
         /**
           * Returns id of the endpoint of this edge. 
@@ -80,7 +85,7 @@ namespace graphchi {
         }
         
  
-    };
+    }  __attribute__((packed));
     
     template <typename ET>
     bool eptr_less(const graphchi_edge<ET> &a, const graphchi_edge<ET> &b) {
@@ -221,14 +226,14 @@ namespace graphchi {
                 return;
             }
 #endif
-            if (inedges_ptr != NULL) inedges_ptr[inc] = graphchi_edge<EdgeDataType>(src, ptr);
-            inc++;
-
+            if (inedges_ptr != NULL) 
+                inedges_ptr[inc] = graphchi_edge<EdgeDataType>(src, ptr);
+            inc++;  // Note: do not move inside the brackets, since we need to still keep track of inc even if inedgeptr is null!
             assert(src != vertexid);
-            if(inedges_ptr != NULL && inc > outedges_ptr - inedges_ptr) {
+          /*  if(inedges_ptr != NULL && inc > outedges_ptr - inedges_ptr) {
                 logstream(LOG_FATAL) << "Tried to add more in-edges as the stored in-degree of this vertex (" << src << "). Perhaps a preprocessing step had failed?" << std::endl;
                 assert(inc <= outedges_ptr - inedges_ptr);
-            }
+            } */  // Deleted, since does not work when we have separate in-edge and out-edge arrays
         }
         
         inline void add_outedge(vid_t dst, EdgeDataType * ptr, bool special_edge) {
@@ -282,8 +287,11 @@ namespace graphchi {
             return &this->outedges_ptr[i];
         }        
         
-     
-        
+        graphchi_edge<EdgeDataType> * random_outedge() {
+            if (this->outc == 0) return NULL;
+            return outedge((int) (std::abs(random()) % this->outc));
+        }
+            
         /** 
           * Get the value of vertex
           */
@@ -312,7 +320,7 @@ namespace graphchi {
         /**
          * Sorts all the edges. Note: this will destroy information
          * about the in/out direction of an edge. Do use only if you
-         * ignore the egde direction.
+         * ignore the edge direction.
          */
         void VARIABLE_IS_NOT_USED sort_edges_indirect() {
             // Check for deleted edges first...

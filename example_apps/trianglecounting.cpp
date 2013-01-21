@@ -171,6 +171,8 @@ public:
             int ncount = v.num_edges();
             // Count how many neighbors have larger id than v
             v.sort_edges_indirect();
+     
+            
             int actcount = 0;
             vid_t lastvid = 0;
             for(int i=0; i<ncount; i++) {

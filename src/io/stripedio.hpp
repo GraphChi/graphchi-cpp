@@ -66,6 +66,7 @@ namespace graphchi {
         pinned_file * pinned_to_memory;
         int start_mplex;
         bool open;
+        bool compressed;
     };
     
     
@@ -84,18 +85,23 @@ namespace graphchi {
     struct iotask {
         BLOCK_ACTION action;
         int fd;
-        
+        int session;
         refcountptr * ptr;
         size_t length;
         size_t offset;
         size_t ptroffset;
         bool free_after;
         stripedio * iomgr;
+        bool compressed;
+        bool closefd;
+        volatile int * doneptr;
         
-        
-        iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL) {}
-        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after=false) : 
-        action(act), fd(fd), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr) {}
+        iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false), doneptr(NULL) {}
+        iotask(stripedio * iomgr, BLOCK_ACTION act, int fd, int session,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
+        action(act), fd(fd), session(session), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {
+            if (closefd) assert(free_after);
+            doneptr = NULL;
+        }
     };
     
     struct thrinfo {
@@ -146,7 +152,6 @@ namespace graphchi {
         
         std::vector<io_descriptor *> sessions;
         mutex mlock;
-        int blocksize;
         int stripesize;
         int multiplex;
         std::string multiplex_root;
@@ -171,8 +176,8 @@ namespace graphchi {
     public:
         stripedio( metrics &_m) : m(_m) {
             disable_preloading = false;
-            blocksize = get_option_int("io.blocksize", 1024 * 1024);
-            stripesize = get_option_int("io.stripesize", blocksize/2);
+            stripesize = get_option_int("io.stripesize", 4096 * 1024 / 2);
+
             preloaded_bytes = 0;
             max_preload_bytes = 1024 * 1024 * get_option_long("preload.max_megabytes", 0);
             
@@ -287,12 +292,13 @@ namespace graphchi {
             return std::abs(hash);
         }
         
-        int open_session(std::string filename, bool readonly=false) {
+        int open_session(std::string filename, bool readonly=false, bool compressed=false) {
             mlock.lock();
             // FIXME: known memory leak: sessions table is never shrunk
             int session_id = (int) sessions.size();
             io_descriptor * iodesc = new io_descriptor();
             iodesc->open = true;
+            iodesc->compressed = compressed;
             iodesc->pinned_to_memory = is_preloaded(filename);
             iodesc->start_mplex = hash(filename) % multiplex;
             sessions.push_back(iodesc);
@@ -306,7 +312,7 @@ namespace graphchi {
             for(int i=0; i<multiplex; i++) {
                 std::string fname = multiplexprefix(i) + filename;
                 for(int j=0; j<niothreads+(multiplex == 1 ? 1 : 0); j++) { // Hack to have one fd for synchronous
-                    int rddesc = open(fname.c_str(), O_RDONLY);
+                    int rddesc = open(fname.c_str(), (readonly ? O_RDONLY : O_RDWR));
                     if (rddesc < 0) logstream(LOG_ERROR)  << "Could not open: " << fname << " session: " << session_id 
                         << " error: " << strerror(errno) << std::endl;
                     assert(rddesc>=0);
@@ -316,7 +322,7 @@ namespace graphchi {
                         fcntl(rddesc, F_NOCACHE, 1);
 #endif
                     if (!readonly) {
-                        int wrdesc = open(fname.c_str(), O_RDWR);
+                        int wrdesc = rddesc; // Change by Aapo: Aug 11, 2012. I don't think we need separate wrdesc?
 
                         if (wrdesc < 0) logstream(LOG_ERROR)  << "Could not open for writing: " << fname << " session: " << session_id
                             << " error: " << strerror(errno) << std::endl;
@@ -331,10 +337,9 @@ namespace graphchi {
             }
             iodesc->filename = filename;
             if (iodesc->writedescs.size() > 0)  {
-                logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
+           //     logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
             } else {
-                logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
-
+           //     logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
             }
             return session_id;
         }
@@ -350,12 +355,13 @@ namespace graphchi {
             iodesc->open = false;
             mlock.unlock();
             if (wasopen) {
+              //  std::cout << "Closing: " << iodesc->filename << " " << iodesc->readdescs[0] << std::endl;
                 for(std::vector<int>::iterator it=iodesc->readdescs.begin(); it!=iodesc->readdescs.end(); ++it) {
                     close(*it);
                 }
-                for(std::vector<int>::iterator it=iodesc->writedescs.begin(); it!=iodesc->writedescs.end(); ++it) {
-                    close(*it);
-                }
+ //               for(std::vector<int>::iterator it=iodesc->writedescs.begin(); it!=iodesc->writedescs.end(); ++it) {
+  //                  close(*it);
+  //              }
             }
         }
         
@@ -383,14 +389,22 @@ namespace graphchi {
         }
         
         template <typename T>
-        void preada_async(int session,  T * tbuf, size_t nbytes, size_t off) {
+        void preada_async(int session,  T * tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
             std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
+            if (compressed_session(session)) {
+                assert(stripelist.size() == 1);
+                assert(off == 0);
+            }
             refcountptr * refptr = new refcountptr((char*)tbuf, (int)stripelist.size());
             for(int i=0; i<(int)stripelist.size(); i++) {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_reads, 1);
-                mplex_readtasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], 
-                                                                refptr, chunk.len, chunk.offset+off, chunk.offset));
+                iotask task = iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread],
+                                     session,
+                                     refptr, chunk.len, chunk.offset+off, chunk.offset, false,
+                                     compressed_session(session));
+                task.doneptr = doneptr;
+                mplex_readtasks[chunk.mplex_thread].push(task);
             }
         }
         
@@ -410,6 +424,10 @@ namespace graphchi {
             return sessions[session]->pinned_to_memory;
         }
         
+        bool compressed_session(int session) {
+            return sessions[session]->compressed;
+        }
+        
         /**
          * Call to allow files to be preloaded. Note: using this requires
          * that all files are accessed with same path. This is true if
@@ -420,7 +438,8 @@ namespace graphchi {
                 return;
             }
             preload_lock.lock();
-            size_t filesize = get_filesize(filename);
+            assert(max_preload_bytes == 0);
+           /* size_t filesize = get_filesize(filename);
             if (preloaded_bytes + filesize <= max_preload_bytes) {
                 preloaded_bytes += filesize;
                 m.set("preload_bytes", preloaded_bytes);
@@ -438,12 +457,12 @@ namespace graphchi {
                     << " error: " << strerror(errno) << std::endl;
                 }
                 assert(fid >= 0);
-                /* Preload the file */
+                
                 logstream(LOG_INFO) << "Preloading: " << filename << std::endl;
                 preada(fid, pfile->data, filesize, 0);    
                 close(fid);
                 preloaded_files.push_back(pfile);
-            }
+            }*/
             preload_lock.unlock();
         }
         
@@ -483,21 +502,33 @@ namespace graphchi {
         
         // Note: data is freed after write!
         template <typename T>
-        void pwritea_async(int session, T * tbuf, size_t nbytes, size_t off, bool free_after) {
+        void pwritea_async(int session, T * tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
             std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
             refcountptr * refptr = new refcountptr((char*)tbuf, (int) stripelist.size());
+            if (compressed_session(session)) {
+                assert(stripelist.size() == 1);
+                assert(off == 0);
+            }
             for(int i=0; i<(int)stripelist.size(); i++) {
                 stripe_chunk chunk = stripelist[i];
                 __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_writes, 1);
-                mplex_writetasks[chunk.mplex_thread].push(iotask(this, WRITE, sessions[session]->writedescs[chunk.mplex_thread], 
-                                                                 refptr, chunk.len, chunk.offset+off, chunk.offset, free_after));
+                mplex_writetasks[chunk.mplex_thread].push(iotask(this, WRITE, sessions[session]->writedescs[chunk.mplex_thread], session,
+                                                                 refptr, chunk.len, chunk.offset+off, chunk.offset, free_after, compressed_session(session),
+                                                                        close_fd));
             }
         }
         
         template <typename T>
         void preada_now(int session,  T * tbuf, size_t nbytes, size_t off) {
             metrics_entry me = m.start_time();
-            
+            if (compressed_session(session)) {
+                // Compressed sessions do not support multiplexing for now
+                assert(off == 0);
+                read_compressed(sessions[session]->writedescs[0], tbuf, nbytes);
+                m.stop_time(me, "preada_now", false);
+                return;
+            }
+
             if (multiplex > 1) {
                 std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
                 size_t checklen=0;
@@ -508,8 +539,9 @@ namespace graphchi {
                     __sync_add_and_fetch(&thread_infos[chunk.mplex_thread]->pending_reads, 1);
                     
                     // Use prioritized task queue
-                    mplex_priotasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], 
-                                                                    refptr, chunk.len, chunk.offset+off, chunk.offset));
+                    mplex_priotasks[chunk.mplex_thread].push(iotask(this, READ, sessions[session]->readdescs[chunk.mplex_thread], session,
+                                                                    refptr, chunk.len, chunk.offset+off, chunk.offset, false,
+                                                                        false));
                     checklen += chunk.len;
                 }
                 assert(checklen == nbytes);
@@ -528,6 +560,15 @@ namespace graphchi {
         template <typename T>
         void pwritea_now(int session, T * tbuf, size_t nbytes, size_t off) {
             metrics_entry me = m.start_time();
+
+            if (compressed_session(session)) {
+                // Compressed sessions do not support multiplexing for now
+                assert(off == 0);
+                write_compressed(sessions[session]->writedescs[0], tbuf, nbytes);
+                m.stop_time(me, "pwritea_now", false);
+
+                return;
+            }
             std::vector<stripe_chunk> stripelist = stripe_offsets(session, nbytes, off);
             size_t checklen=0;
             
@@ -548,9 +589,10 @@ namespace graphchi {
          */
         
         template <typename T>
-        void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after) {
+        void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
+
             if (!pinned_session(session)) {
-                pwritea_async(session, *tbuf, nbytes, off, free_after);
+                pwritea_async(session, *tbuf, nbytes, off, free_after, close_fd);
             } else {
                 // Do nothing but mark the descriptor as 'dirty'
                 sessions[session]->pinned_to_memory->touched = true;
@@ -587,13 +629,19 @@ namespace graphchi {
             }
         }
         
+        /**
+          * @param doneptr is decremented to zero when task is ready
+          */
         template <typename T>
-        void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off) {
+        void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
             if (!pinned_session(session)) {
-                preada_async(session, *tbuf, nbytes,  off);
+                preada_async(session, *tbuf, nbytes,  off, doneptr);
             } else {
                 io_descriptor * iodesc = sessions[session];
                 *tbuf = (T*) (iodesc->pinned_to_memory->data + off);
+                if (doneptr != NULL) {
+                    __sync_sub_and_fetch(doneptr, 1);
+                }
             }
         }
         
@@ -660,7 +708,8 @@ namespace graphchi {
     static void * io_thread_loop(void * _info) {
         iotask task;
         thrinfo * info = (thrinfo*)_info;
-        logstream(LOG_INFO) << "Thread for multiplex :" << info->mplex << " starting." << std::endl;
+        int ntasks = 0;
+        // logstream(LOG_INFO) << "Thread for multiplex :" << info->mplex << " starting." << std::endl;
         while(info->running) {
             bool success;
             if (info->pending_reads>0) {  // Prioritize read queue
@@ -672,30 +721,53 @@ namespace graphchi {
                 success = info->commitqueue->safepop(&task);
             }
             if (success) {
+                ++ntasks;
                 if (task.action == WRITE) {  // Write
                     metrics_entry me = info->m->start_time();
                     
-                    pwritea(task.fd, task.ptr->ptr + task.ptroffset, task.length, task.offset);  
+                    if (task.compressed) {
+                        assert(task.offset == 0);
+                        write_compressed(task.fd, task.ptr->ptr, task.length);
+                    } else {
+                        pwritea(task.fd, task.ptr->ptr + task.ptroffset, task.length, task.offset);
+                    }
                     if (task.free_after) {
                         // Threead-safe method of memory managment - ugly!
                         if (__sync_sub_and_fetch(&task.ptr->count, 1) == 0) {
                             free(task.ptr->ptr);
-                            free(task.ptr);
+                            delete task.ptr;
+                            if (task.closefd) {
+                                task.iomgr->close_session(task.session);
+                            }
                         }
                     }
+                   
                     __sync_sub_and_fetch(&info->pending_writes, 1);
                     info->m->stop_time(me, "commit_thr");
                 } else {
-                    preada(task.fd, task.ptr->ptr+task.ptroffset, task.length, task.offset); 
+                    if (task.compressed) {
+                        assert(task.offset == 0);
+                        read_compressed(task.fd, task.ptr->ptr, task.length);
+
+                    } else {
+                        preada(task.fd, task.ptr->ptr+task.ptroffset, task.length, task.offset);
+                    }
                     __sync_sub_and_fetch(&info->pending_reads, 1);
                     if (__sync_sub_and_fetch(&task.ptr->count, 1) == 0) {
                         free(task.ptr);
+                        if (task.closefd) {
+                            task.iomgr->close_session(task.session);
+                        }
                     }
+                }
+                if (task.doneptr != NULL) {
+                    __sync_sub_and_fetch(task.doneptr, 1);
                 }
             } else {
                 usleep(50000); // 50 ms
             }
         }
+        // logstream(LOG_INFO) << "I/O thread exists. Handled " << ntasks << " i/o tasks." << std::endl;
         return NULL;
     }
     
@@ -727,7 +799,6 @@ namespace graphchi {
         
         return NULL;
     }
-    
     
     static size_t get_filesize(std::string filename) {
         std::string fname = filename;

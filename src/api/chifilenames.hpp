@@ -33,12 +33,15 @@
 #ifndef GRAPHCHI_FILENAMES_DEF
 #define GRAPHCHI_FILENAMES_DEF
 
+#include <fstream>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
 #include <stdlib.h>
 #include <unistd.h>
+#include <vector>
 
+#include "graphchi_types.hpp"
 #include "logger/logger.hpp"
 
 namespace graphchi {
@@ -82,11 +85,50 @@ namespace graphchi {
     static std::string filename_shard_edata(std::string basefilename, int p, int nshards) {
         std::stringstream ss;
         ss << basefilename;
-        ss << ".edata_azv.";
+#ifdef DYNAMICEDATA
+        ss << ".dynamic.";
+#else
+        ss << ".edata.";
+#endif
         ss << "e" << sizeof(EdgeDataType) << "B.";
         ss << p << "_" << nshards;
+
         return ss.str();
     }
+    
+    
+    
+    
+    static std::string dirname_shard_edata_block(std::string edata_shardname, size_t blocksize) {
+        std::stringstream ss;
+        ss << edata_shardname;
+        ss << "_blockdir_" << blocksize;
+        return ss.str();
+    }
+    
+    template <typename EdgeDataType>
+    static size_t get_shard_edata_filesize(std::string edata_shardname) {
+        size_t fsize;
+        std::string fname = edata_shardname + ".size";
+        std::ifstream ifs(fname.c_str());
+        if (!ifs.good()) {
+            logstream(LOG_FATAL) << "Could not load " << fname << ". Preprocessing forgotten?" << std::endl;
+            assert(ifs.good());
+        }
+        ifs >> fsize;
+        ifs.close();
+        return fsize;
+    }
+
+    
+    static std::string filename_shard_edata_block(std::string edata_shardname, int blockid, size_t blocksize) {
+        std::stringstream ss;
+        ss << dirname_shard_edata_block(edata_shardname, blocksize);
+        ss << "/";
+        ss << blockid;
+        return ss.str();
+    }
+
     
     static std::string filename_shard_adj(std::string basefilename, int p, int nshards) {
         std::stringstream ss;
@@ -124,8 +166,8 @@ namespace graphchi {
     }
     
     
-    bool shard_file_exists(std::string sname);
-    bool shard_file_exists(std::string sname) {
+    static bool file_exists(std::string sname);
+    static bool file_exists(std::string sname) {
         int tryf = open(sname.c_str(), O_RDONLY);
         if (tryf < 0) {
             return false;
@@ -134,6 +176,8 @@ namespace graphchi {
             return true;
         }
     }
+
+
     
         /**
      * Returns the number of shards if a file has been already
@@ -153,11 +197,13 @@ namespace graphchi {
         if (start_num > 0) {
             last_shard_num = start_num;
         }
+        size_t blocksize = 4096 * 1024;
+        while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
         
         for(try_shard_num=start_num; try_shard_num <= last_shard_num; try_shard_num++) {
             std::string last_shard_name = filename_shard_edata<EdgeDataType>(base_filename, try_shard_num - 1, try_shard_num);
-            
-            int tryf = open(last_shard_name.c_str(), O_RDONLY);
+            std::string last_block_name = filename_shard_edata_block(last_shard_name, 0, blocksize);
+            int tryf = open(last_block_name.c_str(), O_RDONLY);
             if (tryf >= 0) {
                 // Found!
                 close(tryf);
@@ -167,15 +213,16 @@ namespace graphchi {
                 
                 // Validate all relevant files exists
                 for(int p=0; p < nshards_candidate; p++) {
-                    std::string sname = filename_shard_edata<EdgeDataType>(base_filename, p, nshards_candidate);
-                    if (!shard_file_exists(sname)) {
-                        logstream(LOG_DEBUG) << "Missing shard file: " << sname << std::endl;
+                    std::string sname = filename_shard_edata_block(
+                            filename_shard_edata<EdgeDataType>(base_filename, p, nshards_candidate), 0, blocksize);
+                    if (!file_exists(sname)) {
+                        logstream(LOG_DEBUG) << "Missing directory file: " << sname << std::endl;
                         success = false;
                         break;
                     }
                     
                     sname = filename_shard_adj(base_filename, p, nshards_candidate);
-                    if (!shard_file_exists(sname)) {
+                    if (!file_exists(sname)) {
                         logstream(LOG_DEBUG) << "Missing shard file: " << sname << std::endl;
                         success = false;
                         break;
@@ -184,14 +231,14 @@ namespace graphchi {
                 
                 // Check degree file
                 std::string degreefname = filename_degree_data(base_filename);
-                if (!shard_file_exists(degreefname)) {
+                if (!file_exists(degreefname)) {
                     logstream(LOG_ERROR) << "Missing degree file: " << degreefname << std::endl;
                     logstream(LOG_ERROR) << "You need to preprocess (sharder) your file again!" << std::endl;
                     return 0;
                 }
                 
                 std::string intervalfname = filename_intervals(base_filename, nshards_candidate);
-                if (!shard_file_exists(intervalfname)) {
+                if (!file_exists(intervalfname)) {
                     logstream(LOG_ERROR) << "Missing intervals file: " << intervalfname << std::endl;
                     logstream(LOG_ERROR) << "You need to preprocess (sharder) your file again!" << std::endl;
                     return 0;
@@ -211,6 +258,34 @@ namespace graphchi {
             logstream(LOG_WARNING) << "Please define 'nshards 0' or 'nshards auto' to automatically detect." << std::endl;
         }
         return 0;
+    }
+    
+    /** 
+     * Loads vertex intervals.
+     */
+    static void load_vertex_intervals(std::string base_filename, int nshards, std::vector<std::pair<vid_t, vid_t> > & intervals, bool allowfail);
+    static void load_vertex_intervals(std::string base_filename, int nshards, std::vector<std::pair<vid_t, vid_t> > & intervals, bool allowfail=false) {
+        std::string intervalsFilename = filename_intervals(base_filename, nshards);
+        std::ifstream intervalsF(intervalsFilename.c_str());
+        
+        if (!intervalsF.good()) {
+            if (allowfail) return; // Hack
+            logstream(LOG_ERROR) << "Could not load intervals-file: " << intervalsFilename << std::endl;
+        }
+        assert(intervalsF.good());
+        
+        intervals.clear();
+        
+        vid_t st=0, en;            
+        for(int i=0; i < nshards; i++) {
+            assert(!intervalsF.eof());
+            intervalsF >> en;
+            intervals.push_back(std::pair<vid_t,vid_t>(st, en));
+            st = en + 1;
+        }
+        for(int i=0; i < nshards; i++) {
+            logstream(LOG_INFO) << "shard: " << intervals[i].first << " - " << intervals[i].second << std::endl;
+        }
     }
 };
                                  

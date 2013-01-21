@@ -1,15 +1,15 @@
 INCFLAGS = -I/usr/local/include/ -I./src/
 
 CPP = g++
-CPPFLAGS = -g -O3 $(INCFLAGS)  -fopenmp -Wall -Wno-strict-aliasing
+CPPFLAGS = -g -O3 $(INCFLAGS)  -fopenmp -Wall -Wno-strict-aliasing -lz 
 DEBUGFLAGS = -g -ggdb $(INCFLAGS)
 HEADERS=$(wildcard *.h**)
 
 
 all: apps tests 
-apps: example_apps/connectedcomponents example_apps/pagerank example_apps/pagerank_functional example_apps/communitydetection example_apps/trianglecounting
+apps: example_apps/connectedcomponents example_apps/pagerank example_apps/pagerank_functional example_apps/communitydetection example_apps/trianglecounting example_apps/randomwalks
 als: example_apps/matrix_factorization/als_edgefactors  example_apps/matrix_factorization/als_vertices_inmem
-tests: tests/basic_smoketest tests/bulksync_functional_test
+tests: tests/basic_smoketest tests/bulksync_functional_test tests/dynamicdata_smoketest tests/test_dynamicedata_loader
 
 
 clean:
@@ -17,6 +17,9 @@ clean:
 	cd toolkits/collaborative_filtering/; make clean; cd ../../
 	cd toolkits/parsers/; make clean; cd ../../
 	cd toolkits/graph_analytics/; make clean; cd ../../
+
+blocksplitter: src/preprocessing/blocksplitter.cpp $(HEADERS)
+	$(CPP) $(CPPFLAGS) src/preprocessing/blocksplitter.cpp -o bin/blocksplitter
 
 sharder_basic: src/preprocessing/sharder_basic.cpp $(HEADERS)
 	@mkdir -p bin

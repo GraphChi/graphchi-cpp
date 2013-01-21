@@ -2,8 +2,8 @@
 # GraphChi configuration.
 # Commandline parameters override values in the configuration file.
 # execthreads=2
-loadthreads = 2
-niothreads = 2
+loadthreads = 4
+niothreads = 8
 
 # Good for 8gigs
 #membudget_mb = 3000
