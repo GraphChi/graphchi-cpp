@@ -316,12 +316,12 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
   detect_matrix_size(base_filename, f, M, N, nz);
   if (f == NULL)
     logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
-  detect_matrix_size(base_filename, fsim, Ne, Nt, nz_sim);
+  detect_matrix_size(similarity_file, fsim, Ne, Nt, nz_sim);
   if (fsim == NULL)
     logstream(LOG_FATAL)<<"Failed to open item similarity input file: " << similarity_file << std::endl;
   if (Ne != N || Nt != N)
     logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << Ne <<" x " << Nt << "  Instead of " << N << " x " << N << std::endl;
-  L=nz;
+  L=nz + nz_sim;
 
   uint I, J;
   double val = 1.0;
@@ -352,12 +352,12 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     }
     for (size_t i=0; i<nz_sim; i++){
       if (tokens_per_row == 3){
-        int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+        int rc = fscanf(fsim, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
           logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
       }
       else if (tokens_per_row == 2){
-        int rc = fscanf(f, "%u %u\n", &I, &J);
+        int rc = fscanf(fsim, "%u %u\n", &I, &J);
         if (rc != 2)
           logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
       }
