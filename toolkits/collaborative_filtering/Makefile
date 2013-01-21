@@ -24,7 +24,7 @@
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
 CPP = g++
 CXX = g++
-CPPFLAGS = -O3 -g $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing
+CPPFLAGS = -O3 -g $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp  -lz -Wall -Wno-strict-aliasing
 
 all: $(patsubst %.cpp, %, $(wildcard *.cpp))
 
