@@ -182,8 +182,8 @@ class adjlist_container {
           if (get_val(pivot_edges.edges, edges[i]))
               continue;
 
-	  assert(get_val(pivot_edges.edges, item.edge(i)->vertex_id()) != 0);
-          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.edge(i)->vertex_id());
+	  assert(get_val(pivot_edges.edges, item.id()) != 0);
+          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
         }
@@ -236,7 +236,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("item %d is linked to pivot %d\n", v.id(), pivot);
 
-	assert(v.id() >= 0 && v.id() < M);
         relevant_items[v.id() - M] = true;
         if (!has_pivot) //this item is not connected to any of the pivot users nodes and thus
           //it is not relevant at this point
