@@ -287,9 +287,6 @@ namespace graphchi {
         
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
-            
-            std::cout << "Edge size: " << sizeof(graphchi_edge<ET>) << std::endl;
-            
             m.start_time("memoryshard_create_edges");
             
             assert(adjdata != NULL);
