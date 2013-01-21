@@ -467,6 +467,14 @@ int main(int argc, const char ** argv) {
     size_t ntriangles = sum_vertices<vid_t, size_t>(filename + "_degord", 0, (vid_t)engine.num_vertices());
     std::cout << "Number of triangles: " << ntriangles / 3 << "(" << ntriangles << ")" << std::endl;
 
+    
+    /* If run as a test, see the number matches */
+    size_t expected = get_option_long("assertequals", 0);
+    if (expected > 0) {
+        std::cout << "Testing the result is as expected: " << (ntriangles / 3) << " vs. " << expected << std::endl;
+        assert(expected == ntriangles / 3);
+    }
+    
     /* write the output */
    // OutputVertexCallback callback;
   //  foreach_vertices<VertexDataType>(filename + "_degord", 0, engine.num_vertices(), callback);

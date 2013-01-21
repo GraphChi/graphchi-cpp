@@ -326,7 +326,8 @@ namespace graphchi {
     inline metrics_entry get(std::string key) {
       return entries[key];
     }
-        
+      
+      
     void report(imetrics_reporter & reporter) {
           if (name != "") {
               reporter.do_report(name, ident, entries);
