@@ -208,9 +208,9 @@ int main(int argc, const char ** argv) {
   output_sgd_result(training);
   test_predictions(&sgd_predict);    
 
-
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);
+  
   return 0;
 }

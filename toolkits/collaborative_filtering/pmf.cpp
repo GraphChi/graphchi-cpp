@@ -22,7 +22,7 @@
  *
  * @section DESCRIPTION
  * This code implements the PMF (probablistic matrix factorization) algorithm
- * as explained in Liang Xiong SDM 2010 paper.
+ * as explained in Liang Xiong et al SDM 2010 paper.
  * 
  */
 
@@ -261,7 +261,7 @@ void sample_V(){
   vec dMu = - Vmean;
   if (debug)
     std::cout<<"dMu:"<<dMu<<"beta0: "<<beta0[0]<<" beta0_ "<<beta0_<<" nu0_ " <<nu0_<<endl;
-  mat VmeanT = N*outer_product(Vmean, Vmean); //TODO Vmean * Vmean.transpose();
+  mat VmeanT = N*outer_product(Vmean, Vmean); 
   assert(VmeanT.rows() == D && VmeanT.cols() == D);
   mat dMuT =  (beta0[0]/beta0_)*VmeanT;
   mat iW0_ = iW0 + VVT - VmeanT + dMuT;
@@ -304,8 +304,6 @@ void output_pmf_result(std::string filename) {
  * class. The main logic is usually in the update function.
  */
 struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
-
-
 
   /**
    *  Vertex update function - computes the least square step
@@ -431,5 +429,6 @@ int main(int argc, const char ** argv) {
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);
+
   return 0;
 }

@@ -1,4 +1,6 @@
 #!/bin/sh
+# script for merging the output of the rating application into a single sorted file
+# Written By Danny Bickson, CMU
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <training file name>"
   exit 1

@@ -20,9 +20,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  * 
- * This file implements item based collaborative filtering by comparing all item pairs which
- * are connected by one or more user nodes. 
- *
+ * This program takes both a rating file (user to item rasting) and a similarity
+ * file (item to item similarities). 
+ * The output of this program is K top recommendations for each user based using
+ * the current user ratings and the item similarities.  
  *
  */
 
@@ -84,8 +85,6 @@ struct dense_adj {
 class adjlist_container {
   public:
     std::vector<dense_adj> adjs;
-    //mutex m;
-  public:
     vid_t pivot_st, pivot_en;
 
     adjlist_container() {
@@ -139,18 +138,12 @@ class adjlist_container {
       return num_edges;
     }
 
-    int acount(vid_t pivot) {
-      return nnz(adjs[pivot - pivot_st].edges);
-    }
-
 
     /** 
-     * calc distance between two items.
-     * Let a be all the users rated item 1
-     * Let b be all the users rated item 2
+     * add weighted ratings for each linked item
      *
      */
-    double calc_distance(graphchi_vertex<uint32_t, EdgeDataType> &item, vid_t user_pivot, int distance_metric) {
+    double compute_ratings(graphchi_vertex<uint32_t, EdgeDataType> &item, vid_t user_pivot, int distance_metric) {
       assert(is_pivot(user_pivot));
       //assert(is_item(pivot) && is_item(v.id()));
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
@@ -168,14 +161,13 @@ class adjlist_container {
         return 0;
 
 
-
       std::vector<vid_t> edges;
-    edges.resize(num_edges);
-    for(int i=0; i < num_edges; i++) {
-      vid_t other_vertex = item.edge(i)->vertexid;
-      edges[i] = other_vertex;
-    }
-    sort(edges.begin(), edges.end());
+      edges.resize(num_edges);
+      for(int i=0; i < num_edges; i++) {
+        vid_t other_vertex = item.edge(i)->vertexid;
+        edges[i] = other_vertex;
+      }
+      sort(edges.begin(), edges.end());
  
       for(int i=0; i < num_edges; i++){
         if (is_item(edges[i])){
@@ -185,11 +177,13 @@ class adjlist_container {
           //skip self similarity of items (if any)
           if (edges[i] == item.id())
             continue;
-          //skip items that are already rated
+
+          //skip items that are already rated by this user
           if (get_val(pivot_edges.edges, edges[i]))
               continue;
 
-          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data();
+	  assert(get_val(pivot_edges.edges, item.edge(i)->vertex_id()) != 0);
+          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.edge(i)->vertex_id());
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
         }
@@ -197,10 +191,7 @@ class adjlist_container {
           logstream(LOG_DEBUG)<<"Skpping edge to: " << edges[i] << " connected? " << get_val(pivot_edges.edges, edges[i]) << std::endl;
       }
 
-      //not enough user nodes rated both items, so the pairs of items are not compared.
-      //if (intersection_size < (double)min_allowed_intersection)
       return 0;
-      //TODO
     }
 
     inline bool is_pivot(vid_t vid) {
@@ -245,6 +236,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("item %d is linked to pivot %d\n", v.id(), pivot);
 
+	assert(v.id() >= 0 && v.id() < M);
         relevant_items[v.id() - M] = true;
         if (!has_pivot) //this item is not connected to any of the pivot users nodes and thus
           //it is not relevant at this point
@@ -281,18 +273,14 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
    
-        double dist = adjcontainer->calc_distance(v, v.edge(i)->vertex_id(), distance_metric);
+        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), distance_metric);
         item_pairs_compared++;
         if (item_pairs_compared % 1000000 == 0)
           logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
-       //if (dist != 0){
-        //  fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
-        //where the output format is: 
-        //[item A] [ item B ] [ distance ] 
-        //  written_pairs++;
       }
     }//end of iteration % 2 == 1 
   }//end of update function
+
   /**
    * Called before an iteration starts. 
    * On odd iteration, schedule both users and items.
@@ -328,8 +316,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if ((gcontext.iteration % 2 == 0)) {
-      printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
-      printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      if (debug){
+        printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      }
       if (adjcontainer->pivot_st <= window_en) {
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
@@ -358,8 +348,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if (gcontext.iteration % 2 == 1){
-      printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
-      printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      if (debug){
+        printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      }
+
       for (uint i=window_st; i < window_en; i++){
         if (is_user(i)){
           dense_adj user = adjcontainer->adjs[i - window_st];
@@ -371,9 +364,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           for (int j=0; j < positions.size(); j++){
             assert(positions[j] >= 0);
             assert(positions[j] < (int)N);
+
+	    //skip zero entries
             if (user.ratings[positions[j]] == 0)
               break;
-            //assert(user.ratings[positions[j]]> 0);
             int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, user.ratings[positions[j]]);//write item similarity to file
             assert(rc > 0);
             written_pairs++;
@@ -421,11 +415,9 @@ int main(int argc, const char ** argv) {
   ItemDistanceProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
   set_engine_flags(engine);
-  engine.set_maxwindow(M+N+1);
+  //engine.set_maxwindow(M+N+1);
 
-  char buf[256];
-  sprintf(buf, "%s.out", training.c_str());
-  out_file = open_file(buf, "w");
+  out_file = open_file((training + ".out").c_str(), "w");
 
   //run the program
   engine.run(program, niters);
@@ -434,12 +426,10 @@ int main(int argc, const char ** argv) {
   if (quiet)
     metrics_report(m);
 
-  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
-
-  fclose(out_file);
-
+  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
   std::cout<<"Created output files with the format: " << training << ".out" << std::endl; 
 
   delete[] relevant_items;
+  fclose(out_file);
   return 0;
 }
