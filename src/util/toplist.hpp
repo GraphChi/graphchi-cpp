@@ -100,6 +100,10 @@ namespace graphchi {
         while(st <= numvertices - 1) {
             en = st + readwindow - 1;
             if (en >= numvertices - 1) en = numvertices - 1;
+            
+            /* Load the vertex values */
+            vertexdata->load(st, en);
+            
             int nt = en - st + 1;
             int k = 0;
             VertexDataType minima = VertexDataType();
@@ -130,6 +134,7 @@ namespace graphchi {
             }
             
             count++;
+            st += readwindow;
         }
                    
         /* Return */
