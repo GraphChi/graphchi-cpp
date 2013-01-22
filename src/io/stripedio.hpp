@@ -524,7 +524,7 @@ namespace graphchi {
             if (compressed_session(session)) {
                 // Compressed sessions do not support multiplexing for now
                 assert(off == 0);
-                read_compressed(sessions[session]->writedescs[0], tbuf, nbytes);
+                read_compressed(sessions[session]->readdescs[0], tbuf, nbytes);
                 m.stop_time(me, "preada_now", false);
                 return;
             }
