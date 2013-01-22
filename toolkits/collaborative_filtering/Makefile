@@ -24,12 +24,11 @@
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
 CPP = g++
 CXX = g++
-CPPFLAGS = -O3 -g $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp  -lz -Wall -Wno-strict-aliasing
-
+CPPFLAGS = -O3 -g $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing -lz
 all: $(patsubst %.cpp, %, $(wildcard *.cpp))
 
 %.out: %.h %.hpp %.cpp rmse.hpp printouts.hpp types.hpp
-	$(CPP) $(CPPFLAGS) $<  -o $@
+	$(CPP) $(CPPFLAGS) $<  -o $@ 
 	mv $@ ../../bin/
 
 clean:
