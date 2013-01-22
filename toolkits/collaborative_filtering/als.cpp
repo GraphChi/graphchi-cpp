@@ -199,7 +199,8 @@ int main(int argc, const char ** argv) {
     int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_predict);
   }
-/* load initial state from disk (optional) */
+
+  /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
@@ -216,16 +217,9 @@ int main(int argc, const char ** argv) {
   output_als_result(training);
   test_predictions(&als_predict);    
 
-  if (unittest == 1){
-    if (dtraining_rmse > 0.03)
-      logstream(LOG_FATAL)<<"Unit test 1 failed. Training RMSE is: " << training_rmse << std::endl;
-    if (dvalidation_rmse > 1.03)
-      logstream(LOG_FATAL)<<"Unit test 1 failed. Validation RMSE is: " << dvalidation_rmse << std::endl;
-
-  }
- 
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);
+  
   return 0;
 }

@@ -39,13 +39,10 @@ double lambda = 1e-3;
 
 struct vertex_data {
   vec pvec;
-  double rmse;
 
   vertex_data() {
     pvec = zeros(D);
-    rmse = 0;
   }
-
   void set_val(int index, float val){
     pvec[index] = val;
   }

@@ -61,8 +61,6 @@ See http://en.wikipedia.org/wiki/Jaccard_index
 #include "timer.hpp"
 #include "common.hpp"
 
-using namespace graphchi;
-
 enum DISTANCE_METRICS{
   JACKARD = 0,
   AA = 1,
@@ -514,15 +512,15 @@ int main(int argc, const char ** argv) {
   engine.run(program, niters);
 
   /* Report execution metrics */
-  if (quiet)
+  if (!quiet)
     metrics_report(m);
   
-  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
+  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
 
   for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
 
-  std::cout<<"Created output files with the format: " << training << "XX.out, where XX is the output thread number" << std::endl; 
+  std::cout<<"Created output files with the format: " << training << ".outXX, where XX is the output thread number" << std::endl; 
 
   delete[] relevant_items;
   return 0;

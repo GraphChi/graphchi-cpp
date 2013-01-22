@@ -55,11 +55,9 @@ float dot(double * a, double * b){
 #define BIAS_POS -1
 struct vertex_data {
   vec pvec; //storing the feature vector
-  double rmse;          //tracking rmse
   double bias;
 
   vertex_data() {
-    rmse = 0;
     bias = 0;
   }
   void set_val(int index, float val){

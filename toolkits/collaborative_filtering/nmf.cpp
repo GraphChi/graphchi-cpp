@@ -83,6 +83,7 @@ float nmf_predict(const vertex_data& user,
 
 }
 
+/* sum up all user data vectors */
 void pre_user_iter(){
   x1 = zeros(D);
   for (uint i=M; i<M+N; i++){
@@ -90,8 +91,9 @@ void pre_user_iter(){
     x1 += data.pvec;
   }
 }
-void pre_movie_iter(){
 
+/* sum up all item data vectors */
+void pre_movie_iter(){
   x2 = zeros(D);
   for (uint i=0; i<M; i++){
     vertex_data & data = latent_factors_inmem[i];
@@ -235,7 +237,6 @@ int main(int argc, const char ** argv) {
   x1 = zeros(D);
   x2 = zeros(D);
 
-
   /* Run */
   NMFVerticesInMemProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
@@ -250,5 +251,6 @@ int main(int argc, const char ** argv) {
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);
+
   return 0;
 }

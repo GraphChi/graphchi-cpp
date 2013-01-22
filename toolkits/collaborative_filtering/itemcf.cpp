@@ -43,7 +43,6 @@
 #include "eigen_wrapper.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
 
-using namespace graphchi;
 
 enum DISTANCE_METRICS{
   JACCARD = 0,
@@ -453,7 +452,6 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Please specify the number of ratings to generate for each user using the --K command" << std::endl;
 
   assert(M > 0 && N > 0);
-  
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
   //array for marking which items are conected to the pivot items via users.
@@ -483,7 +481,7 @@ int main(int argc, const char ** argv) {
   if (!quiet)
     metrics_report(m);
   
-  std::cout<<"Total item pairs compaed: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << " pairs with zero distance: " << zero_dist << std::endl;
+  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << " pairs with zero distance: " << zero_dist << std::endl;
 
   for (uint i=0; i< out_files.size(); i++){
     fflush(out_files[i]);
