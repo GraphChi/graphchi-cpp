@@ -339,7 +339,7 @@ namespace graphchi {
                         // Read next line
                         linenum += num + 1;
                         for(vid_t i=0; i < num; i++) {
-                            fgets(s, maxlen, inf);
+                            s = fgets(s, maxlen, inf);
                             FIXLINE(s);
                             vid_t to = atoi(s);
                             if (from != to) {
@@ -386,9 +386,10 @@ namespace graphchi {
                     vid_t from;
                     vid_t to;
                     
-                    fread(&from, 1, sizeof(vid_t), inf);
-                    fread(&to, 1, sizeof(vid_t), inf);
+                    int res1 = fread(&from, sizeof(vid_t), 1, inf);
+                    int res2 = fread(&to, sizeof(vid_t), 1, inf);
                     
+                    assert(res1 > 0 && res2 > 0);
                     if (from != to) {
                         sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
                     } 
@@ -427,9 +428,10 @@ namespace graphchi {
                     vid_t to;
                     EdgeDataType edgeval;
                     
-                    fread(&from, 1, sizeof(vid_t), inf);
-                    fread(&to, 1, sizeof(vid_t), inf);
-                    fread(&edgeval, 1, sizeof(EdgeDataType), inf);
+                    int res1 = fread(&from, sizeof(vid_t), 1, inf);
+                    int res2 = fread(&to, sizeof(vid_t), 1, inf);
+                    int res3 = fread(&edgeval, sizeof(EdgeDataType), 1, inf);
+                    assert(res1 > 0 && res2 > 0 && res3 > 0);
                     if (from != to) {
                         sharderobj.preprocessing_add_edge(from, to, edgeval);
                     }

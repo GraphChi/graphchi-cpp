@@ -174,5 +174,5 @@ int main(int argc, const char ** argv) {
 
     /* Report execution metrics */
     metrics_report(m);
-        return 0;
+    return 0;
 }

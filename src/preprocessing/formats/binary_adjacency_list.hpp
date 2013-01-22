@@ -196,7 +196,12 @@ namespace graphchi {
                 logstream(LOG_FATAL) << "Could not open file " << filename << " for writing. " <<
                 " Error: " << strerror(errno) << std::endl;
             }
-            ftruncate(fd, 0);
+            int res = ftruncate(fd, 0);
+            if (res != 0) {
+                logstream(LOG_FATAL) << "Could not truncate file " << filename <<
+                    " Error: " << strerror(errno) << std::endl;
+            }
+            assert(res == 0);
             
             header.format_version = FORMAT_VERSION;
             header.max_vertex_id = 0;

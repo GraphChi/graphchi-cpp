@@ -22,7 +22,7 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
+ * Matrix factorization with the Alternative Least Squares (ALS) algorithm.
  * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
  * and Danny Bickson (CMU). A good explanation of the algorithm is 
  * given in the following paper:
@@ -102,7 +102,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
      *  Vertex update function.
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-                if (gcontext.iteration == 0) {
+        if (gcontext.iteration == 0) {
             /* On first iteration, initialize vertex (and its edges). This is usually required, because
              on each run, GraphChi will modify the data files. To start from scratch, it is easiest
              do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
