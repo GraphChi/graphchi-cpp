@@ -40,6 +40,7 @@
 #include "util/ioutil.hpp"
 #include "util/qsort.hpp"
 #include "api/chifilenames.hpp"
+#include "engine/auxdata/vertex_data.hpp"
 
 namespace graphchi {
   
@@ -74,52 +75,41 @@ namespace graphchi {
         /* Initialize striped IO manager */
         metrics m("toplist");
         stripedio * iomgr = new stripedio(m);
-        std::string filename = filename_vertex_data<VertexDataType>(basefilename);
         
-        if (!file_exists(filename)) {
-            std::cout << "Vertex data file does not exist (yet)";
-            return std::vector<vertex_value<VertexDataType> >();
+        /* Initialize the vertex-data reader */
+        vid_t readwindow = 1024 * 1024;
+        size_t numvertices = get_num_vertices(basefilename);
+        vertex_data_store<VertexDataType> * vertexdata =
+        new vertex_data_store<VertexDataType>(basefilename, numvertices, iomgr);
+           
+        if ((size_t)ntop > numvertices) {
+            ntop = (int)numvertices;
         }
-        
-        int f = iomgr->open_session(filename, true);
-        
-        size_t sz = get_filesize(filename);
-        
-        /* Setup buffer sizes */
-        int nverts = (int) (sz / sizeof(VertexDataType));
-        ntop = std::min(ntop, nverts);
-        
-        size_t bufsize = 1024 * 1024; // Read one megabyte a time
-        int nbuf = (int) (bufsize / sizeof(VertexDataType));
-        bufsize = sizeof(VertexDataType) * nbuf;  // Ensure that data type size divides bufsize
-        assert(bufsize % sizeof(VertexDataType) == 0);
-        
+                
         /* Initialize buffer */
-        VertexDataType * buffer = (VertexDataType*) calloc(nbuf, sizeof(VertexDataType));
-        vv_t * buffer_idxs = (vv_t*) calloc(nbuf, sizeof(vv_t));
+        vv_t * buffer_idxs = (vv_t*) calloc(readwindow, sizeof(vv_t));
         vv_t * topbuf = (vv_t*) calloc(ntop, sizeof(vv_t));
         vv_t * mergearr = (vv_t*) calloc(ntop * 2, sizeof(vv_t));
         
-        /* Read the data and maintain the top-list */
-        size_t nread = 0;
-        size_t offset = from * sizeof(VertexDataType);
-        size_t endoff = (to > 0 ? to * sizeof(VertexDataType) : sz);
+        /* Iterate the vertex values and maintain the top-list */
         size_t idx = 0;
+        vid_t st = 0;
+        vid_t en = numvertices - 1;
+
         int count = 0;
-        while (offset + nread < endoff) {
-            size_t len = std::min(endoff - (offset + nread), bufsize);
-            iomgr->preada_now(f, buffer, len, offset + nread); 
-            nread += len;
-            
-            int nt = (int) (len / sizeof(VertexDataType));
+        while(st <= numvertices - 1) {
+            en = st + readwindow - 1;
+            if (en >= numvertices - 1) en = numvertices - 1;
+            int nt = en - st + 1;
             int k = 0;
             VertexDataType minima = VertexDataType();
             if (count > 0) {
                 minima = topbuf[ntop - 1].value; // Minimum value that should be even considered
             }
             for(int j=0; j < nt; j++) {
-                if (count == 0 || (buffer[j] > minima)) {
-                    buffer_idxs[k] = vv_t((vid_t)idx + from, buffer[j]);
+                VertexDataType& val = *vertexdata->vertex_data_ptr(j + st);
+                if (count == 0 || (val > minima)) {
+                    buffer_idxs[k] = vv_t((vid_t)idx + from, val);
                     k++;
                 }
                 idx++;
@@ -147,11 +137,11 @@ namespace graphchi {
         for(int i=0; i < ntop; i++) {
             ret.push_back(topbuf[i]);
         }
-        free(buffer);
         free(buffer_idxs);
         free(mergearr);
         free(topbuf);
-        iomgr->close_session(f);
+
+        delete vertexdata;
         delete iomgr;
 
         return ret;
