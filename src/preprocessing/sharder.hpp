@@ -281,7 +281,9 @@ namespace graphchi {
             if (bufptr - buf + sizeof(T) > ebuffer_size) {
                 ebuffer_size *= 2;
                 logstream(LOG_DEBUG) << "Increased buffer size to: " << ebuffer_size << std::endl;
+                size_t ptroff = buf-bufptr;
                 buf = (char *) realloc(buf, ebuffer_size);
+                bufptr = buf + ptroff;
             }
             
             totbytes += sizeof(T);
