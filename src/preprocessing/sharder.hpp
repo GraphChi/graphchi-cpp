@@ -281,7 +281,7 @@ namespace graphchi {
             if (bufptr - buf + sizeof(T) > ebuffer_size) {
                 ebuffer_size *= 2;
                 logstream(LOG_DEBUG) << "Increased buffer size to: " << ebuffer_size << std::endl;
-                size_t ptroff = buf-bufptr;
+                size_t ptroff = bufptr - buf; // Remember the offset
                 buf = (char *) realloc(buf, ebuffer_size);
                 bufptr = buf + ptroff;
             }
@@ -666,11 +666,21 @@ namespace graphchi {
                 char * ebufptr = ebuf;
                 
                 vid_t curvid=0;
+                vid_t lastdst = 0xffffffff;
                 size_t istart = 0;
                 size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                    
+#ifdef DYNAMICEDATA
+             
+                    if (lastdst == edge.dst && edge.src == curvid) {
+                        // Currently not supported
+                        logstream(LOG_ERROR) << "Duplicate edge in the stream - aborting" << std::endl;
+                        assert(false);
+                    }
+#endif
+
+                    lastdst = edge.dst;
                     
                     if (!edge.stopper()) {
 #ifndef DYNAMICEDATA
