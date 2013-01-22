@@ -41,6 +41,8 @@
 #include "util/ioutil.hpp"
 #include "util/qsort.hpp"
 #include "api/chifilenames.hpp"
+#include "engine/auxdata/vertex_data.hpp"
+
 
 #ifndef DEF_GRAPHCHI_LABELANALYSIS
 #define DEF_GRAPHCHI_LABELANALYSIS
@@ -61,40 +63,45 @@ bool label_count_greater(const labelcount_tt<LabelType> &a, const labelcount_tt<
 }
 
 template <typename LabelType>
-void analyze_labels(std::string base_filename, int printtop = 20) {    
+void analyze_labels(std::string basefilename, int printtop = 20) {    
     typedef labelcount_tt<LabelType> labelcount_t;
     /**
      * NOTE: this implementation is quite a mouthful. Cleaner implementation
      * could be done by using a map implementation. But STL map takes too much
      * memory, and I want to avoid Boost dependency - which would have boost::unordered_map.
      */
-    std::string filename = filename_vertex_data<LabelType>(base_filename);
     metrics m("labelanalysis");
     stripedio * iomgr = new stripedio(m);
-    int f = iomgr->open_session(filename, true);
-    size_t sz = get_filesize(filename);
     
-    /* Setup buffer sizes */    
-    size_t bufsize = 1024 * 1024; // Read one megabyte a time
-    int nbuf = (int) (bufsize / sizeof(LabelType));
+    /* Initialize the vertex-data reader */
+    vid_t readwindow = 1024 * 1024;
+    vid_t numvertices = (vid_t) get_num_vertices(basefilename);
+    vertex_data_store<LabelType> * vertexdata =
+    new vertex_data_store<LabelType>(basefilename, numvertices, iomgr);
     
     std::vector<labelcount_t> curlabels;
-    size_t nread = 0;
     bool first = true;
     vid_t curvid = 0;
-    LabelType * buffer = (LabelType*) calloc(nbuf, sizeof(LabelType));
+    LabelType * buffer = (LabelType*) calloc(readwindow, sizeof(LabelType));
     
-    while (nread < sz) {
-        size_t len = std::min(sz - nread, bufsize);
-        iomgr->preada_now(f, buffer, len, nread); 
-        nread += len;
+    /* Iterate the vertex values and maintain the top-list */
+    vid_t st = 0;
+    vid_t en = numvertices - 1;
+    
+    while(st <= numvertices - 1) {
+        en = st + readwindow - 1;
+        if (en >= numvertices - 1) en = numvertices - 1;
         
-        int nt = (int) (len / sizeof(LabelType));
+        /* Load the vertex values */
+        vertexdata->load(st, en);
+        
+        int nt = en - st + 1;
         
         /* Mark vertices with its own label with 0xffffffff so they will be ignored */
         for(int i=0; i < nt; i++) { 
-            LabelType l = buffer[i];
+            LabelType l = *vertexdata->vertex_data_ptr(i + st);
             if (l == curvid) buffer[i] = 0xffffffff;
+            else buffer[i] = l;
             curvid++;
         }
         
@@ -148,13 +155,14 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
         }
         
         first = false;
+        st += readwindow;
     }
     
     /* Sort */
     std::sort(curlabels.begin(), curlabels.end(), label_count_greater<LabelType>);
     
     /* Write output file */
-    std::string outname = base_filename + "_components.txt";
+    std::string outname = basefilename + "_components.txt";
     FILE * resf = fopen(outname.c_str(), "w");
     if (resf == NULL) {
         logstream(LOG_ERROR) << "Could not write label outputfile : " << outname << std::endl;
@@ -172,7 +180,9 @@ void analyze_labels(std::string base_filename, int printtop = 20) {
         std::cout << (i+1) << ". label: " << curlabels[i].label << ", size: " << curlabels[i].count << std::endl;
     }
     
-    iomgr->close_session(f);
+    free(buffer);
+    
+    delete vertexdata;
     delete iomgr;
 }
 

@@ -8,10 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		5F0A1FCF16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F0A1FCD16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp */; };
-		5F3D4F12164DF5C2003A50A6 /* inmemconncomp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
-		5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
@@ -1346,8 +1344,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
-				5F74B04815D35B6400ED3EA9 /* random.cpp in Sources */,
-				5F3D4F12164DF5C2003A50A6 /* inmemconncomp.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
