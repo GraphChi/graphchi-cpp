@@ -386,8 +386,8 @@ namespace graphchi {
                     vid_t from;
                     vid_t to;
                     
-                    int res1 = fread(&from, sizeof(vid_t), 1, inf);
-                    int res2 = fread(&to, sizeof(vid_t), 1, inf);
+                    size_t res1 = fread(&from, sizeof(vid_t), 1, inf);
+                    size_t res2 = fread(&to, sizeof(vid_t), 1, inf);
                     
                     assert(res1 > 0 && res2 > 0);
                     if (from != to) {
@@ -428,9 +428,9 @@ namespace graphchi {
                     vid_t to;
                     EdgeDataType edgeval;
                     
-                    int res1 = fread(&from, sizeof(vid_t), 1, inf);
-                    int res2 = fread(&to, sizeof(vid_t), 1, inf);
-                    int res3 = fread(&edgeval, sizeof(EdgeDataType), 1, inf);
+                    size_t res1 = fread(&from, sizeof(vid_t), 1, inf);
+                    size_t res2 = fread(&to, sizeof(vid_t), 1, inf);
+                    size_t res3 = fread(&edgeval, sizeof(EdgeDataType), 1, inf);
                     assert(res1 > 0 && res2 > 0 && res3 > 0);
                     if (from != to) {
                         sharderobj.preprocessing_add_edge(from, to, edgeval);
