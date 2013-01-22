@@ -41,6 +41,7 @@
 #include "api/chifilenames.hpp"
 #include "io/stripedio.hpp"
 #include "util/ioutil.hpp"
+#include "engine/auxdata/vertex_data.hpp"
 
 namespace graphchi {
     
@@ -68,23 +69,29 @@ namespace graphchi {
         std::string filename = filename_vertex_data<VertexDataType>(basefilename);
         metrics m("foreach");
         stripedio * iomgr = new stripedio(m);
-        int f = iomgr->open_session(filename, true);
-        size_t bufsize = 1024 * 1024; // Read one megabyte a time    
-        vid_t nbuf = (vid_t) (bufsize / sizeof(VertexDataType));
-        bufsize = sizeof(VertexDataType) * nbuf; 
         
-        VertexDataType * buffer = (VertexDataType*) calloc(nbuf, sizeof(VertexDataType));
+        vid_t readwindow = 1024 * 1024;
+        size_t numvertices = get_num_vertices(basefilename);
+        vertex_data_store<VertexDataType> * vertexdata =
+            new vertex_data_store<VertexDataType>(basefilename, numvertices, iomgr);
         
-        for(vid_t v=fromv; v < tov; v += nbuf) {
-            size_t nelements = std::min(tov, v + nbuf) - v;
-            iomgr->preada_now(f, buffer, nelements * sizeof(VertexDataType), v * sizeof(VertexDataType));
+        vid_t st = fromv;
+        vid_t en = 0;
+        while(st <= tov) {
+            en = st + readwindow - 1;
+            if (en >= tov) en = tov - 1;
             
-            for(int i=0; i < (int)nelements; i++) {
-                callback.callback(i + v, buffer[i]);
+            if (st < en) {
+                vertexdata->load(st, en);
+                for(vid_t v=st; v<=en; v++) {
+                    VertexDataType * vptr = vertexdata->vertex_data_ptr(v);
+                    callback.callback(v, (VertexDataType&) *vptr);
+                }
             }
+            
+            st += readwindow;
         }
-        
-        iomgr->close_session(f);
+        delete vertexdata;
         delete iomgr;
     }
     
@@ -100,7 +107,7 @@ namespace graphchi {
             accum = initval;
         }
 
-        virtual void callback(vid_t vertex_id, VertexDataType &value) {
+        void callback(vid_t vertex_id, VertexDataType &value) {
             accum += value;
         }
     };

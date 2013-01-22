@@ -73,7 +73,7 @@ namespace graphchi {
             check_size(nvertices);
             iomgr->allow_preloading(filename);
             open_file(filename);
-        }
+        }    
         
         virtual ~vertex_data_store() {
             iomgr->close_session(filedesc);

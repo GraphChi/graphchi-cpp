@@ -286,6 +286,22 @@ namespace graphchi {
         for(int i=0; i < nshards; i++) {
             logstream(LOG_INFO) << "shard: " << intervals[i].first << " - " << intervals[i].second << std::endl;
         }
+        intervalsF.close();
+    }
+    
+    static size_t get_num_vertices(std::string basefilename);
+    static size_t get_num_vertices(std::string basefilename) {
+        std::string numv_filename = basefilename + ".numvertices";
+        std::ifstream vfileF(numv_filename.c_str());
+        if (!vfileF.good()) {
+            logstream(LOG_ERROR) << "Could not find file " << numv_filename << std::endl;
+            logstream(LOG_ERROR) << "Maybe you have old shards - please recreate." << std::endl;
+            assert(false);
+        }
+        size_t n;
+        vfileF >> n;
+        vfileF.close();
+        return n;
     }
 };
                                  

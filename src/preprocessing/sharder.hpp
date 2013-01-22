@@ -422,6 +422,12 @@ namespace graphchi {
             fclose(f);
             assert(nshards == (int)intervals.size());
             
+            /* Write meta-file with the number of vertices */
+            std::string numv_filename = basefilename + ".numvertices";
+            f = fopen(numv_filename.c_str(), "w");
+            fprintf(f, "%u\n", 1 + max_vertex_id);
+            fclose(f);
+            
             logstream(LOG_INFO) << "Computed intervals." << std::endl;
         }
         

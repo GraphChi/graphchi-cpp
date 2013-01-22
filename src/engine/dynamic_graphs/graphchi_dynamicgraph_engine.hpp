@@ -894,6 +894,12 @@ namespace graphchi {
                 this->sliding_shards.clear();
                 shardlock.unlock();
             }
+            /* Write meta-file with the number of vertices */
+            std::string numv_filename = base_engine::base_filename + ".numvertices";
+            FILE * f = fopen(numv_filename.c_str(), "w");
+            fprintf(f, "%lu\n", base_engine::num_vertices());
+            fclose(f);
+            
             init_buffers();
             this->modification_lock.unlock();
         }
