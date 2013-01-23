@@ -323,8 +323,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
       }
       if (adjcontainer->pivot_st <= window_en) {
-        size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
-        if (grabbed_edges == 0 /*grabbed_edges  < max_grab_edges * 0.8*/) {
+
+          if (grabbed_edges == 0) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
           adjcontainer->extend_pivotrange(window_en + 1);
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
@@ -357,7 +357,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
       for (uint i=window_st; i < window_en; i++){
         if (is_user(i)){
-          dense_adj user = adjcontainer->adjs[i - window_st];
+          dense_adj &user = adjcontainer->adjs[i - window_st];
           if (nnz(user.edges) == 0 || nnz(user.ratings) == 0)
             continue;
           //assert(user.ratings.size() == N);
@@ -392,7 +392,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("triangle-counting");    
+  metrics m("itemsim2rating");    
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
 
@@ -415,7 +415,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training,nshards, true, m); 
   set_engine_flags(engine);
   //engine.set_maxwindow(M+N+1);
 
