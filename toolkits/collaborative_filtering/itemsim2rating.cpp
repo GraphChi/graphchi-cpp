@@ -49,7 +49,6 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 int debug;
-
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
 
@@ -77,6 +76,7 @@ std::vector<vertex_data> latent_factors_inmem;
 struct dense_adj {
   sparse_vec edges;
   sparse_vec        ratings;
+  mutex mymutex;
   dense_adj() { }
 };
 
@@ -184,7 +184,9 @@ class adjlist_container {
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
+          pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, edges[i]-M, get_val(pivot_edges.ratings, edges[i]-M) + item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id()));
+          pivot_edges.mymutex.unlock();
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
         }
@@ -423,7 +425,7 @@ int main(int argc, const char ** argv) {
   engine.run(program, niters);
 
   /* Report execution metrics */
-  if (quiet)
+  if (!quiet)
     metrics_report(m);
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
