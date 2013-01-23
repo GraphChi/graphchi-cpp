@@ -27,9 +27,10 @@
 double average_precision_at_k(vec & predictions, vec & actual, int k){
   double score = 0;
   int num_hits = 0;
-  std::sort(actual.data(), actual.data()+actual.size());
+  vec sorted_actual = actual;
+  std::sort(sorted_actual.data(), sorted_actual.data()+sorted_actual.size());
   for (int i=0; i < std::min((int)predictions.size(), k); i++){
-    if (std::binary_search(actual.data(), actual.data()+actual.size(), predictions[i])){
+    if (std::binary_search(sorted_actual.data(), sorted_actual.data()+sorted_actual.size(), predictions[i])){
       num_hits++;
       score += num_hits / (i+1.0);
     }
