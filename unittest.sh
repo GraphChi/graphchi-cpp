@@ -64,4 +64,4 @@ display_name "TESTING ITEMCF - AIOLLI ASYM COST"
 display_name "ITEM-SIM-TO-RATING"
 rm -fR ./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest.graph.*
 ./toolkits/collaborative_filtering/itemsim2rating --training=./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest.graph --similarity=./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest.similarity --debug=0 --K=4 execthreads 1 --nshards=1 --quiet=1
-diff ./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest.graph.out ./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest
+diff ./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest.graph-rec ./toolkits/collaborative_filtering/unittest/itemsim2rating.unittest
