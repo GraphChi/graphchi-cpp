@@ -145,7 +145,7 @@ public:
         
         for(int j=0; j < numitems; j++) {
             size_t x = vec.get(j);
-            assert(x == vertex_id * 982192l + j);
+            assert(x == vertex_id * 982192l + (size_t)j);
         }
     }
 };

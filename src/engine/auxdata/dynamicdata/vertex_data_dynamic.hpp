@@ -118,7 +118,7 @@ namespace graphchi {
         }
         
         void releaseblocks() {
-            for(int i=0; i < loadedblocks.size(); i++) {
+            for(int i=0; i < (int)loadedblocks.size(); i++) {
                 delete(loadedblocks[i].dblock);
                 iomgr->managed_release(loadedblocks[i].fd, &loadedblocks[i].data);
                 iomgr->close_session(loadedblocks[i].fd);
@@ -195,7 +195,7 @@ namespace graphchi {
           * Saves the current chunk of vertex values
           */
         virtual void save(bool async=false) {
-            for(int i=0; i < loadedblocks.size(); i++) {
+            for(int i=0; i <  (int)loadedblocks.size(); i++) {
                 write_block(loadedblocks[i]);
             }
         }

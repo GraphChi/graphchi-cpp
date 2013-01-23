@@ -31,7 +31,7 @@
    useful to have a common base class "sequential-file". */
 
 #ifdef DYNAMICVERTEXDATA
-#include "auxdata/dynamicdata/vertex_data_dynamic.hpp"
+#include "engine/auxdata/dynamicdata/vertex_data_dynamic.hpp"
 #else
 
 #ifndef DEF_GRAPHCHI_VERTEXDATA
