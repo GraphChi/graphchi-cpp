@@ -56,6 +56,8 @@ namespace graphchi {
         }
         ~mutex(){
             int error = pthread_mutex_destroy( &m_mut );
+            if (error)
+              perror("Bug: failed to destory mutex");
             assert(!error);
         }
         friend class conditional;
