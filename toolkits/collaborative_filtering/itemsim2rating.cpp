@@ -419,7 +419,7 @@ int main(int argc, const char ** argv) {
   set_engine_flags(engine);
   //engine.set_maxwindow(M+N+1);
 
-  out_file = open_file((training + ".out").c_str(), "w");
+  out_file = open_file((training + "-rec").c_str(), "w");
 
   //run the program
   engine.run(program, niters);
@@ -429,7 +429,7 @@ int main(int argc, const char ** argv) {
     metrics_report(m);
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
-  std::cout<<"Created output files with the format: " << training << ".out" << std::endl; 
+  std::cout<<"Created output files with the format: " << training << "-rec" << std::endl; 
 
   delete[] relevant_items;
   fclose(out_file);
