@@ -96,7 +96,7 @@ namespace graphchi {
         bool closefd;
         volatile int * doneptr;
         
-        iotask() : action(READ), fd(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false), doneptr(NULL) {}
+        iotask() : action(READ), fd(0), session(0), ptr(NULL), length(0), offset(0), ptroffset(0), free_after(false), iomgr(NULL), compressed(false), closefd(false), doneptr(NULL) {}
         iotask(stripedio * iomgr, BLOCK_ACTION act, int fd, int session,  refcountptr * ptr, size_t length, size_t offset, size_t ptroffset, bool free_after, bool compressed, bool closefd=false) :
         action(act), fd(fd), session(session), ptr(ptr),length(length), offset(offset), ptroffset(ptroffset), free_after(free_after), iomgr(iomgr),compressed(compressed), closefd(closefd) {
             if (closefd) assert(free_after);

@@ -22,11 +22,11 @@ if [ $FOUND -eq 0 ]; then
 fi
 
 echo "Merging sorted files:"
-sort -g -u -k 1,1 -k 3,3r -m *.sorted > $TRAINING.topk.out
+sort -g -u -k 1,1 -k 3,3r -m *.sorted > $TRAINING-topk
 if [ $? -ne 0 ]; then
   echo "Error: Failed to merge!"
   exit 1
 fi
-echo "File written: $TRAINING.topk.out"
+echo "File written: $TRAINING-topk"
 
 rm *.sorted

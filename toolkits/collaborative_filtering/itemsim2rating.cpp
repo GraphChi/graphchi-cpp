@@ -76,7 +76,7 @@ std::vector<vertex_data> latent_factors_inmem;
 
 struct dense_adj {
   sparse_vec edges;
-  vec        ratings;
+  sparse_vec        ratings;
   dense_adj() { }
 };
 
@@ -115,8 +115,8 @@ class adjlist_container {
       assert(en > pivot_st);
       pivot_en = en; 
       adjs.resize(pivot_en - pivot_st);
-      for (uint i=0; i< pivot_en - pivot_st; i++)
-        adjs[i].ratings = zeros(N);
+      //for (uint i=0; i< pivot_en - pivot_st; i++)
+      //  adjs[i].ratings = zeros(N);
     }
 
     /**
@@ -131,7 +131,7 @@ class adjlist_container {
       dense_adj dadj;
       for(int i=0; i<num_edges; i++) 
         set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data());
-      dadj.ratings = zeros(N);
+      //dadj.ratings = zeros(N);
       adjs[v.id() - pivot_st] = dadj;
       assert(v.id() - pivot_st < adjs.size());
       __sync_add_and_fetch(&grabbed_edges, num_edges /*edges_to_larger_id*/);
@@ -183,7 +183,8 @@ class adjlist_container {
               continue;
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
-          pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
+          //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
+          set_val(pivot_edges.ratings, edges[i]-M, get_val(pivot_edges.ratings, edges[i]-M) + item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id()));
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
         }
@@ -321,7 +322,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       }
       if (adjcontainer->pivot_st <= window_en) {
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
-        if (grabbed_edges < max_grab_edges * 0.8) {
+        if (grabbed_edges == 0 /*grabbed_edges  < max_grab_edges * 0.8*/) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
           adjcontainer->extend_pivotrange(window_en + 1);
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
@@ -355,9 +356,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       for (uint i=window_st; i < window_en; i++){
         if (is_user(i)){
           dense_adj user = adjcontainer->adjs[i - window_st];
-          if (nnz(user.edges) == 0)
+          if (nnz(user.edges) == 0 || nnz(user.ratings) == 0)
             continue;
-          assert(user.ratings.size() == N);
+          //assert(user.ratings.size() == N);
           ivec positions = reverse_sort_index(user.ratings, K);
           assert(positions.size() > 0);
           for (int j=0; j < positions.size(); j++){
@@ -365,9 +366,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
             assert(positions[j] < (int)N);
 
 	    //skip zero entries
-            if (user.ratings[positions[j]] == 0)
+            if (get_val(user.ratings, positions[j])== 0)
               break;
-            int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, user.ratings[positions[j]]);//write item similarity to file
+            int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
             assert(rc > 0);
             written_pairs++;
           }

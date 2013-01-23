@@ -333,6 +333,9 @@ inline mat get_cols(const mat&A, int start_col, int end_col){
 inline void set_val(vec & v, int pos, double val){
   v(pos) = val;
 }
+inline void set_val(sparse_vec & v, int pos, double val){
+  v.coeffRef(pos) = val;
+}
 inline double dot(const vec&a, const vec& b){
   return a.dot(b);
 }
@@ -669,6 +672,23 @@ inline ivec reverse_sort_index(const vec& a, int K){
   D.reserve(a.size());
   for (int i=0;i<a.size();i++)
     D.push_back(std::make_pair<double,int>(a[i],i));
+  std::partial_sort(D.begin(),D.begin() + size, D.end(), pair_compare);
+  for (int i=0;i< size;i++)
+  { 
+    ret[i]=D[i].second;
+  } 
+  return ret;
+}
+inline ivec reverse_sort_index(sparse_vec& a, int K){
+  assert(K > 0);
+  int size = std::min((unsigned int)nnz(a), (unsigned int)K);
+  ivec ret(size); 
+  std::vector<std::pair<double,int> > D;
+
+  D.reserve(nnz(a));
+  FOR_ITERATOR(i, a){  
+    D.push_back(std::make_pair<double,int>(i.value(),i.index()));
+  }
   std::partial_sort(D.begin(),D.begin() + size, D.end(), pair_compare);
   for (int i=0;i< size;i++)
   { 
