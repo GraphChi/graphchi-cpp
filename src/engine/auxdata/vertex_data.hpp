@@ -30,6 +30,10 @@
 /* Note: This class shares a lot of code with the degree_data.hpp. It might be
    useful to have a common base class "sequential-file". */
 
+#ifdef DYNAMICVERTEXDATA
+#include "auxdata/dynamicdata/vertex_data_dynamic.hpp"
+#else
+
 #ifndef DEF_GRAPHCHI_VERTEXDATA
 #define DEF_GRAPHCHI_VERTEXDATA
 
@@ -146,5 +150,6 @@ namespace graphchi {
     };
 }
 
+#endif
 #endif
 

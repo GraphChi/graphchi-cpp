@@ -51,7 +51,6 @@ class extension_pool {
 template <typename T>
 class chivector {
 
-    uint16_t origsize;
     uint16_t nsize;
     uint16_t ncapacity;
     T * data;
@@ -65,8 +64,7 @@ public:
     }
     
     chivector(uint16_t sz, uint16_t cap, T * dataptr) : data(dataptr) {
-        origsize = sz;
-        nsize = origsize;
+        nsize = sz;
         ncapacity = cap;
         assert(cap >= nsize);
         extensions = NULL;
@@ -108,7 +106,7 @@ public:
     
     T get(int idx) {
         if (idx >= ncapacity) {
-            return (* extensions)[idx - (int)origsize];
+            return (* extensions)[idx - (int)ncapacity];
         } else {
             return data[idx];
         }

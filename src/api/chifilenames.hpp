@@ -289,8 +289,11 @@ namespace graphchi {
         intervalsF.close();
     }
     
-    static size_t get_num_vertices(std::string basefilename);
-    static size_t get_num_vertices(std::string basefilename) {
+    /**
+      * Returns the number of vertices in a graph. The value is stored in a separate file <graphname>.numvertices
+      */
+    static VARIABLE_IS_NOT_USED size_t get_num_vertices(std::string basefilename);
+    static VARIABLE_IS_NOT_USED size_t get_num_vertices(std::string basefilename) {
         std::string numv_filename = basefilename + ".numvertices";
         std::ifstream vfileF(numv_filename.c_str());
         if (!vfileF.good()) {

@@ -207,7 +207,6 @@
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
 		5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = binary_adjacency_list.hpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
-		5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomp.cpp; sourceTree = "<group>"; };
 		5F54B84615FD4B2500B3842C /* chivector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chivector.hpp; sourceTree = "<group>"; };
 		5F54B84715FD4C1900B3842C /* dynamicdata_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = dynamicdata_smoketest.cpp; sourceTree = "<group>"; };
 		5F54B85115FD4D9F00B3842C /* test_dynamicedata */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_dynamicedata; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -217,6 +216,8 @@
 		5F56F703159B771900423ECE /* bulksync_functional_test.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bulksync_functional_test.cpp; sourceTree = "<group>"; };
 		5F56F713159B78BF00423ECE /* test_bulksync_functional */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_bulksync_functional; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F56F71E159B918100423ECE /* basic_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = basic_smoketest.cpp; sourceTree = "<group>"; };
+		5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
+		5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_data_dynamic.hpp; sourceTree = "<group>"; };
 		5F74B03715D349EF00ED3EA9 /* cgs_lda_vertexprogram.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = cgs_lda_vertexprogram.hpp; sourceTree = "<group>"; };
 		5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = cgs_lda.cpp; sourceTree = "<group>"; };
 		5F74B04215D3532600ED3EA9 /* graphlab_lda */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphlab_lda; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -686,6 +687,14 @@
 			path = tests;
 			sourceTree = "<group>";
 		};
+		5F67654016AF31C500359562 /* dynamicdata */ = {
+			isa = PBXGroup;
+			children = (
+				5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */,
+			);
+			path = dynamicdata;
+			sourceTree = "<group>";
+		};
 		5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */ = {
 			isa = PBXGroup;
 			children = (
@@ -775,6 +784,7 @@
 		5F7A10341589266800748D0D /* auxdata */ = {
 			isa = PBXGroup;
 			children = (
+				5F67654016AF31C500359562 /* dynamicdata */,
 				5F7A10351589266800748D0D /* degree_data.hpp */,
 				5F7A10361589266800748D0D /* vertex_data.hpp */,
 			);
@@ -893,11 +903,11 @@
 				5FCC1EBD1599F59A0003D0E9 /* application_template.cpp */,
 				5FCC1EBE1599F59A0003D0E9 /* communitydetection.cpp */,
 				5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */,
+				5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */,
 				5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */,
 				5FCC1EC11599F59A0003D0E9 /* pagerank_functional.cpp */,
 				5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */,
 				5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */,
-				5F3D4F10164DF5C2003A50A6 /* inmemconncomp.cpp */,
 				5F0A1FBC16A9FBA50066FB56 /* randomwalks.cpp */,
 			);
 			name = example_apps;

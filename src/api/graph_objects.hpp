@@ -295,9 +295,17 @@ namespace graphchi {
         /** 
           * Get the value of vertex
           */
+#ifndef DYNAMICVERTEXDATA
         VertexDataType get_data() {
             return *(this->dataptr);
         }
+#else
+        // VertexDataType must be a chivector
+        VertexDataType * get_vector() {
+            this->modified = true;  // Assume vector always modified... Temporaryh solution.
+            return this->dataptr;
+        }
+#endif
         
         /**
           * Modify the vertex value. The new value will be

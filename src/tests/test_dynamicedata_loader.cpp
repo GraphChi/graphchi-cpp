@@ -29,6 +29,7 @@
  */
 
 #define DYNAMICEDATA 1
+#define DYNAMICVERTEXDATA 1   
 
 #include <string>
 
@@ -41,7 +42,7 @@ using namespace graphchi;
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program.
  */
-typedef vid_t VertexDataType;
+typedef chivector<size_t> VertexDataType;
 typedef chivector<vid_t>  EdgeDataType;
 
 size_t checksum = 0;
@@ -63,11 +64,30 @@ struct DynamicDataLoaderTestProgram : public GraphChiProgram<VertexDataType, Edg
             assert(evector != NULL);
             assert(evector->size() == 1);
             
-            assert(evector->get(0) == vertex.id() + vertex.edge(i)->vertex_id());
+            vid_t expected = vertex.id() + vertex.edge(i)->vertex_id();
+            if (expected != evector->get(0)) {
+                logstream(LOG_ERROR) << "Vertex " << vertex.id() << ", edge dst: " << vertex.edge(i)->vertex_id() << std::endl;
+                logstream(LOG_ERROR) << "Mismatch: expected " << expected << " but had " << evector->get(0) << std::endl;
+            }
+            assert(evector->get(0) == expected);
             lock.lock();
             checksum += evector->get(0);
             lock.unlock();
         }
+        
+         // Modify vertex data by adding values there */
+         chivector<size_t> * vvector = vertex.get_vector();
+         int numitems = vertex.id() % 10;
+         for(int i=0; i<numitems; i++) {
+             vvector->add(vertex.id() * 982192l + i); // Arbitrary
+         }
+        
+         /* Check vertex data immediatelly */
+         for(int i=0; i<numitems; i++) {
+             size_t x = vvector->get(i);
+             size_t expected = vertex.id() * 982192l + i;
+             assert(x == expected);
+         }
     }
     
     /**
@@ -103,11 +123,11 @@ void generatedata(std::string filename) {
     FILE * f = fopen(fname, "w");
     set_conf("filetype", "edgelist");
     shouldbe = 0;
-    int totalVertices = 10000;
+    int totalVertices = 2500000; // 2.5 million
     for(int i=0; i < totalVertices; i++) {
-        int nedges = random() % 200;
+        int nedges = random() % 50;
         for(int j=0; j < nedges; j++) {
-            int dst = random() % totalVertices;
+            int dst = (totalVertices / nedges) * j + i % nedges; 
             if (dst != i) {
                 fprintf(f, "%d\t%d\t%d\n", i, dst, i + dst);
                 shouldbe += 2 * (i + dst); 
@@ -116,6 +136,20 @@ void generatedata(std::string filename) {
     }
     fclose(f);
 }
+
+class VertexValidator : public VCallback<chivector<size_t> > {
+public:
+    virtual void callback(vid_t vertex_id, chivector<size_t> &vec) {
+        int numitems = vertex_id % 10;
+        assert(vec.size() == numitems);
+        
+        for(int j=0; j < numitems; j++) {
+            size_t x = vec.get(j);
+            assert(x == vertex_id * 982192l + j);
+        }
+    }
+};
+
 
 
 int main(int argc, const char ** argv) {
@@ -153,9 +187,13 @@ int main(int argc, const char ** argv) {
     std::cout << "Checksum: " << checksum << ", expecting: " << shouldbe << std::endl;
     assert(shouldbe == checksum);
     
+    /* Check vertex values */
+    VertexValidator validator;
+    foreach_vertices(filename, 0, engine.num_vertices(), validator);
+    
     /* Report execution metrics */
     metrics_report(m);
     
-    logstream(LOG_INFO) << "Smoketest passed successfully! Your system is working!" << std::endl;
+    logstream(LOG_INFO) << "Test passed successfully! Your system is working!" << std::endl;
     return 0;
 }

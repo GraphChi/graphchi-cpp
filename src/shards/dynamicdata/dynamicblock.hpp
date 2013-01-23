@@ -58,16 +58,16 @@ namespace graphchi {
     
     template <typename ET>
     struct dynamicdata_block {
-        int nedges;
+        int nitems;
         uint8_t * data;
         ET * chivecs;
         
         dynamicdata_block() : data(NULL), chivecs(NULL) {}
         
-        dynamicdata_block(int nedges, uint8_t * data, int datasize) : nedges(nedges){
-            chivecs = new ET[nedges];
+        dynamicdata_block(int nitems, uint8_t * data, int datasize) : nitems(nitems){
+            chivecs = new ET[nitems];
             uint8_t * ptr = data;
-            for(int i=0; i < nedges; i++) {
+            for(int i=0; i < nitems; i++) {
                 assert(ptr - data <= datasize);
                 typename ET::sizeword_t * sz = ((typename ET::sizeword_t *) ptr);
                 ptr += sizeof(typename ET::sizeword_t);
@@ -77,7 +77,7 @@ namespace graphchi {
         }
         
         ET * edgevec(int i) {
-            assert(i < nedges);
+            assert(i < nitems);
             assert(chivecs != NULL);
             return &chivecs[i];
         }
@@ -85,13 +85,13 @@ namespace graphchi {
         void write(uint8_t ** outdata, int & size) {
             // First compute size
             size = 0;
-            for(int i=0; i < nedges; i++) {
+            for(int i=0; i < nitems; i++) {
                 size += chivecs[i].capacity() * sizeof(typename ET::element_type_t) + sizeof(typename ET::sizeword_t);
             }
             
             *outdata = (uint8_t *) malloc(size);
             uint8_t * ptr = *outdata;
-            for(int i=0; i < nedges; i++) {
+            for(int i=0; i < nitems; i++) {
                 ET & vec = chivecs[i];
                 ((uint16_t *) ptr)[0] = vec.size();
                 ((uint16_t *) ptr)[1] = vec.capacity();
