@@ -179,7 +179,7 @@ void read_factors(std::string base_filename, bool users) {
       if (latent_factors_inmem[i].pvec.size() == 0){
         latent_factors_inmem[i].pvec = zeros(D);
         latent_factors_inmem[i].ratings = zeros(num_ratings);
-        latent_factors_inmem[i].ids = zeros(num_ratings);
+        latent_factors_inmem[i].ids = ivec::Zero(num_ratings);
       }
       latent_factors_inmem[i].pvec[j] = val;
     }

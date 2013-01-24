@@ -356,7 +356,7 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 void output_rbm_result(std::string filename) {
   MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
   MMOutputter_mat<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , BIAS_POS, "This file contains RBM output bias vector. In each row a single item ni.");
+  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , BIAS_POS, "This file contains RBM output bias vector. In each row a single item ni.", latent_factors_inmem);
   logstream(LOG_INFO) << "RBM output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
