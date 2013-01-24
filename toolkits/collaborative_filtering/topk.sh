@@ -9,11 +9,11 @@ TRAINING=$1
 
 FOUND=0
 rm -f *.sorted
-for i in `ls $TRAINING.out[0-9]*`1
+for i in `ls $TRAINING.out[0-9]*`
 do
   FOUND=1
   echo "Sorting output file $i"
-  sort -r -g -u -k 1,1 -k 3,3 $i > $i.sorted
+  sort -r -g -u -k 1,1 -k 2,2 -k 3,3 $i > $i.sorted
 done
 
 if [ $FOUND -eq 0 ]; then
@@ -22,11 +22,11 @@ if [ $FOUND -eq 0 ]; then
 fi
 
 echo "Merging sorted files:"
-sort -g -u -k 1,1 -k 3,3r -m *.sorted > $TRAINING-topk
+sort -r -g -u -k 1,1 -k 2,2 -k 3,3 -m `dirname $TRAINING`/*.sorted > $TRAINING-topk
 if [ $? -ne 0 ]; then
   echo "Error: Failed to merge!"
   exit 1
 fi
 echo "File written: $TRAINING-topk"
 
-rm *.sorted
+rm -f `dirname $TRAINING`/*.sorted

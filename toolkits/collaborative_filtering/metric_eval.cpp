@@ -110,6 +110,7 @@ void eval_metrics(){
   }
 
   logstream(LOG_INFO)<<"Computed AP@" << K << " metric: " << ap/(double)line << std::endl;
+  logstream(LOG_INFO)<<"Total compared: " << line << std::endl;
 }
 
 
