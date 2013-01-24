@@ -21,6 +21,8 @@ display_name "TESTING ALS - RMSE VALIDATION STOP"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.1 --minval=1 --maxval=5 --max_iter=100 --quiet=1 --halt_on_rmse_increase=3
 display_name "TESTING ALS SERIALIZATION"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
+display_name "TESTING ALS - RATING"
+./toolkits/collaborative_filtering/rating --training=smallnetflix_mm --tokens_per_row=3 --quiet=1 --num_ratings=3
 display_name "TESTING SGD"
  ./toolkits/collaborative_filtering/sgd --training=smallnetflix_mm --validation=smallnetflix_mme --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING BIAS_SGD"
@@ -42,6 +44,8 @@ display_name "TESTING RBM"
 display_name "TESTING WALS"  
 rm -fr time_smallnetflix.* time_smallnetflixe.*
 ./toolkits/collaborative_filtering/wals --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
+display_name "TESTING WALS - RATING"
+./toolkits/collaborative_filtering/rating --training=time_smallnetflix --tokens_per_row=4 --quiet=1 --num_ratings=3
 display_name "TESTING ALS-TENSOR"  
 ./toolkits/collaborative_filtering/als_tensor --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
 rm -fR time_smallnetflix.*

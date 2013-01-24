@@ -104,24 +104,24 @@ float als_predict(const vertex_data& user,
 
 void rating_stats(){
 
-   double min=1e100, max=0, avg=0;
-   int cnt = 0;
-   int startv = 0;
-   int endv = M;
+  double min=1e100, max=0, avg=0;
+  int cnt = 0;
+  int startv = 0;
+  int endv = M;
 
-   for (int i=startv; i< endv; i++){
-     vertex_data& data = latent_factors_inmem[i];
-     if (data.ratings.size() > 0){
-       min = std::min(min, data.ratings[0]);
-       max = std::max(max, data.ratings[0]);
-       if (std::isnan(data.ratings[0]))
-          printf("bug: nan on %d\n", i);
-       else {
-         avg += data.ratings[0];    
-         cnt++;
-       }
-     }
-   }
+  for (int i=startv; i< endv; i++){
+    vertex_data& data = latent_factors_inmem[i];
+    if (data.ratings.size() > 0){
+      min = std::min(min, data.ratings[0]);
+      max = std::max(max, data.ratings[0]);
+      if (std::isnan(data.ratings[0]))
+        printf("bug: nan on %d\n", i);
+      else {
+        avg += data.ratings[0];    
+        cnt++;
+      }
+    }
+  }
 
   printf("Distance statistics: min %g max %g avg %g\n", min, max, avg/cnt);
 }
@@ -161,7 +161,7 @@ void read_factors(std::string base_filename, bool users) {
     }
     if (_N != N)
       logstream(LOG_FATAL) << "Wrong size of feature vector matrix. Should be " << N << " rows instead of " << _N << std::endl;
-   }
+  }
 
   D = (int)feature_width;
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " 
@@ -198,6 +198,7 @@ void read_factors(std::string base_filename, bool users) {
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
  */
+template<typename VertexDataType, typename EdgeDataType>
 struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
 
@@ -206,26 +207,26 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
-  //compute only for user nodes
-  if (vertex.id() >= M)
-    return;
+    //compute only for user nodes
+    if (vertex.id() >= M)
+      return;
 
-  vertex_data & vdata = latent_factors_inmem[vertex.id()];
-  int howmany = (int)(N*knn_sample_percent);
-  assert(howmany > 0 );
-  vec distances = zeros(howmany);
-  ivec indices = ivec(howmany);
-  for (int i=0; i< howmany; i++){
-    indices[i]= -2;
-  }
-  std::vector<bool> curratings;
-  curratings.resize(N);
-  for(int e=0; e < vertex.num_edges(); e++) {
-  //no need to calculate this rating since it is given in the training data reference
-    curratings[vertex.edge(e)->vertex_id() - M] = true;
-  }
-   if (knn_sample_percent == 1.0){
-     for (uint i=M; i< M+N; i++){
+    vertex_data & vdata = latent_factors_inmem[vertex.id()];
+    int howmany = (int)(N*knn_sample_percent);
+    assert(howmany > 0 );
+    vec distances = zeros(howmany);
+    ivec indices = ivec(howmany);
+    for (int i=0; i< howmany; i++){
+      indices[i]= -2;
+    }
+    std::vector<bool> curratings;
+    curratings.resize(N);
+    for(int e=0; e < vertex.num_edges(); e++) {
+      //no need to calculate this rating since it is given in the training data reference
+      curratings[vertex.edge(e)->vertex_id() - M] = true;
+    }
+    if (knn_sample_percent == 1.0){
+      for (uint i=M; i< M+N; i++){
         if (curratings[i-M])
           continue;
         vertex_data & other = latent_factors_inmem[i];
@@ -233,28 +234,28 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         als_predict(vdata, other, 0, dist); 
         indices[i-M] = i-M;
         distances[i-M] = dist;
-     }
-  }
-  else for (int i=0; i<howmany; i++){
-        int random_other = ::randi(M, M+N-1);
-        vertex_data & other = latent_factors_inmem[random_other];
-        double dist;
-        als_predict(vdata, other, 0, dist); 
-        indices[i-M] = i-M;
-        distances[i-M] = dist;
-   }
-  
-  vec out_dist(num_ratings);
-  ivec indices_sorted = reverse_sort_index2(distances, indices, out_dist, num_ratings);
-  assert(indices_sorted.size() <= num_ratings);
-  assert(out_dist.size() <= num_ratings);
-  vdata.ids = indices_sorted;
-  vdata.ratings = out_dist;
-  if (debug)
-    printf("Closest is: %d with distance %g\n", (int)vdata.ids[0], vdata.ratings[0]);
+      }
+    }
+    else for (int i=0; i<howmany; i++){
+      int random_other = ::randi(M, M+N-1);
+      vertex_data & other = latent_factors_inmem[random_other];
+      double dist;
+      als_predict(vdata, other, 0, dist); 
+      indices[i-M] = i-M;
+      distances[i-M] = dist;
+    }
 
-  if (vertex.id() % 1000 == 0)
-    printf("Computing recommendations for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
+    vec out_dist(num_ratings);
+    ivec indices_sorted = reverse_sort_index2(distances, indices, out_dist, num_ratings);
+    assert(indices_sorted.size() <= num_ratings);
+    assert(out_dist.size() <= num_ratings);
+    vdata.ids = indices_sorted;
+    vdata.ratings = out_dist;
+    if (debug)
+      printf("Closest is: %d with distance %g\n", (int)vdata.ids[0], vdata.ratings[0]);
+
+    if (vertex.id() % 1000 == 0)
+      printf("Computing recommendations for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
   }
 
 };
@@ -318,7 +319,7 @@ void output_knn_result(std::string filename) {
   MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
   MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings)");
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
-                                                                           ", " << filename + ".ids " << std::endl;
+                                                                    ", " << filename + ".ids " << std::endl;
 }
 
 int main(int argc, const char ** argv) {
@@ -349,9 +350,9 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = 0;
   if (tokens_per_row == 3)
-     nshards = convert_matrixmarket<edge_data>(training);
+    nshards = convert_matrixmarket<edge_data>(training);
   else if (tokens_per_row == 4)
-     nshards = convert_matrixmarket4<edge_data4>(training);
+    nshards = convert_matrixmarket4<edge_data4>(training);
   else logstream(LOG_FATAL)<<"--tokens_per_row should be either 3 or 4" << std::endl;
 
   assert(M > 0 && N > 0);
@@ -365,12 +366,18 @@ int main(int argc, const char ** argv) {
   srand(time(NULL));
 
   /* Run */
-  RatingVerticesInMemProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
-  set_engine_flags(engine);
-  pengine = &engine;
-  engine.run(program, 1);
-
+  if (tokens_per_row == 3){
+    RatingVerticesInMemProgram<VertexDataType, EdgeDataType> program;
+    graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
+    set_engine_flags(engine);
+    engine.run(program, 1);
+  } 
+  else if (tokens_per_row == 4){
+    RatingVerticesInMemProgram<VertexDataType, edge_data4> program;
+    graphchi_engine<VertexDataType, edge_data4> engine(training, nshards, false, m); 
+    set_engine_flags(engine);
+    engine.run(program, 1);
+  }
   /* Output latent factor matrices in matrix-market format */
   output_knn_result(training);
 
