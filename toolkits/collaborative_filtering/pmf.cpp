@@ -31,8 +31,6 @@
 #include "common.hpp"
 #include "prob.hpp"
 
-using namespace graphchi;
-
 double lambda = 0.065;
 int pmf_burn_in = 10;//number of iterations for burn in (itermediate solutions are thrown)
 int pmf_additional_output = 0;

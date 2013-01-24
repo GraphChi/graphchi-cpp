@@ -254,9 +254,6 @@ class adjlist_container {
           item_edges.edges,
           sum_sqr(pivot_edges.edges),
           sum_sqr(item_edges.edges));
-
-
-
     }
     else if (distance_metric == CHEBYCHEV){
       return calc_chebychev_distance(pivot_edges.edges, 
@@ -267,15 +264,12 @@ class adjlist_container {
           item_edges.edges,
           sum_sqr(pivot_edges.edges),
           sum_sqr(item_edges.edges));
-
     }
     else if (distance_metric == COSINE){
       return calc_cosine_distance(pivot_edges.edges, 
           item_edges.edges,
           sum_sqr(pivot_edges.edges),
           sum_sqr(item_edges.edges));
-
-
     }
     else if (distance_metric ==MANHATTEN){
       return calc_manhatten_distance(pivot_edges.edges, 
@@ -433,8 +427,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if ((gcontext.iteration % 2 == 0) && (gcontext.iteration >= 2)) {
-      printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
-      printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      if (debug){
+        printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
+      }
       if (adjcontainer->pivot_st <= window_en) {
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
@@ -451,10 +447,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         }
       }
     }
-
   }
-
-
 };
 
 

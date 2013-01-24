@@ -15,14 +15,14 @@
  *  governing permissions and limitations under the License.
  *
  *  Written by Danny Bickson, CMU
- *  Utility for computing ranking metrics
+ *  Utility for computing ranking metrics - comparing between recommendations and actual
+ *  ratings in test set.
  *  */
 
 
 #include <cstdio>
 #include <map>
 #include <iostream>
-#include <map>
 #include <omp.h>
 #include <assert.h>
 #include "graphchi_basic_includes.hpp"
@@ -34,12 +34,7 @@
 using namespace std;
 using namespace graphchi;
 
-bool debug = false;
 timer mytime;
-size_t lines;
-unsigned long long total_lines = 0;
-string dir;
-string outdir;
 int K = 10;
 int max_per_row = 1000;
 std::string training, test;
@@ -51,7 +46,7 @@ const char spaces[] = {" \r\n\t;:"};
 void get_one_line(FILE * pfile, int & index, vec & values, int & pos){ 
   
     char * saveptr = NULL, * linebuf = NULL;
-  size_t linesize = 0;
+    size_t linesize = 0;
 
     int rc = getline(&linebuf, &linesize, pfile);
     if (rc < 1){
@@ -62,21 +57,21 @@ void get_one_line(FILE * pfile, int & index, vec & values, int & pos){
     pos = 0;
     bool first_time = true; 
     while(true){
-    //find from
-    char *pch = strtok_r(first_time ? linebuf : NULL, spaces, &saveptr);
-    if (!pch){
-      return;
-    }
-    float val = atof(pch);
-    if (first_time){
-      index = (int)val;
-      first_time = false;
-    }
-    else {
-      assert(pos < values.size());
-      values[pos] = val;
-      pos++;
-    }
+      //find from
+      char *pch = strtok_r(first_time ? linebuf : NULL, spaces, &saveptr);
+      if (!pch){
+        return;
+      }
+      float val = atof(pch);
+      if (first_time){
+        index = (int)val;
+        first_time = false;
+      }
+      else {
+        assert(pos < values.size());
+        values[pos] = val;
+        pos++;
+      }
     }
 }
 
@@ -127,8 +122,6 @@ int main(int argc,  const char *argv[]) {
 
   graphchi_init(argc, argv);
 
-  debug = get_option_int("debug", 0);
-  lines = get_option_int("lines", 0);
   K = get_option_int("K", K);
   if (K < 1)
     logstream(LOG_FATAL)<<"Number of top elements (--K=) should be >= 1"<<std::endl;

@@ -373,7 +373,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       for (vid_t i=0; i < M+N; i++){
         gcontext.scheduler->add_task(i); 
       }
-      //printf("setting relevant_items to zero\n");
       grabbed_edges = 0;
       adjcontainer->clear();
     } else { //iteration % 2 == 1

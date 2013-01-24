@@ -22,8 +22,8 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorization with the Stochastic Gradient Descent (SVDPP) algorithm.
- *
+ * Matrix factorization with the Koren's SVD++ algorithm.
+ * Algorithm described in the paper:
  * 
  */
 

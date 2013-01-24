@@ -75,10 +75,10 @@ struct vertex_data {
 
 
 /*
- *  * h = pvec = D * DOUBLE
- *   * h0 = weight = D * DOUBLE
- *    * h1 = weight+D = D * DOUBLE
- *     */
+ * h = pvec = D * DOUBLE
+ * h0 = weight = D * DOUBLE
+ * h1 = weight+D = D * DOUBLE
+ */
 struct rbm_user{
   double * h;
   double * h0;
@@ -101,10 +101,9 @@ struct rbm_user{
 
 /**
  * ni = bias = DOUBLE
- *  * bi = pvec = rbm_bins * DOUBLE 
- *   * w = weight = rbm_bins * D * Double
- *    *
- *     */
+ * bi = pvec = rbm_bins * DOUBLE 
+ * w = weight = rbm_bins * D * Double
+ */
 struct rbm_movie{
   double * bi;
   double * ni;
@@ -191,6 +190,7 @@ float predict1(const rbm_user & usr,
 inline float sigmoid(float x){
   return 1 / (1 + exp(-1 * x));
 }
+
 #include "util.hpp"
 
 /**
@@ -351,36 +351,12 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
   }    
 };
 
-struct  MMOutputter_bias{
-  FILE * outf;
-  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1); 
-    for (uint i=start; i< end; i++)
-      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].bias);
-  }
-
-
-  ~MMOutputter_bias() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
-
 
 //dump output to file
 void output_rbm_result(std::string filename) {
   MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
   MMOutputter_mat<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter_bias mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , "This file contains RBM output bias vector. In each row a single item ni.");
-
+  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , BIAS_POS, "This file contains RBM output bias vector. In each row a single item ni.");
   logstream(LOG_INFO) << "RBM output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }

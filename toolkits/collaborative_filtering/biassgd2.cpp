@@ -158,34 +158,8 @@ struct BIASSGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edge
         user.pvec += biassgd_gamma*(err*movie.pvec - biassgd_lambda*user.pvec);
       }
     }
-
   }
-
-
 };
-
-struct  MMOutputter_bias{
-  FILE * outf;
-  MMOutputter_bias(std::string fname, uint start, uint end, std::string comment)  {
-    MM_typecode matcode;
-    set_matcode(matcode);
-    outf = fopen(fname.c_str(), "w");
-    assert(outf != NULL);
-    mm_write_banner(outf, matcode);
-    if (comment != "")
-      fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1); 
-    for (uint i=start; i< end; i++)
-      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].bias);
-  }
-
-
-  ~MMOutputter_bias() {
-    if (outf != NULL) fclose(outf);
-  }
-
-};
-
 
 void output_biassgd_result(std::string filename){
   MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains bias-SGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);

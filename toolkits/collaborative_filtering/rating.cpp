@@ -22,7 +22,8 @@
  *
  * @section DESCRIPTION
  *
- *
+ * This program computes top K recommendations based on the linear model computed
+ * by one of: als,sparse_als,wals, sgd and nmf applications.
  * 
  */
 
@@ -53,9 +54,8 @@ struct vertex_data {
   float get_val(int index){
     return pvec[index];
   }
-
-
 };
+
 struct edge_data {
   double weight;
 
@@ -177,9 +177,9 @@ void read_factors(std::string base_filename, bool users) {
       if (rc != 1)
         logstream(LOG_FATAL)<<"Error when reading input file at line " << i << std::endl;
       if (latent_factors_inmem[i].pvec.size() == 0){
-        latent_factors_inmem[i].pvec = vec::Zero(D);
-        latent_factors_inmem[i].ratings = vec::Zero(num_ratings);
-        latent_factors_inmem[i].ids = ivec::Zero(num_ratings);
+        latent_factors_inmem[i].pvec = zeros(D);
+        latent_factors_inmem[i].ratings = zeros(num_ratings);
+        latent_factors_inmem[i].ids = zeros(num_ratings);
       }
       latent_factors_inmem[i].pvec[j] = val;
     }
@@ -206,13 +206,14 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
+  //compute only for user nodes
   if (vertex.id() >= M)
     return;
 
   vertex_data & vdata = latent_factors_inmem[vertex.id()];
   int howmany = (int)(N*knn_sample_percent);
   assert(howmany > 0 );
-  vec distances = vec::Zero(howmany);
+  vec distances = zeros(howmany);
   ivec indices = ivec(howmany);
   for (int i=0; i< howmany; i++){
     indices[i]= -2;
@@ -254,8 +255,6 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
   if (vertex.id() % 1000 == 0)
     printf("Computing recommendations for user %d at time: %g\n", vertex.id()+1, mytimer.current_time());
-  
-  
   }
 
 };
