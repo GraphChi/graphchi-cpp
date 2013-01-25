@@ -79,5 +79,7 @@ display_name "MAP METRIC - test 1"
 ./toolkits/collaborative_filtering/metric_eval --training=./toolkits/collaborative_filtering/unittest/metric_eval.unittest4 --test=./toolkits/collaborative_filtering/unittest/metric_eval.unittest3 --K=3 
 display_name "MAP METRIC - test 2"
 ./toolkits/collaborative_filtering/metric_eval --training=./toolkits/collaborative_filtering/unittest/metric_eval.unittest2 --test=./toolkits/collaborative_filtering/unittest/metric_eval.unittest2 --K=3 
-
+display_name "TOP K"
+./toolkits/parsers/topk --training=./toolkits/collaborative_filtering/unittest/topk.unittest --K=3 --quiet=1
+diff ./toolkits/collaborative_filtering/unittest/topk.unittest.ids ./toolkits/collaborative_filtering/unittest/topk.unittest.ids.correct
 
