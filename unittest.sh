@@ -12,7 +12,7 @@ function display_name {
 }
 
 
-rm -fr smallnetflix_mm.*
+rm -fR smallnetflix_mm.*
 display_name "TESTING BASELINE"
   ./toolkits/collaborative_filtering/baseline --training=smallnetflix_mm --validation=smallnetflix_mm --minval=1 --maxval=5 --quiet=1  --algorithm=user_mean
 display_name "TESTING ALS"
@@ -42,7 +42,7 @@ display_name "TESTING SVD-ONESIDED"
 display_name "TESTING RBM"
 ./toolkits/collaborative_filtering/rbm --training=smallnetflix_mm --validation=smallnetflix_mme --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING WALS"  
-rm -fr time_smallnetflix.* time_smallnetflixe.*
+rm -fR time_smallnetflix.* time_smallnetflixe.*
 ./toolkits/collaborative_filtering/wals --training=time_smallnetflix --validation=time_smallnetflixe --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --K=27 --quiet=1
 display_name "TESTING WALS - RATING"
 ./toolkits/collaborative_filtering/rating --training=time_smallnetflix --tokens_per_row=4 --quiet=1 --num_ratings=3
@@ -60,6 +60,7 @@ display_name "TESTING BIAS_SGD2 - ABS LOSS"
 display_name "TESTING BIAS_SGD2 - SQUARE LOSS"
 ./toolkits/collaborative_filtering/biassgd2 --training=smallnetflix_mm --minval=1 --maxval=5 --validation=smallnetflix_mme --biassgd_gamma=1e-2 --biassgd_lambda=1e-2 --max_iter=6 --quiet=1 --loss=square --biassgd_step_dec=0.99999
 display_name "TESTING PMF"
+rm -fR smallnetflix_mm.*
  ./toolkits/collaborative_filtering/pmf --training=smallnetflix_mm --validation=smallnetflix_mme --quiet=1 --minval=1 --maxval=5 --max_iter=10 --pmf_burn_in=5
 display_name "TESTING ITEMCF"
 ./toolkits/collaborative_filtering/itemcf --training=smallnetflix_mm --nshards=1 --quiet=1 --K=10
