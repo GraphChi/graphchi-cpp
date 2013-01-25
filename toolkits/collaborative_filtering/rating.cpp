@@ -241,8 +241,8 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
       vertex_data & other = latent_factors_inmem[random_other];
       double dist;
       als_predict(vdata, other, 0, dist); 
-      indices[i-M] = i-M;
-      distances[i-M] = dist;
+      indices[i] = random_other-M;
+      distances[i] = dist;
     }
 
     vec out_dist(num_ratings);
@@ -274,7 +274,7 @@ struct  MMOutputter_ratings{
     mm_write_mtx_array_size(outf, end-start, num_ratings+1); 
     for (uint i=start; i < end; i++){
       fprintf(outf, "%u ", i+1);
-      for(int j=0; j < num_ratings; j++) {
+      for(int j=0; j < latent_factors_inmem[i].ratings.size(); j++) {
         fprintf(outf, "%1.12e ", latent_factors_inmem[i].ratings[j]);
       }
       fprintf(outf, "\n");
@@ -300,7 +300,7 @@ struct  MMOutputter_ids{
     mm_write_mtx_array_size(outf, end-start, num_ratings+1); 
     for (uint i=start; i < end; i++){
       fprintf(outf, "%u ", i+1);
-      for(int j=0; j < num_ratings; j++) {
+      for(int j=0; j < latent_factors_inmem[i].ids.size(); j++) {
         fprintf(outf, "%u ", (int)latent_factors_inmem[i].ids[j]+1);//go back to item ids starting from 1,2,3, (and not from zero as in c)
       }
       fprintf(outf, "\n");
