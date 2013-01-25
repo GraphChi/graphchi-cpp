@@ -21,22 +21,26 @@
 
 #include <algorithm>
 #include "eigen_wrapper.hpp"
+
 /*  average_precision_at_k code based on Ben Hamer's Kaggle code:
  *  https://github.com/benhamner/Metrics/blob/master/MATLAB/metrics/averagePrecisionAtK.m
  */
-double average_precision_at_k(vec & predictions, vec & actual, int k){
+double average_precision_at_k(vec & predictions, int prediction_size, vec & actual, int actual_size, int k){
   double score = 0;
   int num_hits = 0;
+
   vec sorted_actual = actual;
-  std::sort(sorted_actual.data(), sorted_actual.data()+sorted_actual.size());
+  actual_size = std::min(k, actual_size);
+  std::sort(sorted_actual.data(), sorted_actual.data()+ actual_size);
   for (int i=0; i < std::min((int)predictions.size(), k); i++){
-    if (std::binary_search(sorted_actual.data(), sorted_actual.data()+sorted_actual.size(), predictions[i])){
+    if (std::binary_search(sorted_actual.data(), sorted_actual.data()+ actual_size, predictions[i])){
       num_hits++;
       score += num_hits / (i+1.0);
     }
   }
-  score /= (double)std::min((int)actual.size(), k);
+  score /= (double)std::min(actual_size, k);
   return score;
 }
+
 
 

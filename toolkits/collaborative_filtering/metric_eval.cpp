@@ -98,7 +98,8 @@ void eval_metrics(){
     }
  
     if (train_index == test_index){
-      ap+= average_precision_at_k(train_vec, test_vec, K);
+
+      ap+= average_precision_at_k(train_vec, train_size, test_vec, test_size, K);
       line++;
     }
     else {

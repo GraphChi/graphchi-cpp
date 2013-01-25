@@ -338,7 +338,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
         if (item_pairs_compared % 10000000 == 0)
-          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " <<  std::setw(10) << actual_written << " written. " << std::endl;
+          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " <<  std::setw(10) <<sum(written_pairs) << " written. " << std::endl;
 
         //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
         if (dist != 0){
@@ -468,6 +468,7 @@ int main(int argc, const char ** argv) {
   ItemDistanceProgram program;
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, true, m); 
   set_engine_flags(engine);
+  engine.set_maxwindow(M+N+1);
 
   //open output files as the number of operating threads
   out_files.resize(number_of_omp_threads());
