@@ -215,9 +215,9 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     int howmany = (int)(N*knn_sample_percent);
     assert(howmany > 0 );
     vec distances = zeros(howmany);
-    ivec indices = ivec(howmany);
+    ivec indices = ivec::Zero(howmany);
     for (int i=0; i< howmany; i++){
-      indices[i]= -2;
+      indices[i]= -1;
     }
     std::vector<bool> curratings;
     curratings.resize(N);
@@ -233,7 +233,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         double dist;
         als_predict(vdata, other, 0, dist); 
         indices[i-M] = i-M;
-        distances[i-M] = dist;
+        distances[i-M] = dist + 1e-10;
       }
     }
     else for (int i=0; i<howmany; i++){
@@ -317,7 +317,8 @@ struct  MMOutputter_ids{
 
 void output_knn_result(std::string filename) {
   MMOutputter_ratings mmoutput_ratings(filename + ".ratings", 0, M, "This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings)");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings). Note: 0 item id means there are no more items to recommend for this user.");
+ 
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                     ", " << filename + ".ids " << std::endl;
 }
