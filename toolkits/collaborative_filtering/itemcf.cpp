@@ -52,10 +52,11 @@ enum DISTANCE_METRICS{
 };
 
 int min_allowed_intersection = 1;
-size_t written_pairs = 0;
+vec written_pairs;
 size_t zero_dist = 0;
 size_t actual_written = 0;
 size_t item_pairs_compared = 0;
+size_t not_enough = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
 bool * relevant_items  = NULL;
@@ -344,15 +345,16 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           heap.push_back(index_val(i, dist)); 
                 //where the output format is: 
          //[item A] [ item B ] [ distance ] 
-          written_pairs++;
         }
         else zero_dist++;
       }
       sort(heap.begin(), heap.end(), &Greater);
       int thread_num = omp_get_thread_num();
+      if (heap.size() < K)
+        not_enough++;
       for (uint i=0; i< std::min(heap.size(), (size_t)K); i++){
           int rc = fprintf(out_files[thread_num], "%u %u %lg\n", v.id()-M+1, heap[i].index-M+1, (double)heap[i].val);//write item similarity to file
-          actual_written++;
+          written_pairs[omp_get_thread_num()]++;
          if (rc <= 0){
             perror("Failed to write output");
             logstream(LOG_FATAL)<<"Failed to write output to: file: " << training << omp_get_thread_num() << ".out" << std::endl;  
@@ -368,6 +370,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
     gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
+    if (gcontext.iteration == 0)
+      written_pairs = zeros(gcontext.execthreads);
     if (gcontext.iteration % 2 == 0){
       memset(relevant_items, 0, sizeof(bool)*N);
       for (vid_t i=0; i < M+N; i++){
@@ -480,8 +484,9 @@ int main(int argc, const char ** argv) {
   if (!quiet)
     metrics_report(m);
   
-  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << " actual written: " << actual_written << " pairs with zero distance: " << zero_dist << std::endl;
-
+  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << sum(written_pairs) << " pairs with zero distance: " << zero_dist << std::endl;
+  if (not_enough)
+    logstream(LOG_WARNING)<<"Items that did not have enough similar items: " << not_enough << std::endl;
   for (uint i=0; i< out_files.size(); i++){
     fflush(out_files[i]);
     fclose(out_files[i]);
