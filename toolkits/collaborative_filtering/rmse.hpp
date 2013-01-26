@@ -109,7 +109,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
-  if (avgprd && gcontext->iteration == 0)
+  if (avgprd && gcontext->iteration == pmf_burn_in)
     *avgprd = zeros(nz);
 
 
@@ -131,11 +131,11 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
     //for mcmc methods, store the sum of predictions
-    if (avgprd && gcontext->iteration >= pmf_burn_in)
+    if (avgprd && avgprd->size() > 0 && gcontext->iteration >= pmf_burn_in)
       avgprd->operator[](i) += prediction;
 
     if (dosave){
-      if (avgprd)
+      if (avgprd && avgprd->size() > 0)
         prediction = avgprd->operator[](i) /(gcontext->iteration - pmf_burn_in); 
       fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
     }

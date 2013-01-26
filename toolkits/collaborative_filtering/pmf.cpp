@@ -422,8 +422,6 @@ int main(int argc, const char ** argv) {
   pengine = &engine;
   engine.run(program, niters);
 
-  test_predictions(&pmf_predict);    
-  
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);

@@ -61,7 +61,7 @@ display_name "TESTING BIAS_SGD2 - SQUARE LOSS"
 ./toolkits/collaborative_filtering/biassgd2 --training=smallnetflix_mm --minval=1 --maxval=5 --validation=smallnetflix_mme --biassgd_gamma=1e-2 --biassgd_lambda=1e-2 --max_iter=6 --quiet=1 --loss=square --biassgd_step_dec=0.99999
 display_name "TESTING PMF"
 rm -fR smallnetflix_mm.*
- ./toolkits/collaborative_filtering/pmf --training=smallnetflix_mm --validation=smallnetflix_mme --quiet=1 --minval=1 --maxval=5 --max_iter=10 --pmf_burn_in=5
+ ./toolkits/collaborative_filtering/pmf --training=smallnetflix_mm --validation=smallnetflix_mme --quiet=1 --minval=1 --maxval=5 --max_iter=10 --pmf_burn_in=5 --test=smallnetflix_mme
 display_name "TESTING ITEMCF"
 ./toolkits/collaborative_filtering/itemcf --training=smallnetflix_mm --nshards=1 --quiet=1 --K=10
 display_name "TESTING ITEMCF - AIOLLI ASYM COST"
