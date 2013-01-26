@@ -468,9 +468,9 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       I-=input_file_offset;  /* adjust from 1-based to 0-based */
       J-=input_file_offset;
       if (I >= M)
-        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
+        logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I+1 << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
-        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+        logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J+1 << " > " << N << " in line; " << i << std::endl;
       if (type == TRAINING)
         globalMean += val; 
       else globalMean2 += val;
