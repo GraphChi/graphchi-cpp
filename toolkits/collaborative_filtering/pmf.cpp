@@ -406,7 +406,7 @@ int main(int argc, const char ** argv) {
 
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<edge_data>(training);
+  int nshards = convert_matrixmarket<edge_data>(training, NULL, 0, 0, 3, TRAINING, false);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   init_pmf();
 

@@ -401,7 +401,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING) {
+int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING, int allow_square = true) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   FILE *f;
   size_t nz;   
@@ -474,7 +474,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
       if (type == TRAINING)
         globalMean += val; 
       else globalMean2 += val;
-      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
+      sharderobj.preprocessing_add_edge(I, (M==N && allow_square)?J:M + J, als_edge_type((float)val));
     }
 
     if (type == TRAINING){
