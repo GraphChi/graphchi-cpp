@@ -109,9 +109,9 @@ void read_global_mean(std::string base_filename, int type){
     logstream(LOG_FATAL)<<"Failed to read global mean from file" << base_filename << ".gm" << std::endl;
   fclose(inf);
   if (type == TRAINING)
-    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Opened matrix size: " <<M << " x " << N << " edges: " << L << " Global mean is: " << globalMean << " time bins: " << K << " Now creating shards." << std::endl;
   else 
-    logstream(LOG_INFO) << "Opened VLIDATION matrix size: " <<Me << " x " << Ne << " Global mean is: " << globalMean2 << " time bins: " << K << " Now creating shards." << std::endl;
+    logstream(LOG_INFO) << "Opened VLIDATION matrix size: " <<Me << " x " << Ne << " edges: " << Le << " Global mean is: " << globalMean2 << " time bins: " << K << " Now creating shards." << std::endl;
 }
 
 void write_global_mean(std::string base_filename, int type){
@@ -348,7 +348,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val));
+      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val, I < J));
     }
 
     logstream(LOG_DEBUG)<<"Finished loading " << nz << " ratings from file: " << base_filename << std::endl;
@@ -357,7 +357,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
       if (tokens_per_row == 3){
         int rc = fscanf(fsim, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
-          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+          logstream(LOG_FATAL)<<"Error when reading input file: " << similarity_file << " line: " << i << std::endl;
       }
       else if (tokens_per_row == 2){
         int rc = fscanf(fsim, "%u %u\n", &I, &J);
@@ -372,7 +372,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-      sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type((float)val));
+      sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type((float)val, I < J));
     }
 
     logstream(LOG_DEBUG)<<"Finished loading " << nz_sim << " ratings from file: " << similarity_file << std::endl;

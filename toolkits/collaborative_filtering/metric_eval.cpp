@@ -38,7 +38,8 @@ timer mytime;
 int K = 10;
 int max_per_row = 1000;
 std::string training, test;
-
+double avg_train_size = 0;
+double avg_test_size = 0;
 //non word tokens that will be removed in the parsing
 //it is possible to add additional special characters or remove ones you want to keep
 const char spaces[] = {" \r\n\t;:"};
@@ -91,14 +92,17 @@ void eval_metrics(){
     if (train_index == -1 || test_index == -1)
        break;
     while (test_index < train_index && test_index != -1){
+      logstream(LOG_WARNING)<<"Skipping over test index: " << test_index << " train: " << train_index << std::endl;
       get_one_line(testt.outf, test_index, test_vec, test_size);
     }
     while (train_index < test_index && train_index != -1){
+      logstream(LOG_WARNING)<<"Skipping over train. test index: " << test_index << " train: " << train_index << std::endl;
       get_one_line(trf.outf, train_index, train_vec, train_size);
     }
  
     if (train_index == test_index){
-
+      avg_train_size += train_size;
+      avg_test_size += test_size;
       ap+= average_precision_at_k(train_vec, train_size, test_vec, test_size, K);
       line++;
     }
@@ -112,6 +116,8 @@ void eval_metrics(){
 
   logstream(LOG_INFO)<<"Computed AP@" << K << " metric: " << ap/(double)line << std::endl;
   logstream(LOG_INFO)<<"Total compared: " << line << std::endl;
+  logstream(LOG_INFO)<<"Avg test length: " << avg_test_size / line << std::endl;
+  logstream(LOG_INFO)<<"Avg train length: " << avg_train_size / line << std::endl;
 }
 
 

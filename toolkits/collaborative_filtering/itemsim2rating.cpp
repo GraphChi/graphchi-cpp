@@ -57,7 +57,15 @@ bool is_user(vid_t v){ return v < M; }
  * Sharder-program. 
  */
 typedef unsigned int VertexDataType;
-typedef float  EdgeDataType;  // Edges store the "rating" of user->movie pair
+
+struct edge_data{
+  float weight;
+  bool direction;
+  edge_data(){ weight = 0; direction =false; }
+  edge_data(float weight, bool direction) : weight(weight), direction(direction) { };
+};
+
+typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 struct vertex_data{ 
   vec pvec; 
@@ -122,7 +130,7 @@ class adjlist_container {
     /**
      * Grab pivot's adjacency list into memory.
      */
-    int load_edges_into_memory(graphchi_vertex<uint32_t, float> &v) {
+    int load_edges_into_memory(graphchi_vertex<uint32_t, EdgeDataType> &v) {
       assert(is_pivot(v.id()));
       assert(is_user(v.id()));
 
@@ -130,7 +138,7 @@ class adjlist_container {
 
       dense_adj dadj;
       for(int i=0; i<num_edges; i++) 
-        set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data());
+        set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data().weight);
       //dadj.ratings = zeros(N);
       adjs[v.id() - pivot_st] = dadj;
       assert(v.id() - pivot_st < adjs.size());
@@ -150,50 +158,56 @@ class adjlist_container {
 
       if (!get_val(pivot_edges.edges, item.id())){
         if (debug)
-          logstream(LOG_DEBUG)<<"Skipping item pivot pair since not connected!" << std::endl;
+          logstream(LOG_DEBUG)<<"Skipping item pivot pair since not connected!" << item.id() << std::endl;
         return 0;
       }
 
       int num_edges = item.num_edges();
+      if (debug)
+        logstream(LOG_DEBUG)<<"Found " << num_edges << " edges from item : " << item.id() << std::endl;
       //if there are not enough neighboring user nodes to those two items there is no need
       //to actually count the intersection
-      if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection)
+      if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection){
+        if (debug)
+          logstream(LOG_DEBUG)<<"skipping item pivot pair since < min_allowed_intersection" << std::endl;
         return 0;
-
-
-      std::vector<vid_t> edges;
-      edges.resize(num_edges);
-      for(int i=0; i < num_edges; i++) {
-        vid_t other_vertex = item.edge(i)->vertexid;
-        edges[i] = other_vertex;
       }
-      sort(edges.begin(), edges.end());
- 
-      for(int i=0; i < num_edges; i++){
-        if (is_item(edges[i])){
-          //skip duplicate ratings (if any)
-          if (i > 0 && edges[i] == edges[i-1])
-            continue;
-          //skip self similarity of items (if any)
-          if (edges[i] == item.id())
-            continue;
 
-          //skip items that are already rated by this user
-          if (get_val(pivot_edges.edges, edges[i]))
-              continue;
+      for(int i=0; i < num_edges; i++){
+        vid_t other_item = item.edge(i)->vertex_id();
+        if (debug)
+          logstream(LOG_DEBUG)<<"Checking now edge: " << other_item << std::endl;
+
+        if (is_user(other_item)){
+          if (debug)
+              logstream(LOG_DEBUG)<<"skipping edge to user " << other_item << std::endl;
+          continue;
+        }
+
+          if ((item.edge(i)->get_data().direction && item.id() >= other_item) ||
+              (!item.edge(i)->get_data().direction && item.id() <= other_item)){
+            if (debug)
+              logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
+            continue;
+          }
+
+          if (get_val(pivot_edges.edges, other_item)){
+            if (debug)
+              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because alrteady connected to pivot" << std::endl;
+            continue;
+          }
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
-          set_val(pivot_edges.ratings, edges[i]-M, get_val(pivot_edges.ratings, edges[i]-M) + item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id()));
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + item.edge(i)->get_data().weight /* * get_val(pivot_edges.edges, item.id())*/);
           pivot_edges.mymutex.unlock();
           if (debug)
-            logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data() << " to item: " << edges[i]-M+1 << " for user: " << user_pivot+1<<std::endl;
-        }
-        else if (debug)
-          logstream(LOG_DEBUG)<<"Skpping edge to: " << edges[i] << " connected? " << get_val(pivot_edges.edges, edges[i]) << std::endl;
+            logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data().weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
       }
 
+      if (debug)
+        logstream(LOG_DEBUG)<<"Finished user pivot " << user_pivot << std::endl;
       return 0;
     }
 
@@ -224,7 +238,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("Loading pivot %d intro memory\n", v.id());
       }
-      else if (is_item(v.id())){
+     /* else if (is_item(v.id())){
         //check if this item is connected to any pivot user
         bool has_pivot = false;
         int pivot = -1;
@@ -251,7 +265,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           if (is_item(e->vertexid))
             relevant_items[e->vertexid - M] = true;
         }
-      }//is_user 
+      }//is_user */
     } //iteration % 2 =  1 */
     /* odd iteration number:
      * 1) For any item connected to a pivot item
@@ -259,11 +273,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
      */
     else {
       assert(is_item(v.id()));
-      if (!relevant_items[v.id() - M]){
+      /*if (!relevant_items[v.id() - M]){
         if (debug)
         logstream(LOG_DEBUG)<<"Skipping item: " << v.id()-M <<  " since it is not relevant. " << std::endl;
         return;
-      }
+      }*/
 
       for (int i=0; i< v.num_edges(); i++){
      // for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
@@ -271,7 +285,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         //if (i >= v.id())
         //  continue;
         if (!is_user(v.edge(i)->vertex_id()) || !adjcontainer->is_pivot(v.edge(i)->vertex_id()))
-          break;
+          continue;
         if (debug)
           printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
    
@@ -291,8 +305,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
   void before_iteration(int iteration, graphchi_context &gcontext) {
     gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
     if (gcontext.iteration % 2 == 0){
-      memset(relevant_items, 0, sizeof(bool)*N);
-      for (vid_t i=0; i < M+N; i++){
+      for (vid_t i=0; i < M; i++){
         gcontext.scheduler->add_task(i); 
       }
       if (debug)
@@ -318,25 +331,25 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if ((gcontext.iteration % 2 == 0)) {
-      if (debug){
+      //if (debug){
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
-        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
-      }
-      if (adjcontainer->pivot_st <= window_en) {
-
-          if (grabbed_edges == 0) {
+        printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
+      //}
+      //if (adjcontainer->pivot_st <= window_en) {
+      if (adjcontainer->pivot_st < M){
+         // if (grabbed_edges == 0) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(window_en + 1);
+          adjcontainer->extend_pivotrange(M/*window_en + 1*/);
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
-          if (window_en+1 == M) {
+          if (window_en+1 == M+N) {
             // every user was a pivot item, so we are done
             logstream(LOG_DEBUG)<<"Setting last iteration to: " << gcontext.iteration + 2 << std::endl;
             gcontext.set_last_iteration(gcontext.iteration + 2);                    
           }
-        } else {
-          logstream(LOG_DEBUG) << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
-        }
-      }
+       // } else {
+       //   logstream(LOG_DEBUG) << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
+       // }
+     }
     }
 
   }
@@ -350,13 +363,15 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
     /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
     if (gcontext.iteration % 2 == 1){
-      if (debug){
+     // if (debug){
         printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
-        printf("pivot_st is %d window_en %d\n", adjcontainer->pivot_st, window_en);
-      }
+        printf("pivot_st is %d window_st %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
+     // }
 
       for (uint i=window_st; i < window_en; i++){
         if (is_user(i)){
+          if (debug)
+            logstream(LOG_DEBUG)<<"Going over user" << std::endl;
           dense_adj &user = adjcontainer->adjs[i - window_st];
           if (nnz(user.edges) == 0 || nnz(user.ratings) == 0)
             continue;
