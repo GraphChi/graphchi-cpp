@@ -49,6 +49,7 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 int debug;
+int undirected = 0;
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
 
@@ -184,8 +185,8 @@ class adjlist_container {
           continue;
         }
 
-          if ((item.edge(i)->get_data().direction && item.id() >= other_item) ||
-              (!item.edge(i)->get_data().direction && item.id() <= other_item)){
+          if (!undirected && ((item.edge(i)->get_data().direction && item.id() >= other_item) ||
+              (!item.edge(i)->get_data().direction && item.id() <= other_item))){
             if (debug)
               logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
             continue;
@@ -198,6 +199,7 @@ class adjlist_container {
           }
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
+          assert(item.edge(i)->get_data().weight != 0);
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + item.edge(i)->get_data().weight /* * get_val(pivot_edges.edges, item.id())*/);
@@ -238,52 +240,15 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("Loading pivot %d intro memory\n", v.id());
       }
-     /* else if (is_item(v.id())){
-        //check if this item is connected to any pivot user
-        bool has_pivot = false;
-        int pivot = -1;
-        for(int i=0; i<v.num_edges(); i++) {
-          graphchi_edge<float> * e = v.edge(i);
-          if (is_user(e->vertexid) && adjcontainer->is_pivot(e->vertexid)){ //items are connected both to users and similar items
-            has_pivot = true;
-            pivot = e->vertexid;
-            break;
-          }
-        }
-        if (debug)
-          printf("item %d is linked to pivot %d\n", v.id(), pivot);
-
-        relevant_items[v.id() - M] = true;
-        if (!has_pivot) //this item is not connected to any of the pivot users nodes and thus
-          //it is not relevant at this point
-          return; 
-
-        //this item is connected to a pivot user, thus all connected items should be compared
-        for(int i=0; i<v.num_edges(); i++) {
-          graphchi_edge<float> * e = v.edge(i);
-          assert(v.id() != e->vertexid);
-          if (is_item(e->vertexid))
-            relevant_items[e->vertexid - M] = true;
-        }
-      }//is_user */
-    } //iteration % 2 =  1 */
-    /* odd iteration number:
+    }
+      /* odd iteration number:
      * 1) For any item connected to a pivot item
      *       compute itersection
      */
     else {
       assert(is_item(v.id()));
-      /*if (!relevant_items[v.id() - M]){
-        if (debug)
-        logstream(LOG_DEBUG)<<"Skipping item: " << v.id()-M <<  " since it is not relevant. " << std::endl;
-        return;
-      }*/
 
       for (int i=0; i< v.num_edges(); i++){
-     // for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
-        //since metric is symmetric, compare only to pivots which are smaller than this item id
-        //if (i >= v.id())
-        //  continue;
         if (!is_user(v.edge(i)->vertex_id()) || !adjcontainer->is_pivot(v.edge(i)->vertex_id()))
           continue;
         if (debug)
@@ -308,8 +273,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       for (vid_t i=0; i < M; i++){
         gcontext.scheduler->add_task(i); 
       }
-      if (debug)
-        printf("scheduling all nodes, setting relevant_items to zero\n");
       grabbed_edges = 0;
       adjcontainer->clear();
     } else { //iteration % 2 == 1, schedule only item nodes
@@ -341,7 +304,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
           adjcontainer->extend_pivotrange(M/*window_en + 1*/);
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
-          if (window_en+1 == M+N) {
+          if (window_en == M+N) {
             // every user was a pivot item, so we are done
             logstream(LOG_DEBUG)<<"Setting last iteration to: " << gcontext.iteration + 2 << std::endl;
             gcontext.set_last_iteration(gcontext.iteration + 2);                    
@@ -416,6 +379,7 @@ int main(int argc, const char ** argv) {
   std::string similarity   = get_option_string("similarity", "");
   if (similarity == "")
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
+  undirected               = get_option_int("undirected", 0);
 
   mytimer.start();
   int nshards          = convert_matrixmarket_and_item_similarity<EdgeDataType>(training, similarity);
