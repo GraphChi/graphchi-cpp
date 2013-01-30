@@ -215,14 +215,14 @@ class adjlist_container {
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
           assert(item.edge(i)->get_data().weight != 0);
 
-          if (find_twice(edges, other_item)){
+          //if (find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + item.edge(i)->get_data().weight /* * get_val(pivot_edges.edges, item.id())*/);
           pivot_edges.mymutex.unlock();
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data().weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
-          }
+          //}
       }
 
       if (debug)
@@ -351,10 +351,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       for (uint i=window_st; i < window_en; i++){
         if (is_user(i)){
           if (debug)
-            logstream(LOG_DEBUG)<<"Going over user" << std::endl;
+            logstream(LOG_DEBUG)<<"Going over user" << i << std::endl;
           dense_adj &user = adjcontainer->adjs[i - window_st];
-          if (nnz(user.edges) == 0 || nnz(user.ratings) == 0)
+          if (nnz(user.edges) == 0 || nnz(user.ratings) == 0){
+            if (debug)
+              logstream(LOG_DEBUG)<<"User with no edges" << std::endl;
             continue;
+          }
           //assert(user.ratings.size() == N);
           ivec positions = reverse_sort_index(user.ratings, K);
           assert(positions.size() > 0);
@@ -363,8 +366,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
             assert(positions[j] < (int)N);
 
 	    //skip zero entries
-            if (get_val(user.ratings, positions[j])== 0)
+            if (get_val(user.ratings, positions[j])== 0){
+              if (debug)
+                logstream(LOG_DEBUG)<<"Found zero in position " << j << std::endl;
               break;
+            }
             int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
             assert(rc > 0);
             written_pairs++;
