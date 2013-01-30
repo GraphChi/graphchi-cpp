@@ -252,10 +252,15 @@ namespace graphchi {
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
             int len = (int) (bufptr - buf);
             
+            m.start_time("edata_flush");
+            
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             write_compressed(f, buf, len);
             close(f);
+            
+            m.stop_time("edata_flush");
+
             
 #ifdef DYNAMICEDATA
             // Write block's uncompressed size
@@ -514,6 +519,7 @@ namespace graphchi {
             if (!flush)
                 bufs[shard][bufptrs[shard]++] = et;
             if (flush || bufptrs[shard] * sizeof(edge_t) >= bufsize) {
+                m.start_time("shovel_flush");
                 std::stringstream ss;
                 ss << shovel_filename(shard) << "." << shovelblocksidxs[shard];
                 std::string shovelfblockname = ss.str();
@@ -525,9 +531,10 @@ namespace graphchi {
                 close(bf);
                 shovelsizes[shard] += len;
                 shovelblocksidxs[shard] ++;
-                
+                m.stop_time("shovel_flush");
+
                 logstream(LOG_DEBUG) << "Flushed " << shovelfblockname << " bufsize: " << bufsize << "/" << wcompressed << " ("
-                << (wcompressed * 1.0 / bufsize) << ")" << std::endl;
+                << (wcompressed * 1.0 / bufsize) << "), sizeof(edge_t)" << sizeof(edge_t)  << std::endl;
             }
         }
         
@@ -577,6 +584,7 @@ namespace graphchi {
         }
         
         size_t read_shovel(int shard, char ** data) {
+            m.start_time("read_shovel");
             size_t sz = shovelsizes[shard];
             *data = (char *) malloc(sz);
             char * ptr = * data;
@@ -590,13 +598,16 @@ namespace graphchi {
                 std::string shovelfblockname = ss.str();
                 int f = open(shovelfblockname.c_str(), O_RDONLY);
                 if (f < 0) break;
+                m.start_time("shovel_readcompressed");
                 read_compressed(f, ptr, len);
+                m.stop_time("shovel_readcompressed");
                 nread += len;
                 ptr += len;
                 close(f);
                 blockidx++;
                 remove(shovelfblockname.c_str());
             }
+            m.stop_time("read_shovel");
             assert(nread == sz);
             return sz;
         }
@@ -630,6 +641,7 @@ namespace graphchi {
             }
             
             for(int shard=0; shard < nshards; shard++) {
+                m.start_time("shard_final");
                 blockid = 0;
                 size_t edgecounter = 0;
                 
@@ -768,6 +780,8 @@ namespace graphchi {
                     ofs.close();
                 }
                 free(ebuf);
+                
+                m.stop_time("shard_final");
             }
             
             if (!count_degrees_inmem) {
