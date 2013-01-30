@@ -273,7 +273,7 @@ int main(int argc,  const char *argv[]) {
     assert((int)components.size() <= (int) latent_factors_inmem.size());
     for (uint i=0; i< components.size(); i++){
       assert(i+1 < latent_factors_inmem.size());
-      assert(components[i] >= 1 && components[i] < nodes);
+      assert(components[i] >= 1 && components[i] <= nodes);
       if (debug && components[i] == 9322220)
       logstream(LOG_DEBUG)<<"Setting node : " <<i<<" component : " << components[i] << std::endl;
       latent_factors_inmem[i].component = components[i];

@@ -89,7 +89,14 @@ struct dense_adj {
   dense_adj() { }
 };
 
-
+bool find_twice(std::vector<vid_t>& edges, vid_t val){
+  int ret = 0;
+  for (int i=0; i < edges.size(); i++){
+      if (edges[i] == val)
+        ret++;
+  }
+  return (ret == 2);
+}
 // This is used for keeping in-memory
 class adjlist_container {
   public:
@@ -174,6 +181,13 @@ class adjlist_container {
         return 0;
       }
 
+      std::vector<vid_t> edges;
+      for(int i=0; i < num_edges; i++){
+        edges.push_back(item.edge(i)->vertex_id());
+      }
+      std::sort(edges.data(), edges.data()+edges.size());
+
+
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
         if (debug)
@@ -200,12 +214,15 @@ class adjlist_container {
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
           assert(item.edge(i)->get_data().weight != 0);
+
+          if (find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + item.edge(i)->get_data().weight /* * get_val(pivot_edges.edges, item.id())*/);
           pivot_edges.mymutex.unlock();
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data().weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
+          }
       }
 
       if (debug)
