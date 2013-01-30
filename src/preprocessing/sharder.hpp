@@ -471,7 +471,9 @@ namespace graphchi {
                     shovelblocksidxs.resize(nshards);
                     bufs = new edge_t*[nshards];
                     bufptrs =  new int[nshards];
-                    bufsize = (1024 * 1024 * get_option_long("membudget_mb", 1024)) / nshards / 4;
+                    size_t membudget_mb = get_option_long("membudget_mb", 1024);
+                    if (membudget_mb > 3000) membudget_mb = 3000; // Cap to 3 gigs for this purpose
+                    bufsize = (1024 * 1024 * membudget_mb) / nshards / 4;
                     while(bufsize % sizeof(edge_t) != 0) bufsize++;
                     
                     logstream(LOG_DEBUG)<< "Shoveling bufsize: " << bufsize << std::endl;
