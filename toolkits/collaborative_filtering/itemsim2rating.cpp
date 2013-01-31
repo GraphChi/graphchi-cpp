@@ -50,6 +50,7 @@ int grabbed_edges = 0;
 int distance_metric;
 int debug;
 int undirected = 0;
+double Q = 3; //the power of the weights added into the total score
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
 
@@ -218,7 +219,7 @@ class adjlist_container {
           //if (find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + item.edge(i)->get_data().weight /* * get_val(pivot_edges.edges, item.id())*/);
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + pow(item.edge(i)->get_data().weight,Q) /* * get_val(pivot_edges.edges, item.id())*/);
           pivot_edges.mymutex.unlock();
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data().weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
@@ -403,7 +404,7 @@ int main(int argc, const char ** argv) {
   if (similarity == "")
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
   undirected               = get_option_int("undirected", 0);
-
+  Q                        = get_option_float("Q", Q);
   mytimer.start();
   int nshards          = convert_matrixmarket_and_item_similarity<EdgeDataType>(training, similarity);
   K = get_option_int("K");

@@ -31,7 +31,7 @@ IMPLICIT_RATING_RANDOM = 1
 };
 
 double implicitratingweight;
-double implicitratingvalue;
+double implicitratingvalue = -1;
 double implicitratingpercentage;
 int    implicitratingtype;
 
@@ -90,5 +90,7 @@ void parse_implicit_command_line(){
    implicitratingpercentage = get_option_float("implicitratingpercentage", implicitratingpercentage);
    if (implicitratingpercentage < 1e-8 && implicitratingpercentage > 0.8)
      logstream(LOG_FATAL)<<"Implicit rating percentage should be (1e-8, 0.8)" << std::endl;
+   if (implicitratingtype != IMPLICIT_RATING_DISABLED && implicitratingvalue == 0)
+     logstream(LOG_FATAL)<<"You are not allowed to use --implicitratingvalue=0. Please select a non zero value, for example -1" << std::endl;
 }
 #endif //_IMPLICIT_HPP__
