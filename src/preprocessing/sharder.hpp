@@ -680,7 +680,9 @@ namespace graphchi {
                 char * ebufptr = ebuf;
                 
                 vid_t curvid=0;
+#ifdef DYNAMICEDATA
                 vid_t lastdst = 0xffffffff;
+#endif
                 size_t istart = 0;
                 size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
@@ -692,9 +694,8 @@ namespace graphchi {
                         logstream(LOG_ERROR) << "Duplicate edge in the stream - aborting" << std::endl;
                         assert(false);
                     }
-#endif
-
                     lastdst = edge.dst;
+#endif
                     
                     if (!edge.stopper()) {
 #ifndef DYNAMICEDATA
