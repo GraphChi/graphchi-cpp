@@ -64,6 +64,22 @@ flt_dbl calc_tanimoto_distance( sparse_flt_dbl_vec & datapoint,  flt_dbl_vec &cl
   return 1.0 - a_mult_b/div;
 }
 
+flt_dbl calc_jaccard_weight_distance( sparse_flt_dbl_vec & datapoint, sparse_flt_dbl_vec & cluster, flt_dbl sqr_sum, flt_dbl sqr_sum_datapoint){ 
+  flt_dbl a_size = 0;
+  FOR_ITERATOR(i, datapoint){
+   a_size+= i.value();
+  }
+  flt_dbl b_size = 0;
+  FOR_ITERATOR(i, cluster){
+   b_size+= i.value();
+  }
+  flt_dbl intersection_size = sqr_sum;
+  assert(intersection_size != 0);
+  return intersection_size / (a_size+b_size-intersection_size);
+}
+
+
+
 flt_dbl calc_euclidian_distance( sparse_flt_dbl_vec & datapoint,  sparse_flt_dbl_vec &cluster, flt_dbl sqr_sum, flt_dbl sqr_sum_datapoint){
   //sparse_flt_dbl_vec diff = minus(datapoint , cluster);
   //return sqrt(sum_sqr(diff));

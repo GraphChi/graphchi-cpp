@@ -22,7 +22,7 @@
  * This file implements item based collaborative filtering by comparing all item pairs which
  * are connected by one or more user nodes. 
  *
- * For the Jackard index see: http://en.wikipedia.org/wiki/Jaccard_index
+ * For the Jaccard index see: http://en.wikipedia.org/wiki/Jaccard_index
  *
  * For the AA index see: http://arxiv.org/abs/0907.1728 "Role of Weak Ties in Link Prediction of Complex Networks", equation (2)
  *

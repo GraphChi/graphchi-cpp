@@ -61,10 +61,10 @@ bool is_user(vid_t v){ return v < M; }
 typedef unsigned int VertexDataType;
 
 struct edge_data{
-  float weight;
-  bool direction;
-  edge_data(){ weight = 0; direction =false; }
-  edge_data(float weight, bool direction) : weight(weight), direction(direction) { };
+  float up_weight;
+  float down_weight;
+  edge_data(){ up_weight = 0; down_weight = 0; }
+  edge_data(float up_weight, float down_weight) : up_weight(up_weight), down_weight(down_weight) { };
 };
 
 typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
@@ -96,6 +96,7 @@ bool find_twice(std::vector<vid_t>& edges, vid_t val){
       if (edges[i] == val)
         ret++;
   }
+  assert(ret >= 0 && ret <= 2);
   return (ret == 2);
 }
 // This is used for keeping in-memory
@@ -147,7 +148,7 @@ class adjlist_container {
 
       dense_adj dadj;
       for(int i=0; i<num_edges; i++) 
-        set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data().weight);
+        set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data().up_weight);
       //dadj.ratings = zeros(N);
       adjs[v.id() - pivot_st] = dadj;
       assert(v.id() - pivot_st < adjs.size());
@@ -184,6 +185,7 @@ class adjlist_container {
 
       std::vector<vid_t> edges;
       for(int i=0; i < num_edges; i++){
+        if (is_item(item.edge(i)->vertex_id()))
         edges.push_back(item.edge(i)->vertex_id());
       }
       std::sort(edges.data(), edges.data()+edges.size());
@@ -191,6 +193,7 @@ class adjlist_container {
 
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
+        bool up = item.id() < other_item;
         if (debug)
           logstream(LOG_DEBUG)<<"Checking now edge: " << other_item << std::endl;
 
@@ -200,8 +203,8 @@ class adjlist_container {
           continue;
         }
 
-          if (!undirected && ((item.edge(i)->get_data().direction && item.id() >= other_item) ||
-              (!item.edge(i)->get_data().direction && item.id() <= other_item))){
+          if (!undirected && ((!up && item.edge(i)->get_data().up_weight == 0) ||
+              (up && item.edge(i)->get_data().down_weight == 0))){
             if (debug)
               logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
             continue;
@@ -214,16 +217,17 @@ class adjlist_container {
           }
 
 	  assert(get_val(pivot_edges.edges, item.id()) != 0);
-          assert(item.edge(i)->get_data().weight != 0);
+          float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
+          assert(weight != 0);
 
-          //if (find_twice(edges, other_item)){
+          if (find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + pow(item.edge(i)->get_data().weight,Q) /* * get_val(pivot_edges.edges, item.id())*/);
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + pow(weight,Q) /* * get_val(pivot_edges.edges, item.id())*/);
           pivot_edges.mymutex.unlock();
           if (debug)
-            logstream(LOG_DEBUG)<<"Adding weight: " << item.edge(i)->get_data().weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
-          //}
+            logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
+          }
       }
 
       if (debug)

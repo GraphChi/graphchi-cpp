@@ -245,6 +245,7 @@ int main(int argc,  const char *argv[]) {
   latent_factors_inmem.resize(square? std::max(M,N) : M+N);
 
   vec vseed;
+  if (!_degree){
   if (seed_file == ""){/* read list of seeds from the --seeds=XX command line argument */
     if (seeds == "")
       logstream(LOG_FATAL)<<"Must specify either seeds or seed_file"<<std::endl;
@@ -264,7 +265,7 @@ int main(int argc,  const char *argv[]) {
       latent_factors_inmem[vseed[i]-1].active = true;
     }
   }
-
+  }
   vec components;
 
   /* read a vector of connected components for each node */
