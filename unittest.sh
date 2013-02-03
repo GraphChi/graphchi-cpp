@@ -83,5 +83,5 @@ display_name "TOP K"
 ./toolkits/parsers/topk --training=./toolkits/collaborative_filtering/unittest/topk.unittest --K=3 --quiet=1
 diff ./toolkits/collaborative_filtering/unittest/topk.unittest.ids ./toolkits/collaborative_filtering/unittest/topk.unittest.ids.correct
 display_name "ITEMCF3"
-./toolkits/collaborative_filtering/itemcf3 --training=/toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph --distance=9 --debug=0 --quiet=1 --execthreads=1 
-diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph.out0
+./toolkits/collaborative_filtering/itemcf3 --training=./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph --distance=9 --debug=0 --quiet=1 --execthreads=1 
+diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0
