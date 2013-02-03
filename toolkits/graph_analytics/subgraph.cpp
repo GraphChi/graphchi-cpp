@@ -63,6 +63,8 @@ FILE * pfile = NULL;
 size_t edges = 1000; //number of edges to cut from graph
 size_t nodes = 0; //number of nodes in original file (optional)
 size_t orig_edges = 0; // number of edges in original file (optional)
+int min_range = 0;
+int max_range = 2400000000;
 
 struct vertex_data {
   bool active;
@@ -109,8 +111,9 @@ struct SubgraphsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
     /* printout degree distribution and finish */
     if (_degree){
-      if (vertex.num_edges() > 0)
-        fprintf(pfile, "%u %u\n", vertex.id()+1, vertex.num_edges());
+      if (vertex.num_edges() > 0 || max_range != 2400000000)
+        if (vertex.id() >= (uint)min_range && vertex.id() < (uint)max_range)
+          fprintf(pfile, "%u %u\n", vertex.id()+1, vertex.num_edges());
       return;
     }
     /* calc component number of nodes and edges and finish */
@@ -229,6 +232,8 @@ int main(int argc,  const char *argv[]) {
 
   std::string seeds   = get_option_string("seeds","");
   std::string seed_file = get_option_string("seed_file", "");
+  min_range = get_option_int("min_range", min_range);
+  max_range = get_option_int("max_range", max_range);
 
   mytimer.start();
 

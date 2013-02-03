@@ -127,9 +127,9 @@ struct dense_adj {
 
 // This is used for keeping in-memory
 class adjlist_container {
-  std::vector<dense_adj> adjs;
   //mutex m;
   public:
+  std::vector<dense_adj> adjs;
   vid_t pivot_st, pivot_en;
 
   adjlist_container() {
@@ -230,62 +230,13 @@ class adjlist_container {
     //assert(is_item(pivot) && is_item(v.id()));
     dense_adj &pivot_edges = adjs[pivot - pivot_st];
     int num_edges = v.num_edges();
-    //if there are not enough neighboring user nodes to those two items there is no need
-    //to actually count the intersection
-    if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection)
-      return 0;
 
     dense_adj item_edges; 
     for(int i=0; i < num_edges; i++){ 
       set_new(item_edges.edges, v.edge(i)->vertexid, v.edge(i)->get_data());
     }
 
-    double intersection_size = item_edges.intersect(pivot_edges); 
-
-    //not enough user nodes rated both items, so the pairs of items are not compared.
-    if (intersection_size < (double)min_allowed_intersection)
-      return 0;
-
-    if (distance_metric == PEARSON){
-      if (debug){
-        std::cout<< pivot -M+1<<" Pivot edges: " <<pivot_edges.edges << std::endl;
-        std::cout<< "Minusmean:   " << minus(pivot_edges.edges,mean) << std::endl;
-        std::cout<< v.id() -M+1<<"Item edges:  " <<item_edges.edges << std::endl;
-        std::cout<< "Minusmean:   " << minus(item_edges.edges, mean) << std::endl;
-      }
-      double dist = minus(pivot_edges.edges, mean).dot(minus(item_edges.edges, mean));
-      if (debug)
-        std::cout<<"dist " << pivot-M+1 << ":" << v.id()-M+1 << " " << dist << std::endl;
-
-      return dist / (stddev[pivot-M] * stddev[v.id()-M]);
-    }
-    else if (distance_metric == TANIMOTO){
-      return calc_tanimoto_distance(pivot_edges.edges, 
-          item_edges.edges,
-          sum_sqr(pivot_edges.edges),
-          sum_sqr(item_edges.edges));
-    }
-    else if (distance_metric == CHEBYCHEV){
-      return calc_chebychev_distance(pivot_edges.edges, 
-          item_edges.edges);
-    }
-    else if (distance_metric == LOG_LIKELIHOOD){
-      return calc_loglikelihood_distance(pivot_edges.edges, 
-          item_edges.edges,
-          sum_sqr(pivot_edges.edges),
-          sum_sqr(item_edges.edges));
-    }
-    else if (distance_metric == COSINE){
-      return calc_cosine_distance(pivot_edges.edges, 
-          item_edges.edges,
-          sum_sqr(pivot_edges.edges),
-          sum_sqr(item_edges.edges));
-    }
-    else if (distance_metric ==MANHATTEN){
-      return calc_manhatten_distance(pivot_edges.edges, 
-          item_edges.edges);
-    }
-    else if (distance_metric == JACCARD_WEIGHT){
+    if (distance_metric == JACCARD_WEIGHT){
       return calc_jaccard_weight_distance(pivot_edges.edges, item_edges.edges, get_val( pivot_edges.edges, v.id()), 0);
     }
     return NAN;  
@@ -325,8 +276,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
         //since metric is symmetric, compare only to pivots which are smaller than this item id
-        //if (i >= v.id())
-        //  continue;
+        if (i >= v.id())
+          continue;
+        
+        dense_adj &pivot_edges = adjcontainer->adjs[i - adjcontainer->pivot_st];
+        //pivot is not connected to this item, continue
+        if (get_val(pivot_edges.edges, v.id()) == 0)
+            continue;
 
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
