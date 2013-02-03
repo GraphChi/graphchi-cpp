@@ -55,6 +55,14 @@ namespace graphchi {
         fclose(f);
     }
     
+    void delete_block_uncompressed_sizefile(std::string blockfilename);
+    void delete_block_uncompressed_sizefile(std::string blockfilename) {
+        std::string szfilename = blockfilename + ".bsize";
+        if (file_exists(szfilename)) {
+            remove(szfilename.c_str());
+        }
+    }
+    
     
     template <typename ET>
     struct dynamicdata_block {

@@ -112,8 +112,10 @@ namespace graphchi {
         size_t nupdates;
         size_t nedges;
         size_t work; // work is the number of edges processed
-        unsigned int maxwindow; 
+        unsigned int maxwindow;
         mutex modification_lock;
+        
+        bool reset_vertexdata;
         
         
         /* Metrics */
@@ -167,6 +169,7 @@ namespace graphchi {
             modifies_inedges = true;
             preload_commit = true;
             only_adjacency = false;
+            reset_vertexdata = false;
             blocksize = get_option_long("blocksize", 4096 * 1024);
 #ifndef DYNAMICEDATA
             while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
@@ -630,7 +633,9 @@ namespace graphchi {
         }
         
         virtual void initialize_before_run() {
-            // Do nothing
+            if (reset_vertexdata) {
+                vertex_data_handler->clear(num_vertices());
+            }
         }
         
         virtual memshard_t * create_memshard(vid_t interval_st, vid_t interval_en) {
@@ -997,7 +1002,13 @@ namespace graphchi {
         }
         
         
-
+        /**
+          * If true, the vertex data is initialized before
+          * the engineis started. Default false.
+          */
+        void set_reset_vertexdata(bool reset) {
+            reset_vertexdata = reset;
+        }
         
         
         /**

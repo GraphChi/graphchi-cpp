@@ -249,6 +249,7 @@
 		5F7B653C1594D17E0032CE47 /* html_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = html_reporter.hpp; sourceTree = "<group>"; };
 		5F7B653D1594D17E0032CE47 /* null_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = null_reporter.hpp; sourceTree = "<group>"; };
 		5F7B65C41594D8860032CE47 /* logger.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = logger.hpp; sourceTree = "<group>"; };
+		5F8D8B6916BEB9B300F54662 /* itemcf3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = itemcf3.cpp; sourceTree = "<group>"; };
 		5F8DD041159DDABC0034C889 /* connectedcomponents */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = connectedcomponents; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8DD06C15A4DDF80034C889 /* plotter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = plotter.hpp; sourceTree = "<group>"; };
 		5F9EBAAC1593F87D0092F7E2 /* chifilenames.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chifilenames.hpp; sourceTree = "<group>"; };
@@ -990,6 +991,7 @@
 				5FE8FFD816ACEFCD00C68BE0 /* itemcf2 */,
 				5FE8FFD916ACEFCD00C68BE0 /* itemcf2.cpp */,
 				5FE8FFDA16ACEFCD00C68BE0 /* itemcf2.dSYM */,
+				5F8D8B6916BEB9B300F54662 /* itemcf3.cpp */,
 				5FE8FFDB16ACEFCD00C68BE0 /* itemsim2rating */,
 				5FE8FFDC16ACEFCD00C68BE0 /* itemsim2rating.cpp */,
 				5FE8FFDD16ACEFCD00C68BE0 /* itemsim2rating.dSYM */,

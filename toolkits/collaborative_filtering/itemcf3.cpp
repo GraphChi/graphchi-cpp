@@ -230,6 +230,8 @@ class adjlist_container {
     //assert(is_item(pivot) && is_item(v.id()));
     dense_adj &pivot_edges = adjs[pivot - pivot_st];
     int num_edges = v.num_edges();
+      
+      
     //if there are not enough neighboring user nodes to those two items there is no need
     //to actually count the intersection
     if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection)
@@ -308,7 +310,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
     if (debug)
       printf("Entered iteration %d with %d - edges %d\n", gcontext.iteration, v.id(), v.num_edges());
-
 
     /* even iteration numbers:
      * 1) load a subset of items into memory (pivots)
