@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include "graphchi_types.hpp"
 #include "logger/logger.hpp"
@@ -149,6 +150,7 @@ namespace graphchi {
         }
     }
     
+    std::string get_filename(std::string arg);
     std::string get_filename(std::string arg) {
         size_t a = arg.find_last_of("/");
         if (a != arg.npos) {
@@ -570,13 +572,17 @@ namespace graphchi {
             suffix = preprocessor->getSuffix();
         }
         
+        
+        
         /* Check if input file is already sharded */
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             didexist = true;
-            return nshards;
+            if (check_origfile_modification_earlier<EdgeDataType>(basefilename + suffix, nshards)) {
+                return nshards;
+            }
+            
         }
-        
         didexist = false;
 
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;

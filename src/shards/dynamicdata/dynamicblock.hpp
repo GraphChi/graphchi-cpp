@@ -58,8 +58,10 @@ namespace graphchi {
     void delete_block_uncompressed_sizefile(std::string blockfilename);
     void delete_block_uncompressed_sizefile(std::string blockfilename) {
         std::string szfilename = blockfilename + ".bsize";
-        if (file_exists(szfilename)) {
-            remove(szfilename.c_str());
+        int err = remove(szfilename.c_str());
+        if (err != 0) {
+            // File did not exist - ok
+            
         }
     }
     

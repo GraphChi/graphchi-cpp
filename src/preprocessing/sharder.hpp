@@ -163,10 +163,7 @@ namespace graphchi {
         }
         
         std::string preprocessed_name() {
-            std::stringstream ss;
-            ss << basefilename;
-            ss << "." <<  sizeof(EdgeDataType) << "B.bin";
-            return ss.str();
+            return preprocess_filename<EdgeDataType>(basefilename);
         }
         
         /**

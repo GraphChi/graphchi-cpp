@@ -168,7 +168,7 @@ int main(int argc, const char ** argv) {
     mkdir("/tmp/__chi_dyntest", 0777);
     int niters           = 1; // Number of iterations
     bool scheduler       = false;                       // Whether to use selective scheduling
-    
+        
     /* Generate data */
     generatedata(filename);
     int nshards          = convert_if_notexists<int>(filename, "3");
@@ -188,6 +188,7 @@ int main(int argc, const char ** argv) {
     /* Check vertex values */
     VertexValidator validator;
     foreach_vertices(filename, 0, engine.num_vertices(), validator);
+    
     
     /* Report execution metrics */
     metrics_report(m);
