@@ -39,7 +39,7 @@
 #include "eigen_wrapper.hpp"
 #include "../parsers/common.hpp"
 #include <omp.h>
-#define MAX_FEATAURES 256
+#define MAX_FEATURES 256
 #define FEATURE_WIDTH 38 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
@@ -101,7 +101,7 @@ struct feature_control{
     to_pos = 1;
     val_pos = -1;
     node_links = 0;
-    feature_selection.resize(MAX_FEATAURES+3);
+    feature_selection.resize(MAX_FEATURES+3);
   }
 };
 
@@ -956,10 +956,10 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         vertex_data& user = latent_factors_inmem[vertex.id()]; 
         int max_time = 0;
         for(int e=0; e < vertex.num_outedges(); e++) {
-          const edge_data & edge = vertex.edge(e)->get_data();
+          const edge_data & edge = vertex.outedge(e)->get_data();
           if (edge.features[0] >= max_time){ //first feature is time
             max_time = (int)ceil(edge.features[0]);
-            user.last_item = vertex.edge(e)->vertex_id() - M;
+            user.last_item = edge->vertex_id() - M;
           }
         }
       }
@@ -976,18 +976,18 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
       //go over all observed ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
-        int howmany = calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M);
+        int howmany = calc_feature_node_array_size(vertex.id(), vertex.outedge(e)->vertex_id()-M);
         vertex_data ** node_array = new vertex_data*[howmany];
         for (int i=0; i< howmany; i++)
           node_array[i] = NULL;
 
-        const edge_data & data = vertex.edge(e)->get_data();
+        const edge_data & data = vertex.outedge(e)->get_data();
         float rui = data.weight;
         double pui;
         vec sum;
 
         //compute current prediction
-        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.edge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
+        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
         if (calc_error)
           if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
             errors_vec[omp_get_thread_num()]++;
@@ -997,7 +997,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         globalMean -= gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
 
         //update node biases and  vectors
-        for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.edge(e)->vertex_id()-M); i++){
+        for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.outedge(e)->vertex_id()-M); i++){
 
           double gensgd_rate;    
           if (i == 0)  //user
@@ -1114,13 +1114,13 @@ int main(int argc, const char ** argv) {
     char * pfeatures = strdup(string_features.c_str());
     char * pch = strtok(pfeatures, ",\n\r\t ");
     int node = atoi(pch);
-    if (node < 0 || node >= MAX_FEATAURES+3)
+    if (node < 0 || node >= MAX_FEATURES+3)
       logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
     fc.feature_selection[node] = true;
     fc.total_features++;
     while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
       node = atoi(pch);
-      if (node < 0 || node >= MAX_FEATAURES+3)
+      if (node < 0 || node >= MAX_FEATURES+3)
         logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
       fc.feature_selection[node] = true;
       fc.total_features++;
@@ -1143,7 +1143,7 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;
 
   logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < MAX_FEATAURES+3; i++)
+  for (int i=0; i < MAX_FEATURES+3; i++)
     if (fc.feature_selection[i])
       logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
   logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
