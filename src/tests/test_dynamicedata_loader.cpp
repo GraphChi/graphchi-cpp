@@ -162,7 +162,6 @@ int main(int argc, const char ** argv) {
     metrics m("test-dynamicedata");
     
     /* Basic arguments for application */
-    //system("rm -rf /tmp/__chi_dyntest"); // Remove old
 
     std::string filename = "/tmp/__chi_dyntest/testgraph";  // Base filename
     mkdir("/tmp/__chi_dyntest", 0777);
@@ -174,6 +173,10 @@ int main(int argc, const char ** argv) {
     int nshards          = convert_if_notexists<int>(filename, "3");
     
     checksum = 0;
+    
+    /* Remove old shards */
+    delete_shards<EdgeDataType>(filename, 3);
+
     
     /* Run */
     DynamicDataLoaderTestProgram program;
