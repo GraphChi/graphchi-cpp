@@ -190,7 +190,8 @@ namespace graphchi {
             adjfilesize = get_filesize(filename_adj);
             if (!only_adjacency) {
                 edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
-                logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize << std::endl;
+                logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize  << ", " << filename_edata
+                  << "sizeof(ET): " << sizeof(ET) << std::endl;
             } else {
                 // Nothing
             }
@@ -245,8 +246,6 @@ namespace graphchi {
             indexentry closest_offset = lowerbd_iter->second;
             assert(closest_vid <= (int)v);
             if (closest_vid > (int)curvid) {   /* Note: this will fail if we have over 2B vertices! */
-                logstream(LOG_DEBUG)
-                << "Sliding shard, start: " << range_st << " moved to: " << closest_vid << " " << closest_offset.adjoffset << ", asked for : " << v << " was in: curvid= " << curvid  << " " << adjoffset << std::endl;
                 if (curblock != NULL) // Move the pointer - this may invalidate the curblock, but it is being checked later
                     curblock->ptr += closest_offset.edataoffset - edataoffset;
                 if (curadjblock != NULL)
@@ -283,7 +282,7 @@ namespace graphchi {
                 iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
-                curblock = &activeblocks[activeblocks.size()-1];
+                curblock = &activeblocks[activeblocks.size()-1];                
             }
         }
         

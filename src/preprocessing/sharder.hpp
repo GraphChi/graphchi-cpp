@@ -142,9 +142,10 @@ namespace graphchi {
             edgedatasize = sizeof(EdgeDataType);
             no_edgevalues = false;
             compressed_block_size = 4096 * 1024;
-            edges_per_block = compressed_block_size / sizeof(EdgeDataType);
             filter_max_vertex = 0;
             while (compressed_block_size % sizeof(EdgeDataType) != 0) compressed_block_size++;
+            edges_per_block = compressed_block_size / sizeof(EdgeDataType);
+
         }
         
         

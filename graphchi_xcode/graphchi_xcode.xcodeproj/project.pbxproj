@@ -12,6 +12,7 @@
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
 		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
+		5F8D8B7416BF7B9B00F54662 /* gensgd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FE8FFD016ACEFCD00C68BE0 /* gensgd.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
 		5FCC1D18159501840003D0E9 /* sharder_basic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */; };
@@ -53,6 +54,15 @@
 		5F74B05615D6CF4F00ED3EA9 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 8;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		5F8D8B6E16BF7B8500F54662 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
@@ -250,6 +260,7 @@
 		5F7B653D1594D17E0032CE47 /* null_reporter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = null_reporter.hpp; sourceTree = "<group>"; };
 		5F7B65C41594D8860032CE47 /* logger.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = logger.hpp; sourceTree = "<group>"; };
 		5F8D8B6916BEB9B300F54662 /* itemcf3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = itemcf3.cpp; sourceTree = "<group>"; };
+		5F8D8B7216BF7B8500F54662 /* test_dynamicedata copy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "test_dynamicedata copy"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8DD041159DDABC0034C889 /* connectedcomponents */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = connectedcomponents; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8DD06C15A4DDF80034C889 /* plotter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = plotter.hpp; sourceTree = "<group>"; };
 		5F9EBAAC1593F87D0092F7E2 /* chifilenames.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chifilenames.hpp; sourceTree = "<group>"; };
@@ -414,6 +425,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		5F74B05515D6CF4F00ED3EA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F8D8B6D16BF7B8500F54662 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -750,6 +768,7 @@
 				5F74B04215D3532600ED3EA9 /* graphlab_lda */,
 				5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */,
 				5F54B85115FD4D9F00B3842C /* test_dynamicedata */,
+				5F8D8B7216BF7B8500F54662 /* test_dynamicedata copy */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1138,6 +1157,23 @@
 			productReference = 5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */;
 			productType = "com.apple.product-type.tool";
 		};
+		5F8D8B6A16BF7B8500F54662 /* gensgd */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F8D8B6F16BF7B8500F54662 /* Build configuration list for PBXNativeTarget "gensgd" */;
+			buildPhases = (
+				5F8D8B6B16BF7B8500F54662 /* Sources */,
+				5F8D8B6D16BF7B8500F54662 /* Frameworks */,
+				5F8D8B6E16BF7B8500F54662 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = gensgd;
+			productName = test_bulksync_functional;
+			productReference = 5F8D8B7216BF7B8500F54662 /* test_dynamicedata copy */;
+			productType = "com.apple.product-type.tool";
+		};
 		5F8DD040159DDABC0034C889 /* connectedcomponents */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5F8DD048159DDABC0034C889 /* Build configuration list for PBXNativeTarget "connectedcomponents" */;
@@ -1313,6 +1349,7 @@
 				5F74B03A15D3532600ED3EA9 /* graphlab_lda */,
 				5F74B05215D6CF4F00ED3EA9 /* blocksplitter */,
 				5F54B84915FD4D9F00B3842C /* test_dynamicedata */,
+				5F8D8B6A16BF7B8500F54662 /* gensgd */,
 			);
 		};
 /* End PBXProject section */
@@ -1348,6 +1385,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F8D8B6B16BF7B8500F54662 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F8D8B7416BF7B9B00F54662 /* gensgd.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1634,6 +1679,45 @@
 			};
 			name = Release;
 		};
+		5F8D8B7016BF7B8500F54662 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				PRODUCT_NAME = "test_dynamicedata copy";
+				SDKROOT = "";
+			};
+			name = Debug;
+		};
+		5F8D8B7116BF7B8500F54662 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				PRODUCT_NAME = "test_dynamicedata copy";
+				SDKROOT = "";
+			};
+			name = Release;
+		};
 		5F8DD049159DDABC0034C889 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1915,6 +1999,15 @@
 			buildConfigurations = (
 				5F74B05815D6CF4F00ED3EA9 /* Debug */,
 				5F74B05915D6CF4F00ED3EA9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5F8D8B6F16BF7B8500F54662 /* Build configuration list for PBXNativeTarget "gensgd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F8D8B7016BF7B8500F54662 /* Debug */,
+				5F8D8B7116BF7B8500F54662 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

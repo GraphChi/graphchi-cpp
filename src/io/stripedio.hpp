@@ -198,6 +198,8 @@ namespace graphchi {
             niothreads = get_option_int("niothreads", 1);
             m.set("niothreads", (size_t)niothreads);
             
+            logstream(LOG_DEBUG) << "Start io-manager with " << niothreads << " threads." << std::endl;
+            
             // Each multiplex partition has its own queues
             for(int i=0; i < multiplex * niothreads; i++) {
                 mplex_readtasks.push_back(synchronized_queue<iotask>());
@@ -313,9 +315,8 @@ namespace graphchi {
                 std::string fname = multiplexprefix(i) + filename;
                 for(int j=0; j<niothreads+(multiplex == 1 ? 1 : 0); j++) { // Hack to have one fd for synchronous
                     int rddesc = open(fname.c_str(), (readonly ? O_RDONLY : O_RDWR));
-                    if (rddesc < 0) logstream(LOG_ERROR)  << "Could not open: " << fname << " session: " << session_id 
-                        << " error: " << strerror(errno) << std::endl;
-                    assert(rddesc>=0);
+                    if (rddesc < 0) logstream(LOG_ERROR)  << "Could not open: " << fname << " session: " << session_id
+                        << " error: " << strerror(errno) << std::endl;                    assert(rddesc>=0);
                     iodesc->readdescs.push_back(rddesc);
 #ifdef F_NOCACHE
                     if (!readonly) 
@@ -635,6 +636,7 @@ namespace graphchi {
         template <typename T>
         void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
             if (!pinned_session(session)) {
+              
                 preada_async(session, *tbuf, nbytes,  off, doneptr);
             } else {
                 io_descriptor * iodesc = sessions[session];

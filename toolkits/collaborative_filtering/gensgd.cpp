@@ -750,6 +750,11 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     assert(fc.total_features <= fc.feature_num);
     if (validation == "")
       return;
+      
+     if (!file_exists(validation)) {
+         logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
+         return;
+    }
 
     FILE *f = NULL;
     size_t nz;   
@@ -820,6 +825,11 @@ void test_predictions_N(
     logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
     return;
   }
+    
+    if (!file_exists(test)) {
+        logstream(LOG_ERROR) << " test predictions file was specified but not found: " << test << std::endl;
+        return;
+    }
 
   detect_matrix_size(test, f, Me, Ne, nz);
   if (f == NULL){
@@ -949,8 +959,6 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    *  Vertex update function - computes the least square step
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-
-
     if (fc.last_item && gcontext.iteration == 0){
       if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
         vertex_data& user = latent_factors_inmem[vertex.id()]; 

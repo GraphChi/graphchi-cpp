@@ -220,6 +220,7 @@ namespace graphchi {
                 std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
                 if (file_exists(block_filename)) {
                     size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
+                    
                     compressedsize += get_filesize(block_filename);
                     int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                     block_edatasessions.push_back(blocksession);
