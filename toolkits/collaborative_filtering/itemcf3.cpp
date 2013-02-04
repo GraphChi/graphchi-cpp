@@ -260,7 +260,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     if (debug)
       printf("Entered iteration %d with %d - edges %d\n", gcontext.iteration, v.id(), v.num_edges());
 
-
     /* even iteration numbers:
      * 1) load a subset of items into memory (pivots)
      * 2) Find which subset of items needs to compared to the users

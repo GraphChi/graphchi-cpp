@@ -163,10 +163,7 @@ namespace graphchi {
         }
         
         std::string preprocessed_name() {
-            std::stringstream ss;
-            ss << basefilename;
-            ss << "." <<  sizeof(EdgeDataType) << "B.bin";
-            return ss.str();
+            return preprocess_filename<EdgeDataType>(basefilename);
         }
         
         /**
@@ -687,6 +684,7 @@ namespace graphchi {
                 size_t tot_edatabytes = 0;
                 for(size_t i=0; i <= numedges; i++) {
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
+                                        
 #ifdef DYNAMICEDATA
              
                     if (lastdst == edge.dst && edge.src == curvid) {
@@ -722,7 +720,7 @@ namespace graphchi {
                         degrees[edge.dst].indegree++;
                     }
                     
-                    if ((edge.src != curvid)) {
+                    if ((edge.src != curvid) || edge.stopper()) {
                         // New vertex
                         size_t count = i - istart;
                         assert(count>0 || curvid==0);

@@ -106,7 +106,17 @@ namespace graphchi {
                 init_block(i);
             }
         }
-
+        
+        void clear(size_t nvertices) {
+            int nblocks = (nvertices - 1) / verticesperblock + 1;
+            for(int i=0; i < nblocks; i++) {
+                std::string bfilename = blockfilename(i);
+                if (file_exists(bfilename)) {
+                    remove(bfilename.c_str());
+                }
+                delete_block_uncompressed_sizefile(bfilename);
+            }
+        }
         
     private:
         std::string blockfilename(int blockid) {
@@ -142,10 +152,8 @@ namespace graphchi {
                 close(f);
             }
         }
-                
-        void clear(size_t nvertices) {
-            assert(false); // Not implemented
-        }
+    
+    
         
         vdblock load_block(int blockid) {
             vdblock db(blockid);

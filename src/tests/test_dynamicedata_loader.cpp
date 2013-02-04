@@ -162,13 +162,13 @@ int main(int argc, const char ** argv) {
     metrics m("test-dynamicedata");
     
     /* Basic arguments for application */
-    system("rm -rf /tmp/__chi_dyntest"); // Remove old
+    //system("rm -rf /tmp/__chi_dyntest"); // Remove old
 
     std::string filename = "/tmp/__chi_dyntest/testgraph";  // Base filename
     mkdir("/tmp/__chi_dyntest", 0777);
     int niters           = 1; // Number of iterations
     bool scheduler       = false;                       // Whether to use selective scheduling
-    
+        
     /* Generate data */
     generatedata(filename);
     int nshards          = convert_if_notexists<int>(filename, "3");
@@ -178,11 +178,9 @@ int main(int argc, const char ** argv) {
     /* Run */
     DynamicDataLoaderTestProgram program;
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, scheduler, m);
+    engine.set_reset_vertexdata(true);
     engine.run(program, niters);
     
-    // Clean up
-    remove("/tmp/__chi_dyntest"); // Remove old
-
     /* Check */
     std::cout << "Checksum: " << checksum << ", expecting: " << shouldbe << std::endl;
     assert(shouldbe == checksum);
@@ -190,6 +188,7 @@ int main(int argc, const char ** argv) {
     /* Check vertex values */
     VertexValidator validator;
     foreach_vertices(filename, 0, engine.num_vertices(), validator);
+    
     
     /* Report execution metrics */
     metrics_report(m);

@@ -141,10 +141,12 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
      */
     int nshards;
     if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
-        logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-        logstream(LOG_INFO) << "If this is not intended, please delete the shard files and try again. " << std::endl;
-        return nshards;
-    }   
+        if (check_origfile_modification_earlier<als_edge_type>(base_filename, nshards)) {
+            logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
+            logstream(LOG_INFO) << "If this is not intended, please delete the shard files and try again. " << std::endl;
+            return nshards;
+        }
+    }
     
     sharder<als_edge_type> sharderobj(base_filename);
     sharderobj.start_preprocessing();
