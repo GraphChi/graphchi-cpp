@@ -220,7 +220,7 @@ class adjlist_container {
           float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
           assert(weight != 0);
 
-          if (find_twice(edges, other_item)){
+          if (undirected || find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
           pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + pow(weight,Q) /* * get_val(pivot_edges.edges, item.id())*/);
