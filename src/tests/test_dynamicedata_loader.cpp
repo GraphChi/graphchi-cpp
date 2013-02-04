@@ -173,10 +173,7 @@ int main(int argc, const char ** argv) {
     int nshards          = convert_if_notexists<int>(filename, "3");
     
     checksum = 0;
-    
-    /* Remove old shards */
-    delete_shards<EdgeDataType>(filename, 3);
-
+  
     
     /* Run */
     DynamicDataLoaderTestProgram program;
@@ -192,6 +189,10 @@ int main(int argc, const char ** argv) {
     VertexValidator validator;
     foreach_vertices(filename, 0, engine.num_vertices(), validator);
     
+    
+    /* Clean up */
+    delete_shards<EdgeDataType>(filename, 3);
+
     
     /* Report execution metrics */
     metrics_report(m);
