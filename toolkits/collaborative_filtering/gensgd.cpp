@@ -959,7 +959,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
           const edge_data & edge = vertex.outedge(e)->get_data();
           if (edge.features[0] >= max_time){ //first feature is time
             max_time = (int)ceil(edge.features[0]);
-            user.last_item = edge->vertex_id() - M;
+            user.last_item = vertex.outedge(e)->vertex_id() - M;
           }
         }
       }
