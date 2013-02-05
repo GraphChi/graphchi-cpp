@@ -28,15 +28,11 @@ int main(int argc, const char ** argv) {
         fread(&d, sizeof(degree), 1, f);
         nout += d.outdegree;
         nin += d.indegree;
-<<<<<<< local
         if (wanted == j) {
             std::cout << wanted << " indeg: " << d.indegree << " outdeg: " << d.outdegree << std::endl;
+            break;
         }       
         j++;
-=======
-        tot++;
-        nonz += (d.outdegree + d.indegree) > 0;
->>>>>>> other
     }
     std::cout << "Total in: " << nin << " total out: " << nout << std::endl;
     std::cout << "Non-singleton vertices: " << nonz << std::endl;
