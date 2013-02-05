@@ -449,7 +449,7 @@ int main(int argc, const char ** argv) {
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   distance_metric          = get_option_int("distance", JACCARD);
   asym_cosine_alpha        = get_option_float("asym_cosine_alpha", 0.5);
-  debug                    = get_option_int("debug");
+  debug                    = get_option_int("debug", debug);
   if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE)
     logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACCARD, 1) AA, 2) RA, 3) ASYM_COSINE" << std::endl;  
   parse_command_line_args();
