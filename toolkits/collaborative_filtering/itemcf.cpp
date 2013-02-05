@@ -63,6 +63,7 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 float asym_cosine_alpha = 0.5;
+int debug = 0;
 
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
@@ -271,7 +272,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    *  Vertex update function.
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
-    //printf("Entered iteration %d with %d\n", gcontext.iteration, v.id());
+    if (debug)
+      printf("Entered iteration %d with %d\n", gcontext.iteration, v.id());
  
     /* even iteration numbers:
      * 1) load a subset of items into memory (pivots)
@@ -280,7 +282,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     if (gcontext.iteration % 2 == 0) {
       if (adjcontainer->is_pivot(v.id()) && is_item(v.id())){
         adjcontainer->load_edges_into_memory(v);         
-        //printf("Loading pivot %dintro memory\n", v.id());
+        if (debug)
+          printf("Loading pivot %dintro memory\n", v.id());
       }
       else if (is_user(v.id())){
 
@@ -296,13 +299,14 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         for(int i=0; i<v.num_edges(); i++) {
           graphchi_edge<uint32_t> * e = v.edge(i);
           //assert(is_item(e->vertexid)); 
-          if (adjcontainer->is_pivot(e->vertexid) && relevant_items[e->vertexid-M]) {
+          if (adjcontainer->is_pivot(e->vertexid)) {
             has_pivot = true;
             pivot = e->vertexid;
             break;
           }
         }
-        //printf("user %d is linked to pivot %d\n", v.id(), pivot);
+        if (debug)
+          printf("user %d is linked to pivot %d\n", v.id(), pivot);
         if (!has_pivot) //this user is not connected to any of the pivot item nodes and thus
           //it is not relevant at this point
           return; 
@@ -322,6 +326,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
      */
     else {
       if (!relevant_items[v.id() - M]){
+        if (debug)
+          logstream(LOG_DEBUG)<<"Skipping item: " << v.id() << " since not relevant" << std::endl;
         return;
       }
       std::vector<index_val> heap;
@@ -340,7 +346,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (item_pairs_compared % 10000000 == 0)
           logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " <<  std::setw(10) <<sum(written_pairs) << " written. " << std::endl;
 
-        //printf("comparing %d to pivot %d intersection is %d\n", i - M + 1, v.id() - M + 1, intersection_size);
+        if (debug)
+          printf("comparing %d to pivot %d distance is %g\n", i - M + 1, v.id() - M + 1, dist);
         if (dist != 0){
           heap.push_back(index_val(i, dist)); 
                 //where the output format is: 
@@ -442,12 +449,13 @@ int main(int argc, const char ** argv) {
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
   distance_metric          = get_option_int("distance", JACCARD);
   asym_cosine_alpha        = get_option_float("asym_cosine_alpha", 0.5);
+  debug                    = get_option_int("debug");
   if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE)
     logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACCARD, 1) AA, 2) RA, 3) ASYM_COSINE" << std::endl;  
   parse_command_line_args();
 
   mytimer.start();
-  int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
+  int nshards          = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, false);
   if (nshards != 1)
     logstream(LOG_FATAL)<<"This application currently supports only 1 shard" << std::endl;
   K                        = get_option_int("K", K);
@@ -466,7 +474,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, 1, true, m); 
   set_engine_flags(engine);
   engine.set_maxwindow(M+N+1);
 

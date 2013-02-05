@@ -477,7 +477,7 @@ int main(int argc, const char ** argv) {
   //  logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACKARD, 1) AA, 2) RA" << std::endl;  
 
   mytimer.start();
-  int nshards          = convert_matrixmarket<EdgeDataType>(training/*, orderByDegreePreprocessor*/);
+  int nshards          = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, false);
 
   assert(M > 0 && N > 0);
 
