@@ -21,16 +21,19 @@
 
 #  Makefile for compiling graphchi collaborative filtering library
 #  Written by Danny Bickson
+#  Thanks to Yucheng Low for fixing the Makefile
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
+CPPFLAGS = -O3  $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing
+LINKFLAGS = -lz
+# Note : on Ubuntu on some compilers -lz is not detected properly so it is 
+# deliberatively set to be the last flag.
 CPP = g++
 CXX = g++
-CPPFLAGS = -g  -O3 $(INCFLAGS) -lz -fopenmp -Wall -Wno-strict-aliasing
-
+headers=$(wildcard *.h**)
 all: $(patsubst %.cpp, %, $(wildcard *.cpp))
 
-%.out: %.h %.hpp %.cpp 
-	$(CPP) $(CPPFLAGS) $<  -o $@
+%: %.cpp $(headers)
+	$(CPP) $(CPPFLAGS) $<  -o $@ $(LINKFLAGS)
 
 clean:
-	touch *.cpp
-
+	rm -f $(patsubst %.cpp, %, $(wildcard *.cpp))
