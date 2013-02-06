@@ -62,6 +62,8 @@ int file_columns = 0;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
 float cutoff = 0;
+size_t new_validation_users = 0;
+size_t new_test_users = 0;
 
 struct stats{
   float minval;
@@ -287,8 +289,10 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   int token = 0;
   int index = 0;
   int rc = getline(&linebuf, &linesize, f);
-  if (rc == -1)
+  if (rc == -1){
+    perror("getline");
     logstream(LOG_FATAL)<<"Failed to get line: " << i << " in file: " << filename << std::endl;
+  }
 
   char * linebuf_to_free = linebuf;
   strncpy(linebuf_debug, linebuf, 1024);
@@ -300,7 +304,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       char *pch = strsep(&linebuf,"\t,\r\n ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      I = (uint)get_node_id(pch, 0, i);
+      I = (uint)get_node_id(pch, 0, i, type != TRAINING);
       token++;
     }
     else if (token == fc.to_pos){
@@ -308,7 +312,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       char * pch = strsep(&linebuf, "\t,\r\n ");
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-      J = (uint)get_node_id(pch, 1, i);
+      J = (uint)get_node_id(pch, 1, i, type != TRAINING);
       token++;
     }
     else if (token == fc.val_pos){
@@ -331,7 +335,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       }
 
       assert(index < (int)valarray.size());
-      valarray[index] = get_node_id(pch, index+2, i); 
+      valarray[index] = get_node_id(pch, index+2, i, type != TRAINING); 
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
 
@@ -777,8 +781,16 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     for (size_t i=0; i<nz; i++)
     {
-      if (!read_line(f, test, i, I, J, val, valarray, VALIDATION))
+      int size = num_feature_bins();
+      if (!read_line(f, validation, i, I, J, val, valarray, VALIDATION))
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
+
+      assert(size == num_feature_bins());
+      size = 0; //to avoid warning
+      if (I == (uint)-1 || J == (uint)-1){
+        new_validation_users++;
+        continue;
+      }
 
       double prediction;
       vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
@@ -854,6 +866,10 @@ void test_predictions_N(
     if (!read_line(f, test, i, I, J, val, valarray, TEST))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
+    if (I == (uint)-1 || J == (uint)-1){
+      new_test_users++;
+      continue;
+    }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
@@ -1194,6 +1210,11 @@ int main(int argc, const char ** argv) {
   /* Output test predictions in matrix-market format */
   output_gensgd_result(training);
   test_predictions_N(&gensgd_predict, fc);    
+
+  if (new_validation_users > 0)
+    logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
+  if (new_test_users > 0)
+    logstream(LOG_WARNING)<<"Found " << new_test_users<< " new test with no information about them in training dataset!" << std::endl;
 
   /* Report execution metrics */
   if (!quiet)
