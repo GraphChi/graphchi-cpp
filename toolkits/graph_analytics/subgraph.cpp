@@ -345,7 +345,7 @@ int main(int argc,  const char *argv[]) {
     assert(pfile != NULL);
     int total_seeds = 0;
     for (uint i=0; i< component_nodes.size(); i++){
-      if (component_nodes[i] > 1 || component_edges[i] > 0){
+      if ((max_range != 2400000000 && i >= (uint)min_range && i < (uint)max_range) || (max_range == 2400000000 && (component_nodes[i] > 1 || component_edges[i] > 0))){
         fprintf(pfile, "%d %d %d %d\n", i, (int)component_nodes[i], (int)component_edges[i], (int)component_seeds[i]);
         total_written++;
         total_seeds+= component_seeds[i];

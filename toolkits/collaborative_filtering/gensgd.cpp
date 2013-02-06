@@ -975,8 +975,8 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
     //go over all user nodes
     if (is_user(vertex.id())){
-      vertex_data& user = latent_factors_inmem[vertex.id()]; 
-      assert(user.last_item >= 0 && user.last_item < (int)N);
+      //vertex_data& user = latent_factors_inmem[vertex.id()]; 
+      //assert(user.last_item >= 0 && user.last_item < (int)N);
 
 
       //go over all observed ratings

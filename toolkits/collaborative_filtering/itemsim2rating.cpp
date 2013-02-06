@@ -92,7 +92,7 @@ struct dense_adj {
 
 bool find_twice(std::vector<vid_t>& edges, vid_t val){
   int ret = 0;
-  for (int i=0; i < edges.size(); i++){
+  for (int i=0; i < (int)edges.size(); i++){
       if (edges[i] == val)
         ret++;
   }
