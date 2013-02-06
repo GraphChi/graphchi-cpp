@@ -101,7 +101,15 @@ public:
             data[nsize - 1] = val;
         }
     }
-    
+    //idx should already exist in the array
+    void set(int idx, T val){
+	if (idx >= ncapacity) {
+            (*extensions)[idx - (int)ncapacity] = val;
+        } else {
+            data[idx] = val;
+        }
+    }
+  
     // TODO: addmany()
     
     T get(int idx) {
