@@ -397,13 +397,13 @@ float compute_prediction(
     int pos;
     if (user_links != ""){
     pos = j.index();
-    assert(pos < M);
+    assert(pos < (int)M);
     }
     else {
     pos = j.index()+fc.offsets[index];
     assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
-    assert(pos >= 0 && pos < latent_factors_inmem.size());
-    assert(pos >= (uint)fc.offsets[index]);
+    assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
+    assert(pos >= (int)fc.offsets[index]);
     }
         //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
@@ -494,6 +494,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     return nshards;
   }   
 */
+  delete_shards<als_edge_type>(base_filename, nshards);
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
