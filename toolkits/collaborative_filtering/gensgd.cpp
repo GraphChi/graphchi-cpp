@@ -494,7 +494,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     return nshards;
   }   
 */
-  delete_shards<als_edge_type>(base_filename, nshards);
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
@@ -754,7 +753,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     assert(fc.total_features <= fc.feature_num);
     if ((validation == "") || !file_exists(validation)) {
-        if (gcontext.iteration == 0) logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
+        if ((validation != (training + "e")) && gcontext.iteration == 0)
+        logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
          std::cout << std::endl;
          return;
     }
@@ -837,7 +837,8 @@ void test_predictions_N(
   }
     
     if (!file_exists(test)) {
-        logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
+        if (test != (training + "t"))
+          logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
         return;
     }
 
