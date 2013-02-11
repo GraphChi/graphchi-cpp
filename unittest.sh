@@ -23,6 +23,9 @@ display_name "TESTING ALS SERIALIZATION"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
 display_name "TESTING ALS - RATING"
 ./toolkits/collaborative_filtering/rating --training=smallnetflix_mm --tokens_per_row=3 --quiet=1 --num_ratings=3
+mv smallnetflix_mm.ids smallnetflix_mm.ids1
+./toolkits/collaborative_filtering/rating --training=smallnetflix_mm --tokens_per_row=3 --quiet=1 --num_ratings=3
+diff smallnetflix_mm.ids smallnetflix_mm.ids1
 display_name "TESTING SGD"
  ./toolkits/collaborative_filtering/sgd --training=smallnetflix_mm --validation=smallnetflix_mme --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING BIAS_SGD"
