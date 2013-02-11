@@ -30,7 +30,7 @@
 #include "../collaborative_filtering/eigen_wrapper.hpp"
 
 double alpha = 0.15;
-
+int debug = 0;
 
 struct vertex_data {
   vec pvec;
@@ -79,6 +79,8 @@ struct LPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataT
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
+    if (debug)
+      logstream(LOG_DEBUG)<<"Entering node: " << vertex.id() << " seed? " << vdata.seed << " in vector: " << vdata.pvec << std::endl;
     if (vdata.seed || vertex.num_outedges() == 0) //if this is a seed node, don't do anything
       return;
     vec ret = zeros(D);
@@ -94,6 +96,7 @@ struct LPVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataT
     assert(sum(ret) != 0);
     ret = ret / sum(ret);
     vdata.pvec = alpha * vdata.pvec + (1-alpha)*ret;
+    vdata.pvec/= sum(vdata.pvec);
   }
 
 
@@ -119,20 +122,22 @@ int main(int argc, const char ** argv) {
   metrics m("label_propagation");
 
   alpha        = get_option_float("alpha", alpha);
+  debug        = get_option_int("debug", debug);
   
   parse_command_line_args();
 
 
   //load graph (adj matrix) from file
   int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, true);
-  //load seed initialization from file
-  load_matrix_market_matrix(training + ".seeds", 0, D);
-
-  init_feature_vectors<std::vector<vertex_data> >(M, latent_factors_inmem);
   if (M != N)
     logstream(LOG_FATAL)<<"Label propagation supports only square matrices" << std::endl;
 
-#pragma omp parallel for
+  init_feature_vectors<std::vector<vertex_data> >(M, latent_factors_inmem, false);
+  
+  //load seed initialization from file
+  load_matrix_market_matrix(training + ".seeds", 0, D);
+
+  #pragma omp parallel for
   for (int i=0; i< (int)M; i++){
 
     //normalize seed probabilities to sum up to one
