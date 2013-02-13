@@ -1119,10 +1119,18 @@ int main(int argc, const char ** argv) {
   file_columns = get_option_int("file_columns"); //get the number of columns in the edge file
   if (file_columns < 3)
     logstream(LOG_FATAL)<<"You must have at least 3 columns in input file: [from] [to] [value] on each line"<<std::endl;
+  if (file_columns >= FEATURE_WIDTH)
+    logstream(LOG_FATAL)<<"file_columns exceeds the allowed storage limit - please increase FEATURE_WIDTH and recompile." << std::endl;
   D = get_option_int("D", D);
+  if (D <=2 || D>= 300)
+    logstream(LOG_FATAL)<<"Allowed range for latent factor vector D is [2,300]." << std::endl;
   fc.from_pos = get_option_int("from_pos", fc.from_pos);
   fc.to_pos = get_option_int("to_pos", fc.to_pos);
   fc.val_pos = get_option_int("val_pos", fc.val_pos);
+  if (fc.from_pos >= file_columns || fc.to_pos >= file_columns || fc.val_pos >= file_columns)
+    logstream(LOG_FATAL)<<"Please note that column numbering of from_pos, to_pos and val_pos starts from zero and should be smaller than file_columns" << std::endl;
+  if (fc.from_pos == fc.to_pos || fc.from_pos == fc.val_pos || fc.to_pos == fc.val_pos)
+    logstream(LOG_FATAL)<<"from_pos, to_pos and val_pos should have uniqu values" << std::endl; 
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
