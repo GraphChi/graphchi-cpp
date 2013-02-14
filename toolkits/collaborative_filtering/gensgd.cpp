@@ -577,7 +577,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     for (int i=0; i< fc.total_features; i++){
       fc.stats_array[i].meanval /= L;
     }
-    assert(globalMean != 0);
+    //assert(globalMean != 0);
+    if (globalMean == 0)
+      logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::ednl;
     globalMean /= L;
     logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
 
