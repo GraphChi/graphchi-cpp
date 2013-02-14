@@ -579,7 +579,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     }
     //assert(globalMean != 0);
     if (globalMean == 0)
-      logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::ednl;
+      logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
     globalMean /= L;
     logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
 
