@@ -34,7 +34,7 @@ double alpha = 0.15;
 
 #define TEXT_LENGTH 64
 
-std::string contexts_file, nouns_file;
+std::string contexts_file, nouns_file, pos_seeds, neg_seeds;
 double_map nouns;
 double_map contexts;
 
@@ -123,6 +123,40 @@ struct COEMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
 };
 
 
+void load_seeds_from_txt_file(std::map<std::string,uint> & map, const std::string filename, bool negative){
+  logstream(LOG_INFO)<<"loading " << (negative ? "negative" : "positive" ) << " seeds from txt file: " << filename << std::endl;
+  FILE * f = fopen(filename.c_str(), "r");
+  if (f == NULL)
+    logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
+
+  char * linebuf = NULL;
+  size_t linesize;
+  int line = 0;
+  while (true){
+    int rc = getline(&linebuf, &linesize, f);
+    char * to_free = linebuf;
+    if (rc == -1)
+      break;
+
+    char *pch = strtok(linebuf,"\r\n\t_^$");
+    if (!pch){
+      logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
+    }
+    uint pos = map[pch];
+    if (pos <= 0)
+      logstream(LOG_FATAL)<<"Failed to find " << pch << " in map. Aborting" << std::endl;
+
+    assert(pos <= M);
+    latent_factors_inmem[pos-1].seed = true;
+    latent_factors_inmem[pos-1].pvec[0] = negative ? 0 : 1;
+    line++;
+    //free(to_free);
+  }
+  logstream(LOG_INFO)<<"Seed list size is: " << line << std::endl;
+  fclose(f);
+}
+
+
 
 void output_coem_result(std::string filename) {
   MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M , "This file contains COEM output matrix U. In each row D probabilities for the Y labels", latent_factors_inmem);
@@ -143,26 +177,26 @@ int main(int argc, const char ** argv) {
 
   contexts_file = get_option_string("contexts");
   nouns_file = get_option_string("nouns"); 
+  pos_seeds = get_option_string("pos_seeds");
+  neg_seeds = get_option_string("neg_seeds");
   parse_command_line_args();
 
   load_map_from_txt_file(contexts.string2nodeid, contexts_file, 1);
   load_map_from_txt_file(nouns.string2nodeid, nouns_file, 1);
-
-  //load graph (adj matrix) from file
+    //load graph (adj matrix) from file
   int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, true);
-  //load seed initialization from file
-  load_matrix_market_matrix(training + ".seeds", 0, D);
 
-  init_feature_vectors<std::vector<vertex_data> >(M, latent_factors_inmem);
-  if (M != N)
-    logstream(LOG_FATAL)<<"Label propagation supports only square matrices" << std::endl;
+  init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem);
+
+  load_seeds_from_txt_file(nouns.string2nodeid, pos_seeds, false);
+  load_seeds_from_txt_file(nouns.string2nodeid, neg_seeds, true); 
 
 #pragma omp parallel for
   for (int i=0; i< (int)M; i++){
 
     //normalize seed probabilities to sum up to one
     if (latent_factors_inmem[i].seed){
-      assert(sum(latent_factors_inmem[i].pvec) != 0);
+      if (sum(latent_factors_inmem[i].pvec) != 0)
       latent_factors_inmem[i].pvec /= sum(latent_factors_inmem[i].pvec);
       continue;
     }
