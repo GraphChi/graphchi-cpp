@@ -107,17 +107,15 @@ struct COEMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       return;
     
     vec ret = zeros(D);
-
+    double normalization = 0;
     for(int e=0; e < vertex.num_edges(); e++) {
       edge_data edge = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      double tfidf = TFIDF(edge.cooccurence_count, nbr_latent.nb_count, vertex.id() < M ? M : N);
-      ret += tfidf * nbr_latent.pvec;
+      ret += edge.cooccurence_count * nbr_latent.pvec;
+      normalization += edge.cooccurence_count;
     }
 
-    //normalize probabilities
-    assert(sum(ret) != 0);
-    ret = ret / sum(ret);
+    ret /= normalization;
     vdata.pvec = alpha * vdata.pvec + (1-alpha)*ret;
   }
 

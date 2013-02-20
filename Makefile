@@ -57,6 +57,8 @@ parsers:
 	cd toolkits/parsers/; make
 ga:
 	cd toolkits/graph_analytics/; make
+ta:
+	cd toolkits/text_analysis/; make
 
 docs: */**
 	doxygen conf/doxygen/doxygen.config

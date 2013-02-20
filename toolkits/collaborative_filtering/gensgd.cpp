@@ -375,19 +375,22 @@ float compute_prediction(
   int index = 0;
   int loc = 0;
   node_array[index] = &latent_factors_inmem[I+fc.offsets[index]];
-  assert(node_array[index]->pvec[0] < 1e5);
+  if (node_array[index]->pvec[0] >= 1e5)
+    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   index++; loc++;
   /* 1) ITEM NODE */
   assert(J+fc.offsets[index] < latent_factors_inmem.size());
   node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
-  assert(node_array[index]->pvec[0] < 1e5);
+  if (node_array[index]->pvec[0] >= 1e5)
+    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   index++; loc++;
    /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
     uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
     assert(pos >= 0 && pos < latent_factors_inmem.size());
     node_array[j+index] = & latent_factors_inmem[pos];
-    assert(node_array[j+index]->pvec[0] < 1e5);
+     if (node_array[j+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   }
   index+= fc.total_features;
   loc += fc.total_features;
@@ -407,7 +410,8 @@ float compute_prediction(
     }
         //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     i++;
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
@@ -422,7 +426,8 @@ float compute_prediction(
     assert(pos >= (uint)fc.offsets[loc]);
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     i++;
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
@@ -432,7 +437,8 @@ float compute_prediction(
     uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
     assert(pos < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[pos];
-    assert(node_array[index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++;
     loc+=1;
   }
@@ -904,7 +910,8 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   for (int j=0; j< D; j++){
     for (int i=0; i< node_array_size; i++){
       sum->operator[](j) += node_array[i]->pvec[j];
-      assert(sum->operator[](j) < 1e5);
+      if (sum->operator[](j) >= 1e5)
+        logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
       sum_sqr[j] += pow(node_array[i]->pvec[j],2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
