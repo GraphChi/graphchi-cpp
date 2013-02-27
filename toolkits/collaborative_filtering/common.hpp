@@ -89,11 +89,6 @@ void parse_command_line_args(){
   test = get_option_string("test", "");
   D    = get_option_int("D", D);
 
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   valrange      = maxval - minval;
