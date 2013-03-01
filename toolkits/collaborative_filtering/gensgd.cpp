@@ -245,6 +245,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.node_id_maps[pos], id, pch);
+      assert(id < fc.node_id_maps[pos].string2nodeid.size());
       ret = id;
     }
   }
@@ -270,6 +271,7 @@ float get_value(char * pch, bool read_only){
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.val_map, id, pch);
+      assert(id < fc.val_map.string2nodeid.size());
       ret = id;
     }
  
@@ -305,6 +307,10 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i, type != TRAINING);
+      if (type == TRAINING){
+        assert( I >= 0 && I < M);
+      }
+      else assert( I < M);
       token++;
     }
     else if (token == fc.to_pos){
@@ -313,6 +319,9 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       J = (uint)get_node_id(pch, 1, i, type != TRAINING);
+      if (type == TRAINING)
+        assert(J >= 0 && J < N);
+      else assert(J < N);
       token++;
     }
     else if (token == fc.val_pos){
@@ -336,6 +345,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 
       assert(index < (int)valarray.size());
       valarray[index] = get_node_id(pch, index+2, i, type != TRAINING); 
+      if (type == TRAINING)
+
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
 
@@ -387,7 +398,10 @@ float compute_prediction(
    /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
     uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
-    assert(pos >= 0 && pos < latent_factors_inmem.size());
+    //assert(pos >= 0 && pos < latent_factors_inmem.size());
+    if (pos < 0 || pos >= latent_factors_inmem.size())
+      logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << 
+        " fc.offsets " << fc.offsets[j+index] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
     node_array[j+index] = & latent_factors_inmem[pos];
      if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -564,7 +578,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (square && I == J)
         continue;
 
-      if (I>= M || J >= N){
+      if (I>= M || J >= N || I < 0 || J < 0){
         if (i == 0)
           logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
         else 
