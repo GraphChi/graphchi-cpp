@@ -145,6 +145,15 @@ flt_dbl calc_manhatten_distance( sparse_flt_dbl_vec & datapoint,  flt_dbl_vec &c
 
 }
 
+/* note that distance should be divided by intersection size */
+flt_dbl calc_slope_one_distance( sparse_flt_dbl_vec & datapoint,  sparse_flt_dbl_vec &cluster){
+   sparse_flt_dbl_vec diff = minus(datapoint , cluster);
+   flt_dbl ret = sum(diff);
+   return ret;
+
+}
+
+
 flt_dbl calc_cosine_distance( sparse_flt_dbl_vec & datapoint,  sparse_flt_dbl_vec & cluster, flt_dbl sum_sqr, flt_dbl sum_sqr0){
    flt_dbl dotprod = dot_prod(datapoint,cluster);
    flt_dbl denominator = sqrt(sum_sqr0)*sqrt(sum_sqr);
