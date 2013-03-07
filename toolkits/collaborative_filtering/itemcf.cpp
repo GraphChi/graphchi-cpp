@@ -360,7 +360,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       if (heap.size() < K)
         not_enough++;
       for (uint i=0; i< std::min(heap.size(), (size_t)K); i++){
-          int rc = fprintf(out_files[thread_num], "%u %u %lg\n", v.id()-M+1, heap[i].index-M+1, (double)heap[i].val);//write item similarity to file
+          int rc = fprintf(out_files[thread_num], "%u %u %.12lg\n", v.id()-M+1, heap[i].index-M+1, (double)heap[i].val);//write item similarity to file
           written_pairs[omp_get_thread_num()]++;
          if (rc <= 0){
             perror("Failed to write output");
