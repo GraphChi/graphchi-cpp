@@ -389,7 +389,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("comparing %d to pivot %d distance is %lg\n", i - M + 1, v.id() - M + 1, dist);
         if (dist != 0){
-          fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+          fprintf(out_files[omp_get_thread_num()], "%u %u %.12lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
           //where the output format is: 
           //[item A] [ item B ] [ distance ] 
           written_pairs++;
