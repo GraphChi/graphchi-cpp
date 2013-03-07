@@ -186,7 +186,7 @@ struct edge_data {
   float weight;
   edge_data() { weight = 0; memset(features, 0, sizeof(float)*FEATURE_WIDTH); }
 
-  edge_data(float weight, float * valarray): weight(weight) { memcpy(features, valarray, sizeof(float)*FEATURE_WIDTH); }
+  edge_data(float weight, float * valarray, int size): weight(weight) { memcpy(features, valarray, sizeof(float)*size); }
 };
 
 
@@ -557,7 +557,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  std::vector<float> valarray; valarray.resize(std::max(1, fc.total_features));
+  int val_array_len = std::max(1, fc.total_features);
+  assert(val_array_len < FEATURE_WIDTH);
+  std::vector<float> valarray; valarray.resize(val_array_len);
   float val;
 
   if (!fc.hash_strings){
@@ -587,7 +589,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       //calc stats
       L++;
       globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0]));
+      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
     }
 
     sharderobj.end_preprocessing();
@@ -979,7 +981,7 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   }
   dtraining_rmse = sum(rmse_vec);
   if (calc_error)
-    total_errors = sum(errors_vec);
+    total_errors = (size_t)sum(errors_vec);
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
