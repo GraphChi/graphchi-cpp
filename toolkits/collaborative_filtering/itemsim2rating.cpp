@@ -49,7 +49,7 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 int debug;
-int undirected = 0;
+int undirected = 1;
 double Q = 3; //the power of the weights added into the total score
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
