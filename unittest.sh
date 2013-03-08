@@ -93,6 +93,16 @@ display_name "TOP K"
 diff ./toolkits/collaborative_filtering/unittest/topk.unittest.ids ./toolkits/collaborative_filtering/unittest/topk.unittest.ids.correct
 display_name "ITEMCF3"
 ./toolkits/collaborative_filtering/itemcf3 --training=./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph --distance=9 --debug=0 --quiet=1 --execthreads=1 
-diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0
+#diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0
+a=`grep "2 1 0.6666" ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0 | wc -l`
+if [ $a -ne 1 ]; then
+  echo "Failed unittest!"
+  exit 1
+fi
+b=`grep "3 1 0.3333" ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0 | wc -l`
+if [ $b -ne 1 ]; then
+  echo "Failed unittest!"
+  exit 1
+fi
 display_name "GENSGD"
 ./toolkits/collaborative_filtering/gensgd --training=smallnetflix_mm --validation=smallnetflix_mme --from_pos=0 --to_pos=1 --val_pos=2 --rehash=1 --has_header_titles=0 --debug=0 --file_columns=3 --quiet=1 --max_iter=3
