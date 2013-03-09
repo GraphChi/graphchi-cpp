@@ -21,7 +21,9 @@
 
  *
  * @section DESCRIPTION
- *
+ * This code implements the paper:
+ * Lee, D..D., and Seung, H.S., (2001), 'Algorithms for Non-negative Matrix
+ * Factorization', Adv. Neural Info. Proc. Syst. 13, 556-562.
  *
  * 
  */
@@ -48,17 +50,13 @@ struct vertex_data {
 
 
 
-/**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
 typedef vertex_data VertexDataType;
 typedef float EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
-vec x1, x2;
+vec sum_of_item_latent_features, sum_of_user_latent_feautres;
 int iter;
 
 #include "rmse.hpp"
@@ -83,21 +81,21 @@ float nmf_predict(const vertex_data& user,
 
 }
 
-/* sum up all user data vectors */
+/* sum up all item data vectors */
 void pre_user_iter(){
-  x1 = zeros(D);
+  sum_of_item_latent_features = zeros(D);
   for (uint i=M; i<M+N; i++){
     vertex_data & data = latent_factors_inmem[i];
-    x1 += data.pvec;
+    sum_of_item_latent_features += data.pvec;
   }
 }
 
-/* sum up all item data vectors */
+/* sum up all user data vectors */
 void pre_movie_iter(){
-  x2 = zeros(D);
+  sum_of_user_latent_feautres = zeros(D);
   for (uint i=0; i<M; i++){
     vertex_data & data = latent_factors_inmem[i];
-    x2 += data.pvec;
+    sum_of_user_latent_feautres += data.pvec;
   }
 }
 
@@ -149,17 +147,12 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     vec ret = zeros(D);
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    mat XtX = mat::Zero(D, D); 
-    vec Xty = vec::Zero(D);
-
-    bool compute_rmse = true;
     
     for(int e=0; e < vertex.num_edges(); e++) {
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       double prediction;
-      if (compute_rmse)
-        rmse_vec[omp_get_thread_num()] += nmf_predict(vdata, nbr_latent, observation, prediction);
+      rmse_vec[omp_get_thread_num()] += nmf_predict(vdata, nbr_latent, observation, prediction);
       if (prediction == 0)
         logstream(LOG_FATAL)<<"Got into numerical error! Please submit a bug report." << std::endl;
       ret += nbr_latent.pvec * (observation / prediction);
@@ -167,9 +160,9 @@ struct NMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     
     vec px;
     if (isuser)
-      px = x1;
+      px = sum_of_item_latent_features;
     else 
-      px = x2;
+      px = sum_of_user_latent_feautres;
     for (int i=0; i<D; i++){
       assert(px[i] != 0);
       vdata.pvec[i] *= ret[i] / px[i];
@@ -210,9 +203,6 @@ int main(int argc, const char ** argv) {
   /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
   graphchi_init(argc, argv);
-
-  /* Metrics object for keeping track of performance counters
-     and other information. Currently required. */
   metrics m("nmf-inmemory-factors");
 
   parse_command_line_args();
@@ -234,8 +224,8 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_V.mm", M, D);
   }
 
-  x1 = zeros(D);
-  x2 = zeros(D);
+  sum_of_item_latent_features = zeros(D);
+  sum_of_user_latent_feautres = zeros(D);
 
   /* Run */
   NMFVerticesInMemProgram program;
