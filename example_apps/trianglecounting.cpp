@@ -476,7 +476,7 @@ int main(int argc, const char ** argv) {
     }
     
     /* write the output */
-   // OutputVertexCallback callback;
+  //  OutputVertexCallback callback;
   //  foreach_vertices<VertexDataType>(filename + "_degord", 0, engine.num_vertices(), callback);
 
     return 0;

@@ -622,6 +622,8 @@ namespace graphchi {
         
         template<typename T>
         void managed_malloc(int session, T ** tbuf, size_t nbytes, size_t noff) {
+        
+            
             if (!pinned_session(session)) {
                 *tbuf = (T*) malloc(nbytes);
             } else {
