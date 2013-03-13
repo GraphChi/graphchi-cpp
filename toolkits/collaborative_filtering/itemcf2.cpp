@@ -47,6 +47,12 @@ http://en.wikipedia.org/wiki/Chebyshev_distance
 Tanimoto Distance
 
 See http://en.wikipedia.org/wiki/Jaccard_index
+
+Slope One 
+
+See "A prorammers guide to data mining" page 18:
+http://guidetodatamining.com/guide/ch3/DataMining-ch3.pdf
+
 */
 
 #include <string>
@@ -70,7 +76,8 @@ enum DISTANCE_METRICS{
   CHEBYCHEV = 5,
   MANHATTEN = 6,
   TANIMOTO = 7,
-  LOG_LIKELIHOOD = 8
+  LOG_LIKELIHOOD = 8,
+  SLOPE_ONE = 9
 };
 
 int min_allowed_intersection = 1;
@@ -199,22 +206,25 @@ class adjlist_container {
    * Let b be all the users rated item 2
    *
    * 3) Using Pearson correlation
-   *      Dist_ab = (a - mean)*(b- mean)' / (std(a)*std(b))
+   *      Dist_12 = (a - mean)*(b- mean)' / (std(a)*std(b))
    *
    * 4) Using cosine similarity:
-   *      Dist_ab = (a*b) / sqrt(sum_sqr(a)) * sqrt(sum_sqr(b)))
+   *      Dist_12 = (a*b) / sqrt(sum_sqr(a)) * sqrt(sum_sqr(b)))
    *
-   *    5) Using chebychev:
-   *          Dist_ab = max(abs(a-b))
+   * 5) Using chebychev:
+   *      Dist_12 = max(abs(a-b))
    *
    * 6) Using manhatten distance:
-   *      Dist_ab = sum(abs(a-b))
+   *      Dist_12 = sum(abs(a-b))
    *
    * 7) Using tanimoto:
-   *      Dist_ab = 1.0 - [(a*b) / (sum_sqr(a) + sum_sqr(b) - a*b)]
+   *      Dist_12 = 1.0 - [(a*b) / (sum_sqr(a) + sum_sqr(b) - a*b)]
    *
    * 8) Using log likelihood similarity
-   *      Dist_ab = 1.0 - 1.0/(1.0 + loglikelihood)
+   *      Dist_12 = 1.0 - 1.0/(1.0 + loglikelihood)
+   *
+   * 9) Using slope one:
+   *      Dist_12 = sum_(u in intersection (a,b) (r_u1-ru2 ) / size(intersection(a,b))) 
    */
   double calc_distance(graphchi_vertex<uint32_t, float> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
@@ -274,6 +284,9 @@ class adjlist_container {
     else if (distance_metric ==MANHATTEN){
       return calc_manhatten_distance(pivot_edges.edges, 
           item_edges.edges);
+    }
+    else if (distance_metric == SLOPE_ONE){
+      return calc_slope_one_distance(pivot_edges.edges, item_edges.edges) / intersection_size;
     }
     return NAN;  
   }
@@ -376,7 +389,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("comparing %d to pivot %d distance is %lg\n", i - M + 1, v.id() - M + 1, dist);
         if (dist != 0){
-          fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
+          fprintf(out_files[omp_get_thread_num()], "%u %u %.12lg\n", v.id()-M+1, i-M+1, (double)dist);//write item similarity to file
           //where the output format is: 
           //[item A] [ item B ] [ distance ] 
           written_pairs++;
@@ -468,8 +481,8 @@ int main(int argc, const char ** argv) {
 
   distance_metric          = get_option_int("distance", PEARSON);
   if (distance_metric != PEARSON && distance_metric != MANHATTEN && distance_metric != COSINE &&
-      distance_metric != CHEBYCHEV && distance_metric != LOG_LIKELIHOOD && distance_metric != TANIMOTO)
-    logstream(LOG_FATAL)<<"--distance_metrix=XX should be one of: 3=PEARSON, 4=COSINE, 5=CHEBYCHEV, 6=MANHATTEN, 7=TANIMOTO, 8=LOG_LIKELIHOOD" << std::endl;
+      distance_metric != CHEBYCHEV && distance_metric != LOG_LIKELIHOOD && distance_metric != TANIMOTO && distance_metric != SLOPE_ONE)
+    logstream(LOG_FATAL)<<"--distance_metrix=XX should be one of: 3=PEARSON, 4=COSINE, 5=CHEBYCHEV, 6=MANHATTEN, 7=TANIMOTO, 8=LOG_LIKELIHOOD, 9 = SLOPE_ONE" << std::endl;
   debug                    = get_option_int("debug", 0);
   parse_command_line_args();
 

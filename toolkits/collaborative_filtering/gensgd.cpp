@@ -186,7 +186,7 @@ struct edge_data {
   float weight;
   edge_data() { weight = 0; memset(features, 0, sizeof(float)*FEATURE_WIDTH); }
 
-  edge_data(float weight, float * valarray): weight(weight) { memcpy(features, valarray, sizeof(float)*FEATURE_WIDTH); }
+  edge_data(float weight, float * valarray, int size): weight(weight) { memcpy(features, valarray, sizeof(float)*size); }
 };
 
 
@@ -245,6 +245,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.node_id_maps[pos], id, pch);
+      assert(id < fc.node_id_maps[pos].string2nodeid.size());
       ret = id;
     }
   }
@@ -270,6 +271,7 @@ float get_value(char * pch, bool read_only){
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.val_map, id, pch);
+      assert(id < fc.val_map.string2nodeid.size());
       ret = id;
     }
  
@@ -305,6 +307,10 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       I = (uint)get_node_id(pch, 0, i, type != TRAINING);
+      if (type == TRAINING){
+        assert( I >= 0 && I < M);
+      }
+      else assert( I < M);
       token++;
     }
     else if (token == fc.to_pos){
@@ -313,6 +319,9 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (pch == NULL)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
       J = (uint)get_node_id(pch, 1, i, type != TRAINING);
+      if (type == TRAINING)
+        assert(J >= 0 && J < N);
+      else assert(J < N);
       token++;
     }
     else if (token == fc.val_pos){
@@ -336,6 +345,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 
       assert(index < (int)valarray.size());
       valarray[index] = get_node_id(pch, index+2, i, type != TRAINING); 
+      if (type == TRAINING)
+
       if (std::isnan(valarray[index]))
         logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
 
@@ -375,19 +386,25 @@ float compute_prediction(
   int index = 0;
   int loc = 0;
   node_array[index] = &latent_factors_inmem[I+fc.offsets[index]];
-  assert(node_array[index]->pvec[0] < 1e5);
+  if (node_array[index]->pvec[0] >= 1e5)
+    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   index++; loc++;
   /* 1) ITEM NODE */
   assert(J+fc.offsets[index] < latent_factors_inmem.size());
   node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
-  assert(node_array[index]->pvec[0] < 1e5);
+  if (node_array[index]->pvec[0] >= 1e5)
+    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   index++; loc++;
    /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
     uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
-    assert(pos >= 0 && pos < latent_factors_inmem.size());
+    //assert(pos >= 0 && pos < latent_factors_inmem.size());
+    if (pos < 0 || pos >= latent_factors_inmem.size())
+      logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << 
+        " fc.offsets " << fc.offsets[j+index] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
     node_array[j+index] = & latent_factors_inmem[pos];
-    assert(node_array[j+index]->pvec[0] < 1e5);
+     if (node_array[j+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   }
   index+= fc.total_features;
   loc += fc.total_features;
@@ -397,17 +414,18 @@ float compute_prediction(
     int pos;
     if (user_links != ""){
     pos = j.index();
-    assert(pos < M);
+    assert(pos < (int)M);
     }
     else {
     pos = j.index()+fc.offsets[index];
     assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
-    assert(pos >= 0 && pos < latent_factors_inmem.size());
-    assert(pos >= (uint)fc.offsets[index]);
+    assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
+    assert(pos >= (int)fc.offsets[index]);
     }
         //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     i++;
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
@@ -422,7 +440,8 @@ float compute_prediction(
     assert(pos >= (uint)fc.offsets[loc]);
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
-    assert(node_array[i+index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     i++;
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
@@ -432,7 +451,8 @@ float compute_prediction(
     uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
     assert(pos < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[pos];
-    assert(node_array[index]->pvec[0] < 1e5);
+    if (node_array[i+index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++;
     loc+=1;
   }
@@ -537,7 +557,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
   uint I, J;
-  std::vector<float> valarray; valarray.resize(std::max(1, fc.total_features));
+  int val_array_len = std::max(1, fc.total_features);
+  assert(val_array_len < FEATURE_WIDTH);
+  std::vector<float> valarray; valarray.resize(val_array_len);
   float val;
 
   if (!fc.hash_strings){
@@ -558,7 +580,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (square && I == J)
         continue;
 
-      if (I>= M || J >= N){
+      if (I>= M || J >= N || I < 0 || J < 0){
         if (i == 0)
           logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
         else 
@@ -567,7 +589,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       //calc stats
       L++;
       globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0]));
+      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
     }
 
     sharderobj.end_preprocessing();
@@ -577,7 +599,9 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     for (int i=0; i< fc.total_features; i++){
       fc.stats_array[i].meanval /= L;
     }
-    assert(globalMean != 0);
+    //assert(globalMean != 0);
+    if (globalMean == 0)
+      logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
     globalMean /= L;
     logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
 
@@ -753,7 +777,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     assert(fc.total_features <= fc.feature_num);
     if ((validation == "") || !file_exists(validation)) {
-        if (gcontext.iteration == 0) logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
+        if ((validation != (training + "e")) && gcontext.iteration == 0)
+        logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
          std::cout << std::endl;
          return;
     }
@@ -836,7 +861,8 @@ void test_predictions_N(
   }
     
     if (!file_exists(test)) {
-        logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
+        if (test != (training + "t"))
+          logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
         return;
     }
 
@@ -900,7 +926,8 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   for (int j=0; j< D; j++){
     for (int i=0; i< node_array_size; i++){
       sum->operator[](j) += node_array[i]->pvec[j];
-      assert(sum->operator[](j) < 1e5);
+      if (sum->operator[](j) >= 1e5)
+        logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
       sum_sqr[j] += pow(node_array[i]->pvec[j],2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
@@ -954,7 +981,7 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   }
   dtraining_rmse = sum(rmse_vec);
   if (calc_error)
-    total_errors = sum(errors_vec);
+    total_errors = (size_t)sum(errors_vec);
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
   std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
@@ -1117,10 +1144,18 @@ int main(int argc, const char ** argv) {
   file_columns = get_option_int("file_columns"); //get the number of columns in the edge file
   if (file_columns < 3)
     logstream(LOG_FATAL)<<"You must have at least 3 columns in input file: [from] [to] [value] on each line"<<std::endl;
+  if (file_columns >= FEATURE_WIDTH)
+    logstream(LOG_FATAL)<<"file_columns exceeds the allowed storage limit - please increase FEATURE_WIDTH and recompile." << std::endl;
   D = get_option_int("D", D);
+  if (D <=2 || D>= 300)
+    logstream(LOG_FATAL)<<"Allowed range for latent factor vector D is [2,300]." << std::endl;
   fc.from_pos = get_option_int("from_pos", fc.from_pos);
   fc.to_pos = get_option_int("to_pos", fc.to_pos);
   fc.val_pos = get_option_int("val_pos", fc.val_pos);
+  if (fc.from_pos >= file_columns || fc.to_pos >= file_columns || fc.val_pos >= file_columns)
+    logstream(LOG_FATAL)<<"Please note that column numbering of from_pos, to_pos and val_pos starts from zero and should be smaller than file_columns" << std::endl;
+  if (fc.from_pos == fc.to_pos || fc.from_pos == fc.val_pos || fc.to_pos == fc.val_pos)
+    logstream(LOG_FATAL)<<"from_pos, to_pos and val_pos should have uniqu values" << std::endl; 
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);

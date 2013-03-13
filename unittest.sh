@@ -23,6 +23,9 @@ display_name "TESTING ALS SERIALIZATION"
  ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
 display_name "TESTING ALS - RATING"
 ./toolkits/collaborative_filtering/rating --training=smallnetflix_mm --tokens_per_row=3 --quiet=1 --num_ratings=3
+mv smallnetflix_mm.ids smallnetflix_mm.ids1
+./toolkits/collaborative_filtering/rating --training=smallnetflix_mm --tokens_per_row=3 --quiet=1 --num_ratings=3
+diff smallnetflix_mm.ids smallnetflix_mm.ids1
 display_name "TESTING SGD"
  ./toolkits/collaborative_filtering/sgd --training=smallnetflix_mm --validation=smallnetflix_mme --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING BIAS_SGD"
@@ -36,6 +39,7 @@ display_name "TESTING SVD++ SERIALIZATION"
 display_name "TESTING NMF"
 ./toolkits/collaborative_filtering/nmf --training=reverse_netflix.mm --minval=1 --maxval=5 --max_iter=6 --quiet=1
 display_name "TESTING SVD"
+rm -fR smallnetflix_mm.*
 ./toolkits/collaborative_filtering/svd --training=smallnetflix_mm --nsv=3 --nv=5 --max_iter=5 --quiet=1 --tol=1e-1
 display_name "TESTING SVD-ONESIDED"
 ./toolkits/collaborative_filtering/svd_onesided --training=smallnetflix_mm --nsv=3 --nv=5 --max_iter=5 --quiet=1 --tol=1e-1
@@ -74,7 +78,12 @@ display_name "TESTING ITEMCF - CORRECTNESS"
 rm -fR ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph.*
 ./toolkits/collaborative_filtering/itemcf --training=./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph --min_allowed_intersection=2 --K=5 --nshards=1 --quiet=1 execthreads 1
 sh ./toolkits/collaborative_filtering/topk.sh ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph
-diff ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph-topk ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph-topk-correct
+#diff ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph-topk ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph-topk-correct
+a=`grep "0.400000" ./toolkits/collaborative_filtering/unittest/itemcf.unittest.graph-topk | wc -l`
+if [ $a -ne 3 ]; then
+  echo "Failed unittest!"
+  exit 1
+fi
 display_name "MAP METRIC - test 1"
 ./toolkits/collaborative_filtering/metric_eval --training=./toolkits/collaborative_filtering/unittest/metric_eval.unittest4 --test=./toolkits/collaborative_filtering/unittest/metric_eval.unittest3 --K=3 
 display_name "MAP METRIC - test 2"
@@ -84,6 +93,16 @@ display_name "TOP K"
 diff ./toolkits/collaborative_filtering/unittest/topk.unittest.ids ./toolkits/collaborative_filtering/unittest/topk.unittest.ids.correct
 display_name "ITEMCF3"
 ./toolkits/collaborative_filtering/itemcf3 --training=./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph --distance=9 --debug=0 --quiet=1 --execthreads=1 
-diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0
+#diff ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.correct ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0
+a=`grep "2 1 0.6666" ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0 | wc -l`
+if [ $a -ne 1 ]; then
+  echo "Failed unittest!"
+  exit 1
+fi
+b=`grep "3 1 0.3333" ./toolkits/collaborative_filtering/unittest/itemcf3.unittest.graph.out0 | wc -l`
+if [ $b -ne 1 ]; then
+  echo "Failed unittest!"
+  exit 1
+fi
 display_name "GENSGD"
 ./toolkits/collaborative_filtering/gensgd --training=smallnetflix_mm --validation=smallnetflix_mme --from_pos=0 --to_pos=1 --val_pos=2 --rehash=1 --has_header_titles=0 --debug=0 --file_columns=3 --quiet=1 --max_iter=3

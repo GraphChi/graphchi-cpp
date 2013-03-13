@@ -24,7 +24,7 @@ getline(char **linep, size_t *np, FILE *stream)
   }
 
   if (!(*linep) || !(*np)) {
-    *np = 120;
+    *np = 2400;
     *linep = (char *)malloc(*np);
     if (!(*linep)) {
       return -1;

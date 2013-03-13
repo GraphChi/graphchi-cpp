@@ -51,9 +51,17 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
   int line = 0;
   while (true){
     int rc = getline(&linebuf, &linesize, f);
+    char * to_free = linebuf;
     if (rc == -1)
       break;
 
+    if (fields == 1){
+       char *pch = strtok(linebuf,"\r\n\t");
+       if (!pch)
+         logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
+        map[pch] = ++line;
+    }
+    else {
     char *pch = strtok(linebuf," \r\n\t");
     if (!pch){
       logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
@@ -63,6 +71,8 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
         logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
     map[pch] = atoi(pch2);
     line++;
+    }
+    //free(to_free);
   }
   logstream(LOG_INFO)<<"Map size is: " << map.size() << std::endl;
   fclose(f);

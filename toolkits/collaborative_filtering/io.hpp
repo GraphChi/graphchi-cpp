@@ -411,16 +411,11 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     FILE *f;
     size_t nz;
     
-    std::string suffix = "";
-    if (preprocessor != NULL) {
-        suffix = preprocessor->getSuffix();
-    }
-    
     /**
      * Create sharder object
      */
     int nshards;
-    if ((nshards = find_shards<als_edge_type>(base_filename+ suffix, get_option_string("nshards", "auto")))) {
+    if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
         if (check_origfile_modification_earlier<als_edge_type>(base_filename, nshards)) {
             logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
             read_global_mean(base_filename, type);
@@ -428,7 +423,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
         }
     }
     
-    sharder<als_edge_type> sharderobj(base_filename + suffix);
+    sharder<als_edge_type> sharderobj(base_filename);
     sharderobj.start_preprocessing();
     
     detect_matrix_size(base_filename, f, type == TRAINING?M:Me, type == TRAINING?N:Ne, nz, nodes, edges, type);
@@ -472,8 +467,8 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
             
             if (I ==987654321 || J== 987654321) //hack - to be removed later
                 continue;
-            I-=input_file_offset;  /* adjust from 1-based to 0-based */
-            J-=input_file_offset;
+            I-=(uint)input_file_offset;  /* adjust from 1-based to 0-based */
+            J-=(uint)input_file_offset;
             if (I >= M)
                 logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I+1 << " > " << M << " in line: " << i << std::endl;
             if (J >= N)
@@ -514,7 +509,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     
     // Shard with a specified number of shards, or determine automatically if not defined
     nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
-    logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename + suffix << std::endl;
+    logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename<< std::endl;
     logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
     
     return nshards;

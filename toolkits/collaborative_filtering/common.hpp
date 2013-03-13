@@ -61,7 +61,7 @@ int niters = 10;
 int halt_on_rmse_increase = 0;
 int D = 20; //feature vector width
 bool quiet = false;
-double input_file_offset = 1;
+int input_file_offset = 1;
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -89,11 +89,6 @@ void parse_command_line_args(){
   test = get_option_string("test", "");
   D    = get_option_int("D", D);
 
-  if (validation == "")
-    validation += training + "e";  
-  if (test == "")
-    test += training + "t";
-
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
   valrange      = maxval - minval;
@@ -103,7 +98,7 @@ void parse_command_line_args(){
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
-  input_file_offset = get_option_float("input_file_offset", input_file_offset);
+  input_file_offset = get_option_int("input_file_offset", input_file_offset);
   /* find out loss type (optional, for SGD variants only) */
   loss              = get_option_string("loss", loss);
   if (loss == "square")

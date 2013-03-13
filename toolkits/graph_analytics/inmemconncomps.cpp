@@ -45,7 +45,7 @@
 #include "graphchi_basic_includes.hpp"
 #include "label_analysis.hpp"
 #include "../collaborative_filtering/eigen_wrapper.hpp"
-
+#include "../collaborative_filtering/timer.hpp"
 using namespace graphchi;
 
 
@@ -58,6 +58,7 @@ typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef vid_t EdgeDataType;
 VertexDataType * vertex_values;
 size_t changes = 0;
+timer mytimer;
 
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type>
@@ -70,7 +71,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
      * Called after an iteration has finished.
      */
     void after_iteration(int iteration, graphchi_context &ginfo) {
-       logstream(LOG_DEBUG)<<"iteration: " << iteration << " changes: " << changes << std::endl;
+       logstream(LOG_DEBUG)<<mytimer.current_time() << "iteration: " << iteration << " changes: " << changes << std::endl;
        if (changes == 0)
          ginfo.set_last_iteration(iteration);
        changes = 0;
@@ -140,6 +141,8 @@ int main(int argc, const char ** argv) {
 
   /* Process input file - if not already preprocessed */
   int nshards             = (int) convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
+
+  mytimer.start();
 
   /* Run */
   ConnectedComponentsProgram program;

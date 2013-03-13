@@ -106,8 +106,10 @@ template<typename VertexDataType, typename EdgeDataType>
 void run_validation4(graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine, graphchi_context & context){
    //no validation data, no need to run validation engine calculations
    cur_iteration = context.iteration;
-   if (pvalidation_engine == NULL)
+   if (pvalidation_engine == NULL){
+     std::cout << std::endl;
      return;
+   }
    ValidationRMSEProgram4 program;
    pvalidation_engine->run(program, 1);
    if (converged_engine)
