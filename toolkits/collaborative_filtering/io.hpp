@@ -63,7 +63,7 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
     }
 }
 
-void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
+void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
     
     MM_typecode matcode;
     bool info_file = false;
@@ -73,7 +73,7 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t
         /* auto detect presence of file named base_filename.info to find out matrix market size */
         if ((ff = fopen((filename + ":info").c_str(), "r")) != NULL) {
             info_file = true;
-            read_matrix_market_banner_and_size(ff, matcode, M, N, nz, validation + ":info");
+            read_matrix_market_banner_and_size(ff, matcode, _M, _N, nz, validation + ":info");
             fclose(ff);
         }
     }
@@ -85,17 +85,11 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &M, uint &N, size_t
         else logstream(LOG_FATAL)<<"Failed to open input file: " << filename << std::endl;
     }
     if (!info_file && nodes == 0 && edges == 0){
-        read_matrix_market_banner_and_size(f, matcode, M, N, nz, filename);
+        read_matrix_market_banner_and_size(f, matcode, _M, _N, nz, filename);
     }
-    if (nodes > 0 && edges > 0){
-        if (type == TRAINING){
-            M = N = nodes;
-            nz = edges;
-        }
-        else {
-            Me = Ne = nodes;
-            nz = edges;
-        }
+    else if (nodes > 0 && edges > 0){
+      _M = _N = nodes;
+      nz = edges;
     }
 }
 
@@ -302,7 +296,6 @@ template <typename als_edge_type>
 int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row = 3) {
     FILE *f = NULL, *fsim = NULL;
     size_t nz, nz_sim;
-    uint Nt;
     /**
      * Create sharder object
      */
@@ -321,11 +314,12 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     detect_matrix_size(base_filename, f, M, N, nz);
     if (f == NULL)
         logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
-    detect_matrix_size(similarity_file, fsim, Ne, Nt, nz_sim);
+    uint N_row = 0 ,N_col = 0;
+    detect_matrix_size(similarity_file, fsim, N_row, N_col, nz_sim);
     if (fsim == NULL)
         logstream(LOG_FATAL)<<"Failed to open item similarity input file: " << similarity_file << std::endl;
-    if (Ne != N || Nt != N)
-        logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << Ne <<" x " << Nt << "  Instead of " << N << " x " << N << std::endl;
+    if (N_row != N || N_col != N)
+        logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << N_row <<" x " << N_col << "  Instead of " << N << " x " << N << std::endl;
     L=nz + nz_sim;
     
     uint I, J;
