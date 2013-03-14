@@ -32,6 +32,7 @@
  */
 
 #define RANDOMRESETPROB 0.15
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 #include <string>
 #include <fstream>

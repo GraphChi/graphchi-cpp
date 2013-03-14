@@ -142,6 +142,8 @@ void writea(int f, T * tbuf, size_t nbytes) {
 
 template <typename T>
 size_t write_compressed(int f, T * tbuf, size_t nbytes) {
+    
+#ifndef GRAPHCHI_DISABLE_COMPRESSION
     unsigned char * buf = (unsigned char*)tbuf;
     int ret;
     unsigned have;
@@ -188,11 +190,17 @@ size_t write_compressed(int f, T * tbuf, size_t nbytes) {
     (void)deflateEnd(&strm);
     free(out);
     return totwritten;
+#else
+    writea(f, tbuf, nbytes);
+    return nbytes;
+#endif 
+
 }
 
 /* Zlib-inflated read. Assume tbuf is correctly sized memory block. */
 template <typename T>
 void read_compressed(int f, T * tbuf, size_t nbytes) {
+#ifndef GRAPHCHI_DISABLE_COMPRESSION
     unsigned char * buf = (unsigned char*)tbuf;
     int ret;
     unsigned have;
@@ -250,6 +258,9 @@ void read_compressed(int f, T * tbuf, size_t nbytes) {
     /* clean up and return */
     (void)inflateEnd(&strm);
     free(in);
+#else
+    preada(f, tbuf, nbytes, 0);
+#endif
 }
 
 

@@ -53,6 +53,10 @@ namespace graphchi {
         FILE * f = fopen(szfilename.c_str(), "w");
         fwrite(&size, 1, sizeof(int), f);
         fclose(f);
+        
+        if (size > 20000000) {
+            logstream(LOG_DEBUG) << "Block " << blockfilename << " size:" << size << std::endl;
+        }
     }
     
     void delete_block_uncompressed_sizefile(std::string blockfilename);

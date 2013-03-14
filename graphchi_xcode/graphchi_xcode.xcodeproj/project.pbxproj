@@ -14,6 +14,7 @@
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5F8D8B7416BF7B9B00F54662 /* gensgd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FE8FFD016ACEFCD00C68BE0 /* gensgd.cpp */; };
 		5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */; };
+		5FA2B40E16E8EF70005B2F53 /* graphchi_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FA2B40D16E8EF70005B2F53 /* graphchi_lda.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
 		5FCC1D18159501840003D0E9 /* sharder_basic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */; };
 		5FCC1EC21599F5AE0003D0E9 /* pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */; };
@@ -70,6 +71,15 @@
 			runOnlyForDeploymentPostprocessing = 1;
 		};
 		5F8DD03F159DDABC0034C889 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		5FA2B40716E8EF58005B2F53 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -265,6 +275,9 @@
 		5F8DD06C15A4DDF80034C889 /* plotter.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = plotter.hpp; sourceTree = "<group>"; };
 		5F9EBAAC1593F87D0092F7E2 /* chifilenames.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chifilenames.hpp; sourceTree = "<group>"; };
 		5F9EBAAD1593FB130092F7E2 /* configfile.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = configfile.hpp; sourceTree = "<group>"; };
+		5FA2B40216E8EF45005B2F53 /* lda */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lda; sourceTree = "<group>"; };
+		5FA2B40B16E8EF58005B2F53 /* jinlianglda */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = jinlianglda; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FA2B40D16E8EF70005B2F53 /* graphchi_lda.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = graphchi_lda.cpp; path = ../example_apps/lda/graphchi_lda.cpp; sourceTree = "<group>"; };
 		5FB17B881603ABA10031F97C /* readdeg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = readdeg.cpp; sourceTree = "<group>"; };
 		5FB782EE159D268500816BDE /* test_bulksync_functional copy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "test_bulksync_functional copy"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FB782F5159E22B300816BDE /* graphchi_dynamicgraph_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_dynamicgraph_engine.hpp; sourceTree = "<group>"; };
@@ -445,6 +458,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5FA2B40616E8EF58005B2F53 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5FB782E9159D268500816BDE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -500,6 +520,7 @@
 		08FB7794FE84155DC02AAC07 /* graphchi_xcode */ = {
 			isa = PBXGroup;
 			children = (
+				5FA2B40D16E8EF70005B2F53 /* graphchi_lda.cpp */,
 				5FCC1EBC1599F59A0003D0E9 /* example_apps */,
 				5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */,
 				5F7A0FE31589162F00748D0D /* src */,
@@ -769,6 +790,7 @@
 				5F74B05A15D6CF4F00ED3EA9 /* sharder_basic copy */,
 				5F54B85115FD4D9F00B3842C /* test_dynamicedata */,
 				5F8D8B7216BF7B8500F54662 /* test_dynamicedata copy */,
+				5FA2B40B16E8EF58005B2F53 /* jinlianglda */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -919,6 +941,7 @@
 		5FCC1EBC1599F59A0003D0E9 /* example_apps */ = {
 			isa = PBXGroup;
 			children = (
+				5FA2B40216E8EF45005B2F53 /* lda */,
 				5FCC1EC8159A03D50003D0E9 /* matrix_factorization */,
 				5FCC1EBD1599F59A0003D0E9 /* application_template.cpp */,
 				5FCC1EBE1599F59A0003D0E9 /* communitydetection.cpp */,
@@ -1191,6 +1214,23 @@
 			productReference = 5F8DD041159DDABC0034C889 /* connectedcomponents */;
 			productType = "com.apple.product-type.tool";
 		};
+		5FA2B40316E8EF58005B2F53 /* jinlianglda */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5FA2B40816E8EF58005B2F53 /* Build configuration list for PBXNativeTarget "jinlianglda" */;
+			buildPhases = (
+				5FA2B40416E8EF58005B2F53 /* Sources */,
+				5FA2B40616E8EF58005B2F53 /* Frameworks */,
+				5FA2B40716E8EF58005B2F53 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = jinlianglda;
+			productName = test_bulksync_functional;
+			productReference = 5FA2B40B16E8EF58005B2F53 /* jinlianglda */;
+			productType = "com.apple.product-type.tool";
+		};
 		5FB782E6159D268500816BDE /* test_smoketest */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5FB782EB159D268500816BDE /* Build configuration list for PBXNativeTarget "test_smoketest" */;
@@ -1350,6 +1390,7 @@
 				5F74B05215D6CF4F00ED3EA9 /* blocksplitter */,
 				5F54B84915FD4D9F00B3842C /* test_dynamicedata */,
 				5F8D8B6A16BF7B8500F54662 /* gensgd */,
+				5FA2B40316E8EF58005B2F53 /* jinlianglda */,
 			);
 		};
 /* End PBXProject section */
@@ -1401,6 +1442,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F8DD04B159DDACE0034C889 /* connectedcomponents.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5FA2B40416E8EF58005B2F53 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5FA2B40E16E8EF70005B2F53 /* graphchi_lda.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1755,6 +1804,69 @@
 			};
 			name = Release;
 		};
+		5FA2B40916E8EF58005B2F53 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				HEADER_SEARCH_PATHS = (
+					/../../src,
+					"/usr/lib/gcc/i686-apple-darwin11/4.2.1/include/",
+					/usr/local/include/,
+					src,
+					../src/,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OTHER_LDFLAGS = (
+					"-fopenmp",
+					"-lz",
+					"-lpthread",
+				);
+				PRODUCT_NAME = jinlianglda;
+				SDKROOT = "";
+			};
+			name = Debug;
+		};
+		5FA2B40A16E8EF58005B2F53 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				HEADER_SEARCH_PATHS = (
+					/../../src,
+					"/usr/lib/gcc/i686-apple-darwin11/4.2.1/include/",
+					/usr/local/include/,
+					src,
+					../src/,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OTHER_LDFLAGS = (
+					"-fopenmp",
+					"-lz",
+					"-lpthread",
+				);
+				PRODUCT_NAME = jinlianglda;
+				SDKROOT = "";
+			};
+			name = Release;
+		};
 		5FB782EC159D268500816BDE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2017,6 +2129,15 @@
 			buildConfigurations = (
 				5F8DD049159DDABC0034C889 /* Debug */,
 				5F8DD04A159DDABC0034C889 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5FA2B40816E8EF58005B2F53 /* Build configuration list for PBXNativeTarget "jinlianglda" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5FA2B40916E8EF58005B2F53 /* Debug */,
+				5FA2B40A16E8EF58005B2F53 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

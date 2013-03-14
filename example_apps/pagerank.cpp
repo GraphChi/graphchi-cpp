@@ -31,6 +31,9 @@
 #include <fstream>
 #include <cmath>
 
+#define GRAPHCHI_DISABLE_COMPRESSION
+
+
 #include "graphchi_basic_includes.hpp"
 #include "util/toplist.hpp"
 
