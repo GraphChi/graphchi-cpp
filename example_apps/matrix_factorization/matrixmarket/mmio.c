@@ -112,8 +112,10 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
         return MM_PREMATURE_EOF;
 
     if (sscanf(line, "%s %s %s %s %s", banner, mtx, crd, data_type, 
-        storage_scheme) != 5)
-        return MM_PREMATURE_EOF;
+        storage_scheme) != 5){
+        perror("Error: Failed to read matrix market header");
+        exit(1);
+    }
 
     for (p=mtx; *p!='\0'; *p=tolower(*p),p++);  /* convert to lower case */
     for (p=crd; *p!='\0'; *p=tolower(*p),p++);  
