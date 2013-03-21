@@ -379,6 +379,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
     if (gcontext.iteration == 0)
       written_pairs = zeros(gcontext.execthreads);
+
     if (gcontext.iteration % 2 == 0){
       memset(relevant_items, 0, sizeof(bool)*N);
       for (vid_t i=0; i < M+N; i++){

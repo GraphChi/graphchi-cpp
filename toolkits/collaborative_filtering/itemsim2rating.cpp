@@ -87,7 +87,10 @@ struct dense_adj {
   sparse_vec edges;
   sparse_vec        ratings;
   mutex mymutex;
-  dense_adj() { }
+  vid_t vid;
+  dense_adj() { 
+     vid = -1;
+  }
 };
 
 bool find_twice(std::vector<vid_t>& edges, vid_t val){
@@ -150,6 +153,7 @@ class adjlist_container {
       for(int i=0; i<num_edges; i++) 
         set_new( dadj.edges, v.edge(i)->vertex_id(), v.edge(i)->get_data().up_weight);
       //dadj.ratings = zeros(N);
+      dadj.vid = v.id();
       adjs[v.id() - pivot_st] = dadj;
       assert(v.id() - pivot_st < adjs.size());
       __sync_add_and_fetch(&grabbed_edges, num_edges /*edges_to_larger_id*/);
@@ -271,7 +275,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       assert(is_item(v.id()));
 
       for (int i=0; i< v.num_edges(); i++){
-        if (!is_user(v.edge(i)->vertex_id()) || !adjcontainer->is_pivot(v.edge(i)->vertex_id()))
+        if (!adjcontainer->is_pivot(v.edge(i)->vertex_id()))
           continue;
         if (debug)
           printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
@@ -293,11 +297,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
     if (gcontext.iteration % 2 == 0){
       for (vid_t i=0; i < M; i++){
+        //even iterations, schedule only user nodes
         gcontext.scheduler->add_task(i); 
       }
-      grabbed_edges = 0;
-      adjcontainer->clear();
-    } else { //iteration % 2 == 1, schedule only item nodes
+   } else { //iteration % 2 == 1, schedule only item nodes
       for (vid_t i=M; i < M+N; i++){
         gcontext.scheduler->add_task(i); 
       }
@@ -305,59 +308,12 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
   }
 
 
-  /**
-   * Called before an execution interval is started.
-   *
-   * On every even iteration, we load pivot's item connected user lists to memory. 
-   * Here we manage the memory to ensure that we do not load too much
-   * edges into memory.
-   */
-  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-
-    /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
-    if ((gcontext.iteration % 2 == 0)) {
-      //if (debug){
-        printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
-        printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
-      //}
-      //if (adjcontainer->pivot_st <= window_en) {
-      if (adjcontainer->pivot_st < M){
-         // if (grabbed_edges == 0) {
-          logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(M/*window_en + 1*/);
-          logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
-          if (window_en == M+N) {
-            // every user was a pivot item, so we are done
-            logstream(LOG_DEBUG)<<"Setting last iteration to: " << gcontext.iteration + 2 << std::endl;
-            gcontext.set_last_iteration(gcontext.iteration + 2);                    
-          }
-       // } else {
-       //   logstream(LOG_DEBUG) << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
-       // }
-     }
-    }
-
-  }
-
-
-  /**
-   * Called before an execution interval is started.
-   *
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-
-    /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
+  void after_iteration(int iteration, graphchi_context &gcontext){
     if (gcontext.iteration % 2 == 1){
-     // if (debug){
-        printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
-        printf("pivot_st is %d window_st %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
-     // }
-
-      for (uint i=window_st; i < window_en; i++){
-        if (is_user(i)){
+     for (int i=0; i< adjcontainer->adjs.size(); i++){
           if (debug)
-            logstream(LOG_DEBUG)<<"Going over user" << i << std::endl;
-          dense_adj &user = adjcontainer->adjs[i - window_st];
+            logstream(LOG_DEBUG)<<"Going over user" << adjcontainer->adjs[i].vid << std::endl;
+          dense_adj &user = adjcontainer->adjs[i];
           if (nnz(user.edges) == 0 || nnz(user.ratings) == 0){
             if (debug)
               logstream(LOG_DEBUG)<<"User with no edges" << std::endl;
@@ -376,13 +332,64 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
                 logstream(LOG_DEBUG)<<"Found zero in position " << j << std::endl;
               break;
             }
-            int rc = fprintf(out_file, "%u %u %lg\n", i+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
+            int rc = fprintf(out_file, "%u %u %lg\n", user.vid+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
+            if (debug)
+              logstream(LOG_DEBUG)<<"Writing rating from user" << user.vid+1 << " to item: " << positions[j] << std::endl;
             assert(rc > 0);
             written_pairs++;
           }
         }
-      }
+      grabbed_edges = 0;
+      adjcontainer->clear();
     }
+  }
+  /**
+   * Called before an execution interval is started.
+   *
+   * On every even iteration, we load pivot's item connected user lists to memory. 
+   * Here we manage the memory to ensure that we do not load too much
+   * edges into memory.
+   */
+  void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
+
+    /* on even iterations, loads pivot items into memory base on the membudget_mb allowed memory size */
+    if ((gcontext.iteration % 2 == 0)) {
+      //if (debug){
+        printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
+      //}
+      if (adjcontainer->pivot_st < window_en){
+        size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
+        if (grabbed_edges < max_grab_edges * 0.8) {
+          logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
+          adjcontainer->extend_pivotrange(window_en + 1);
+          logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
+          if (window_en+1 >= gcontext.nvertices) {
+            // every user was a pivot item, so we are done
+            logstream(LOG_DEBUG)<<"Setting last iteration to: " << gcontext.iteration + 2 << std::endl;
+            gcontext.set_last_iteration(gcontext.iteration + 2);                    
+          }
+       } else {
+          logstream(LOG_DEBUG) << "Too many edges, already grabbed: " << grabbed_edges << std::endl;
+       }
+     }
+    }
+
+  }
+
+
+  /**
+   * Called before an execution interval is started.
+   *
+   */
+  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
+
+    //on odd iterations, dump user recommendations computed so far to disk
+    if (gcontext.iteration % 2 == 1){
+        printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
+        printf("pivot_st is %d window_st %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
+
+     }
   }
 };
 
