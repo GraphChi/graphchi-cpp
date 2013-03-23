@@ -40,7 +40,10 @@ double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
 int tokens_per_row = 3;
-
+int algo = 0;
+enum {
+  ALS = 0, SPARSE_ALS = 1, SGD = 2, NMF = 3, WALS = 4
+};
 struct vertex_data {
   vec ratings;
   ivec ids;
@@ -256,8 +259,8 @@ struct  MMOutputter_ids{
 
 
 void output_knn_result(std::string filename) {
-  MMOutputter_mat<vertex_data> ratings(filename + ".ratings", 0, M,"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)", latent_factors_inmem , K+1);
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings). Note: 0 item id means there are no more items to recommend for this user.");
+  MMOutputter_ratings ratings(filename + ".ratings", 0, M,"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top K ratings). Note: 0 item id means there are no more items to recommend for this user.");
  
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                     ", " << filename + ".ids " << std::endl;
@@ -285,7 +288,12 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"num_ratings, the number of recomended items for each user, should be >=1 " << std::endl;
 
   debug         = get_option_int("debug", 0);
-  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  std::string algorithm = get_option_string("algorithm");
+  if (algorithm == "als" || algorithm == "sparse_als" || algorithm == "sgd" || algorithm == "nmf")
+    tokens_per_row = 3;
+  else if (algorithm == "wals")
+    tokens_per_row = 4;
+  else logstream(LOG_FATAL)<<"--algorithms should be one of: als, sparse_als, sgd, nmf, wals" << std::endl;
   parse_command_line_args();
 
   /* Preprocess data if needed, or discover preprocess files */

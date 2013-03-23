@@ -310,8 +310,8 @@ struct  MMOutputter_ids{
 
 
 void output_knn_result(std::string filename) {
-  MMOutputter_mat<vertex_data> ratings(filename + ".ratings", 0, M,"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)", latent_factors_inmem , K+1);
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top J ratings). Note: 0 item id means there are no more items to recommend for this user.");
+  MMOutputter_ratings ratings(filename + ".ratings", 0, M,"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top K ratings). Note: 0 item id means there are no more items to recommend for this user.");
  
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                     ", " << filename + ".ids " << std::endl;
