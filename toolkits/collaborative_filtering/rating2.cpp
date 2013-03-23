@@ -40,22 +40,41 @@ double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
 int tokens_per_row = 3;
+int algo = 0;
+#define BIAS_POS -1
 
+enum {
+  SVDPP = 0, BIASSGD = 1
+};
 struct vertex_data {
   vec ratings;
   ivec ids;
   vec pvec;
+  vec weight;
+  double bias;
 
   vertex_data() {
-    pvec = vec::Zero(D);
+    bias = 0;
+    assert(num_ratings > 0);
+    ratings = zeros(num_ratings);
     ids = ivec::Zero(num_ratings);
-    ratings = vec::Zero(num_ratings);
+    assert(D > 0);
+    pvec = zeros(D);
+    weight = zeros(D);
   }
   void set_val(int index, float val){
-    pvec[index] = val;
+    if (index == BIAS_POS)
+      bias = val;
+    else if (index < D)
+      pvec[index] = val;
+    else weight[index-D] = val;
   }
   float get_val(int index){
-    return pvec[index];
+    if (index== BIAS_POS)
+      return bias;
+    else if (index < D)
+      return pvec[index];
+    else return weight[index-D];
   }
 };
 
@@ -87,22 +106,46 @@ typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
-float als_predict(const vertex_data& user, 
+/** compute a missing value based on SVD++ algorithm */
+float svdpp_predict(const vertex_data& user, const vertex_data& movie, const float rating, double & prediction, void * extra = NULL){
+  //\hat(r_ui) = \mu + 
+  prediction = globalMean;
+  // + b_u  +    b_i +
+  prediction += user.bias + movie.bias;
+  // + q_i^T   *(p_u      +sqrt(|N(u)|)\sum y_j)
+  //prediction += dot_prod(movie.pvec,(user.pvec+user.weight));
+  for (int j=0; j< D; j++)
+    prediction += movie.pvec[j] * (user.pvec[j] + user.weight[j]);
+
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  float err = rating - prediction;
+  if (std::isnan(err))
+    logstream(LOG_FATAL)<<"Got into numerical errors. Try to decrease step size using the command line: svdpp_user_bias_step, svdpp_item_bias_step, svdpp_user_factor2_step, svdpp_user_factor_step, svdpp_item_step" << std::endl;
+  return err*err; 
+}
+
+
+/** compute a missing value based on bias-SGD algorithm */
+float biassgd_predict(const vertex_data& user, 
     const vertex_data& movie, 
     const float rating, 
-    double & prediction){
+    double & prediction, 
+    void * extra = NULL){
 
 
-  prediction = dot_prod(user.pvec, movie.pvec);
+  prediction = globalMean + user.bias + movie.bias + dot_prod(user.pvec, movie.pvec);  
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
   //return the squared error
   float err = rating - prediction;
-  assert(!std::isnan(err));
+  if (std::isnan(err))
+    logstream(LOG_FATAL)<<"Got into numerical errors. Try to decrease step size using bias-SGD command line arugments)" << std::endl;
   return err*err; 
 
 }
+
 
 
 void rating_stats(){
@@ -131,20 +174,27 @@ void rating_stats(){
 
 
 
-
 #include "io.hpp"
 
 void read_factors(std::string base_filename){
-    load_matrix_market_matrix(training + "_U.mm", 0, D);
+    if (algo == SVDPP)
+      load_matrix_market_matrix(training + "_U.mm", 0, 2*D);
+    else if (algo == BIASSGD)
+      load_matrix_market_matrix(training + "_U.mm", 0, D);
+    else assert(false);
     load_matrix_market_matrix(training + "_V.mm", M, D);
+    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    assert(user_bias.size() == M);
+    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    assert(item_bias.size() == N);
+    for (uint i=0; i<M+N; i++){
+      latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
+    }
+    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
+    globalMean = gm[0];
 }
 
 
-
-/**
- * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
- * class. The main logic is usually in the update function.
- */
 template<typename VertexDataType, typename EdgeDataType>
 struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 
@@ -179,7 +229,9 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
           continue;
         vertex_data & other = latent_factors_inmem[i];
         double dist;
-        als_predict(vdata, other, 0, dist); 
+        if (algo == SVDPP)
+          svdpp_predict(vdata, other, 0, dist); 
+        else biassgd_predict(vdata, other, 0, dist);
         indices[i-M] = i-M;
         distances[i-M] = dist + 1e-10;
       }
@@ -188,7 +240,9 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
       int random_other = ::randi(M, M+N-1);
       vertex_data & other = latent_factors_inmem[random_other];
       double dist;
-      als_predict(vdata, other, 0, dist); 
+      if (algo == SVDPP)
+        svdpp_predict(vdata, other, 0, dist); 
+      else biassgd_predict(vdata, other, 0, dist);
       indices[i] = random_other-M;
       distances[i] = dist;
     }
@@ -228,8 +282,8 @@ struct  MMOutputter_ratings{
     }
     fclose(outf);
   }
-
 };
+
 struct  MMOutputter_ids{
   MMOutputter_ids(std::string fname, uint start, uint end, std::string comment)  {
     assert(start < end);
@@ -286,6 +340,12 @@ int main(int argc, const char ** argv) {
 
   debug         = get_option_int("debug", 0);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  std::string algorithm     = get_option_string("algorithm");
+  if (algorithm == "svdpp" || algorithm == "svd++")
+    algo = SVDPP;
+  else if (algorithm == "biassgd")
+    algo = BIASSGD;
+  else logstream(LOG_FATAL)<<"--algorithm should be svd++ or biassgd"<<std::endl;
   parse_command_line_args();
 
   /* Preprocess data if needed, or discover preprocess files */

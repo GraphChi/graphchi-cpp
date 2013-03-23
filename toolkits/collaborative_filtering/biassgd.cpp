@@ -201,7 +201,9 @@ int main(int argc, const char ** argv) {
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
     vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    assert(user_bias.size() == M);
     vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
+    assert(item_bias.size() == N);
     for (uint i=0; i<M+N; i++){
       latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
     }

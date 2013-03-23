@@ -310,7 +310,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
   void after_iteration(int iteration, graphchi_context &gcontext){
     if (gcontext.iteration % 2 == 1){
-     for (int i=0; i< adjcontainer->adjs.size(); i++){
+     for (int i=0; i< (int)adjcontainer->adjs.size(); i++){
           if (debug)
             logstream(LOG_DEBUG)<<"Going over user" << adjcontainer->adjs[i].vid << std::endl;
           dense_adj &user = adjcontainer->adjs[i];
