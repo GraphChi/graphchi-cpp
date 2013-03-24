@@ -34,7 +34,7 @@ display_name "TESTING BIAS_SGD SERIALIZATION"
  ./toolkits/collaborative_filtering/biassgd --training=smallnetflix_mm --validation=smallnetflix_mme --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
 display_name "TESTING SVD++"
  ./toolkits/collaborative_filtering/svdpp --training=smallnetflix_mm --validation=smallnetflix_mme --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1
- ./toolkits/collaborative_filtering/rating2 --algorithm=svdpp --num_ratings=3 --quiet=1
+ ./toolkits/collaborative_filtering/rating2 --training=smallnetflix_mm --algorithm=svdpp --num_ratings=3 --quiet=1
 display_name "TESTING SVD++ SERIALIZATION"
  ./toolkits/collaborative_filtering/svdpp --training=smallnetflix_mm --validation=smallnetflix_mme --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --load_factors_from_file=1
 display_name "TESTING NMF"
