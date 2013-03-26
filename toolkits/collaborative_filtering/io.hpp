@@ -467,6 +467,10 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
                 logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I+1 << " > " << M << " in line: " << i << std::endl;
             if (J >= N)
                 logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J+1 << " > " << N << " in line; " << i << std::endl;
+            if (minval != -1e100 && val < minval)
+              logstream(LOG_FATAL)<<"Found illegal rating value: " << val << " where min value is: " << minval << std::endl;
+            if (maxval != 1e100 && val > maxval)
+              logstream(LOG_FATAL)<<"Found illegal rating value: " << val << " where max value is: " << maxval << std::endl;
             if (type == TRAINING)
                 globalMean += val;
             else globalMean2 += val;

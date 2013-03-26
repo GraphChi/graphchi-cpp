@@ -121,6 +121,7 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
 
       //go over all ratings
       if (algo == USER_MEAN){
+          user.mean_rating = 0;
         for(int e=0; e < vertex.num_edges(); e++) {
           float observation = vertex.edge(e)->get_data();                
           user.mean_rating += observation;
@@ -139,7 +140,7 @@ struct BaselineVerticesInMemProgram : public GraphChiProgram<VertexDataType, Edg
     }
     else if (vertex.num_inedges() > 0 && algo == ITEM_MEAN){
       vertex_data & user = latent_factors_inmem[vertex.id()]; 
-
+      user.mean_rating = 0;
       //go over all ratings
       for(int e=0; e < vertex.num_edges(); e++) {
         float observation = vertex.edge(e)->get_data();                
