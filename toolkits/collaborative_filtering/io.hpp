@@ -145,10 +145,11 @@ bool decide_if_edge_is_active(size_t i, int type){
       active_edge = false;
   }
   else if (type == VALIDATION){
-    if (kfold_cross_validation > 0)
+    if (kfold_cross_validation > 0){
      if ((((int)(i % kfold_cross_validation)) == kfold_cross_validation_index))
       active_edge = true;
      else active_edge = false;
+    }
   }
   return active_edge;
 }
