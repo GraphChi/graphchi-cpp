@@ -548,7 +548,7 @@ namespace graphchi {
                 std::string shovelfblockname = ss.str();
                 int bf = open(shovelfblockname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
                 size_t len = sizeof(edge_t) * bufptrs[shard];
-                size_t wcompressed = write_compressed(bf, bufs[shard], len);
+                writea(bf, bufs[shard], len);
                 bufptrs[shard] = 0;
                 
                 close(bf);
@@ -556,8 +556,7 @@ namespace graphchi {
                 shovelblocksidxs[shard] ++;
                 m.stop_time("shovel_flush");
 
-                logstream(LOG_DEBUG) << "Flushed " << shovelfblockname << " bufsize: " << bufsize << "/" << wcompressed << " ("
-                << (wcompressed * 1.0 / bufsize) << "), sizeof(edge_t)" << sizeof(edge_t)  << std::endl;
+                logstream(LOG_DEBUG) << "Flushed " << shovelfblockname << " bufsize: " << bufsize  << std::endl;
             }
         }
         
@@ -630,9 +629,9 @@ namespace graphchi {
                 std::string shovelfblockname = ss.str();
                 int f = open(shovelfblockname.c_str(), O_RDONLY);
                 if (f < 0) break;
-                m.start_time("shovel_readcompressed");
-                read_compressed(f, ptr, len);
-                m.stop_time("shovel_readcompressed");
+                m.start_time("shovel_read");
+                preada(f, ptr, len, 0);
+                m.stop_time("shovel_read");
                 nread += len;
                 ptr += len;
                 close(f);
@@ -761,8 +760,9 @@ namespace graphchi {
                             // Just write size word with zero
                             bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
                         }
-#endif
                         num_uniq_edges++;
+
+#endif
                         edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two or more calls to bwrite_edata before incrementing
                     }
                     if (degrees != NULL && edge.src != edge.dst) {

@@ -267,7 +267,7 @@ namespace graphchi {
                 }
                 
 #else
-                logstream(LOG_FATAL) << "To support multivalue-edges, dynamic edge data needs to be used."
+                logstream(LOG_FATAL) << "To support multivalue-edges, dynamic edge data needs to be used." << std::endl;
                 assert(false);
 #endif
             }
