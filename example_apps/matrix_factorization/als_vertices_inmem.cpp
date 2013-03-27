@@ -57,6 +57,7 @@
  */
 
 
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 #include <string>
 #include <algorithm>
@@ -65,6 +66,8 @@
 
 /* ALS-related classes are contained in als.hpp */
 #include "als.hpp"
+
+
 
 using namespace graphchi;
 

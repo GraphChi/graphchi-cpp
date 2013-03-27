@@ -872,7 +872,10 @@ namespace graphchi {
             m.set("nvertices", num_vertices());
             m.set("execthreads", (size_t)exec_threads);
             m.set("loadthreads", (size_t)load_threads);
+#ifndef GRAPHCHI_DISABLE_COMPRESSION
             m.set("compression", 1);
+#endif
+            
             m.set("scheduler", (size_t)use_selective_scheduling);
             m.set("niters", niters);
             // Stop HTTP admin

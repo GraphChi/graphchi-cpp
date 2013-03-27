@@ -53,6 +53,7 @@
   * headers. This enabled edge-deletion in the vertex object.
   */
 #define SUPPORT_DELETIONS 1
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 
 #include "graphchi_basic_includes.hpp"

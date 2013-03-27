@@ -53,6 +53,7 @@
 
 using namespace graphchi;
 
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 
 /**
