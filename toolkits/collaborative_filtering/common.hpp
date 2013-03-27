@@ -62,7 +62,8 @@ int halt_on_rmse_increase = 0;
 int D = 20; //feature vector width
 bool quiet = false;
 int input_file_offset = 1;
-
+int kfold_cross_validation = 0;
+int kfold_cross_validation_index = 0;
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
 enum {
@@ -115,6 +116,15 @@ void parse_command_line_args(){
   if (calc_ap)
     loss_type = AP;
   ap_number    = get_option_int("ap_number", ap_number);
+  kfold_cross_validation = get_option_int("kfold_cross_validation", kfold_cross_validation);
+  kfold_cross_validation_index = get_option_int("kfold_cross_validation_index", kfold_cross_validation_index);
+  if (kfold_cross_validation_index > 0){
+    if (kfold_cross_validation_index >= kfold_cross_validation)
+      logstream(LOG_FATAL)<<"kfold_cross_validation index should be between 0 to kfold_cross_validation-1 parameter" << std::endl;
+  }
+  if (kfold_cross_validation != 0){
+    logstream(LOG_WARNING)<<"Activating kfold cross vlidation with K="<< kfold_cross_validation << std::endl;
+  }
 }
 
 template<typename T>
