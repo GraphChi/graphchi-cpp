@@ -62,14 +62,21 @@ struct DynamicDataLoaderTestProgram : public GraphChiProgram<VertexDataType, Edg
         for(int i=0; i < vertex.num_edges(); i++) {
             chivector<vid_t> * evector = vertex.edge(i)->get_vector();
             assert(evector != NULL);
-            assert(evector->size() == 1);
             
-            vid_t expected = vertex.id() + vertex.edge(i)->vertex_id();
-            if (expected != evector->get(0)) {
-                logstream(LOG_ERROR) << "Vertex " << vertex.id() << ", edge dst: " << vertex.edge(i)->vertex_id() << std::endl;
-                logstream(LOG_ERROR) << "Mismatch: expected " << expected << " but had " << evector->get(0) << std::endl;
+            
+            // Each edge has three or one values in the chi vector
+            int numelems = ((vertex.id() + vertex.edge(i)->vertex_id()) % 3 == 1 ? 3 : 1);
+
+            for(int k=0; k < numelems ; k++) {
+
+                vid_t expected = vertex.id() + vertex.edge(i)->vertex_id() + k;
+                if (expected != evector->get(k)) {
+                    logstream(LOG_ERROR) << "Vertex " << vertex.id() << ", edge dst: " << vertex.edge(i)->vertex_id() << std::endl;
+                    logstream(LOG_ERROR) << "Mismatch (" << k << "): expected " << expected << " but had " << evector->get(k) << std::endl;
+                }
+                assert(evector->get(k) == expected);
             }
-            assert(evector->get(0) == expected);
+            
             lock.lock();
             checksum += evector->get(0);
             lock.unlock();
@@ -119,17 +126,23 @@ struct DynamicDataLoaderTestProgram : public GraphChiProgram<VertexDataType, Edg
 
 void generatedata(std::string filename);
 void generatedata(std::string filename) {
+    std::cout << "Generating data..." << std::endl;
     const char * fname = filename.c_str();
     FILE * f = fopen(fname, "w");
     set_conf("filetype", "edgelist");
     shouldbe = 0;
-    int totalVertices = 2500000; // 2.5 million
+    int totalVertices =  200000; // 2 million
     for(int i=0; i < totalVertices; i++) {
         int nedges = random() % 50;
         for(int j=0; j < nedges; j++) {
             int dst = (totalVertices / nedges) * j + i % nedges; 
             if (dst != i) {
-                fprintf(f, "%d\t%d\t%d\n", i, dst, i + dst);
+                if ((i + dst) % 3 == 1) {
+                    fprintf(f, "%d\t%d\t%d:%d:%d\n", i, dst, i + dst, i + dst + 1, i + dst + 2);
+                } else {
+                    fprintf(f, "%d\t%d\t%d\n", i, dst, i + dst);
+ 
+                }
                 shouldbe += 2 * (i + dst); 
             }
         }
@@ -152,6 +165,8 @@ public:
 
 
 
+
+
 int main(int argc, const char ** argv) {
     /* GraphChi initialization will read the command line
      arguments and the configuration file. */
@@ -170,11 +185,10 @@ int main(int argc, const char ** argv) {
         
     /* Generate data */
     generatedata(filename);
-    int nshards          = convert_if_notexists<int>(filename, "3");
-    
+    set_conf("filetype", "multivalueedgelist");
+    int nshards          = convert_if_notexists<vid_t>(filename, "3");    
     checksum = 0;
   
-    
     /* Run */
     DynamicDataLoaderTestProgram program;
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, scheduler, m);

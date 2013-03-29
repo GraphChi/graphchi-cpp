@@ -34,6 +34,9 @@
 #include <fstream>
 #include <cmath>
 
+#define GRAPHCHI_DISABLE_COMPRESSION
+
+
 #include "graphchi_basic_includes.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
 #include "util/toplist.hpp"

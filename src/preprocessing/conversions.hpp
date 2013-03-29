@@ -1,29 +1,29 @@
-/**
- * @file
- * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
- * @version 1.0
- *
- * @section LICENSE
- *
- * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- 
- *
- * @section DESCRIPTION
- *
- * Graph conversion and parsing routines.
- */
+;/**
+  * @file
+  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
+  * @version 1.0
+  *
+  * @section LICENSE
+  *
+  * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  
+  *
+  * @section DESCRIPTION
+  *
+  * Graph conversion and parsing routines.
+  */
 
 #ifndef GRAPHCHI_CONVERSIONS_DEF
 #define GRAPHCHI_CONVERSIONS_DEF
@@ -50,6 +50,9 @@
 #endif
 
 namespace graphchi {
+    
+    struct dummy {};
+
     
     /* Simple string to number parsers */
     static void VARIABLE_IS_NOT_USED parse(int &x, const char * s);
@@ -103,6 +106,33 @@ namespace graphchi {
     static void parse(short &x, const char * s) {
         x = (short) atoi(s);
     }
+    
+#ifdef DYNAMICEDATA
+    static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> &values, char * s);
+
+    void parse_multiple(std::vector<dummy> & values, char * s) {
+        assert(false);
+    }
+    
+    /**
+     * Parse ':' -delimited values into a vector.
+     */
+    template <typename T>
+    static void parse_multiple(typename std::vector<T> & values, char * s) {
+        char delims[] = ":";
+        char * t;
+        t = strtok(s, delims);
+        T x;
+        parse(x, (const char*) t);
+        values.push_back(x);
+        while((t = strtok(NULL, delims)) != NULL) {
+            parse(x, (const char*) t);
+            values.push_back(x);
+        }
+    }
+    
+#endif
+    
     
     // Catch all
     template <typename T>
@@ -166,7 +196,7 @@ namespace graphchi {
      * value for the edges. Self-edges are ignored.
      */
     template <typename EdgeDataType>
-    void convert_edgelist(std::string inputfile, sharder<EdgeDataType> &sharderobj) {
+    void convert_edgelist(std::string inputfile, sharder<EdgeDataType> &sharderobj, bool multivalue_edges=false) {
         
         FILE * inf = fopen(inputfile.c_str(), "r");
         size_t bytesread = 0;
@@ -210,20 +240,42 @@ namespace graphchi {
             /* Check if has value */
             t = strtok(NULL, delims);
             
-            EdgeDataType val;
-            if (t != NULL) {
-                parse(val, (const char*) t);
-            } 
-            if (from != to) {
+            if (!multivalue_edges) {
+                EdgeDataType val;
                 if (t != NULL) {
-                    sharderobj.preprocessing_add_edge(from, to, val);
-                } else {
-                    sharderobj.preprocessing_add_edge(from, to);
+                    parse(val, (const char*) t);
                 }
+                if (from != to) {
+                    if (t != NULL) {
+                        sharderobj.preprocessing_add_edge(from, to, val);
+                    } else {
+                        sharderobj.preprocessing_add_edge(from, to);
+                    }
+                }
+            } else {
+#ifdef DYNAMICEDATA
+                std::vector<EdgeDataType> vals;
+                
+                parse_multiple(vals, (char*) t);
+                if (from != to) {
+                    if (vals.size() == 0) {
+                        // TODO: go around this problem
+                        logstream(LOG_FATAL) << "Each edge needs at least one value." << std::endl;
+                        assert(vals.size() > 0);
+                    }
+                    sharderobj.preprocessing_add_edge_multival(from, to, vals);
+                }
+                
+#else
+                logstream(LOG_FATAL) << "To support multivalue-edges, dynamic edge data needs to be used." << std::endl;
+                assert(false);
+#endif
             }
         }
         fclose(inf);
     }
+    
+    
     
     /**
      * Converts a graph from adjacency list format. Edge values are not supported,
@@ -279,7 +331,7 @@ namespace graphchi {
         }
         free(s);
         fclose(inf);
-    } 
+    }
     
     /**
      * Converts a graph from cassovary's (Twitter) format. Edge values are not supported,
@@ -314,7 +366,7 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Reading in cassovary format!" << std::endl;
                 
                 int maxlen = 100000000;
-                char * s = (char*) malloc(maxlen); 
+                char * s = (char*) malloc(maxlen);
                 
                 size_t bytesread = 0;
                 
@@ -346,7 +398,7 @@ namespace graphchi {
                             vid_t to = atoi(s);
                             if (from != to) {
                                 sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
-                            }                            
+                            }
                         }
                         
                     }
@@ -394,7 +446,7 @@ namespace graphchi {
                     assert(res1 > 0 && res2 > 0);
                     if (from != to) {
                         sharderobj.preprocessing_add_edge(from, to, EdgeDataType());
-                    } 
+                    }
                 }
                 fclose(inf);
             }
@@ -442,11 +494,11 @@ namespace graphchi {
             }
         }
     }
-
     
     
     
-    /** 
+    
+    /**
      * An abstract class for defining preprocessor objects
      * that modify the preprocessed binary input prior
      * to sharding.
@@ -473,7 +525,8 @@ namespace graphchi {
         
         if (!sharderobj.preprocessed_file_exists()) {
             std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist") {
+            if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
+                file_type_str != "multivalueedgelist") {
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -485,8 +538,14 @@ namespace graphchi {
                 convert_adjlist<EdgeDataType>(basefilename, sharderobj);
             } else if (file_type_str == "edgelist") {
                 convert_edgelist<EdgeDataType>(basefilename, sharderobj);
+#ifdef DYNAMICEDATA
+            } else if (file_type_str == "multivalueedgelist" ) {
+                convert_edgelist<EdgeDataType>(basefilename, sharderobj, true);
+#endif
             } else if (file_type_str == "binedgelist") {
                 convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
+            } else {
+                assert(false);
             }
             
             /* Finish preprocessing */
@@ -509,10 +568,9 @@ namespace graphchi {
         return nshards;
     }
     
-    struct dummy {};
     
-    /** 
-     * Converts a graph input to shards with no edge values. Preprocessing has several steps, 
+    /**
+     * Converts a graph input to shards with no edge values. Preprocessing has several steps,
      * see sharder.hpp for more information.
      */
     int convert_none(std::string basefilename, std::string nshards_string);
@@ -542,19 +600,19 @@ namespace graphchi {
             }
             
             /* Finish preprocessing */
-            sharderobj.end_preprocessing();            
+            sharderobj.end_preprocessing();
         }
         
         if (get_option_int("skipsharding", 0) == 1) {
             std::cout << "Skip sharding..." << std::endl;
             exit(0);
         }
-
+        
         vid_t max_vertex_id = get_option_int("maxvertex", 0);
         if (max_vertex_id > 0) {
             sharderobj.set_max_vertex_id(max_vertex_id);
         }
-                
+        
         int nshards = sharderobj.execute_sharding(nshards_string);
         logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
@@ -565,14 +623,12 @@ namespace graphchi {
     
     template <typename EdgeDataType>
     int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
-                                SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         int nshards;
         std::string suffix = "";
         if (preprocessor != NULL) {
             suffix = preprocessor->getSuffix();
         }
-        
-        
         
         /* Check if input file is already sharded */
         if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
@@ -584,7 +640,7 @@ namespace graphchi {
             
         }
         didexist = false;
-
+        
         logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
@@ -599,7 +655,7 @@ namespace graphchi {
         return convert_if_notexists<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
     }
     
-
+    
     
     struct vertex_degree {
         int deg;
