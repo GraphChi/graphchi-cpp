@@ -214,7 +214,7 @@ struct  MMOutputter_scalar {
  * with the same id as the row number (0-based), but vertices correponsing to columns
  * have id + num-rows.
  * Line format of the type
- * [user] [item] [rating] [time/weight]
+ * [user] [item] [time/weight] [rating]
  */
 
 template <typename als_edge_type>
