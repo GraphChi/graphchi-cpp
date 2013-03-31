@@ -24,6 +24,6 @@ COLLABORATIVE FILTERING TOOLKIT
 
 Danny Bickson (CMU) has implemented a comprehensive Collaborative Filtering toolkit,
 which is included in the release. See his blog post for more information:
-http://bickson.blogspot.com/2012/08/collaborative-filtering-with-graphchi.html
+http://bickson.blogspot.com/2012/12/collaborative-filtering-with-graphchi.html
 
 
