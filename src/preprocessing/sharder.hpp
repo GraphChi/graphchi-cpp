@@ -723,7 +723,7 @@ namespace graphchi {
 #ifdef DYNAMICEDATA
                     i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
                     jumpover = 0;
-#endif DYNAMICEDATA
+#endif //DYNAMICEDATA
                     edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                                         
 #ifdef DYNAMICEDATA

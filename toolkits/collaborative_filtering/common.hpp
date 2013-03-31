@@ -92,7 +92,10 @@ void parse_command_line_args(){
 
   maxval        = get_option_float("maxval", 1e100);
   minval        = get_option_float("minval", -1e100);
+  if (minval >= maxval)
+    logstream(LOG_FATAL)<<"Min allowed rating (--minval) should be smaller than max allowed rating (--maxval)" << std::endl;
   valrange      = maxval - minval;
+  assert(valrange > 0);
   quiet    = get_option_int("quiet", 0);
   if (quiet)
     global_logger().set_log_level(LOG_ERROR);

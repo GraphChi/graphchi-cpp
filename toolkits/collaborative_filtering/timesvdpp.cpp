@@ -168,7 +168,8 @@ float time_svdpp_predict(const time_svdpp_usr & usr,
   pui = std::min(pui,maxval);
   pui = std::max(pui,minval);
   prediction = pui;
-  assert(!std::isnan(prediction));
+  if (std::isnan(prediction))
+    logstream(LOG_FATAL)<<"Got into numerical errors! Try to decrease --lrate, --gamma, --beta" <<std::endl;
   float err = rating - prediction;
   return err*err;
 }
