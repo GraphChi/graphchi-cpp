@@ -125,8 +125,11 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
         rmse_vec[omp_get_thread_num()] += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;
       }
     }
-    // Diagonal
-    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    double regularization = lambda;
+    if (regnormal)
+      lambda *= vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += regularization;
+
     // Solve the least squares problem with eigen using Cholesky decomposition
     vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
   }

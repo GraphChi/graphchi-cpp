@@ -125,7 +125,11 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       }
     }
 
-    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    double regularization = lambda;
+    if (regnormal)
+      lambda *= vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += regularization;
+
 
     bool isuser = vertex.id() < (uint)M;
     if (algorithm == SPARSE_BOTH_FACTORS || (algorithm == SPARSE_USR_FACTOR && isuser) || 

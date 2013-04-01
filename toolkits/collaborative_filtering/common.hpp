@@ -64,6 +64,8 @@ bool quiet = false;
 int input_file_offset = 1;
 int kfold_cross_validation = 0;
 int kfold_cross_validation_index = 0;
+int regnormal = 1; // if set to 1, compute LS regularization according to the paper "Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan. Large-Scale Parallel Collaborative Filtering for the Netflix Prize."
+
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
 enum {
@@ -128,6 +130,7 @@ void parse_command_line_args(){
   if (kfold_cross_validation != 0){
     logstream(LOG_WARNING)<<"Activating kfold cross vlidation with K="<< kfold_cross_validation << std::endl;
   }
+  regnormal = get_option_int("regnormal", regnormal);
 }
 
 template<typename T>

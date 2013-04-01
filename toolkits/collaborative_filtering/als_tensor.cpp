@@ -132,8 +132,10 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         rmse_vec[omp_get_thread_num()] += als_tensor_predict(vdata, nbr_latent, observation, prediction, (void*)&time_node);
       }
     }
-
-    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    double regularization = lambda;
+    if (regnormal)
+      lambda *= vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += regularization;
 
     // Solve the least squares problem with eigen using Cholesky decomposition
     vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);

@@ -327,7 +327,10 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       }
     }
 
-    for(int i=0; i < D; i++) XtX(i,i) += (lambda); // * vertex.num_edges();
+    double regularization = lambda;
+    if (regnormal)
+      lambda *= vertex.num_edges();
+    for(int i=0; i < D; i++) XtX(i,i) += regularization;
 
     // Solve the least squares problem with eigen using Cholesky decomposition
     mat iAi_;
