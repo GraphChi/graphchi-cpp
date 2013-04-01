@@ -33,7 +33,6 @@ extern graphchi_engine<VertexDataType, EdgeDataType> * pengine;
 
 double regularization;
 bool debug;
-bool regnormal;
 
 void print_vec(const char * name, const vec & pvec, bool high);
 
