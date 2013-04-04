@@ -218,7 +218,7 @@ namespace graphchi {
             if (s[0] == '#') continue; // Comment
             if (s[0] == '%') continue; // Comment
             
-            char delims[] = "\t ";
+            char delims[] = "\t, ";
             char * t;
             t = strtok(s, delims);
             if (t == NULL) {
