@@ -199,16 +199,12 @@ float (*prediction_func)(const vertex_data & user, const vertex_data & movie, fl
   */
 void validation_rmse(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra)
     ,graphchi_context & gcontext, int tokens_per_row = 3, vec * avgprd = NULL, int pmf_burn_in = 0) {
-  MM_typecode matcode;
   FILE *f;
   size_t nz;   
 
-  if ((f = fopen(validation.c_str(), "r")) == NULL) {
-    std::cout<<std::endl;
-    return; //missing validaiton data, nothing to compute
-  }
-
-  read_matrix_market_banner_and_size(f, matcode, Me, Ne, nz, validation);
+  detect_matrix_size(validation, f, Me, Ne, nz, 0, 0, VALIDATION);
+  if (f == NULL)
+    return;
   if ((M > 0 && N > 0) && (Me != M || Ne != N))
     logstream(LOG_FATAL)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
