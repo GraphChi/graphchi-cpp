@@ -135,16 +135,16 @@ void get_offsets(std::vector<int> & offsets){
   offsets[1] = M;
   if (offsets.size() >= 3)
     offsets[2] = M+N;
- if (fc.hash_strings){
-   for (uint j=2; j< offsets.size()-1; j++){
-         offsets[j+1] = offsets[j] + fc.node_id_maps[j].string2nodeid.size();
-          logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
-   }
+  if (fc.hash_strings){
+    for (uint j=2; j< offsets.size()-1; j++){
+      offsets[j+1] = offsets[j] + fc.node_id_maps[j].string2nodeid.size();
+      logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
+    }
   } else {
-      for (uint j=2; j < offsets.size(); j++){
-           offsets[j+1] = offsets[j] + (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
-          logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
-      }
+    for (uint j=2; j < offsets.size(); j++){
+      offsets[j+1] = offsets[j] + (int)ceil((fc.stats_array[j-2].maxval-fc.stats_array[j-2].minval)+1);
+      logstream(LOG_DEBUG)<<"Offset " << j+1 << " is: " << offsets[j+1] << std::endl;
+    }
   }
 
 }
@@ -238,10 +238,10 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
     if (read_only){ // find if node was in map
       std::map<std::string,uint>::iterator it = fc.node_id_maps[pos].string2nodeid.find(pch);
       if (it != fc.node_id_maps[pos].string2nodeid.end()){
-          ret = it->second;
-          assert(ret < fc.node_id_maps[pos].string2nodeid.size());
-       }
-       else ret = -1;
+        ret = it->second;
+        assert(ret < fc.node_id_maps[pos].string2nodeid.size());
+      }
+      else ret = -1;
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.node_id_maps[pos], id, pch);
@@ -265,16 +265,16 @@ float get_value(char * pch, bool read_only){
     if (read_only){ // find if node was in map
       std::map<std::string,uint>::iterator it = fc.val_map.string2nodeid.find(pch);
       if (it != fc.val_map.string2nodeid.end()){
-          ret = it->second;
-       }
-       else ret = -1;
+        ret = it->second;
+      }
+      else ret = -1;
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.val_map, id, pch);
       assert(id < fc.val_map.string2nodeid.size());
       ret = id;
     }
- 
+
   }    
   if (std::isnan(ret) || std::isinf(ret))
     logstream(LOG_FATAL)<<"Failed to read value" << std::endl;
@@ -347,8 +347,8 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       valarray[index] = get_node_id(pch, index+2, i, type != TRAINING); 
       if (type == TRAINING)
 
-      if (std::isnan(valarray[index]))
-        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
+        if (std::isnan(valarray[index]))
+          logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
 
       //calc stats about ths feature
       if (type == TRAINING && !fc.hash_strings){
@@ -395,7 +395,7 @@ float compute_prediction(
   if (node_array[index]->pvec[0] >= 1e5)
     logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   index++; loc++;
-   /* 2) FEATURES GIVEN IN RATING LINE */
+  /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
     uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
     //assert(pos >= 0 && pos < latent_factors_inmem.size());
@@ -403,7 +403,7 @@ float compute_prediction(
       logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << 
         " fc.offsets " << fc.offsets[j+index] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
     node_array[j+index] = & latent_factors_inmem[pos];
-     if (node_array[j+index]->pvec[0] >= 1e5)
+    if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   }
   index+= fc.total_features;
@@ -413,16 +413,16 @@ float compute_prediction(
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
     int pos;
     if (user_links != ""){
-    pos = j.index();
-    assert(pos < (int)M);
+      pos = j.index();
+      assert(pos < (int)M);
     }
     else {
-    pos = j.index()+fc.offsets[index];
-    assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
-    assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
-    assert(pos >= (int)fc.offsets[index]);
+      pos = j.index()+fc.offsets[index];
+      assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
+      assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
+      assert(pos >= (int)fc.offsets[index]);
     }
-        //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
+    //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
     if (node_array[i+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -483,37 +483,37 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
    * Create sharder object
    */
   int nshards;
-/*
-  if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
-    logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-    FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-    int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n%lg\n",&M, &N, &L, &fc.total_features, &globalMean);
-    if (rc != 5)
-      logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
-    for (int i=0; i< fc.total_features; i++){
-      int rc = fscanf(inf, "%g\n%g\n%g\n", &fc.stats_array[i].minval, &fc.stats_array[i].maxval, &fc.stats_array[i].meanval);
-      if (rc != 3)
-        logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
+  /*
+     if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
+     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
+     int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n%lg\n",&M, &N, &L, &fc.total_features, &globalMean);
+     if (rc != 5)
+     logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
+     for (int i=0; i< fc.total_features; i++){
+     int rc = fscanf(inf, "%g\n%g\n%g\n", &fc.stats_array[i].minval, &fc.stats_array[i].maxval, &fc.stats_array[i].meanval);
+     if (rc != 3)
+     logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
 
-    }
-    logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " globalMean: " << globalMean << std::endl;
-    for (int i=0; i< fc.total_features; i++){
-      logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
-    }
-    fclose(inf);
+     }
+     logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " globalMean: " << globalMean << std::endl;
+     for (int i=0; i< fc.total_features; i++){
+     logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
+     }
+     fclose(inf);
 
-    if (fc.hash_strings){
-      for (int i=0; i< fc.total_features+2; i++){
-        char filename[256];
-        sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
-        load_map_from_txt_file<std::map<std::string,uint> >(fc.node_id_maps[i].string2nodeid, filename, 2);
-        if (fc.node_id_maps[i].string2nodeid.size() == 0)
-          logstream(LOG_FATAL)<<"Failed to read " << filename << " please remove all temp files and try again" << std::endl;
-      }
-    }
-    return nshards;
-  }   
-*/
+     if (fc.hash_strings){
+     for (int i=0; i< fc.total_features+2; i++){
+     char filename[256];
+     sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
+     load_map_from_txt_file<std::map<std::string,uint> >(fc.node_id_maps[i].string2nodeid, filename, 2);
+     if (fc.node_id_maps[i].string2nodeid.size() == 0)
+     logstream(LOG_FATAL)<<"Failed to read " << filename << " please remove all temp files and try again" << std::endl;
+     }
+     }
+     return nshards;
+     }   
+     */
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
@@ -530,7 +530,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     int rc = getline(&linebuf, &linesize, f);
     if (rc == -1)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
-      
+
     strncpy(linebuf_debug, linebuf, 1024);
 
 
@@ -538,7 +538,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
-      
+
     header_titles.push_back(pch);
 
     /** READ USER FEATURES */
@@ -568,55 +568,55 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fc.stats_array[i].maxval = -1e100;
     }
   }
-    if (limit_rating > 0)
-      nz = limit_rating;
-    for (size_t i=0; i<nz; i++)
-    {
+  if (limit_rating > 0)
+    nz = limit_rating;
+  for (size_t i=0; i<nz; i++)
+  {
 
-      if (!read_line(f, base_filename, i,I, J, val, valarray, TRAINING))
-        logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
+    if (!read_line(f, base_filename, i,I, J, val, valarray, TRAINING))
+      logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
-      //avoid self edges
-      if (square && I == J)
-        continue;
+    //avoid self edges
+    if (square && I == J)
+      continue;
 
-      if (I>= M || J >= N || I < 0 || J < 0){
-        if (i == 0)
-          logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
-        else 
-          logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
-      }
-      //calc stats
-      L++;
-      globalMean += val;
-      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
+    if (I>= M || J >= N || I < 0 || J < 0){
+      if (i == 0)
+        logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
+      else 
+        logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
     }
-
-    sharderobj.end_preprocessing();
-
     //calc stats
-    assert(L > 0);
-    for (int i=0; i< fc.total_features; i++){
-      fc.stats_array[i].meanval /= L;
-    }
-    //assert(globalMean != 0);
-    if (globalMean == 0)
-      logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
-    globalMean /= L;
-    logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
+    L++;
+    globalMean += val;
+    sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
+  }
 
-    //print features
-    for (int i=0; i< fc.total_features; i++){
-      logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
-    }
+  sharderobj.end_preprocessing();
+
+  //calc stats
+  assert(L > 0);
+  for (int i=0; i< fc.total_features; i++){
+    fc.stats_array[i].meanval /= L;
+  }
+  //assert(globalMean != 0);
+  if (globalMean == 0)
+    logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
+  globalMean /= L;
+  logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
+
+  //print features
+  for (int i=0; i< fc.total_features; i++){
+    logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
+  }
 
 
-    FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
-    for (int i=0; i < fc.total_features; i++){
-      fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
-    }
-    fclose(outf);
+  FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
+  fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
+  for (int i=0; i < fc.total_features; i++){
+    fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
+  }
+  fclose(outf);
 
   fclose(f);
 
@@ -626,7 +626,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
         logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
     }
   }
-    
+
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
@@ -748,13 +748,13 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     /** READ TO */  
     pch = strtok(NULL, "\t,\r; ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Failed to read to field [ " << linebuf_debug << " ] " << std::endl;
+    if (pch == NULL)
+      logstream(LOG_FATAL)<<"Failed to read to field [ " << linebuf_debug << " ] " << std::endl;
 
-      J = (uint)get_node_id(pch, user? 0 : 1, lines);
-      set_new(latent_factors_inmem[user? I : I+M].links, J, val);
-      tokens++;
-      //update stats if needed
+    J = (uint)get_node_id(pch, user? 0 : 1, lines);
+    set_new(latent_factors_inmem[user? I : I+M].links, J, val);
+    tokens++;
+    //update stats if needed
   }
 
   logstream(LOG_DEBUG)<<"Read a total of " << lines << " node features. Tokens: " << tokens << " user? " << user <<  " new entries: " << fc.node_id_maps[user? 0 : 1].string2nodeid.size() << std::endl;
@@ -777,18 +777,18 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     assert(fc.total_features <= fc.feature_num);
     if ((validation == "") || !file_exists(validation)) {
-        if ((validation != (training + "e")) && gcontext.iteration == 0)
+      if ((validation != (training + "e")) && gcontext.iteration == 0)
         logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
-         std::cout << std::endl;
-         return;
+      std::cout << std::endl;
+      return;
     }
     FILE *f = NULL;
     size_t nz;   
 
     detect_matrix_size(validation, f, Me, Ne, nz);
     if (f == NULL){
-       logstream(LOG_WARNING)<<"Failed to open validation data. Skipping."<<std::endl;
-       return;
+      logstream(LOG_WARNING)<<"Failed to open validation data. Skipping."<<std::endl;
+      return;
     }
 
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
@@ -799,7 +799,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
     double validation_error = 0;
-    
+
     std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
     float val;
@@ -852,26 +852,26 @@ void test_predictions_N(
     feature_control & fc, 
     bool square = false) {
   FILE * f = NULL;
-  uint Me, Ne;
+  uint Mt, Nt;
   size_t nz;   
 
   if (test == ""){
     logstream(LOG_INFO)<<"No test file was found, skipping test predictions " << std::endl;
     return;
   }
-    
-    if (!file_exists(test)) {
-        if (test != (training + "t"))
-          logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
-        return;
-    }
 
-  detect_matrix_size(test, f, Me, Ne, nz);
-  if (f == NULL){
-     logstream(LOG_WARNING)<<"Failed to open test file. Skipping " << std::endl;
-     return;
+  if (!file_exists(test)) {
+    if (test != (training + "t"))
+      logstream(LOG_WARNING)<<" test predictions file was specified but not found: " << test << std::endl;
+    return;
   }
-  if ((M > 0 && N > 0 ) && (Me != M || Ne != N))
+
+  detect_matrix_size(test, f, Mt, Nt, nz);
+  if (f == NULL){
+    logstream(LOG_WARNING)<<"Failed to open test file. Skipping " << std::endl;
+    return;
+  }
+  if ((M > 0 && N > 0 ) && (Mt != M || Nt != N))
     logstream(LOG_FATAL)<<"Input size of test matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
   FILE * fout = open_file((test + ".predict").c_str(),"w");
@@ -880,28 +880,33 @@ void test_predictions_N(
   mm_set_array(&matcode);
   mm_write_banner(fout, matcode);
   mm_write_mtx_array_size(fout ,nz, 1); 
-  
+
   std::vector<float> valarray; valarray.resize(fc.total_features);
   float val;
   double prediction;
   uint I,J;
 
-  for (uint i=0; i<nz; i++)
+  uint i=0;
+  for (i=0; i<nz; i++)
   {
 
     if (!read_line(f, test, i, I, J, val, valarray, TEST))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     if (I == (uint)-1 || J == (uint)-1){
+      fprintf(fout, "N/A\n");
       new_test_users++;
       continue;
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
-    fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
+    fprintf(fout, "%12.8lg\n", prediction);
     delete[] node_array;
   }
+
+  if (i != nz)
+    logstream(LOG_FATAL)<<"Missing input lines in test file. Should be : " << nz << " found only " << i << std::endl;
   fclose(f);
   fclose(fout);
 
@@ -960,11 +965,11 @@ void init_gensgd(bool load_factors_from_file){
   get_offsets(fc.offsets);
   assert(D > 0);
   if (!load_factors_from_file){
-  double factor = 0.1/sqrt(D);
+    double factor = 0.1/sqrt(D);
 #pragma omp parallel for
-  for (int i=0; i< nodes; i++){
-    latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
-  }
+    for (int i=0; i< nodes; i++){
+      latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
+    }
   }
 }
 
@@ -984,9 +989,9 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
     total_errors = (size_t)sum(errors_vec);
   dtraining_rmse = sqrt(dtraining_rmse / pengine->num_edges());
   if (calc_error)
-  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
+    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse << " Train err: " << std::setw(10) << (total_errors/(double)L);
   else 
-  std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
+    std::cout<< std::setw(10) << mytimer.current_time() << ") Iteration: " << std::setw(3) <<iteration<<" Training RMSE: " << std::setw(10)<< dtraining_rmse;
 }
 
 /**
@@ -1058,11 +1063,11 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
             gensgd_rate = gensgd_rate4;
           else 
             gensgd_rate = gensgd_rate5; //last item
-          
+
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
           assert(node_array[i]->bias < 1e3);
- 
+
           vec grad =  sum - node_array[i]->pvec;
           node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
           assert(!std::isnan(node_array[i]->pvec[0]));
@@ -1186,7 +1191,7 @@ int main(int argc, const char ** argv) {
   fc.stats_array.resize(fc.total_features);
 
   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
- 
+
   init_gensgd(load_factors_from_file);
   if (user_file != "")
     read_node_features(user_file, false, fc, true, false);
@@ -1249,7 +1254,7 @@ int main(int argc, const char ** argv) {
   if (new_validation_users > 0)
     logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
   if (new_test_users > 0)
-    logstream(LOG_WARNING)<<"Found " << new_test_users<< " new test with no information about them in training dataset!" << std::endl;
+    std::cout<<"Found " << new_test_users<< " new test with no information about them in training dataset!" << std::endl;
 
   /* Report execution metrics */
   if (!quiet)
