@@ -57,7 +57,7 @@ int single_domain = 0; //both user and movies ids are from the same id space:w
 const char * spaces = " \r\n\t";
 const char * tsv_spaces = "\t\n";
 const char * csv_spaces = ",\n";
-
+timer mytimer;
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
     std::map<std::string,uint>::const_iterator it;
@@ -172,9 +172,9 @@ void parse(int i){
       break;
 
     if (debug && (line % 50000 == 0))
-      logstream(LOG_INFO) << "Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
+      logstream(LOG_INFO) << mytimer.current_time() << ") Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
     if (string2nodeid.size() % 500000 == 0)
-      logstream(LOG_INFO) << "Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
+      logstream(LOG_INFO) << mytimer.current_time() << ") Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
   } 
 
   logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl <<
@@ -184,13 +184,13 @@ void parse(int i){
 
 
 int main(int argc,  const char *argv[]) {
-
   logstream(LOG_WARNING)<<"GraphChi parsers library is written by Danny Bickson (c). Send any "
     " comments or bug reports to danny.bickson@gmail.com " << std::endl;
   global_logger().set_log_level(LOG_INFO);
   global_logger().set_log_to_console(true);
 
   graphchi_init(argc, argv);
+  mytimer.start();
 
   debug = get_option_int("debug", 0);
   dir = get_option_string("file_list");
@@ -224,7 +224,7 @@ int main(int argc,  const char *argv[]) {
   if (in_files.size() == 0)
     logstream(LOG_FATAL)<<"Failed to read any file names from the list file: " << dir << std::endl;
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (uint i=0; i< in_files.size(); i++)
     parse(i);
 
