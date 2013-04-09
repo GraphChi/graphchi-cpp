@@ -481,43 +481,17 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
    * Create sharder object
    */
   int nshards;
-  /*
-     if ((nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
-     logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
-     FILE * inf = fopen((base_filename + ".gm").c_str(), "r");
-     int rc = fscanf(inf,"%d\n%d\n%ld\n%d\n%lg\n",&M, &N, &L, &fc.total_features, &globalMean);
-     if (rc != 5)
-     logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
-     for (int i=0; i< fc.total_features; i++){
-     int rc = fscanf(inf, "%g\n%g\n%g\n", &fc.stats_array[i].minval, &fc.stats_array[i].maxval, &fc.stats_array[i].meanval);
-     if (rc != 3)
-     logstream(LOG_FATAL)<<"Failed to read global mean from file: " << base_filename << ".gm" << std::endl;
-
-     }
-     logstream(LOG_INFO) << "Read matrix of size " << M << " x " << N << " globalMean: " << globalMean << std::endl;
-     for (int i=0; i< fc.total_features; i++){
-     logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
-     }
-     fclose(inf);
-
-     if (fc.hash_strings){
-     for (int i=0; i< fc.total_features+2; i++){
-     char filename[256];
-     sprintf(filename, "%s.feature%d.map", base_filename.c_str(),i);
-     load_map_from_txt_file<std::map<std::string,uint> >(fc.node_id_maps[i].string2nodeid, filename, 2);
-     if (fc.node_id_maps[i].string2nodeid.size() == 0)
-     logstream(LOG_FATAL)<<"Failed to read " << filename << " please remove all temp files and try again" << std::endl;
-     }
-     }
-     return nshards;
-     }   
-     */
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
   detect_matrix_size(base_filename, f, M, N, nz);
   if (f == NULL)
     logstream(LOG_FATAL) << "Could not open file: " << base_filename << ", error: " << strerror(errno) << std::endl;
+  if (M == 0 && N == 0)
+    logstream(LOG_FATAL)<<"Failed to detect matrix size. Please prepare a file named: " << base_filename << ":info with matrix market header, as explained here: http://bickson.blogspot.co.il/2012/12/collaborative-filtering-3rd-generation_14.html " << std::endl;
+
+  logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
+
 
   if (has_header_titles){
     char * linebuf = NULL;
@@ -530,30 +504,21 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     strncpy(linebuf_debug, linebuf, 1024);
-
-
-    /** READ [FROM] */
     char *pch = strtok(linebuf,"\t,\r; ");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     header_titles.push_back(pch);
 
-    /** READ USER FEATURES */
     while (pch != NULL){
       pch = strtok(NULL, "\t,\r; ");
       if (pch == NULL)
         break;
       header_titles.push_back(pch);
-      //update stats if needed
     }
   }
 
-  if (M == 0 && N == 0)
-    logstream(LOG_FATAL)<<"Failed to detect matrix size. Please prepare a file named: " << base_filename << ":info with matrix market header, as explained here: http://bickson.blogspot.co.il/2012/12/collaborative-filtering-3rd-generation_14.html " << std::endl;
-
-  logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: " << M << " x " << N << ", non-zeros: " << nz << std::endl;
-
+  compute_matrix_size(nz, TRAINING);
   uint I, J;
   int val_array_len = std::max(1, fc.total_features);
   assert(val_array_len < FEATURE_WIDTH);
@@ -566,7 +531,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       fc.stats_array[i].maxval = -1e100;
     }
   }
-  if (limit_rating > 0)
+  if (limit_rating > 0 && limit_rating < (int)nz)
     nz = limit_rating;
   for (size_t i=0; i<nz; i++)
   {
@@ -574,20 +539,20 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     if (!read_line(f, base_filename, i,I, J, val, valarray, TRAINING))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
-    //avoid self edges
-    if (square && I == J)
-      continue;
-
     if (I>= M || J >= N || I < 0 || J < 0){
       if (i == 0)
         logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
       else 
         logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
     }
-    //calc stats
-    L++;
-    globalMean += val;
-    sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
+
+    bool active_edge = decide_if_edge_is_active(i, TRAINING);
+
+    if (active_edge){
+      //calc stats
+      globalMean += val;
+      sharderobj.preprocessing_add_edge(I, square?J:M+J, als_edge_type(val, &valarray[0], val_array_len));
+    }
   }
 
   sharderobj.end_preprocessing();
@@ -601,7 +566,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   if (globalMean == 0)
     logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
   globalMean /= L;
-  logstream(LOG_INFO)<<"Coputed global mean is: " << globalMean << std::endl;
+  logstream(LOG_INFO)<<"Computed global mean is: " << globalMean << std::endl;
 
   //print features
   for (int i=0; i< fc.total_features; i++){
@@ -792,7 +757,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     if ((M > 0 && N > 0) && (Me != M || Ne != N))
       logstream(LOG_WARNING)<<"Input size of validation matrix must be identical to training matrix, namely " << M << "x" << N << std::endl;
 
-    Le = nz;
+    compute_matrix_size(nz, VALIDATION);
 
     last_validation_rmse = dvalidation_rmse;
     dvalidation_rmse = 0;   
@@ -808,24 +773,28 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       if (!read_line(f, validation, i, I, J, val, valarray, VALIDATION))
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
 
-      assert(size == num_feature_bins());
-      size = 0; //to avoid warning
-      if (I == (uint)-1 || J == (uint)-1){
-        new_validation_users++;
-        continue;
-      }
+      bool active_edge = decide_if_edge_is_active(i, VALIDATION);
 
-      double prediction;
-      vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
-      for (int k=0; k< calc_feature_node_array_size(I,J); k++)
-        node_array[k] = NULL;
-      vec sum;
-      compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
-      delete [] node_array;
-      dvalidation_rmse += pow(prediction - val, 2);
-      if (calc_error) 
-        if ((prediction < cutoff && val > cutoff) || (prediction > cutoff && val < cutoff))
-          validation_error++;
+      if (active_edge){
+        assert(size == num_feature_bins());
+        size = 0; //to avoid warning
+        if (I == (uint)-1 || J == (uint)-1){
+          new_validation_users++;
+          continue;
+        }
+
+        double prediction;
+        vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
+        for (int k=0; k< calc_feature_node_array_size(I,J); k++)
+          node_array[k] = NULL;
+        vec sum;
+        compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
+        delete [] node_array;
+        dvalidation_rmse += pow(prediction - val, 2);
+        if (calc_error) 
+          if ((prediction < cutoff && val > cutoff) || (prediction > cutoff && val < cutoff))
+            validation_error++;
+      }
     }
 
     fclose(f);
