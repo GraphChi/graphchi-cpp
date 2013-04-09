@@ -310,7 +310,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       if (type == TRAINING){
         assert( I >= 0 && I < M);
       }
-      else assert( I < M);
       token++;
     }
     else if (token == fc.to_pos){
@@ -321,7 +320,6 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       J = (uint)get_node_id(pch, 1, i, type != TRAINING);
       if (type == TRAINING)
         assert(J >= 0 && J < N);
-      else assert(J < N);
       token++;
     }
     else if (token == fc.val_pos){

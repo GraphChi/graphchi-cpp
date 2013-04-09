@@ -129,6 +129,16 @@ void parse_command_line_args(){
   }
   if (kfold_cross_validation != 0){
     logstream(LOG_WARNING)<<"Activating kfold cross vlidation with K="<< kfold_cross_validation << std::endl;
+    if (training == validation)
+      logstream(LOG_FATAL)<<"Using cross validation, validation file (--validation=filename) should have a different name than training" << std::endl;
+    if (validation == "")
+      logstream(LOG_FATAL)<<"You must provide validation input file name (--validation=filename) when using k-fold cross validation" << std::endl;
+    //remove cached files
+    int rc;
+    rc = system((std::string("rm -fR ") + training + std::string(".*")).c_str()); 
+    assert(!rc);
+    rc = system((std::string("rm -fR ") + validation + std::string(".*")).c_str()); 
+    assert(!rc);
   }
   regnormal = get_option_int("regnormal", regnormal);
 }
