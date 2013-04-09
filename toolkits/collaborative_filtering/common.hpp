@@ -21,8 +21,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
- 
+ */
+
 #include <algorithm>
 #include <assert.h>
 #include <cmath>
@@ -64,7 +64,8 @@ bool quiet = false;
 int input_file_offset = 1;
 int kfold_cross_validation = 0;
 int kfold_cross_validation_index = 0;
-int regnormal = 1; // if set to 1, compute LS regularization according to the paper "Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan. Large-Scale Parallel Collaborative Filtering for the Netflix Prize."
+int regnormal = 0; // if set to 1, compute LS regularization according to the paper "Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan. Large-Scale Parallel Collaborative Filtering for the Netflix Prize."
+int clean_cache = 0;
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -80,6 +81,20 @@ int ap_number = 3; //AP@3
 enum {
   TRAINING= 0, VALIDATION = 1, TEST = 2
 };
+
+void remove_cached_files(){
+  //remove cached files
+  int rc;
+  assert(training != "");
+  rc = system((std::string("rm -fR ") + training + std::string(".*")).c_str()); 
+  assert(!rc);
+  if (validation != ""){
+    rc = system((std::string("rm -fR ") + validation + std::string(".*")).c_str()); 
+    assert(!rc);
+  }
+
+}
+
 
 void parse_command_line_args(){
   /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
@@ -133,14 +148,14 @@ void parse_command_line_args(){
       logstream(LOG_FATAL)<<"Using cross validation, validation file (--validation=filename) should have a different name than training" << std::endl;
     if (validation == "")
       logstream(LOG_FATAL)<<"You must provide validation input file name (--validation=filename) when using k-fold cross validation" << std::endl;
-    //remove cached files
-    int rc;
-    rc = system((std::string("rm -fR ") + training + std::string(".*")).c_str()); 
-    assert(!rc);
-    rc = system((std::string("rm -fR ") + validation + std::string(".*")).c_str()); 
-    assert(!rc);
+    clean_cache = 1;
   }
   regnormal = get_option_int("regnormal", regnormal);
+  clean_cache = get_option_int("clean_cache", clean_cache);
+
+  if (clean_cache)
+    remove_cached_files();
+
 }
 
 template<typename T>
@@ -167,12 +182,12 @@ void print_copyright(){
 }
 
 void print_config(){
- std::cout<<"[feature_width] => [" << D << "]" << std::endl;
- std::cout<<"[users] => [" << M << "]" << std::endl;
- std::cout<<"[movies] => [" << N << "]" <<std::endl;
- std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
- std::cout<<"[number_of_threads] => [" << number_of_omp_threads() << "]" <<std::endl;
- std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
+  std::cout<<"[feature_width] => [" << D << "]" << std::endl;
+  std::cout<<"[users] => [" << M << "]" << std::endl;
+  std::cout<<"[movies] => [" << N << "]" <<std::endl;
+  std::cout<<"[training_ratings] => [" << L << "]" << std::endl;
+  std::cout<<"[number_of_threads] => [" << number_of_omp_threads() << "]" <<std::endl;
+  std::cout<<"[membudget_Mb] => [" << get_option_int("membudget_mb") << "]" <<std::endl; 
 }
 
 template<typename T>
@@ -185,7 +200,7 @@ void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = t
     return;
 
 #pragma omp parallel for
- for (int i=0; i < (int)size; i++){
+  for (int i=0; i < (int)size; i++){
     for (int j=0; j<D; j++)
       latent_factors_inmem[i].pvec[j] = drand48();
   } 
