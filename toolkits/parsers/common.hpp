@@ -23,9 +23,7 @@
 #include <map>
 #include <string>
 #include "graphchi_basic_includes.hpp"
-#include "common.hpp"
 using namespace graphchi;
-
 mutex mymutex;
 
 struct double_map{
@@ -85,6 +83,17 @@ void save_map_to_text_file(const std::map<std::string,uint> & map, const std::st
     unsigned int total = 0;
     for (it = map.begin(); it != map.end(); it++){ 
       fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second + optional_offset);
+     total++;
+    } 
+    logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
+}
+
+void save_map_to_text_file(const std::map<unsigned long long,uint> & map, const std::string filename, int optional_offset = 0){
+    std::map<unsigned long long,uint>::const_iterator it;
+    out_file fout(filename);
+    unsigned int total = 0;
+    for (it = map.begin(); it != map.end(); it++){ 
+      fprintf(fout.outf, "%llu %u\n", it->first, it->second + optional_offset);
      total++;
     } 
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;

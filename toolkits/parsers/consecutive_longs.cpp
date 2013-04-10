@@ -35,9 +35,9 @@ using namespace std;
 using namespace graphchi;
 
 bool debug = false;
-map<string,uint> string2nodeid;
+map<unsigned long long,uint> string2nodeid;
 //map<uint,string> nodeid2hash;
-map<string,uint> string2nodeid2;
+map<unsigned long long,uint> string2nodeid2;
 //map<uint,string> nodeid2hash2;
 uint conseq_id;
 uint conseq_id2;
@@ -59,12 +59,13 @@ const char * tsv_spaces = "\t\n";
 const char * csv_spaces = ",\n";
 timer mytimer;
 
+
 /*
  * assign a consecutive id from either the [from] or [to] ids.
  */
-void assign_id(map<string,uint> & string2nodeid, uint & outval, const string &name, bool from){
+void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, const unsigned long long name, bool from){
 
-  map<string,uint>::iterator it = string2nodeid.find(name);
+  map<unsigned long long,uint>::iterator it = string2nodeid.find(name);
   //if an id was already assigned, return it
   if (it != string2nodeid.end()){
     outval = it->second;
@@ -117,12 +118,12 @@ void parse(int i){
     //read [FROM]
     char *pch = strtok_r(linebuf,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(string2nodeid, from, pch, true);
+    assign_id(string2nodeid, from, atoll(pch), true);
 
     //read [TO]
     pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(single_domain ? string2nodeid:string2nodeid2, to, pch, single_domain ? true : false);
+    assign_id(single_domain ? string2nodeid:string2nodeid2, to, atoll(pch), single_domain ? true : false);
 
     //read the rest of the line
     if (!binary){
