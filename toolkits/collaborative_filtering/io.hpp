@@ -154,6 +154,7 @@ bool decide_if_edge_is_active(size_t i, int type){
   return active_edge;
 }
 
+
 template<typename vertex_data>
 struct  MMOutputter_vec{
   MMOutputter_vec(std::string fname, uint start, uint end, int index, std::string comment, std::vector<vertex_data> & latent_factors_inmem)  {

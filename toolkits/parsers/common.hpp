@@ -79,12 +79,12 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
 }
 
 
-void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename){
+void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename, int optional_offset = 0){
     std::map<std::string,uint>::const_iterator it;
     out_file fout(filename);
     unsigned int total = 0;
     for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second);
+      fprintf(fout.outf, "%s %u\n", it->first.c_str(), it->second + optional_offset);
      total++;
     } 
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;

@@ -883,7 +883,9 @@ void test_predictions_N(
 
 
 
-
+/* This function implements equation (5) in the libFM paper:
+ * http://www.csie.ntu.edu.tw/~b97053/paper/Factorization%20Machines%20with%20libFM.pdf
+ * Note that in our implementation x_i are all 1 so the formula is slightly simpler */
 float gensgd_predict(const vertex_data** node_array, int node_array_size,
     const float rating, double& prediction, vec* sum){
 
@@ -1079,10 +1081,19 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
 
 void output_gensgd_result(std::string filename) {
-  MMOutputter_mat<vertex_data> mmoutput(filename + "_U.mm", 0, M+N+num_feature_bins(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
-  MMOutputter_vec<vertex_data> mmoutput_bias(filename + "_U_bias.mm", 0, num_feature_bins(), BIAS_POS, "This file contains Gensgd output bias vector. In each row a single user bias.", latent_factors_inmem);
+  MMOutputter_mat<vertex_data> mmoutput(filename + "_U.mm", 0, latent_factors_inmem.size(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
+  MMOutputter_vec<vertex_data> mmoutput_bias(filename + "_U_bias.mm", 0, latent_factors_inmem.size(), BIAS_POS, "This file contains Gensgd output bias vector. In each row a single user bias.", latent_factors_inmem);
   MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains Gensgd global mean which is required for computing predictions.", globalMean);
-
+  //output mapping between string to array index of features.
+  if (fc.hash_strings){
+    assert(2+fc.total_features+fc.node_features == (int)fc.node_id_maps.size());
+    for (int i=0; i < fc.total_features+fc.node_features; i++){
+      char buf[256];
+      sprintf(buf, "%s.map.%d", filename.c_str(), i);
+      save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, fc.offsets[i]);
+    }
+  }
+ 
   logstream(LOG_INFO) << " GENSGD output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
 }
 
