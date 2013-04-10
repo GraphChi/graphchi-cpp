@@ -213,9 +213,9 @@ if (is_user(vertex.id()) && vertex.num_outedges() == 0)
         globalMean -= libfm_rate * (eui + reg0 * globalMean);
         *user.bias -= libfm_rate * (eui + libfm_regw * *user.bias);
         *movie.bias -= libfm_rate * (eui + libfm_regw * *movie.bias);
-        time.bias -= libfm_regw * (eui + libfm_regw * time.bias);
+        time.bias -= libfm_rate * (eui + libfm_regw * time.bias);
         assert(!std::isnan(time.bias));
-        last_item.bias -= libfm_regw * (eui + libfm_regw * last_item.bias);
+        last_item.bias -= libfm_rate * (eui + libfm_regw * last_item.bias);
 
         for(int f = 0; f < D; f++){
           // user
