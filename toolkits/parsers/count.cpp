@@ -66,10 +66,12 @@ int main(int argc, char** argv) {
     if (fin.eof())
       break;
     int32_t bid = atol(b.c_str());
+    if (lines >= 3){
     ++count[bid];
-    std::cout<<"adding: " << bid << std::endl;
+    //std::cout<<"adding: " << bid << std::endl;
     if (lines % 5000000 == 0) {
       std::cerr << lines << " lines\n";
+    }
     }
   }
 

@@ -23,7 +23,7 @@
 #  Written by Danny Bickson
 #  Thanks to Yucheng Low for fixing the Makefile
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
-CPPFLAGS = -O3  -DNDEBUG $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing
+CPPFLAGS = -O3  -DNDEBUG $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing 
 LINKFLAGS = -lz
 # Note : on Ubuntu on some compilers -lz is not detected properly so it is 
 # deliberatively set to be the last flag.

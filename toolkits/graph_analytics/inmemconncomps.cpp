@@ -156,6 +156,8 @@ int main(int argc, const char ** argv) {
 
   engine.run(program, niters);
 
+  mytimer.start();
+
   /* Run analysis of the connected components  (output is written to a file) */
   if (output_labels){
     FILE * pfile = fopen((filename + "-components").c_str(), "w");
@@ -168,7 +170,7 @@ int main(int argc, const char ** argv) {
       assert(vertex_values[i] >= 0 && vertex_values[i] < engine.num_vertices());
     }
     fclose(pfile); 
-    logstream(LOG_INFO)<<"Saved succesfully to out file: " << filename << "-components" << std::endl;
+    logstream(LOG_INFO)<<"Saved succesfully to out file: " << filename << "-components" << " time for saving: " << mytimer.current_time() << std::endl;
   } 
   return 0;
 }
