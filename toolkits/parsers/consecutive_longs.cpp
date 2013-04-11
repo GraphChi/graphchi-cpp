@@ -34,10 +34,12 @@
 using namespace std;
 using namespace graphchi;
 
+#define DIVIDE_FACTOR 10
+mutex mymutexarray[DIVIDE_FACTOR];
 bool debug = false;
-map<unsigned long long,uint> string2nodeid;
+map<unsigned long long,uint> string2nodeid[DIVIDE_FACTOR];
 //map<uint,string> nodeid2hash;
-map<unsigned long long,uint> string2nodeid2;
+map<unsigned long long,uint> string2nodeid2[DIVIDE_FACTOR];
 //map<uint,string> nodeid2hash2;
 uint conseq_id;
 uint conseq_id2;
@@ -63,7 +65,7 @@ timer mytimer;
 /*
  * assign a consecutive id from either the [from] or [to] ids.
  */
-void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, const unsigned long long name, bool from){
+void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, const unsigned long long name, bool from, int mod){
 
   map<unsigned long long,uint>::iterator it = string2nodeid.find(name);
   //if an id was already assigned, return it
@@ -71,7 +73,7 @@ void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, cons
     outval = it->second;
     return;
   }
-  mymutex.lock();
+  mymutexarray[mod].lock();
   //assign a new id
   outval = string2nodeid[name];
   if (outval == 0){
@@ -80,7 +82,7 @@ void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, cons
     //return the id
     outval = ((from || single_domain)? conseq_id : conseq_id2);
   }
-  mymutex.unlock();
+  mymutexarray[mod].unlock();
 }
 
 
@@ -118,12 +120,16 @@ void parse(int i){
     //read [FROM]
     char *pch = strtok_r(linebuf,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(string2nodeid, from, atoll(pch), true);
+    unsigned long long id = atoll(pch);
+    int mod = id % DIVIDE_FACTOR;
+    assign_id(string2nodeid[mod], from, atoll(pch), true, mod);
 
     //read [TO]
     pch = strtok_r(NULL,string_to_tokenize, &saveptr);
     if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
-    assign_id(single_domain ? string2nodeid:string2nodeid2, to, atoll(pch), single_domain ? true : false);
+    id = atoll(pch);
+    int mod2 = id % DIVIDE_FACTOR;
+    assign_id(single_domain ? string2nodeid[mod]:string2nodeid2[mod2], to, atoll(pch), single_domain ? true : false, single_domain ? mod : mod2);
 
     //read the rest of the line
     if (!binary){
@@ -131,11 +137,11 @@ void parse(int i){
       if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     }
     if (tsv)
-      fprintf(fout.outf, "%u\t%u\t%s\n", from, to, binary? "": pch);
+      fprintf(fout.outf, "%u%d\t%u%d\t%s\n", from, mod, to, mod2, binary? "": pch);
     else if (csv)
-      fprintf(fout.outf, "%u,%u,%s\n", from, to, binary? "" : pch);
+      fprintf(fout.outf, "%u%d,%u%d,%s\n", from, mod, to, mod2, binary? "" : pch);
     else 
-      fprintf(fout.outf, "%u %u %s\n", from, to, binary? "" : pch);
+      fprintf(fout.outf, "%u%d %u%d %s\n", from, mod, to, mod2, binary? "" : pch);
     nnz++;
 
     line++;
@@ -143,14 +149,14 @@ void parse(int i){
     if (lines && line>=lines)
       break;
 
-    if (debug && (line % 50000 == 0))
-      logstream(LOG_INFO) << mytimer.current_time() << ") Parsed line: " << line << " map size is: " << string2nodeid.size() << std::endl;
-    if (string2nodeid.size() % 500000 == 0)
-      logstream(LOG_INFO) << mytimer.current_time() << ") Hash map size: " << string2nodeid.size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
+    if (debug && (line % 1000000 == 0))
+      logstream(LOG_INFO) << mytimer.current_time() << ") Parsed line: " << line << " map size is: " << string2nodeid[0].size() << std::endl;
+    if (string2nodeid[0].size() % 100000 == 0)
+      logstream(LOG_INFO) << mytimer.current_time() << ") Hash map size: " << string2nodeid[0].size() << " at time: " << mytime.current_time() << " edges: " << total_lines << std::endl;
   } 
 
   logstream(LOG_INFO) <<"Finished parsing total of " << line << " lines in file " << in_files[i] << endl <<
-    "total map size: " << string2nodeid.size() << endl;
+    "total map size: " << string2nodeid[0].size() << endl;
 
 }
 
@@ -201,14 +207,24 @@ int main(int argc,  const char *argv[]) {
     parse(i);
 
   std::cout << "Finished in " << mytime.current_time() << std::endl;
-  M = string2nodeid.size();
+  M = 0;
+  for (int i=0; i< DIVIDE_FACTOR; i++)
+    M += string2nodeid[i].size();
   if (single_domain)
     N = M;
-  else N = string2nodeid2.size();
-
-  save_map_to_text_file(string2nodeid, outdir + dir + "user.map.text");
-  if (!single_domain){
-    save_map_to_text_file(string2nodeid2, outdir + dir + "movie.map.text");
+  else {
+    N = 0;
+    for (int i=0; i< DIVIDE_FACTOR; i++)
+      N += string2nodeid2[i].size();
+  }
+#pragma omp parallel for
+  for (int i=0; i< DIVIDE_FACTOR; i++){
+    char buf[256];
+    sprintf(buf, "user.map.%d", i);
+    save_map_to_text_file(string2nodeid[i], outdir + std::string(buf) + "user.map.text");
+    if (!single_domain){
+      save_map_to_text_file(string2nodeid2[i], outdir + std::string(buf) + "item.map.text");
+    }
   }
   logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;
   out_file fout("matrix_market.info");

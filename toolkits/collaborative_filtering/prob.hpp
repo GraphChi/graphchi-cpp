@@ -42,48 +42,10 @@ using namespace std;
 
 /* (C) Copr. 1986-92 Numerical Recipes Software 0NL-Z%. */
 
-float gamdev(int ia)
-{
-	int j;
-	float am,e,s,v1,v2,x,y;
-
-	assert(ia>=1);
-        if (ia < 6) {
-		x=1.0;
-		for (j=1;j <= ia;j++) x *= drand48();
-		x = -log(x);
-	} else {
-		do {
-			do {
-				do {
-					v1=drand48();
-					v2=2.0*drand48()-1.0;
-				} while (v1*v1+v2*v2 > 1.0);
-				y=v2/v1;
-				am=ia-1;
-				s=sqrt(2.0*am+1.0);
-				x=s*y+am;
-			} while (x <= 0.0);
-			e=(1.0+y*y)*exp(am*log(x/am)-s*y);
-		} while (drand48() > e);
-	}
-	return x;
-}
-
 vec chi2rnd(vec v, int size){
-
-  vec ret = zeros(size);
-  for (int i=0; i<size; i++)
-     ret[i] = 2.0* gamdev(v[i]/2.0); //TODO
-
-#ifdef WISHART_TEST
-  ret = vec("9.3343    9.2811    9.3583    9.3652    9.3031");
-  ret*= 1e+04;
-#elif defined(WISHART_TEST2)
-  ret = vec("4.0822e+03");
-#endif
+  vec ret;
+  assert(false); //not supported because open source licensing issues of gamdev()
   return ret;
-
 }
 
 void randv(int n, vec & ret){
