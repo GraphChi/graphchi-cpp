@@ -34,7 +34,7 @@
 using namespace std;
 using namespace graphchi;
 
-#define DIVIDE_FACTOR 10
+#define DIVIDE_FACTOR 1
 mutex mymutexarray[DIVIDE_FACTOR];
 bool debug = false;
 map<unsigned long long,uint> string2nodeid[DIVIDE_FACTOR];
@@ -60,7 +60,7 @@ const char * spaces = " \r\n\t";
 const char * tsv_spaces = "\t\n";
 const char * csv_spaces = ",\n";
 timer mytimer;
-
+int ncpus = 1;
 
 /*
  * assign a consecutive id from either the [from] or [to] ids.
@@ -73,6 +73,7 @@ void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, cons
     outval = it->second;
     return;
   }
+  if (ncpus > 1)
   mymutexarray[mod].lock();
   //assign a new id
   outval = string2nodeid[name];
@@ -82,6 +83,7 @@ void assign_id(map<unsigned long long,uint> & string2nodeid, uint & outval, cons
     //return the id
     outval = ((from || single_domain)? conseq_id : conseq_id2);
   }
+  if (ncpus > 1)
   mymutexarray[mod].unlock();
 }
 
@@ -137,11 +139,11 @@ void parse(int i){
       if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     }
     if (tsv)
-      fprintf(fout.outf, "%u%d\t%u%d\t%s\n", from, mod, to, mod2, binary? "": pch);
+      fprintf(fout.outf, "%d%u\t%d%u\t%s\n", mod, from, mod2, to,  binary? "": pch);
     else if (csv)
-      fprintf(fout.outf, "%u%d,%u%d,%s\n", from, mod, to, mod2, binary? "" : pch);
+      fprintf(fout.outf, "%d%u,%d%u,%s\n", mod, from, mod2, to,  binary? "" : pch);
     else 
-      fprintf(fout.outf, "%u%d %u%d %s\n", from, mod, to, mod2, binary? "" : pch);
+      fprintf(fout.outf, "%d%u %d%u %s\n", mod, from, mod2, to,  binary? "" : pch);
     nnz++;
 
     line++;
@@ -173,7 +175,8 @@ int main(int argc,  const char *argv[]) {
   debug = get_option_int("debug", 0);
   dir = get_option_string("file_list");
   lines = get_option_int("lines", 0);
-  omp_set_num_threads(get_option_int("ncpus", 1));
+  ncpus = get_option_int("ncpus", ncpus);
+  omp_set_num_threads(ncpus);
   tsv = get_option_int("tsv", 0); //is this tab seperated file?
   csv = get_option_int("csv", 0); // is the comma seperated file?
   binary = get_option_int("binary", 0);
@@ -221,9 +224,9 @@ int main(int argc,  const char *argv[]) {
   for (int i=0; i< DIVIDE_FACTOR; i++){
     char buf[256];
     sprintf(buf, "user.map.%d", i);
-    save_map_to_text_file(string2nodeid[i], outdir + std::string(buf) + "user.map.text");
+    save_map_to_text_file(string2nodeid[i], outdir + std::string(buf));
     if (!single_domain){
-      save_map_to_text_file(string2nodeid2[i], outdir + std::string(buf) + "item.map.text");
+      save_map_to_text_file(string2nodeid2[i], outdir + std::string(buf));
     }
   }
   logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;

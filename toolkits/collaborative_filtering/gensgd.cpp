@@ -1087,7 +1087,7 @@ void output_gensgd_result(std::string filename) {
   //output mapping between string to array index of features.
   if (fc.hash_strings){
     assert(2+fc.total_features+fc.node_features == (int)fc.node_id_maps.size());
-    for (int i=0; i < fc.total_features+fc.node_features; i++){
+    for (int i=0; i < 2+fc.total_features+fc.node_features; i++){
       char buf[256];
       sprintf(buf, "%s.map.%d", filename.c_str(), i);
       save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, fc.offsets[i]);
