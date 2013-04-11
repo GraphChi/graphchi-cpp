@@ -6,10 +6,11 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 TRAINING=$1
+pwd
 
 FOUND=0
 rm -f *.sorted
-for i in `ls $TRAINING.out[0-9]*`
+for i in `ls ${TRAINING}.out[0-9]*`
 do
   FOUND=1
   echo "Sorting output file $i"

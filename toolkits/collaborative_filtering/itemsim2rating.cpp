@@ -414,7 +414,7 @@ int main(int argc, const char ** argv) {
   std::string similarity   = get_option_string("similarity", "");
   if (similarity == "")
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
-  undirected               = get_option_int("undirected", 0);
+  undirected               = get_option_int("undirected", 1);
   Q                        = get_option_float("Q", Q);
   mytimer.start();
   int nshards          = convert_matrixmarket_and_item_similarity<EdgeDataType>(training, similarity);
