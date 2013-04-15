@@ -191,7 +191,7 @@ void print_config(){
 }
 
 template<typename T>
-void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = true){
+void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = true, double scale = 1.0){
   assert(size > 0);
 
   srand48(time(NULL));
@@ -202,7 +202,7 @@ void init_feature_vectors(uint size, T& latent_factors_inmem, bool randomize = t
 #pragma omp parallel for
   for (int i=0; i < (int)size; i++){
     for (int j=0; j<D; j++)
-      latent_factors_inmem[i].pvec[j] = drand48();
+      latent_factors_inmem[i].pvec[j] = scale * drand48();
   } 
 }
 #endif //_COMMON_H__
