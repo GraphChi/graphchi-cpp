@@ -34,8 +34,8 @@
 #include "eigen_wrapper.hpp"
 #include "common.hpp"
 
-double sgd_lambda = 1e-3; //sgd step size
-double sgd_gamma = 1e-3;  //sgd regularization
+double sgd_lambda = 1e-3; //sgd regularization
+double sgd_gamma = 1e-3;  //sgd step size
 double sgd_step_dec = 0.9; //sgd step decrement
 
 struct vertex_data {
