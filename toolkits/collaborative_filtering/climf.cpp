@@ -201,7 +201,7 @@ int main(int argc, const char ** argv) {
   sgd_step_dec  = get_option_float("sgd_step_dec", 1.0);
   binary_relevance_thresh = get_option_float("binary_relevance_thresh", 0);
   halt_on_mrr_decrease = get_option_int("halt_on_mrr_decrease", 0);
-  num_ratings = get_option_int("number of top predictions over which we compute actual MRR", 10000);
+  num_ratings = get_option_int("num_ratings", 10000); //number of top predictions over which we compute actual MRR
 
   parse_command_line_args();
   parse_implicit_command_line();
