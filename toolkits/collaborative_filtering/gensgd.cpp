@@ -656,6 +656,10 @@ void read_node_features(std::string base_filename, bool square, feature_control 
           logstream(LOG_FATAL)<<"Failed to read feture value" << std::endl;
         val = atof(pch);
       }
+      assert(J >= 0);
+      if (user)
+        assert(I < latent_factors_inmem.size());
+      else assert(I+M < latent_factors_inmem.size());
       set_new(latent_factors_inmem[user? I : I+M].features, J, val);
       tokens++;
       //update stats if needed
