@@ -98,7 +98,7 @@ struct feature_control{
     total_features = 0;
     node_features = 0;
     feature_num = FEATURE_WIDTH;
-    hash_strings = false;
+    hash_strings = true;
     from_pos = 0;
     to_pos = 1;
     val_pos = -1;
@@ -416,7 +416,7 @@ float compute_prediction(
     }
     else {
       pos = j.index()+fc.offsets[index];
-      assert(index < fc.node_id_maps.size());
+      assert((uint)index < fc.node_id_maps.size());
       assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
       assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
       assert(pos >= (int)fc.offsets[index]);
