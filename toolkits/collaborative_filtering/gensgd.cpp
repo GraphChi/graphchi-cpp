@@ -416,7 +416,8 @@ float compute_prediction(
     }
     else {
       pos = j.index()+fc.offsets[index];
-      assert(pos < (int)fc.node_id_maps[0].string2nodeid.size());
+      assert(index < fc.node_id_maps.size());
+      assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
       assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
       assert(pos >= (int)fc.offsets[index]);
     }
