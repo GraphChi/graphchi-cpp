@@ -204,11 +204,22 @@ std::vector<vertex_data> latent_factors_inmem;
 
 
 int calc_feature_node_array_size(uint node, uint item){
-  assert(node <= M);
-  assert(item <= N);
-  assert(node < latent_factors_inmem.size());
-  assert(fc.offsets[1]+item < latent_factors_inmem.size());
-  return 2+fc.total_features+fc.last_item+nnz(latent_factors_inmem[node].features)+nnz(latent_factors_inmem[fc.offsets[1]+item].features);
+  if (node != (uint)-1){
+    assert(node <= M);
+    assert(node < latent_factors_inmem.size());
+  }
+  if (item != (uint)-1){
+    assert(item <= N);
+    assert(fc.offsets[1]+item < latent_factors_inmem.size());
+  }
+  int ret =  fc.total_features+fc.last_item;
+  if (node != (uint)-1)
+    ret+= (1+nnz(latent_factors_inmem[node].features));
+  if (item != (uint)-1)
+    ret += (1+nnz(latent_factors_inmem[fc.offsets[1]+item].features));
+
+  assert(ret > 0);
+  return ret;
 }
 
 
@@ -401,31 +412,44 @@ float compute_prediction(
     vec * psum, 
     vertex_data **& node_array){
 
-  assert(J >=0 && J <= N);
-  assert(I>=0 && I <= M);
+  if (I == (uint)-1 && J == (uint)-1)
+   logstream(LOG_FATAL)<<"BUG: can not compute prediction for new user and new item" << std::endl;
+ 
+  if (J != (uint)-1) 
+    assert(J >=0 && J <= N);
+  if (I != (uint)-1)
+    assert(I>=0 && I <= M);
 
 
   /* COMPUTE PREDICTION */
   /* USER NODE **/
   int index = 0;
   int loc = 0;
-  node_array[index] = &latent_factors_inmem[I+fc.offsets[index]];
-  if (node_array[index]->pvec[0] >= 1e5)
-    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
-  index++; loc++;
+  if (I != (uint)-1){
+    node_array[index] = &latent_factors_inmem[I+fc.offsets[loc]];
+    if (node_array[index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
+     index++; 
+  }
+  loc++;
+
   /* 1) ITEM NODE */
-  assert(J+fc.offsets[index] < latent_factors_inmem.size());
-  node_array[index] = &latent_factors_inmem[J+fc.offsets[index]];
-  if (node_array[index]->pvec[0] >= 1e5)
-    logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
-  index++; loc++;
+  if (J != (uint)-1){
+    assert(J+fc.offsets[index] < latent_factors_inmem.size());
+    node_array[index] = &latent_factors_inmem[J+fc.offsets[loc]];
+    if (node_array[index]->pvec[0] >= 1e5)
+      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
+    index++; 
+  }
+  loc++;
+
   /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
-    uint pos = (uint)ceil(valarray[j]+fc.offsets[j+index]-fc.stats_array[j].minval);
+    uint pos = (uint)ceil(valarray[j]+fc.offsets[j+loc]-fc.stats_array[j].minval);
     //assert(pos >= 0 && pos < latent_factors_inmem.size());
     if (pos < 0 || pos >= latent_factors_inmem.size())
-      logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << 
-        " fc.offsets " << fc.offsets[j+index] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
+      logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
+        " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
     node_array[j+index] = & latent_factors_inmem[pos];
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -433,6 +457,7 @@ float compute_prediction(
   index+= fc.total_features;
   loc += fc.total_features;
   /* 3) USER FEATURES */
+  if (I != (uint)-1){
   int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
     int pos;
@@ -441,11 +466,11 @@ float compute_prediction(
       assert(pos < (int)M);
     }
     else {
-      pos = j.index()+fc.offsets[index];
-      assert((uint)index < fc.node_id_maps.size());
-      assert(j.index() < (int)fc.node_id_maps[index].string2nodeid.size());
+      pos = j.index()+fc.offsets[loc];
+      assert((uint)loc < fc.node_id_maps.size());
+      assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
       assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
-      assert(pos >= (int)fc.offsets[index]);
+      assert(pos >= (int)fc.offsets[loc]);
     }
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
@@ -455,9 +480,11 @@ float compute_prediction(
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
   index+= nnz(latent_factors_inmem[I+fc.offsets[0]].features);
+  }
   loc+=1;
   /* 4) ITEM FEATURES */
-  i=0;
+  if (J != (uint)-1){
+  int i=0;
   FOR_ITERATOR(j, latent_factors_inmem[J+fc.offsets[1]].features){
     uint pos = j.index()+fc.offsets[loc];
     assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
@@ -471,12 +498,14 @@ float compute_prediction(
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
   index+= nnz(latent_factors_inmem[J+fc.offsets[1]].features);
+  }
   loc+=1;
+
   if (fc.last_item){
     uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
     assert(pos < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[pos];
-    if (node_array[i+index]->pvec[0] >= 1e5)
+    if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++;
     loc+=1;
@@ -896,10 +925,10 @@ void test_predictions_N(
     if (!read_line(f, test, i, I, J, val, valarray, TEST))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
-    if (I == (uint)-1 || J == (uint)-1){
-      fprintf(fout, "N/A\n");
-      new_test_users++;
-      continue;
+    if (I == (uint)-1 && J == (uint)-1){
+        fprintf(fout, "N/A\n");
+        new_test_users++;
+        continue;
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
@@ -1271,7 +1300,7 @@ int main(int argc, const char ** argv) {
   if (new_validation_users > 0)
     logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
   if (new_test_users > 0)
-    std::cout<<"Found " << new_test_users<< " new test with no information about them in training dataset!" << std::endl;
+    std::cout<<"Found " << new_test_users<< " new test users with no information about them in training dataset!" << std::endl;
 
   /* Report execution metrics */
   if (!quiet)
