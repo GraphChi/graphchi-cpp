@@ -117,3 +117,5 @@ display_name "K-FOLD cross validation"
 ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --kfold_cross_validation=10 --kfold_cross_validation_index=3 
 ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --kfold_cross_validation=10 --kfold_cross_validation_index=4 
 
+display_name "CLiMF"
+./toolkits/collaborative_filtering/climf --training=smallnetflix_mm --validation=smallnetflix_mme --binary_relevance_thresh=4 --sgd_gamma=1e-6 --max_iter=6 --quiet=1 --sgd_step_dec=0.9999 --sgd_lambda=1e-6 --clean_cache=1

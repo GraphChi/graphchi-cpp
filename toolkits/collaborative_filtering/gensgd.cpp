@@ -64,6 +64,7 @@ int has_header_titles = 0;
 float cutoff = 0;
 size_t new_validation_users = 0;
 size_t new_test_users = 0;
+int json_input = 0;
 
 struct stats{
   float minval;
@@ -281,6 +282,33 @@ float get_value(char * pch, bool read_only){
   return ret;
 }
 
+char * read_one_token(char *& linebuf, const char * pspaces, size_t i, char * linebuf_debug, int token){
+  char *pch = strsep(&linebuf,pspaces);
+  if (pch == NULL)
+        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+  if (json_input){
+    //for json, multiple separators may lead to empty strings, we simply skip them
+     while(pch && !strcmp(pch, "")){ 
+       pch = strsep(&linebuf, pspaces);
+      if (pch == NULL)
+        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << " token number: " << token << std::endl;
+     }
+     //toekn should not be empty
+   assert(strcmp(pch, ""));
+   if (i == 0)
+     header_titles.push_back(pch);
+
+   pch = strsep(&linebuf, pspaces);
+   //for json, multiple separators may lead to empty strings, we simply skip them
+     while(pch && !strcmp(pch, "")){ 
+       pch = strsep(&linebuf, pspaces);
+      if (pch == NULL)
+        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << " token number: " << token << std::endl;
+     }
+   }
+  return pch;
+}
+ 
 /* Read and parse one input line from file */
 bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type){
 
@@ -300,12 +328,17 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   strncpy(linebuf_debug, linebuf, 1024);
 
   assert(file_columns >= 2);
+
+  const char* spaces[] = {"\t,\r\n "};
+  const char * json_spaces[] = {"\t,\r\n \":{}"};
+  const char * pspaces = ((!json_input) ? *spaces : *json_spaces);
+
+  char * pch = NULL;
+ 
   while (token < file_columns){
     /* READ FROM */
     if (token == fc.from_pos){
-      char *pch = strsep(&linebuf,"\t,\r\n ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
       I = (uint)get_node_id(pch, 0, i, type != TRAINING);
       if (type == TRAINING){
         assert( I >= 0 && I < M);
@@ -314,9 +347,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.to_pos){
       /* READ TO */
-      char * pch = strsep(&linebuf, "\t,\r\n ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
       J = (uint)get_node_id(pch, 1, i, type != TRAINING);
       if (type == TRAINING)
         assert(J >= 0 && J < N);
@@ -324,18 +355,13 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.val_pos){
       /* READ RATING */
-      char * pch = strsep(&linebuf, "\t,\r\n ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
-
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
       val = get_value(pch, type != TRAINING);
       token++;
     }
     else {
       /* READ FEATURES */
-      char * pch = strsep(&linebuf, "\t,\r\n ");
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " feature " << token << " [ " << linebuf_debug << " ] " << std::endl;
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
       if (!fc.feature_selection[token]){
         token++;
         continue;
@@ -619,6 +645,7 @@ void read_node_features(std::string base_filename, bool square, feature_control 
   size_t lines = 0;
   size_t tokens = 0;
   float val = 1;
+  int missing_nodes = 0;
 
   while(true){
     /* READ LINE */
@@ -633,8 +660,10 @@ void read_node_features(std::string base_filename, bool square, feature_control 
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
     I = (uint)get_node_id(pch, user?0:1, lines, true);
-    if (I == (uint)-1) //user id was not found in map, so we do not need this users features
+    if (I == (uint)-1){ //user id was not found in map, so we do not need this users features
+      missing_nodes++;
       continue;
+    }
 
     if (user)
       assert(I >= 0 && I < M);
@@ -670,6 +699,8 @@ void read_node_features(std::string base_filename, bool square, feature_control 
   assert(tokens > 0);
   logstream(LOG_DEBUG)<<"Read a total of " << lines << " node features. Tokens: " << tokens << " avg tokens: " << (lines/tokens) 
     << " user? " << user <<  " new entries: " << fc.node_id_maps[2+fc.total_features+fc.node_features-1].string2nodeid.size() << std::endl;
+  if (missing_nodes > 0)
+    std::cerr<<"Warning: missing: " << missing_nodes << " from node feature file: " << base_filename << " out of: " << lines << std::endl;
 }
 
 
@@ -1149,6 +1180,7 @@ int main(int argc, const char ** argv) {
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
+  json_input = get_option_int("json_input", json_input);
 
   parse_command_line_args();
   parse_implicit_command_line();
@@ -1183,6 +1215,8 @@ int main(int argc, const char ** argv) {
   if (user_links != "")
     read_node_links(user_links, false, fc, true, false);
 
+  if (json_input)
+    has_header_titles = 1;
   if (has_header_titles && header_titles.size() == 0)
     logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;
 
