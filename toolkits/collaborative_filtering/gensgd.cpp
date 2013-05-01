@@ -65,6 +65,8 @@ float cutoff = 0;
 size_t new_validation_users = 0;
 size_t new_test_users = 0;
 int json_input = 0;
+int cold_start = 0;
+double inputGlobalMean = 0;
 
 struct stats{
   float minval;
@@ -371,6 +373,9 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       token++;
     }
     else {
+      if (cold_start == 2 && type == TEST)//a hack for yelp data, to be fixed later
+        break;
+
       /* READ FEATURES */
       pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
       if (!fc.feature_selection[token]){
@@ -623,6 +628,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
   globalMean /= L;
   logstream(LOG_INFO)<<"Computed global mean is: " << globalMean << std::endl;
+  inputGlobalMean = globalMean;
 
   //print features
   for (int i=0; i< fc.total_features; i++){
@@ -925,10 +931,15 @@ void test_predictions_N(
     if (!read_line(f, test, i, I, J, val, valarray, TEST))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
-    if (I == (uint)-1 && J == (uint)-1){
-        fprintf(fout, "N/A\n");
+    if (I == (uint)-1 || J == (uint)-1){
+        if (cold_start == 0)
+          fprintf(fout, "N/A\n");
+        else if (cold_start ==2 ||  (cold_start == 1 && I ==(uint)-1 && J==(uint)-1)){
+        
+        fprintf(fout, "%12.8g\n", inputGlobalMean);
         new_test_users++;
         continue;
+      }
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
@@ -1210,6 +1221,7 @@ int main(int argc, const char ** argv) {
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
   json_input = get_option_int("json_input", json_input);
+  cold_start = get_option_int("cold_start", cold_start);
 
   parse_command_line_args();
   parse_implicit_command_line();
