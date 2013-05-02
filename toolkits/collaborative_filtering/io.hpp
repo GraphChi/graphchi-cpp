@@ -802,7 +802,7 @@ void load_matrix_market_matrix(const std::string & filename, int offset, int D){
   }
 
   if (D != (int)cols)
-    logstream(LOG_FATAL)<<"Wrong matrix size detected, should be " << D << " instead of : " << cols << std::endl;
+    logstream(LOG_FATAL)<<"Wrong matrix size detected, command line argument should be --D=" << D << " instead of : " << cols << std::endl;
 
   for (i=0; i<nnz; i++){
     if (mm_is_sparse(matcode)){
