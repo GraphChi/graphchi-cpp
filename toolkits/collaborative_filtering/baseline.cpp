@@ -170,7 +170,7 @@ struct  MMOutputter2{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, D); 
+    mm_write_mtx_array_size(outf, end-start, 1); 
     for (uint i=start; i < end; i++)
       fprintf(outf, "%1.12e\n", latent_factors_inmem[i].mean_rating);
   }
