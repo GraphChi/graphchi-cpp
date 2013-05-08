@@ -22,33 +22,10 @@
  *
  * @section DESCRIPTION
  *
- * Matrix factorizatino with the Alternative Least Squares (ALS) algorithm.
- * This code is based on GraphLab's implementation of ALS by Joey Gonzalez
- * and Danny Bickson (CMU). A good explanation of the algorithm is 
- * given in the following paper:
- *    Large-Scale Parallel Collaborative Filtering for the Netflix Prize
- *    Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan
- *    http://www.springerlink.com/content/j1076u0h14586183/
- *
- * Faster version of ALS, which stores latent factors of vertices in-memory.
- * Thus, this version requires more memory. See the version "als_edgefactors"
- * for a low-memory implementation.
- *
- *
- * In the code, we use movie-rating terminology for clarity. This code has been
- * tested with the Netflix movie rating challenge, where the task is to predict
- * how user rates movies in range from 1 to 5.
- *
- * This code is has integrated preprocessing, 'sharding', so it is not necessary
- * to run sharder prior to running the matrix factorization algorithm. Input
- * data must be provided in the Matrix Market format (http://math.nist.gov/MatrixMarket/formats.html).
- *
- * ALS uses free linear algebra library 'Eigen'. See Readme_Eigen.txt for instructions
- * how to obtain it.
- *
- * At the end of the processing, the two latent factor matrices are written into files in 
- * the matrix market format. 
- * 
+ * Matrix factorization with the Alternative Least Squares (ALS) algorithm.
+ * See the papers:
+ * H.-F. Yu, C.-J. Hsieh, S. Si, I. S. Dhillon, Scalable Coordinate Descent Approaches to Parallel Matrix Factorization for Recommender Systems. IEEE International Conference on Data Mining(ICDM), December 2012.
+ * Steffen Rendle, Zeno Gantner, Christoph Freudenthaler, and Lars Schmidt-Thieme. 2011. Fast context-aware recommendations with factorization machines. In Proceedings of the 34th international ACM SIGIR conference on Research and development in Information Retrieval (SIGIR '11). ACM, New York, NY, USA, 635-644. * 
  */
 
 
@@ -122,30 +99,37 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
-    mat XtX = mat::Zero(D, D); 
-    vec Xty = vec::Zero(D);
-
-    bool compute_rmse = (vertex.num_outedges() > 0);
-    // Compute XtX and Xty (NOTE: unweighted)
-    for(int e=0; e < vertex.num_edges(); e++) {
-      float observation = vertex.edge(e)->get_data();                
-      vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-      Xty += nbr_latent.pvec * observation;
-      XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose();
-      if (compute_rmse) {
-        double prediction;
-        rmse_vec[omp_get_thread_num()] += als_predict(vdata, nbr_latent, observation, prediction);
-      }
-    }
-
     double regularization = lambda;
     if (regnormal)
       regularization *= vertex.num_edges();
-    for(int i=0; i < D; i++) XtX(i,i) += regularization;
 
+    vec R_cache = zeros(vertex.num_edges()); 
+    for (int t=0; t< D; t++){
+      double numerator = 0;
+      double denominator = regularization;
+      bool compute_rmse = (vertex.num_outedges() > 0 && t == 0);
+      for (int j=0; j < vertex.num_edges(); j++) {
+        float observation = vertex.edge(j)->get_data();                
+        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(j)->vertex_id()];
+        double prediction;
 
-    // Solve the least squares problem with eigen using Cholesky decomposition
-    vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
+        double rmse = 0;
+        //if (t == 0){ 
+          rmse = als_predict(vdata, nbr_latent, observation, prediction);
+          R_cache[j] = observation - prediction;
+        //}
+        //compute numerator of equation (5) in ICDM paper above
+        //            (A_ij        - w_i^T*h_j  + wit          * h_jt              )*h_jt
+        numerator +=  (observation-prediction              + vdata.pvec[t]* nbr_latent.pvec[t])*nbr_latent.pvec[t];
+        //compute denominator of equation (5) in ICDM paper above
+        //             h_jt^2
+        denominator += pow(nbr_latent.pvec[t],2);
+        if (compute_rmse)
+              rmse_vec[omp_get_thread_num()]+=rmse; 
+      }
+      assert(denominator > 0);
+      vdata.pvec[t] = numerator/denominator;
+    }
   }
 
 
