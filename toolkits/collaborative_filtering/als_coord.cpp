@@ -135,16 +135,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         //update using equation (7) in ICDM paper
         //R_ij     -= (z             - w_it         )*h_jt
         vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(j)->vertex_id()];
-        float observation = vertex.edge(j)->get_data();                
-        double prediction;
-        vdata.pvec[t] = z;
-        rmse = als_predict(vdata, nbr_latent, observation, prediction);
         R_cache[j] -= ((z             - old[t])*nbr_latent.pvec[t]);
-        if (pow((observation - prediction) - R_cache[j],2) > 1e-10){
-
-          std::cout<<"j is: " << j << " t is: " << t << " Z is: " << z << " old[t] is: " << old[t] << " (z-old[t]) " << z-old[t] << " tot: " << (z-old[t])*nbr_latent.pvec[t] << " pred: " << prediction << std::endl; 
-          logstream(LOG_FATAL)<<"Bug: prediction is: " << prediction << " while R_cache is: " << R_cache[j] << std::endl;
-        }
       }
       //}
       //update using equation (8) in ICDM paper
