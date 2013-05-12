@@ -26,6 +26,11 @@ display_name "TESTING ALS - RATING"
 mv smallnetflix_mm.ids smallnetflix_mm.ids1
 ./toolkits/collaborative_filtering/rating --algorithm=als --training=smallnetflix_mm  --quiet=1 --num_ratings=3
 diff smallnetflix_mm.ids smallnetflix_mm.ids1
+
+display_name "TESTING ALS COORD"
+ ./toolkits/collaborative_filtering/als_coord --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --clean_cache=1
+d
+
 display_name "TESTING SGD"
  ./toolkits/collaborative_filtering/sgd --training=smallnetflix_mm --validation=smallnetflix_mme --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --clean_cache=1
 

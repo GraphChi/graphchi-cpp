@@ -95,7 +95,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 
 
   /**
-   *  Vertex update function - computes the least square step
+   *  Vertex update function - computes the ICDM update function in parallel
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
@@ -112,7 +112,6 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         float observation = vertex.edge(j)->get_data();                
         vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(j)->vertex_id()];
         double prediction;
-
         double rmse = 0;
         if (t == 0){
           rmse = als_predict(vdata, nbr_latent, observation, prediction);
@@ -124,6 +123,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
         //compute denominator of equation (5) in ICDM paper above
         //             h_jt^2
         denominator += pow(nbr_latent.pvec[t],2);
+        //record rmse
         if (compute_rmse)
               rmse_vec[omp_get_thread_num()]+=rmse; 
       }
@@ -132,9 +132,9 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       vec old = vdata.pvec;
       //if (t > 0){
       for (int j=0; j< vertex.num_edges(); j++){
+        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(j)->vertex_id()];
         //update using equation (7) in ICDM paper
         //R_ij     -= (z             - w_it         )*h_jt
-        vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(j)->vertex_id()];
         R_cache[j] -= ((z             - old[t])*nbr_latent.pvec[t]);
       }
       //}

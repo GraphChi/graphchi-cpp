@@ -26,6 +26,15 @@
 
 
 #include <cmath>
+
+//define GRAPHCHI_USE_GSL for supporting gamma function which is needed for pmf
+#ifdef GRAPHCHI_USE_GSL 
+#include <gsl_rng.h>
+#include <gsl_randist.h>
+/* set up GSL RNG */
+gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937);
+#endif //GRAPHCHI_USE_GSL
+#include <sys/time.h>
 #define pi 3.14152965
 
 /**
@@ -40,12 +49,28 @@ using namespace std;
 //#define WISHART_TEST
 //#define WISHART_TEST2
 
-/* (C) Copr. 1986-92 Numerical Recipes Software 0NL-Z%. */
+float gamma(int alpha){
+#ifdef GRAPHCHI_USE_GSL
+  return gsl_ran_gamma(r,alpha,1.0);
+#else
+  std::cerr<<"Gamma function is not supported, since GSL support was not compiled" << std::endl;
+  exit(1);
+#endif
+}
 
 vec chi2rnd(vec v, int size){
-  vec ret;
-  assert(false); //not supported because open source licensing issues of gamdev()
-  return ret;
+vec ret = zeros(size);
+  for (int i=0; i<size; i++)
+         ret[i] = 2.0* gamma(v[i]/2.0); 
+
+#ifdef WISHART_TEST
+    ret = vec("9.3343    9.2811    9.3583    9.3652    9.3031");
+      ret*= 1e+04;
+#elif defined(WISHART_TEST2)
+        ret = vec("4.0822e+03");
+#endif
+          return ret;
+
 }
 
 void randv(int n, vec & ret){

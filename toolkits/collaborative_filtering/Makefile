@@ -23,8 +23,11 @@
 #  Written by Danny Bickson
 #  Thanks to Yucheng Low for fixing the Makefile
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
-CPPFLAGS = -O3  $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing
-LINKFLAGS = -lz
+
+# NOTE: Uncomment the flag GRAPHCHI_USE_GSL if you want to compile pmf
+CPPFLAGS = -O3  $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing #-DGRAPHCHI_USE_GSL -I/usr/include/gsl
+# NOTE: uncomment the flag -lgsl if you want to compile pmf
+LINKFLAGS = -lz #-lgsl -lcblas
 # Note : on Ubuntu on some compilers -lz is not detected properly so it is 
 # deliberatively set to be the last flag.
 CPP = g++
