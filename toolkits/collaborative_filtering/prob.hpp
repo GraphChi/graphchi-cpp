@@ -104,6 +104,9 @@ vec mvnrndex(vec &mu, mat &sigma, int d, double regularization){
    return x;
 }
 
+/* The following code is taken from the ACM paper:
+ * George Marsaglia and Wai Wan Tsang. 2000. A simple method for generating gamma variables. ACM Trans. Math. Softw. 26, 3 (September 2000), 363-372.
+ */
 float rgama(float a) {
   float d,c,x,v,u;
   d = a-1.0/3.0; c=1.0/sqrt(9.0*d);
