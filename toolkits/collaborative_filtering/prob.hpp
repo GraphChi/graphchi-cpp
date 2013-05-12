@@ -27,14 +27,6 @@
 
 #include <cmath>
 
-//define GRAPHCHI_USE_GSL for supporting gamma function which is needed for pmf
-#ifdef GRAPHCHI_USE_GSL 
-#include <gsl_rng.h>
-#include <gsl_randist.h>
-/* set up GSL RNG */
-gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937);
-#endif //GRAPHCHI_USE_GSL
-#include <sys/time.h>
 #define pi 3.14152965
 
 /**
@@ -45,18 +37,8 @@ gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937);
 */
 
 using namespace std;
-
 //#define WISHART_TEST
 //#define WISHART_TEST2
-
-float gamma(int alpha){
-#ifdef GRAPHCHI_USE_GSL
-  return gsl_ran_gamma(r,alpha,1.0);
-#else
-  std::cerr<<"Gamma function is not supported, since GSL support was not compiled" << std::endl;
-  exit(1);
-#endif
-}
 
 vec chi2rnd(vec v, int size){
 vec ret = zeros(size);
@@ -121,6 +103,23 @@ vec mvnrndex(vec &mu, mat &sigma, int d, double regularization){
    assert(x.size() == d);
    return x;
 }
+
+float rgama(float a) {
+  float d,c,x,v,u;
+  d = a-1.0/3.0; c=1.0/sqrt(9.0*d);
+  for(;;) {
+    do {vec xvec = randn1_vec(1,1,0); x=xvec[0]; v=1.0+c*x;} while(v<=0.0);
+    v=v*v*v; u=drand48();
+    if( u<1.0-0.0331*(x*x)*(x*x) ) return (d*v);
+    if( log(u)<0.5*x*x+d*(1.0-v+log(v)) ) return (d*v);
+  }
+
+}
+
+float gamma(int alpha){
+  return rgama(alpha);
+}
+
 
 mat load_itiru(mat &a, mat& b){
    assert(a.size() >= 1);
