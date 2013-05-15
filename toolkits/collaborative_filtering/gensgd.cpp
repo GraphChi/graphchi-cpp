@@ -67,6 +67,7 @@ size_t new_test_users = 0;
 int json_input = 0;
 int cold_start = 0;
 double inputGlobalMean = 0;
+int binary_prediction = 0;
 
 struct stats{
   float minval;
@@ -323,11 +324,10 @@ char * read_one_token(char *& linebuf, const char * pspaces, size_t i, char * li
 }
  
 /* Read and parse one input line from file */
-bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type){
+bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type, char * linebuf_debug){
 
   char * linebuf = NULL;
   size_t linesize = 0;
-  char linebuf_debug[1024];
 
   int token = 0;
   int index = 0;
@@ -594,10 +594,12 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   }
   if (limit_rating > 0 && limit_rating < (int)nz)
     nz = limit_rating;
+
+  char linebuf_debug[1024];
   for (size_t i=0; i<nz; i++)
   {
 
-    if (!read_line(f, base_filename, i,I, J, val, valarray, TRAINING))
+    if (!read_line(f, base_filename, i,I, J, val, valarray, TRAINING, linebuf_debug))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i<< " in file: " << base_filename << std::endl;
 
     if (I>= M || J >= N || I < 0 || J < 0){
@@ -838,10 +840,11 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     uint I, J;
     float val;
 
+    char linebuf_debug[1024];
     for (size_t i=0; i<nz; i++)
     {
       int size = num_feature_bins();
-      if (!read_line(f, validation, i, I, J, val, valarray, VALIDATION))
+      if (!read_line(f, validation, i, I, J, val, valarray, VALIDATION, linebuf_debug))
         logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
 
       bool active_edge = decide_if_edge_is_active(i, VALIDATION);
@@ -925,10 +928,11 @@ void test_predictions_N(
   uint I,J;
 
   uint i=0;
+  char linebuf_debug[1024];
   for (i=0; i<nz; i++)
   {
 
-    if (!read_line(f, test, i, I, J, val, valarray, TEST))
+    if (!read_line(f, test, i, I, J, val, valarray, TEST, linebuf_debug))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     if (I == (uint)-1 || J == (uint)-1){
@@ -944,6 +948,8 @@ void test_predictions_N(
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
     compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
+    if (binary_prediction)
+      prediction = (prediction > cutoff);
     fprintf(fout, "%12.8lg\n", prediction);
     delete[] node_array;
   }
@@ -1224,6 +1230,7 @@ int main(int argc, const char ** argv) {
   cutoff = get_option_float("cutoff", cutoff);
   json_input = get_option_int("json_input", json_input);
   cold_start = get_option_int("cold_start", cold_start);
+  binary_prediction = get_option_int("binary_prediction", 0);
 
   parse_command_line_args();
   parse_implicit_command_line();
