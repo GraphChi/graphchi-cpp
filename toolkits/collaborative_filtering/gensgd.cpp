@@ -1215,6 +1215,8 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Please note that column numbering of from_pos, to_pos and val_pos starts from zero and should be smaller than file_columns" << std::endl;
   if (fc.from_pos == fc.to_pos || fc.from_pos == fc.val_pos || fc.to_pos == fc.val_pos)
     logstream(LOG_FATAL)<<"from_pos, to_pos and val_pos should have uniqu values" << std::endl; 
+  if (fc.val_pos == -1)
+    logstream(LOG_FATAL)<<"you must specify a target column using --val_pos=XXX. Colmn index starts from 0." << std::endl;
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
