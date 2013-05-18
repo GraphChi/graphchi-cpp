@@ -176,12 +176,12 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
     int rc = fscanf(f, "%d %d %d %lg\n", &I, &J, &time, &val);
     if (rc != 4)
       logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
-    if (time - time_offset < 0)
-      logstream(LOG_FATAL)<<"Error: we assume time values >= " << time_offset << std::endl;
+    if (time - input_file_offset < 0)
+      logstream(LOG_FATAL)<<"Error: we assume time values >= " << input_file_offset << std::endl;
     I--;  /* adjust from 1-based to 0-based */
     J--;
     double prediction;
-    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], 1, prediction, (void*)&latent_factors_inmem[time+M+N-time_offset]);
+    (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], 1, prediction, (void*)&latent_factors_inmem[time+M+N-input_file_offset]);
     fprintf(fout, "%d %d %12.8lg\n", I+1, J+1, prediction);
   }
   fclose(f);
