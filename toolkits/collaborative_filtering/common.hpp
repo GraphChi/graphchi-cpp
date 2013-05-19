@@ -66,6 +66,8 @@ int kfold_cross_validation = 0;
 int kfold_cross_validation_index = 0;
 int regnormal = 0; // if set to 1, compute LS regularization according to the paper "Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan. Large-Scale Parallel Collaborative Filtering for the Netflix Prize."
 int clean_cache = 0;
+int R_output_format = 0; // if set to 1, all matrices and vectors are written in sparse matrix market format since
+                         // R does not currently support array format (dense format).
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -156,6 +158,7 @@ void parse_command_line_args(){
   if (clean_cache)
     remove_cached_files();
 
+  R_output_format = get_option_int("R_output_format", R_output_format);
 }
 
 template<typename T>

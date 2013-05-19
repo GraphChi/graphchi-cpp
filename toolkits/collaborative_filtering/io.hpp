@@ -39,10 +39,13 @@ FILE * open_file(const char * name, const char * mode, bool optional = false){
 }
 
 
-void set_matcode(MM_typecode & matcode){
+void set_matcode(MM_typecode & matcode, bool sparse = false){
   mm_initialize_typecode(&matcode);
   mm_set_matrix(&matcode);
-  mm_set_array(&matcode);
+  if (sparse)
+    mm_set_coordinate(&matcode);
+  else
+    mm_set_array(&matcode);
   mm_set_real(&matcode);
 }
 
@@ -159,14 +162,20 @@ template<typename vertex_data>
 struct  MMOutputter_vec{
   MMOutputter_vec(std::string fname, uint start, uint end, int index, std::string comment, std::vector<vertex_data> & latent_factors_inmem)  {
     MM_typecode matcode;
-    set_matcode(matcode);
+    set_matcode(matcode, R_output_format);
     FILE * outf = open_file(fname.c_str(), "w");
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, 1);
+    if (R_output_format)
+      mm_write_mtx_crd_size(outf, end-start, 1, end-start);
+    else
+      mm_write_mtx_array_size(outf, end-start, 1);
     for (uint i=start; i< end; i++)
-      fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(index));
+      if (R_output_format)
+         fprintf(outf, "%d %d %12.8g\n", i-start+input_file_offset, 1, latent_factors_inmem[i].get_val(index));
+      else
+         fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(index));
     fclose(outf);
   }
 
@@ -178,15 +187,19 @@ struct  MMOutputter_mat{
   MMOutputter_mat(std::string fname, uint start, uint end, std::string comment, std::vector<vertex_data> & latent_factors_inmem, int size = 0)  {
     assert(start < end);
     MM_typecode matcode;
-    set_matcode(matcode);
+    set_matcode(matcode, R_output_format);
     FILE * outf = open_file(fname.c_str(), "w");
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
     mm_write_mtx_array_size(outf, end-start, size > 0 ? size : latent_factors_inmem[start].pvec.size());
-    for (uint i=start; i < end; i++)
+    for (uint i=start; i < end; i++){
       for(int j=0; j < ((size > 0) ? size : latent_factors_inmem[i].pvec.size()); j++) {
-        fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(j));
+        if (R_output_format)
+          fprintf(outf, "%d %d %12.8g\n", i-start+input_file_offset, j+input_file_offset, latent_factors_inmem[i].get_val(j));
+        else
+          fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(j));
+      }
       }
     fclose(outf);
   }
@@ -195,13 +208,21 @@ struct  MMOutputter_mat{
 struct  MMOutputter_scalar {
   MMOutputter_scalar(std::string fname, std::string comment, double val)  {
     MM_typecode matcode;
-    set_matcode(matcode);
+    set_matcode(matcode, R_output_format);
     FILE * outf = open_file(fname.c_str(), "w");
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, 1, 1);
-    fprintf(outf, "%1.12e\n", val);
+
+    if (R_output_format)
+      mm_write_mtx_crd_size(outf, 1, 1, 1);
+    else 
+      mm_write_mtx_array_size(outf, 1, 1);
+
+    if (R_output_format)
+      fprintf(outf, "%d %d %12.8g\n", 1, 1, val);
+    else
+      fprintf(outf, "%1.12e\n", val);
     fclose(outf);
   }
 
