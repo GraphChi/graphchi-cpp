@@ -192,9 +192,15 @@ struct  MMOutputter_mat{
     mm_write_banner(outf, matcode);
     if (comment != "")
       fprintf(outf, "%%%s\n", comment.c_str());
-    mm_write_mtx_array_size(outf, end-start, size > 0 ? size : latent_factors_inmem[start].pvec.size());
+    int actual_Size = size > 0 ? size : latent_factors_inmem[start].pvec.size();
+
+    if (R_output_format)
+      mm_write_mtx_crd_size(outf, end-start, actual_Size, (end-start)*actual_Size);
+    else
+      mm_write_mtx_array_size(outf, end-start, actual_Size);
+
     for (uint i=start; i < end; i++){
-      for(int j=0; j < ((size > 0) ? size : latent_factors_inmem[i].pvec.size()); j++) {
+      for(int j=0; j < actual_Size; j++) {
         if (R_output_format)
           fprintf(outf, "%d %d %12.8g\n", i-start+input_file_offset, j+input_file_offset, latent_factors_inmem[i].get_val(j));
         else
