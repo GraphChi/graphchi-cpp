@@ -55,6 +55,8 @@ cfd:
 
 parsers:
 	cd toolkits/parsers/; make
+parsersd:
+	cd toolkits/parsers/; make -f Makefile.debug
 ga:
 	cd toolkits/graph_analytics/; make
 ta:

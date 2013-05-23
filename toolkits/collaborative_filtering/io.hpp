@@ -76,7 +76,7 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((filename + ":info").c_str(), "r")) != NULL) {
       info_file = true;
-      read_matrix_market_banner_and_size(ff, matcode, _M, _N, nz, validation + ":info");
+      read_matrix_market_banner_and_size(ff, matcode, _M, _N, nz, filename + ":info");
       fclose(ff);
     }
   }

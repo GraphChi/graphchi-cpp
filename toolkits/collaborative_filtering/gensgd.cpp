@@ -40,7 +40,7 @@
 #include "../parsers/common.hpp"
 #include <omp.h>
 #define MAX_FEATURES 256
-#define FEATURE_WIDTH 38 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 11 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-02;
 double gensgd_rate2 = 1e-02;
@@ -61,6 +61,8 @@ int calc_error = 0;
 int file_columns = 0;
 std::vector<std::string> header_titles;
 int has_header_titles = 0;
+int has_user_titles = 0;
+int has_item_titles = 0;
 float cutoff = 0;
 size_t new_validation_users = 0;
 size_t new_test_users = 0;
@@ -273,6 +275,9 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
 float get_value(char * pch, bool read_only){
   float ret;
   if (!fc.rehash_value){
+    if ( pch[0] == '"' ) {
+       pch++;
+    }
     ret = atof(pch);
   }
   else {
@@ -461,7 +466,9 @@ float compute_prediction(
   }
   index+= fc.total_features;
   loc += fc.total_features;
+  
   /* 3) USER FEATURES */
+  if (user_file != ""){
   if (I != (uint)-1){
   int i = 0;
   FOR_ITERATOR(j, latent_factors_inmem[I+fc.offsets[0]].features){
@@ -485,9 +492,12 @@ float compute_prediction(
   }
   assert(i == nnz(latent_factors_inmem[I+fc.offsets[0]].features));
   index+= nnz(latent_factors_inmem[I+fc.offsets[0]].features);
-  }
   loc+=1;
+  }
+  }
+
   /* 4) ITEM FEATURES */
+  if (item_file != ""){
   if (J != (uint)-1){
   int i=0;
   FOR_ITERATOR(j, latent_factors_inmem[J+fc.offsets[1]].features){
@@ -503,8 +513,9 @@ float compute_prediction(
   }
   assert(i == nnz(latent_factors_inmem[J+fc.offsets[1]].features));
   index+= nnz(latent_factors_inmem[J+fc.offsets[1]].features);
-  }
   loc+=1;
+  }
+  }
 
   if (fc.last_item){
     uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
@@ -691,6 +702,13 @@ void read_node_features(std::string base_filename, bool square, feature_control 
       break;
     strncpy(linebuf_debug, linebuf, 1024);
     lines++;
+    
+    //skip over header titles (if any) 
+    if (lines == 1 && user && has_user_titles)
+      continue;
+    else if (lines == 1 && !user && has_item_titles)
+      continue;
+
 
     /** READ [FROM] */
     char *pch = strtok(linebuf,"\t,\r; ");
@@ -1226,6 +1244,8 @@ int main(int argc, const char ** argv) {
   limit_rating = get_option_int("limit_rating", limit_rating);
   calc_error = get_option_int("calc_error", calc_error);
   has_header_titles = get_option_int("has_header_titles", has_header_titles);
+  has_user_titles = get_option_int("has_user_titles", has_user_titles);
+  has_item_titles = get_option_int("has_item_titles", has_item_titles);
   fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
   cutoff = get_option_float("cutoff", cutoff);
   json_input = get_option_int("json_input", json_input);
