@@ -56,9 +56,10 @@ int binary = 0; //edges are binary, contain no weights
 int single_domain = 0; //both user and movies ids are from the same id space:w
 const char * spaces = " \r\n\t";
 const char * tsv_spaces = "\t\n";
-const char * csv_spaces = ",\n";
+const char * csv_spaces = "\",\n";
 timer mytimer;
-
+int has_header_titles = 0;
+int ignore_rest_of_line = 0;
 /*
  * assign a consecutive id from either the [from] or [to] ids.
  */
@@ -99,8 +100,14 @@ void parse(int i){
     if (rc < 1)
       break;
     if (strlen(linebuf) <= 1){ //skip empty lines
+      line++;
       continue;
     }
+
+    if (has_header_titles && line == 1){
+       line++;
+       continue;
+    } 
     //skipping over matrix market header (if any) 
     if (!strncmp(linebuf, "%%MatrixMarket", 14)){
       matrix_market = true;
@@ -126,13 +133,16 @@ void parse(int i){
 
     //read the rest of the line
     if (!binary){
-      pch = strtok_r(NULL, "\n", &saveptr);
+      if (ignore_rest_of_line)
+        pch = strtok_r(NULL, string_to_tokenize, &saveptr);
+      else
+        pch = strtok_r(NULL, "\n", &saveptr);
       if (!pch){ logstream(LOG_ERROR) << "Error when parsing file: " << in_files[i] << ":" << line << "[" << linebuf << "]" << std::endl; return; }
     }
     if (tsv)
       fprintf(fout.outf, "%u\t%u\t%s\n", from, to, binary? "": pch);
     else if (csv)
-      fprintf(fout.outf, "%u,%u,%s\n", from, to, binary? "" : pch);
+      fprintf(fout.outf, "%u %u %s\n", from, to, binary? "" : pch);
     else 
       fprintf(fout.outf, "%u %u %s\n", from, to, binary? "" : pch);
     nnz++;
@@ -171,6 +181,8 @@ int main(int argc,  const char *argv[]) {
   csv = get_option_int("csv", 0); // is the comma seperated file?
   binary = get_option_int("binary", 0);
   single_domain = get_option_int("single_domain", 0);
+  has_header_titles = get_option_int("has_header_titles", has_header_titles);
+  ignore_rest_of_line = get_option_int("ignore_rest_of_line", ignore_rest_of_line);
   mytime.start();
 
 
