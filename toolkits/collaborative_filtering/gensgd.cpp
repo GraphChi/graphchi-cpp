@@ -576,14 +576,14 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     strncpy(linebuf_debug, linebuf, 1024);
-    char *pch = strtok(linebuf,"\t,\r; ");
+    char *pch = strtok(linebuf,"\t,\r;");
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     header_titles.push_back(pch);
 
     while (pch != NULL){
-      pch = strtok(NULL, "\t,\r; ");
+      pch = strtok(NULL, "\t,\r;");
       if (pch == NULL)
         break;
       header_titles.push_back(pch);
@@ -731,8 +731,6 @@ void read_node_features(std::string base_filename, bool square, feature_control 
       if (pch == NULL)
         break;
       if (binary){
-        if (atoi(pch) <= 2)
-          continue;
         J = (uint)get_node_id(pch, 2+fc.total_features+fc.node_features-1, lines);
       }
       else { 
@@ -1135,12 +1133,12 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
-          assert(node_array[i]->bias < 1e3);
+          assert(node_array[i]->bias < 1e5);
 
           vec grad =  sum - node_array[i]->pvec;
           node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
           assert(!std::isnan(node_array[i]->pvec[0]));
-          assert(node_array[i]->pvec[0] < 1e3);
+          assert(node_array[i]->pvec[0] < 1e5);
         }
         delete[] node_array;
 
