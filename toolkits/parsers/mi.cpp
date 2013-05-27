@@ -34,7 +34,7 @@
 #include "../collaborative_filtering/util.hpp"
 #include "common.hpp"
 #include <math.h>
-
+#include <iomanip>
 using namespace std;
 using namespace graphchi;
 
@@ -54,8 +54,8 @@ int has_header_titles = 1;
 std::vector<std::string> header_titles;
 int from_val = -1; int to_val = -1;
 int mid_val = -1;
-std::map<int, int> p_x;
-std::map<int, int> p_y;
+std::map<std::string, int> p_x;
+std::map<std::string, int> p_y;
 int n = 0;
 
 void parse(int i){    
@@ -79,13 +79,14 @@ void parse(int i){
 		char *pch = strtok(linebuf,"\t,\r;\"");
 		if (pch == NULL)
 			logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
-
+		for (int j=0; j < strlen(pch); j++) if (pch[j] == ' ') pch[j] = '_';
 		header_titles.push_back(pch);
 		if (debug) printf("Found title: %s\n", pch);
 		while (pch != NULL){
 			pch = strtok(NULL, "\t,\r;\"");
-			if (pch == NULL || pch[0] == ' ' || pch[0] == '\0')
+			if (pch == NULL || pch[0] == '\0')
 				break;
+		        for (int j=0; j < strlen(pch); j++) if (pch[j] == ' ') pch[j] = '_';
 			header_titles.push_back(pch);
 			if (debug) printf("Found title: %s\n", pch);
 		}
@@ -108,13 +109,14 @@ void parse(int i){
 			pch++;
 
 		index++;
-		int from,to,mid;
+		int from,to;
 
 		if (index == from_val)
-			from = atoi(pch);
+			strncpy(frombuf, pch, 256);
 		if (index == to_val)
-			to = atoi(pch);
+			strncpy(tobuf, pch, 256);
 
+                bool found_from = false, found_to = false;
 		while(true){
 			pch = strtok_r(NULL, ",\"", &saveptr);
 			if (pch == NULL)
@@ -128,18 +130,23 @@ void parse(int i){
                         if (index > from_val && index > to_val)
                            break;
 
-			if (index == from_val)
-				from = atoi(pch);
-			if (index == to_val)
-				to = atoi(pch);
+			if (index == from_val){
+				strncpy(frombuf, pch, 256);
+ 				found_from = true;
+                        }
+			if (index == to_val){
+				strncpy(tobuf, pch, 256);
+				found_to = true;
+                        }
 		}
 		char totalbuf[512];
-		sprintf(totalbuf, "%d %d", from, to);
+                assert(found_from && found_to);
+		sprintf(totalbuf, "%s_%s", frombuf, tobuf);
                 
 		if (debug) printf("Incrementing map: %s\n", totalbuf);
 		frommap.string2nodeid[totalbuf]++;
-                p_x[from]++;
-                p_y[to]++;
+                p_x[frombuf]++;
+                p_y[tobuf]++;
 	        n++;
 	}
 }
@@ -188,7 +195,7 @@ int main(int argc,  const char *argv[]) {
 
 
         int total_x =0 , total_y = 0;
-        std::map<int, int>::iterator it;
+        std::map<std::string, int>::iterator it;
         double h = 0;
         for (it = p_x.begin(); it != p_x.end(); it++){
           total_x+= it->second;
@@ -206,16 +213,15 @@ int main(int argc,  const char *argv[]) {
 
         int total_p_xy = 0;
         for (iter = frommap.string2nodeid.begin() ; iter != frommap.string2nodeid.end(); iter++){
-          std::string buf = iter->first;
           double p_xy = iter->second / (double)n;
           assert(p_xy > 0);
-          char * first = strtok((char*)buf.c_str(), " ");
+          char buf[256];
+          strncpy(buf, iter->first.c_str(), 256);
+          char * first = strtok(buf, "_");
           char * second = strtok(NULL, "\n\r ");
           assert(first && second);
-          int x = atoi(first);
-          int y = atoi(second);
-          double px = p_x[x] / (double)n;
-          double py = p_y[y] / (double)n;
+          double px = p_x[first] / (double)n;
+          double py = p_y[second] / (double)n;
           assert(px > 0 && py > 0);
           mi += p_xy * log2(p_xy / (px * py));
           total_p_xy += iter->second;
@@ -225,8 +231,15 @@ int main(int argc,  const char *argv[]) {
         
         logstream(LOG_INFO)<<"Unique p(x) " << p_x.size() << std::endl;
         logstream(LOG_INFO)<<"Unique p(y) " << p_y.size() << std::endl;
-        std::cout<<"Mutual information of " << from_val << " [" << header_titles[from_val-1] << "] <-> " << to_val << " [" << header_titles[to_val-1] << "] is: " << mi/h << std::endl;
-	//save_map_to_text_file(frommap.string2nodeid, outdir + dir + "map.text");
+        logstream(LOG_INFO)<<"Average F(x) " << total_x / (double)p_x.size() << std::endl;
+        logstream(LOG_INFO)<<"Average F(y) " << total_y / (double)p_y.size() << std::endl;
+
+        std::cout<<"Mutual information of " << from_val << " [" << header_titles[from_val-1] << "] <-> " << to_val << " [" << header_titles[to_val-1] << "] is: " ;
+        if (mi/h > 1e-3) 
+            std::cout<<std::setprecision(3) << mi/h << std::endl;
+        else std::cout<<"-"<<std::endl;
+	save_map_to_text_file(frommap.string2nodeid, outdir + dir + "map.text");
+        logstream(LOG_INFO)<<"Saving map file " << outdir << dir << "map.text" << std::endl;
 	return 0;
 }
 
