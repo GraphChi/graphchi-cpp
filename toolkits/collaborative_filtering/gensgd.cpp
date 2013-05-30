@@ -1260,6 +1260,8 @@ int main(int argc, const char ** argv) {
     int node = atoi(pch);
     if (node < 0 || node >= MAX_FEATURES+3)
       logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
+    if (node >= file_columns)
+      logstream(LOG_FATAL)<<"Feature id using the --feature=XX command should be < file_columns (counting starts from zero)" << std::endl;
     fc.feature_selection[node] = true;
     fc.total_features++;
     while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
