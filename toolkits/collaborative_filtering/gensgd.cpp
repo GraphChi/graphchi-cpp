@@ -301,10 +301,13 @@ float get_value(char * pch, bool read_only){
   return ret;
 }
 
-char * read_one_token(char *& linebuf, const char * pspaces, size_t i, char * linebuf_debug, int token){
+char * read_one_token(char *& linebuf, const char * pspaces, size_t i, char * linebuf_debug, int token, int type = TRAINING){
   char *pch = strsep(&linebuf,pspaces);
-  if (pch == NULL)
+  if (pch == NULL && type == TRAINING)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
+  else if (pch == NULL && type == TEST)
+     return NULL;
+
   if (json_input){
     //for json, multiple separators may lead to empty strings, we simply skip them
      while(pch && !strcmp(pch, "")){ 
@@ -373,16 +376,20 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.val_pos){
       /* READ RATING */
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token, type);
+      if (pch == NULL && type == TEST)
+         return true;
       val = get_value(pch, type != TRAINING);
       token++;
     }
-    else {
-      if (cold_start == 2 && type == TEST)//a hack for yelp data, to be fixed later
+    else { 
+      if (token >= file_columns)
         break;
 
       /* READ FEATURES */
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
+      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token, type);
+      if (pch == NULL && type == TEST)
+        return true;
       if (!fc.feature_selection[token]){
         token++;
         continue;
@@ -933,11 +940,6 @@ void test_predictions_N(
 
   FILE * fout = open_file((test + ".predict").c_str(),"w");
 
-  MM_typecode matcode;
-  mm_set_array(&matcode);
-  mm_write_banner(fout, matcode);
-  mm_write_mtx_array_size(fout ,nz, 1); 
-
   std::vector<float> valarray; valarray.resize(fc.total_features);
   float val;
   double prediction;
@@ -953,13 +955,12 @@ void test_predictions_N(
 
     if (I == (uint)-1 || J == (uint)-1){
         if (cold_start == 0)
-          fprintf(fout, "N/A\n");
-        else if (cold_start ==2 ||  (cold_start == 1 && I ==(uint)-1 && J==(uint)-1)){
+        fprintf(fout, "N/A\n");
+        else if (cold_start ==2 ||  (cold_start == 1 && I ==(uint)-1 && J==(uint)-1))
         
-        fprintf(fout, "%12.8g\n", inputGlobalMean);
+           fprintf(fout, "%12.8g\n", inputGlobalMean);
         new_test_users++;
         continue;
-      }
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
