@@ -971,6 +971,12 @@ void test_predictions_N(
         }
         else if (cold_start == ITEM && I == (uint)-1 && J != (uint)-1)
            fprintf(fout, "%12.8g\n", latent_factors_inmem[fc.offsets[1]+J].avg_rating);
+        else if (cold_start == ITEM && I != (uint)-1 && J == (uint)-1)
+           fprintf(fout, "%12.8g\n", latent_factors_inmem[I].avg_rating);
+        else if (cold_start == ITEM){
+           fprintf(fout, "%12.8g\n", inputGlobalMean);
+           new_test_users++;
+        }
         continue;
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
@@ -1101,13 +1107,13 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     } 
 
 
-    if (is_item(vertex.id()) && gcontext.iteration == 0){
+    if (cold_start == ITEM && gcontext.iteration == 0){
        vertex_data & item = latent_factors_inmem[vertex.id()];
        item.avg_rating = 0;
-       for(int e=0; e < vertex.num_inedges(); e++) {
-         item.avg_rating += vertex.inedge(e)->get_data().weight;
+       for(int e=0; e < vertex.num_edges(); e++) {
+         item.avg_rating += vertex.edge(e)->get_data().weight;
        }
-       item.avg_rating /= vertex.num_inedges();
+       item.avg_rating /= vertex.num_edges();
     }
 
     //go over all user nodes
