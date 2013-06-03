@@ -80,6 +80,11 @@ struct stats{
   }
 };
 
+enum _cold_start{
+   NONE = 0,
+   GLOBAL = 1, 
+   ITEM = 3
+};
 struct feature_control{
   std::vector<double_map> node_id_maps;
   double_map val_map;
@@ -157,7 +162,7 @@ void get_offsets(std::vector<int> & offsets){
 
 
 bool is_user(vid_t id){ return id < M; }
-bool is_item(vid_t id){ return id >= M && id < N; }
+bool is_item(vid_t id){ return id >= M && id < M+N; }
 bool is_time(vid_t id){ return id >= M+N; }
 
 vec errors_vec;
@@ -166,12 +171,14 @@ struct vertex_data {
   vec pvec;
   double bias;
   int last_item;
+  float avg_rating;
   sparse_vec features;
   sparse_vec links; //links to other users or items
 
   vertex_data() {
     bias = 0;
     last_item = 0;
+    avg_rating = -1;
   }
   void set_val(int index, float val){
     if (index == BIAS_POS)
@@ -954,12 +961,16 @@ void test_predictions_N(
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     if (I == (uint)-1 || J == (uint)-1){
-        if (cold_start == 0)
-        fprintf(fout, "N/A\n");
-        else if (cold_start ==2 ||  (cold_start == 1 && I ==(uint)-1 && J==(uint)-1))
-        
+        if (cold_start == NONE){
+           fprintf(fout, "N/A\n");
+          new_test_users++;
+        }
+        else if (cold_start ==2 ||  (cold_start == 1 && I ==(uint)-1 && J==(uint)-1)){
            fprintf(fout, "%12.8g\n", inputGlobalMean);
-        new_test_users++;
+           new_test_users++;
+        }
+        else if (cold_start == ITEM && I == (uint)-1 && J != (uint)-1)
+           fprintf(fout, "%12.8g\n", latent_factors_inmem[fc.offsets[1]+J].avg_rating);
         continue;
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
@@ -1088,6 +1099,16 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         vertex_with_no_edges++;
       return;
     } 
+
+
+    if (is_item(vertex.id()) && gcontext.iteration == 0){
+       vertex_data & item = latent_factors_inmem[vertex.id()];
+       item.avg_rating = 0;
+       for(int e=0; e < vertex.num_inedges(); e++) {
+         item.avg_rating += vertex.inedge(e)->get_data().weight;
+       }
+       item.avg_rating /= vertex.num_inedges();
+    }
 
     //go over all user nodes
     if (is_user(vertex.id())){
