@@ -157,12 +157,14 @@ float time_svdpp_predict(const time_svdpp_usr & usr,
     const float rating, 
     double & prediction){
 
-
-  double pui  = globalMean + *usr.bu + *mov.bi;// + bt[t];
-  int dim = D;
-  for(int k=0;k<dim;k++){
+  //prediction = global_mean + user_bias + movie_bias
+  double pui  = globalMean + *usr.bu + *mov.bi;
+  for(int k=0;k<D;k++){
+    // + user x movie factors 
     pui += (usr.ptemp[k] * mov.q[k]);
+    // + user x time factors
     pui += usr.x[k] * ptime.z[k];
+    // + user x time x movies factors
     pui += usr.pu[k] * ptime.pt[k] * mov.q[k];
   }
   pui = std::min(pui,maxval);
