@@ -93,22 +93,32 @@ do
   fi
 
   #translate the node ids to consecutive id 1..n
-  echo "$FILENAME.$NUM_EDGES" > $GRAPHCHI_ROOT/a
+  echo "$DIRNAME/$FILENAME.$NUM_EDGES" > $GRAPHCHI_ROOT/a
   cd $GRAPHCHI_ROOT
   ./toolkits/parsers/consecutive_matrix_market --file_list=a --binary=1 --single_domain=1 
-  mv auser.reverse.map.text $CURPATH
-  #mv $FILENAME.$NUM_EDGES.out $CURPATH
+  rm -f ./toolkits/visual/auser.map.text
+  mv auser.map.text ./toolkits/visual/
   cd $CURPATH
 
+  if [ ! -f auser.map.text ]; then
+    echo "Bug - missing file auser.map.text"
+    exit 1
+  fi
+
+  echo "Going to go over `wc -l auser.map.text | awk '{print $1}'` lines of map file"
   nodes_num=0;
   declare -A names;
   while read i
   do
-    names[`echo $i|awk '{print $1}'`]=`echo $i|awk '{print $2}'`;
+    names[`echo $i|awk '{print $2}'`]=`echo $i|awk '{print $1}'`;
     (( nodes_num++ ))
-  done < auser.reverse.map.text
+  done < auser.map.text
 
   #echo "${!names[*]}"
+  if [ ! -f $FILENAME.$NUM_EDGES.out ]; then
+     echo "Bug: failed to find $FILENAME.$NUM_EDGES.out"
+     exit 1
+  fi
 
   echo "source,target" > graph${NUM_EDGES}.csv
   edges_num=0;

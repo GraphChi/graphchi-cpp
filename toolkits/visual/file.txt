@@ -1,10 +1,1 @@
-graph1500.1.csv
-graph1500.2.csv
-graph1500.3.csv
-graph1500.4.csv
-graph1500.5.csv
-graph1500.6.csv
-graph1500.7.csv
-graph1500.8.csv
-graph1500.9.csv
-graph1500.10.csv
+graph1000.1.csv
