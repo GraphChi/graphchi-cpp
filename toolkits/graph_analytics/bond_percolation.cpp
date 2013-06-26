@@ -62,6 +62,9 @@ VertexDataType * vertex_values;
 size_t changes = 0;
 timer mytimer;
 int actual_vertices = 0;
+bool * active_nodes;
+int iter = 0;
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type>
  * class. The main logic is usually in the update function.
@@ -77,6 +80,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
     if (changes == 0)
       ginfo.set_last_iteration(iteration);
     changes = 0;
+    iter++;
   }
 
 
@@ -99,6 +103,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
     /* On subsequent iterations, find the minimum label of my neighbors */
     if (!edge_count){
       vid_t curmin = vertex_values[vertex.id()];
+      //first time, count the number of nodes which actually have edges
       if (gcontext.iteration == 0 && vertex.num_edges() > 0){
         mymutex.lock(); actual_vertices++; mymutex.unlock();
       }
@@ -107,10 +112,15 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         curmin = std::min(nblabel, curmin);
       }
 
+      //in case of a new min reschedule neighbors
       if (vertex_values[vertex.id()] > curmin) {
         changes++;
         set_data(vertex, curmin);
+        for (int i=0; i< vertex.num_edges(); i++){
+          active_nodes[vertex.edge(i)->vertex_id()] = true;
+        }
       }
+      else active_nodes[vertex.id()] = false;
     }
     else {
       vid_t curmin = vertex_values[vertex.id()];
@@ -138,6 +148,10 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         vertex_values[i] = i;
       }
     }
+    ctx.scheduler->remove_tasks(0, (int) ctx.nvertices - 1);
+    for (int i=0; i< ctx.nvertices; i++)
+      if (active_nodes[i])
+        ctx.scheduler->add_task(i);
   }
 
 
@@ -156,7 +170,7 @@ int main(int argc, const char ** argv) {
   std::string filename = get_option_string("file");  // Base filename
   int niters           = get_option_int("niters", 100); // Number of iterations (max)
   int output_labels    = get_option_int("output_labels", 0); //output node labels to file?
-  bool scheduler       = false;    // Always run with scheduler
+  bool scheduler       = true;    // Always run with scheduler
 
   /* Process input file - if not already preprocessed */
   float p                 = get_option_float("p", -1);
@@ -178,6 +192,10 @@ int main(int argc, const char ** argv) {
   engine.set_maxwindow(engine.num_vertices());
 
   mytimer.start();
+
+  active_nodes = new bool[engine.num_vertices()];
+  for (int i=0; i< engine.num_vertices(); i++)
+    active_nodes[i] = true;
   engine.run(program, niters);
 
 
@@ -209,6 +227,7 @@ int main(int argc, const char ** argv) {
     std::cout << "Percentage of sites: " << (double)actual_vertices / (double)n << std::endl;
     std::cout << "Percentage of bonds: " << (double)engine.num_edges() / (2.0*n) << std::endl;
   }
+  std::cout  << "Number of iterations: " << iter << std::endl;
   std::cout << "SITES RESULT:\nsize\tcount\n";
   std::map<uint,uint> final_countsv;
   std::map<uint,uint> final_countse;
