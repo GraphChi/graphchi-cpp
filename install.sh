@@ -1,8 +1,38 @@
-#!/bin/sh -e
+#!/bin/bash 
 #script for installing graphchi cf toolbox
 #written by Danny Bickson, CMU
-wget http://bitbucket.org/eigen/eigen/get/3.1.1.tar.bz2
-tar -xjf 3.1.1.tar.bz2
+EIGEN_FILE=3.1.3.tar.bz2
+EIGEN_DIST=http://bitbucket.org/eigen/eigen/get/$EIGEN_FILE
+
+test -z `which wget`
+if [ $? -eq 1 ]; then
+  wget --max-redirect 20 $EIGEN_DIST
+  if [ $? -ne 0 ]; then
+     echo "Failed to download file"
+     echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"
+     exit 1
+  fi
+else
+  test -z `which curl` 
+  if [ $? -eq 1 ]; then
+    curl -o $EIGEN_FILE -L $EIGEN_DIST
+    if [ $? -ne 0 ]; then
+     echo "Failed to download file"
+     echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"
+     exit 1
+    fi
+  else
+     echo "Failed to find wget or curl"
+     echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"
+     exit 1
+  fi
+fi
+tar -xjf $EIGEN_FILE
+    if [ $? -ne 0 ]; then
+     echo "Failed to extract eigen files"
+     echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"
+     exit 1
+    fi
 mv eigen-eigen-*/Eigen ./src
 cd toolkits/collaborative_filtering
 make 
