@@ -6,6 +6,7 @@ EIGEN_DIST=http://bitbucket.org/eigen/eigen/get/$EIGEN_FILE
 
 test -z `which wget`
 if [ $? -eq 1 ]; then
+  rm -fR $EIGEN_DIST
   wget --max-redirect 20 $EIGEN_DIST
   if [ $? -ne 0 ]; then
      echo "Failed to download file"
@@ -15,6 +16,7 @@ if [ $? -eq 1 ]; then
 else
   test -z `which curl` 
   if [ $? -eq 1 ]; then
+    rm -fR $EIGEN_DIST
     curl -o $EIGEN_FILE -L $EIGEN_DIST
     if [ $? -ne 0 ]; then
      echo "Failed to download file"
@@ -27,12 +29,15 @@ else
      exit 1
   fi
 fi
+rm -f eigen-eigen-*
 tar -xjf $EIGEN_FILE
     if [ $? -ne 0 ]; then
      echo "Failed to extract eigen files"
      echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"
      exit 1
     fi
+
+rm -fR ./src/Eigen
 mv eigen-eigen-*/Eigen ./src
 cd toolkits/collaborative_filtering
 make 
