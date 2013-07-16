@@ -994,6 +994,7 @@ namespace graphchi {
                         buf[i] = zerovalue;
                     }
                     write_compressed(f, buf, len);
+                    free(buf);
                     close(f);
                     
 #ifdef DYNAMICEDATA

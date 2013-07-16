@@ -176,6 +176,7 @@ namespace graphchi {
             std::string blockfname = blockfilename(block.blockid);
             iomgr->managed_pwritea_now(block.fd, &outdata, realsize, 0); /* Need to write whole block in the compressed regime */
             write_block_uncompressed_size(blockfname, realsize);
+            free(outdata);
         }
         
     public:
