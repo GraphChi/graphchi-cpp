@@ -72,28 +72,20 @@ In the table below, we have picked some recent running time results for large-sc
 While distributed clusters can solve the same problems faster than GraphChi on a single computer, for many purposes GraphChi's performance should be adequate. The numbers below do not include time for transferring the input to cloud or cluster, and usually do not include the graph loading time. GraphChi's running times include loading the graph and saving the results, but not preprocessing time. Preprocessing needs to be done only once per graph (you can run many different algorithms on the same preprocessed graph). The preprocessing times are listed in a separate table below.
 
 
-<table>
-  <tr><td>**Application**</td><td>**Input graph**</td><td>**Graph size**</td><td>**Comparison**</td><td>**GraphChi on Mac Mini (SSD)**</td><td>Ref</td></tr>
-  <tr><td>Pagerank - 3 iterations</td><td>twitter-2010</td><td>1.5B edges</td><td>Spark, 50 machines, 8.1 min</td><td>13 min</td><td>1</td></tr>
-  <tr><td>Pagerank - 100 iterations</td><td>uk-union</td><td>3.8B edges</td><td>Stanford GPS (Pregel), 30 machines, 144 min</td><td>581 min</td><td>2</td></tr>
-  <tr><td>Web-graph Belief Propagation (1 iter.)</td><td>yahoo-web</td><td>6.7B edges</td><td>Pegasus, 100 machines, 22 min</td><td>27 min</td><td>3</td></tr>
-</table>
-|| Matrix factorization (ALS), 10 iters || Netflix || 99M edges || GraphLab, 8-core machine, 4.7 min || 9.8 min || 4 || 
-|| Triangle counting || twitter-2010 || 1.5B edges || Hadoop, 1636 machines, 423 mins || 55 min || 5 ||
+<table class="wikitable"><tr><td style="border: 1px solid #ccc; padding: 5px;"> <strong>Application</strong> </td><td style="border: 1px solid #ccc; padding: 5px;"> <strong>Input graph</strong> </td><td style="border: 1px solid #ccc; padding: 5px;"> <strong>Graph size</strong></td><td style="border: 1px solid #ccc; padding: 5px;"> <strong>Comparison</strong> </td><td style="border: 1px solid #ccc; padding: 5px;"> <strong>GraphChi on Mac Mini (SSD)</strong> </td><td style="border: 1px solid #ccc; padding: 5px;"> Ref </td></tr> <tr><td style="border: 1px solid #ccc; padding: 5px;"> Pagerank - 3 iterations </td><td style="border: 1px solid #ccc; padding: 5px;"> twitter-2010 </td><td style="border: 1px solid #ccc; padding: 5px;"> 1.5B edges </td><td style="border: 1px solid #ccc; padding: 5px;"> Spark, 50 machines, 8.1 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 13 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 1 </td></tr> <tr><td style="border: 1px solid #ccc; padding: 5px;"> Pagerank - 100 iterations </td><td style="border: 1px solid #ccc; padding: 5px;"> uk-union </td><td style="border: 1px solid #ccc; padding: 5px;"> 3.8B edges </td><td style="border: 1px solid #ccc; padding: 5px;"> Stanford GPS (Pregel), 30 machines, 144 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 581 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 2  </td></tr> <tr><td style="border: 1px solid #ccc; padding: 5px;"> Web-graph Belief Propagation (1 iter.) </td><td style="border: 1px solid #ccc; padding: 5px;"> yahoo-web </td><td style="border: 1px solid #ccc; padding: 5px;"> 6.7B edges </td><td style="border: 1px solid #ccc; padding: 5px;"> Pegasus, 100 machines, 22 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 27 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 3 </td></tr> <tr><td style="border: 1px solid #ccc; padding: 5px;"> Matrix factorization (ALS), 10 iters </td><td style="border: 1px solid #ccc; padding: 5px;"> Netflix </td><td style="border: 1px solid #ccc; padding: 5px;"> 99M edges </td><td style="border: 1px solid #ccc; padding: 5px;"> GraphLab, 8-core machine, 4.7 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 9.8 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 4 </td></tr> <tr><td style="border: 1px solid #ccc; padding: 5px;"> Triangle counting </td><td style="border: 1px solid #ccc; padding: 5px;"> twitter-2010 </td><td style="border: 1px solid #ccc; padding: 5px;"> 1.5B edges </td><td style="border: 1px solid #ccc; padding: 5px;"> Hadoop, 1636 machines, 423 mins </td><td style="border: 1px solid #ccc; padding: 5px;"> 55 min </td><td style="border: 1px solid #ccc; padding: 5px;"> 5 </td></tr> </table>
 
-
-**Performance on hard drive: ** We repeated the same experiments on hard-drive, and the running times are roughly double compared to SSD. The hard-drive performance is thus sufficient for many purposes.
+**Performance on hard drive:** We repeated the same experiments on hard-drive, and the running times are roughly double compared to SSD. The hard-drive performance is thus sufficient for many purposes.
 
 **Configuration:** 
      membudget_mb 3000  execthreads 2 loadthreads 2 niothreads 2 io.blocksize 1048576
 
 <table>
   <tr><td>1</td><td>I. Stanton and G. Kliot. Streaming graph partitioning for large distributed graphs. 2012.</td></tr>
+  <tr><td>2</td><td> S.Salihoglu and J.Widom. GPS: A Graph Processing System. Technical Report, pages 1–32, Apr. 2012.</td></tr>
+  <tr><td>3</td><td> U. Kang, D. H. Chau, and C. Faloutsos. Inference of Beliefs on Billion-Scale Graphs. KDD-LDMTA’10, pages 1–7, June 2010. </td></tr>
+  <tr><td>4</td><td> http://graphlab.org/datasets.html (Retrieved June 30, 2012) </td></tr>
+  <tr><td>5</td><td> S. Suri and S. Vassilvitskii. Counting triangles and the curse of the last reducer. In Proceedings of the 20th international conference on World wide web, pages 607–614. ACM, 2011. </td></tr>
 </table>
-||2 || S.Salihoglu and J.Widom. GPS: A Graph Processing System. Technical Report, pages 1–32, Apr. 2012. || 
-|| 3 || U. Kang, D. H. Chau, and C. Faloutsos. Inference of Beliefs on Billion-Scale Graphs. KDD-LDMTA’10, pages 1–7, June 2010. ||
-|| 4 || http://graphlab.org/datasets.html (Retrieved June 30, 2012) ||
-|| 5 || S. Suri and S. Vassilvitskii. Counting triangles and the curse of the last reducer. In Proceedings of the 20th international conference on World wide web, pages 607–614. ACM, 2011. ||
 
 ### = Comparison to Giraph =
 
@@ -102,7 +94,7 @@ Apache [Giraph](http://giraph.apache.org/) is an open-source implementation of t
 ### Preprocessing times
 
 <table>
-  <tr><td>**Graph**</td><td>**Preprocessing time**</td></tr>
+  <tr><td><b>Graph</b></td><td><b>Preprocessing time</b></td></tr>
   <tr><td>Netflix</td><td>1 min</td></tr>
   <tr><td>Twitter-2010</td><td>10 min</td></tr>
   <tr><td>uk-union</td><td>33 min</td></tr>
