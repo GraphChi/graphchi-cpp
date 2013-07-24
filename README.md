@@ -87,7 +87,7 @@ While distributed clusters can solve the same problems faster than GraphChi on a
   <tr><td>5</td><td> S. Suri and S. Vassilvitskii. Counting triangles and the curse of the last reducer. In Proceedings of the 20th international conference on World wide web, pages 607–614. ACM, 2011. </td></tr>
 </table>
 
-### = Comparison to Giraph =
+### Comparison to Giraph 
 
 Apache [Giraph](http://giraph.apache.org/) is an open-source implementation of the Pregel graph engine, built on top of Hadoop. Based on a recent talk by the main developer of Giraph ( http://www.youtube.com/watch?v=b5Qmz4zPj-M ), Giraph running with 20 workers can run five iterations of !PageRank  on a graph with 5 billion edges in approx. 75 minutes. Estimated from our results above, GraphChi can execute similar task in roughly the same time on just one machine. The structure of the input graph affects the runtime, so a direct comparison is not possible without using the same input.  
 
