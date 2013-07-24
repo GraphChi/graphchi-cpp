@@ -6,7 +6,7 @@
 
 Highlight of the release includes support for dynamically sized edge and vertex values.
 
-**Read release announcement: [[GraphChi-Version-0p2-Release]] **
+**Read [release announcement.](https://github.com/GraphChi/graphchi-cpp/wiki/GraphChi-Version0p2-Release)  **
 
 ## Introduction
 
@@ -41,14 +41,14 @@ http://bickson.blogspot.com/2012/12/collaborative-filtering-with-graphchi.html
 
 - Vertex-centric computation model (similar to GraphLab, Pregel or Giraph)
   ** Wrapper for GraphLab 2.1 API (Gather-Apply-Scatter model)
-- Asynchronous, parallel execution, with (optional) deterministic scheduling (see semantics section at [[Creating-GraphChi-Applications]])
+- Asynchronous, parallel execution, with (optional) deterministic scheduling (see semantics section at [Creating-GraphChi-Applications](https://github.com/GraphChi/graphchi-cpp/wiki/Creating-GraphChi-Applications) )
 
 - Can run graphs with billions of edges, with linear scalability, on a standard consumer grade machine
     ** Can also utilize large amounts of memory by preloading (caching), making it competitive on large servers: UsingMoreMemory
 - Multidisk striping - RAID-style operation, see MultipleDisksSupports
 - Works well on both hard-drive and SSD.
   
-- Evolving graphs, streaming graph updates (can add and delete edges): [[Evolving-And-StreamingGraphs]]
+- Evolving graphs, streaming graph updates (can add and delete edges): https://github.com/GraphChi/graphchi-cpp/wiki/Evolving-And-StreamingGraphs 
 
 - Easy to install, headers-only, no dependencies.
 - Tested on Mac OS X and Linux
@@ -59,11 +59,11 @@ Best way to get started is to start from the ExampleApps page.
 Prior to that, you need to download the source code (no configuration
 or installation is required).
 
-For an introduction on writing your own applications, read [[Creating-GraphChi-Applications]].
+For an introduction on writing your own applications, read  [Creating-GraphChi-Applications](https://github.com/GraphChi/graphchi-cpp/wiki/Creating-GraphChi-Applications).
 
 ## How GraphChi works
 
-GraphChi is based on the Parallel Sliding Windows method which allows efficient asynchronous processing of mutable graphs from disk. See [[Introduction-To-GraphChi]] for description.
+GraphChi is based on the Parallel Sliding Windows method which allows efficient asynchronous processing of mutable graphs from disk. See [Introduction-To-GraphChi](https://github.com/GraphChi/graphchi-cpp/wiki/Introduction-To-GraphChi) for description.
 
 ## Performance
 
