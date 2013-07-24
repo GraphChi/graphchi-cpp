@@ -8,6 +8,10 @@ Highlight of the release includes support for dynamically sized edge and vertex 
 
 **Read [release announcement.](https://github.com/GraphChi/graphchi-cpp/wiki/GraphChi-Version0p2-Release)  **
 
+### Discussion group
+
+http://groups.google.com/group/graphchi-discuss
+
 ## Introduction
 
 GraphChi is a spin-off of the GraphLab ( http://www.graphlab.org ) -project from the Carnegie Mellon University. It is based on research by Aapo Kyrola ( http://www.cs.cmu.edu/~akyrola/) and his advisors. 
