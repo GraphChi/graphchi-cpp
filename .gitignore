@@ -9,6 +9,10 @@
 
 # Compiled Static libraries
 *.lai
+
+graphchi_metrics.*
+
+conf/graphchi.cnf.local
 *.la
 *.a
 
