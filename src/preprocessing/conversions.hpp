@@ -37,7 +37,6 @@
 #include "graphchi_types.hpp"
 #include "logger/logger.hpp"
 #include "preprocessing/sharder.hpp"
-#include "preprocessing/formats/binary_adjacency_list.hpp"
 
 /**
  * GNU COMPILER HACK TO PREVENT WARNINGS "Unused variable", if
@@ -51,8 +50,13 @@
 
 namespace graphchi {
     
-    struct dummy {};
-
+    struct dummy {
+    };
+    
+    template <typename T>
+    struct dummyC {
+       operator T() { return T(); }
+    };
     
     /* Simple string to number parsers */
     static void VARIABLE_IS_NOT_USED parse(int &x, const char * s);
@@ -76,6 +80,8 @@ namespace graphchi {
     static void parse(float &x, const char * s) {
         x = (float) atof(s);
     }
+    
+    static void parse(dummy &x, const char *s) {}
     
     
     /**
@@ -145,7 +151,7 @@ namespace graphchi {
     
     
     // Removes \n from the end of line
-    void FIXLINE(char * s) {
+    inline void FIXLINE(char * s) {
         int len = (int) strlen(s)-1;
         if(s[len] == '\n') s[len] = 0;
     }
@@ -195,8 +201,8 @@ namespace graphchi {
      * Converts graph from an edge list format. Input may contain
      * value for the edges. Self-edges are ignored.
      */
-    template <typename EdgeDataType>
-    void convert_edgelist(std::string inputfile, sharder<EdgeDataType> &sharderobj, bool multivalue_edges=false) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_edgelist(std::string inputfile, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj, bool multivalue_edges=false) {
         
         FILE * inf = fopen(inputfile.c_str(), "r");
         size_t bytesread = 0;
@@ -281,8 +287,8 @@ namespace graphchi {
      * Converts a graph from adjacency list format. Edge values are not supported,
      * and each edge gets the default value for the type. Self-edges are ignored.
      */
-    template <typename EdgeDataType>
-    void convert_adjlist(std::string inputfile, sharder<EdgeDataType> &sharderobj) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_adjlist(std::string inputfile, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
         FILE * inf = fopen(inputfile.c_str(), "r");
         if (inf == NULL) {
             logstream(LOG_FATAL) << "Could not load :" << inputfile << " error: " << strerror(errno) << std::endl;
@@ -337,8 +343,8 @@ namespace graphchi {
      * Converts a graph from cassovary's (Twitter) format. Edge values are not supported,
      * and each edge gets the default value for the type. Self-edges are ignored.
      */
-    template <typename EdgeDataType>
-    void convert_cassovary(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_cassovary(std::string basefilename, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
         std::vector<std::string> parts;
         std::string dirname = get_dirname(basefilename);
         std::string prefix =  get_filename(basefilename);
@@ -413,8 +419,8 @@ namespace graphchi {
     /**
      * Converts a set of files in the binedgelist format (binary edge list)
      */
-    template <typename EdgeDataType>
-    void convert_binedgelist(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_binedgelist(std::string basefilename, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
         std::vector<std::string> parts;
         std::string dirname = get_dirname(basefilename);
         std::string prefix =  get_filename(basefilename);
@@ -454,8 +460,8 @@ namespace graphchi {
     }
     
     // TODO: remove code duplication.
-    template <typename EdgeDataType>
-    void convert_binedgelistval(std::string basefilename, sharder<EdgeDataType> &sharderobj) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_binedgelistval(std::string basefilename, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
         std::vector<std::string> parts;
         std::string dirname = get_dirname(basefilename);
         std::string prefix =  get_filename(basefilename);
@@ -515,48 +521,45 @@ namespace graphchi {
      * Converts a graph input to shards. Preprocessing has several steps,
      * see sharder.hpp for more information.
      */
-    template <typename EdgeDataType>
+    template <typename EdgeDataType, typename FinalEdgeDataType>
     int convert(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         std::string suffix = "";
         if (preprocessor != NULL) {
             suffix = preprocessor->getSuffix();
         }
-        sharder<EdgeDataType> sharderobj(basefilename + suffix);
-        
-        if (!sharderobj.preprocessed_file_exists()) {
-            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
-                file_type_str != "multivalueedgelist") {
-                logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
-                assert(false);
-            }
-            
-            /* Start preprocessing */
-            sharderobj.start_preprocessing();
-            
-            if (file_type_str == "adjlist") {
-                convert_adjlist<EdgeDataType>(basefilename, sharderobj);
-            } else if (file_type_str == "edgelist") {
-                convert_edgelist<EdgeDataType>(basefilename, sharderobj);
-#ifdef DYNAMICEDATA
-            } else if (file_type_str == "multivalueedgelist" ) {
-                convert_edgelist<EdgeDataType>(basefilename, sharderobj, true);
-#endif
-            } else if (file_type_str == "binedgelist") {
-                convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
-            } else {
-                assert(false);
-            }
-            
-            /* Finish preprocessing */
-            sharderobj.end_preprocessing();
-            
-            if (preprocessor != NULL) {
-                preprocessor->reprocess(sharderobj.preprocessed_name(), basefilename);
-            }
-            
+        sharder<EdgeDataType, FinalEdgeDataType> sharderobj(basefilename + suffix);
+    
+        std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
+        if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
+            file_type_str != "multivalueedgelist") {
+            logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
+            assert(false);
         }
         
+        /* Start preprocessing */
+        sharderobj.start_preprocessing();
+        
+        if (file_type_str == "adjlist") {
+            convert_adjlist<EdgeDataType>(basefilename, sharderobj);
+        } else if (file_type_str == "edgelist") {
+            convert_edgelist<EdgeDataType>(basefilename, sharderobj);
+#ifdef DYNAMICEDATA
+        } else if (file_type_str == "multivalueedgelist" ) {
+            convert_edgelist<EdgeDataType>(basefilename, sharderobj, true);
+#endif
+        } else if (file_type_str == "binedgelist") {
+            convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
+        } else {
+            assert(false);
+        }
+        
+        /* Finish preprocessing */
+        sharderobj.end_preprocessing();
+        
+        if (preprocessor != NULL) {
+            //preprocessor->reprocess(sharderobj.preprocessed_name(), basefilename);
+            assert(false); // NEED TO REIMPLEMENT
+        }         
         vid_t max_vertex_id = get_option_int("maxvertex", 0);
         if (max_vertex_id > 0) {
             sharderobj.set_max_vertex_id(max_vertex_id);
@@ -579,30 +582,28 @@ namespace graphchi {
         sharder<dummy> sharderobj(basefilename + suffix);
         sharderobj.set_no_edgevalues();
         
-        if (!sharderobj.preprocessed_file_exists()) {
-            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary, binedgelist");
-            if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary"  && file_type_str != "binedgelist") {
-                logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
-                assert(false);
-            }
-            
-            /* Start preprocessing */
-            sharderobj.start_preprocessing();
-            
-            if (file_type_str == "adjlist") {
-                convert_adjlist<dummy>(basefilename, sharderobj);
-            } else if (file_type_str == "edgelist") {
-                convert_edgelist<dummy>(basefilename, sharderobj);
-            } else if (file_type_str == "cassovary") {
-                convert_cassovary<dummy>(basefilename, sharderobj);
-            } else if (file_type_str == "binedgelist") {
-                convert_binedgelist<dummy>(basefilename, sharderobj);
-            }
-            
-            /* Finish preprocessing */
-            sharderobj.end_preprocessing();
+        std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary, binedgelist");
+        if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary"  && file_type_str != "binedgelist") {
+            logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
+            assert(false);
         }
         
+        /* Start preprocessing */
+        sharderobj.start_preprocessing();
+        
+        if (file_type_str == "adjlist") {
+            convert_adjlist<dummy>(basefilename, sharderobj);
+        } else if (file_type_str == "edgelist") {
+            convert_edgelist<dummy>(basefilename, sharderobj);
+        } else if (file_type_str == "cassovary") {
+            convert_cassovary<dummy>(basefilename, sharderobj);
+        } else if (file_type_str == "binedgelist") {
+            convert_binedgelist<dummy>(basefilename, sharderobj);
+        }
+        
+        /* Finish preprocessing */
+        sharderobj.end_preprocessing();
+    
         if (get_option_int("skipsharding", 0) == 1) {
             std::cout << "Skip sharding..." << std::endl;
             exit(0);
@@ -619,7 +620,33 @@ namespace graphchi {
         return nshards;
     }
     
-    
+    template <typename EdgeDataType>
+    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string, bool &didexist,
+                             SharderPreprocessor<dummyC<EdgeDataType> > * preprocessor = NULL) {
+        int nshards;
+        std::string suffix = "";
+        if (preprocessor != NULL) {
+            suffix = preprocessor->getSuffix();
+        }
+        
+        /* Check if input file is already sharded */
+        if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
+            logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
+            didexist = true;
+            if (check_origfile_modification_earlier<EdgeDataType>(basefilename + suffix, nshards)) {
+                return nshards;
+            }
+            
+        }
+        didexist = false;
+        
+        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+        
+        logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
+        logstream(LOG_INFO) << "Will try create them now..." << std::endl;
+        nshards = convert<dummyC<EdgeDataType>, EdgeDataType>(basefilename, nshards_string, preprocessor);
+        return nshards;
+    }
     
     template <typename EdgeDataType>
     int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
@@ -645,14 +672,55 @@ namespace graphchi {
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
-        nshards = convert<EdgeDataType>(basefilename, nshards_string, preprocessor);
+        nshards = convert<EdgeDataType, EdgeDataType>(basefilename, nshards_string, preprocessor);
         return nshards;
+    }
+    
+    // First type is for the input phase, second is what is needed in computation
+    template <typename EdgeDataType, typename FinalEdgeType>
+    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
+                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+        int nshards;
+        std::string suffix = "";
+        if (preprocessor != NULL) {
+            suffix = preprocessor->getSuffix();
+        }
+        
+        /* Check if input file is already sharded */
+        if ((nshards = find_shards<FinalEdgeType>(basefilename + suffix, nshards_string))) {
+            logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
+            didexist = true;
+            if (check_origfile_modification_earlier<FinalEdgeType>(basefilename + suffix, nshards)) {
+                return nshards;
+            }
+            
+        }
+        didexist = false;
+        
+        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "(Edge-value size: " << sizeof(FinalEdgeType) << ")" << std::endl;
+        logstream(LOG_INFO) << "Will try create them now..." << std::endl;
+        nshards = convert<EdgeDataType, FinalEdgeType>(basefilename, nshards_string, preprocessor);
+        return nshards;
+    }
+
+    template <typename EdgeDataType, typename FinalEdgeType>
+    int convert_if_notexists(std::string basefilename, std::string nshards_string,
+                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+        bool b;
+        return convert_if_notexists<EdgeDataType, FinalEdgeType>(basefilename, nshards_string, b, preprocessor);
     }
     
     template <typename EdgeDataType>
     int convert_if_notexists(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
         bool b;
         return convert_if_notexists<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
+    }
+    
+    template <typename EdgeDataType>
+    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string, SharderPreprocessor<dummyC<EdgeDataType> > * preprocessor = NULL) {
+        bool b;
+        return convert_if_notexists_novalues<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
     }
     
     
@@ -682,17 +750,13 @@ namespace graphchi {
         vid_t * translate_table;
         vid_t max_vertex_id;
         vertex_degree * degarray;
-        binary_adjacency_list_writer<EdgeDataType> * writer;
         OrderByDegree() {
             degarray = NULL;
-            writer = NULL;
         }
         
         ~OrderByDegree() {
             if (degarray != NULL) free(degarray);
             degarray = NULL;
-            if (writer != NULL) delete writer;
-            writer = NULL;
         }
         
         std::string getSuffix() {
@@ -711,17 +775,18 @@ namespace graphchi {
          * Note: this version does not preserve edge values!
          */
         void receive_edge(vid_t from, vid_t to, EdgeDataType value, bool is_value) {
+            assert(false); //REDO
             if (phase == 0) {
                 degarray[from].deg++;
                 degarray[to].deg++;
             } else {
-                writer->add_edge(translate(from), translate(to)); // Value is ignored
+                //writer->add_edge(translate(from), translate(to)); // Value is ignored
             }
         }
         void reprocess(std::string preprocessedFile, std::string baseFilename) {
-            
-            binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
-            max_vertex_id = (vid_t) reader.get_max_vertex_id();
+            assert(false); //REDO
+           // binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
+            //max_vertex_id = (vid_t) reader.get_max_vertex_id();
             
             degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));
             vid_t nverts = max_vertex_id + 1;
@@ -731,7 +796,7 @@ namespace graphchi {
             
             phase = 0;
             /* Reader will invoke receive_edge() above */
-            reader.read_edges(this);
+           // reader.read_edges(this);
             
             /* Now sort */
             quickSort(degarray, nverts, vertex_degree_less);
@@ -756,15 +821,15 @@ namespace graphchi {
             std::string tmpfilename = preprocessedFile + ".old";
             rename(preprocessedFile.c_str(), tmpfilename.c_str());
             
-            writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
-            binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
+          //  writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
+        //    binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
             
             phase = 1;
-            reader2.read_edges(this);
+           // reader2.read_edges(this);
             
-            writer->finish();
-            delete writer;
-            writer = NULL;
+           // writer->finish();
+         //   delete writer;
+           // writer = NULL;
             
             delete translate_table;
         }
