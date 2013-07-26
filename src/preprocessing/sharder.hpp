@@ -564,13 +564,8 @@ namespace graphchi {
             
             logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
             
-            std::string fname = filename_shard_adj(basefilename, shard, nshards);
-            std::string edfname = filename_shard_edata<FinalEdgeDataType>(basefilename, shard, nshards);
-            std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
-            
-            /* Make the block directory */
-            if (!no_edgevalues)
-                mkdir(edblockdirname.c_str(), 0777);
+            std::string fname = filename_shard_adj(basefilename, shard, nshards); 
+             
             size_t numedges = shovelsize / sizeof(edge_t);
             
             logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
@@ -609,155 +604,10 @@ namespace graphchi {
                 logstream(LOG_ERROR) << "Could not open " << fname << " error: " << strerror(errno) << std::endl;
             }
             assert(f >= 0);
-            int trerr = ftruncate(f, 0);
-            assert(trerr == 0);
-            
-            char * buf = (char*) malloc(SHARDER_BUFSIZE);
-            char * bufptr = buf;
-            
-            char * ebuf = (char*) malloc(compressed_block_size);
-            ebuffer_size = compressed_block_size;
-            char * ebufptr = ebuf;
-            
-            vid_t curvid=0;
-#ifdef DYNAMICEDATA
-            vid_t lastdst = 0xffffffff;
-            int jumpover = 0;
-            size_t num_uniq_edges = 0;
-            size_t last_edge_count = 0;
-#endif
-            size_t istart = 0;
-            size_t tot_edatabytes = 0;
-            for(size_t i=0; i <= numedges; i++) {
-                if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
-#ifdef DYNAMICEDATA
-                i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
-                jumpover = 0;
-#endif //DYNAMICEDATA
-                edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                
-#ifdef DYNAMICEDATA
-                
-                if (lastdst == edge.dst && edge.src == curvid) {
-                    // Currently not supported
-                    logstream(LOG_ERROR) << "Duplicate edge in the stream - aborting" << std::endl;
-                    assert(false);
-                }
-                lastdst = edge.dst;
-#endif
-                
-                if (!edge.stopper()) {
-#ifndef DYNAMICEDATA
-                    bwrite_edata<FinalEdgeDataType>(ebuf, ebufptr, FinalEdgeDataType(edge.value), tot_edatabytes, edfname, edgecounter);
-#else
-                    /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
-                    if (edge.is_chivec_value) {
-                        // Need to check how many values for this edge
-                        int count = 1;
-                        while(shovelbuf[i + count].valindex == count) { count++; }
+           
+            /* TEMPORARY CODE! */
+            pwritea(f, shovelbuf, size_t(numedges) * sizeof(edge_t), 0);
                         
-                        assert(count < 32768);
-                        
-                        typename chivector<EdgeDataType>::sizeword_t szw;
-                        ((uint16_t *) &szw)[0] = (uint16_t)count;  // Sizeword with length and capacity = count
-                        ((uint16_t *) &szw)[1] = (uint16_t)count;
-                        bwrite_edata<typename chivector<EdgeDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
-                        for(int j=0; j < count; j++) {
-                            bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(shovelbuf[i + j].value), tot_edatabytes, edfname, edgecounter);
-                        }
-                        jumpover = count - 1; // Jump over
-                    } else {
-                        // Just write size word with zero
-                        bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
-                    }
-                    num_uniq_edges++;
-                    
-#endif
-                    edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two or more calls to bwrite_edata before incrementing
-                }
-                if (degrees != NULL && edge.src != edge.dst) {
-                    degrees[edge.src].outdegree++;
-                    degrees[edge.dst].indegree++;
-                }
-                
-                if ((edge.src != curvid) || edge.stopper()) {
-                    // New vertex
-#ifndef DYNAMICEDATA
-                    size_t count = i - istart;
-#else
-                    size_t count = num_uniq_edges - 1 - last_edge_count;
-                    last_edge_count = num_uniq_edges - 1;
-                    if (edge.stopper()) count++;  
-#endif
-                    assert(count>0 || curvid==0);
-                    if (count>0) {
-                        if (count < 255) {
-                            uint8_t x = (uint8_t)count;
-                            bwrite<uint8_t>(f, buf, bufptr, x);
-                        } else {
-                            bwrite<uint8_t>(f, buf, bufptr, 0xff);
-                            bwrite<uint32_t>(f, buf, bufptr, (uint32_t)count);
-                        }
-                    }
-                    
-#ifndef DYNAMICEDATA
-                    for(size_t j=istart; j < i; j++) {
-                        bwrite(f, buf, bufptr,  shovelbuf[j].dst);
-                    }
-#else
-                    // Special dealing with dynamic edata because some edges can be present multiple
-                    // times in the shovel.
-                    for(size_t j=istart; j < i; j++) {
-                        if (j == istart || shovelbuf[j - 1].dst != shovelbuf[j].dst) {
-                            bwrite(f, buf, bufptr,  shovelbuf[j].dst);
-                        }
-                    }
-#endif
-                    istart = i;
-#ifdef DYNAMICEDATA
-                    istart += jumpover;
-#endif
-                    
-                    // Handle zeros
-                    if (!edge.stopper()) {
-                        if (edge.src - curvid > 1 || (i == 0 && edge.src>0)) {
-                            int nz = edge.src - curvid - 1;
-                            if (i == 0 && edge.src > 0) nz = edge.src; // border case with the first one
-                            do {
-                                bwrite<uint8_t>(f, buf, bufptr, 0);
-                                nz--;
-                                int tnz = std::min(254, nz);
-                                bwrite<uint8_t>(f, buf, bufptr, (uint8_t) tnz);
-                                nz -= tnz;
-                            } while (nz>0);
-                        }
-                    }
-                    curvid = edge.src;
-                }
-            }
-            
-            /* Flush buffers and free memory */
-            writea(f, buf, bufptr - buf);
-            free(buf);
-            free(shovelbuf);
-            close(f);
-            
-            /* Write edata size file */
-            if (!no_edgevalues) {
-                edata_flush<FinalEdgeDataType>(ebuf, ebufptr, edfname, tot_edatabytes);
-                
-                std::string sizefilename = edfname + ".size";
-                std::ofstream ofs(sizefilename.c_str());
-#ifndef DYNAMICEDATA
-                ofs << tot_edatabytes;
-#else
-                ofs << num_uniq_edges * sizeof(int); // For dynamic edge data, write the number of edges.
-#endif
-                
-                ofs.close();
-            }
-            free(ebuf);
-            
             m.stop_time("shard_final");
         }
         

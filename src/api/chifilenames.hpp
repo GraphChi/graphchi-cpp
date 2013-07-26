@@ -141,7 +141,7 @@ namespace graphchi {
         std::stringstream ss;
         ss << basefilename;
         ss << ".edata_azv.";
-        ss << p << "_" << nshards << ".adj";
+        ss << p << "_" << nshards << ".basic";
         return ss.str();
     }
     
