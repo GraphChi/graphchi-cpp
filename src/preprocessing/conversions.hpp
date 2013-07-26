@@ -34,6 +34,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <fstream>
+#include <iostream>
+
+
+
 #include "graphchi_types.hpp"
 #include "logger/logger.hpp"
 #include "preprocessing/sharder.hpp"
@@ -332,6 +337,97 @@ namespace graphchi {
         free(s);
         fclose(inf);
     }
+
+
+    /**
+     * Extract a vector of node indices from a line in the file.
+     *
+     * @param[in]   line        line from input file containing node indices
+     * @param[out]  adjacencies     node indices extracted from line
+     */
+    static std::vector<vid_t> parseLine(std::string line) {
+
+        std::stringstream stream(line);
+        std::string token;
+        char delim = ' ';
+        std::vector<vid_t> adjacencies;
+
+        // split string and push adjacent nodes
+        while (std::getline(stream, token, delim)) {
+            if (token.size() != 0) {
+                vid_t v = atoi(token.c_str());
+                adjacencies.push_back(v);
+            }
+        }
+
+        return adjacencies;
+    }
+
+    /**
+     * Converts a graph from the METIS adjacency format.
+     * See http://people.sc.fsu.edu/~jburkardt/data/metis_graph/metis_graph.html for format documentation.
+     */
+    template <typename EdgeDataType>
+    void convert_metis(std::string inputPath, sharder<EdgeDataType> &sharderobj) {
+        
+        std::ifstream graphFile(inputPath.c_str());
+
+        if (! graphFile.good()) {
+            logstream(LOG_FATAL) << "Could not load :" << inputPath << " error: " << strerror(errno) << std::endl;
+        }
+        
+        std::string line; // current line
+
+        // handle header line
+        int n;  // number of nodes
+        int m;  // number of edges
+        int weighted; // indicates weight scheme: 
+
+        if (std::getline(graphFile, line)) {
+            while (line[0] == '%') { // skip comments
+                std::getline(graphFile, line);
+            }
+
+            std::vector<uint> tokens = parseLine(line);
+            n = tokens[0];
+            m = tokens[1];
+            if (tokens.size() == 2) {
+                weighted = 0;
+            } if (tokens.size() == 3) {
+                weighted = tokens[2];
+                if (weighted != 0) {
+                    logstream(LOG_FATAL) << "node and edge weights currently not supported by parser" << std::endl;
+                }
+            }
+        } else {
+            logstream(LOG_FATAL) << "getting METIS file header failed" << std::endl;
+        }
+
+        logstream(LOG_INFO) << "reading graph with n=" << n << ", m=" << m << std::endl;
+
+        vid_t u = 0; // starting node index
+
+        // handle content lines
+        while (graphFile.good()) {
+            do {
+                std::getline(graphFile, line);
+            } while (line[0] == '%'); // skip comments
+
+            // parse adjacency line
+            std::vector<vid_t> adjacencies = parseLine(line);
+            for (std::vector<vid_t>::iterator it=adjacencies.begin(); it != adjacencies.end(); ++it) {
+                vid_t v = *it;
+                if (u <= v) { // add edge only once; self-loops are allowed
+                    sharderobj.preprocessing_add_edge(u, v, EdgeDataType());
+                }
+            }
+            
+            u += 1;
+        }
+
+
+
+    }
     
     /**
      * Converts a graph from cassovary's (Twitter) format. Edge values are not supported,
@@ -526,7 +622,7 @@ namespace graphchi {
         if (!sharderobj.preprocessed_file_exists()) {
             std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
             if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
-                file_type_str != "multivalueedgelist") {
+                file_type_str != "multivalueedgelist" && file_type_str != "metis") {
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -544,6 +640,8 @@ namespace graphchi {
 #endif
             } else if (file_type_str == "binedgelist") {
                 convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
+            } else if (file_type_str == "metis") {
+                convert_metis<EdgeDataType>(basefilename, sharderobj);
             } else {
                 assert(false);
             }
