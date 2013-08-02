@@ -372,7 +372,7 @@ struct PMFVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     if (iteration >= pmf_burn_in){
       rmse_index = 0;
       rmse_type = TEST;
-      test_predictions(&pmf_predict, &gcontext, iiter == niters-1, &test_avgprod);
+      test_predictions(&pmf_predict, &gcontext, iiter == niters-1, &test_avgprod, pmf_burn_in);
     }
     iiter++;
   }
