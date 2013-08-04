@@ -369,6 +369,8 @@ namespace graphchi {
      */
     template <typename EdgeDataType>
     void convert_metis(std::string inputPath, sharder<EdgeDataType> &sharderobj) {
+
+        std::cout << "[INFO] reading METIS graph file" << std::endl;
         
         std::ifstream graphFile(inputPath.c_str());
 
@@ -613,6 +615,9 @@ namespace graphchi {
      */
     template <typename EdgeDataType>
     int convert(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+        //
+        std::cout << "Calling convert" << std::endl;
+        // 
         std::string suffix = "";
         if (preprocessor != NULL) {
             suffix = preprocessor->getSuffix();
@@ -620,9 +625,17 @@ namespace graphchi {
         sharder<EdgeDataType> sharderobj(basefilename + suffix);
         
         if (!sharderobj.preprocessed_file_exists()) {
-            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
+            //
+            std::cout << "preprocessed file does not exist" << std::endl;
+            // 
+            std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, metis");
             if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
                 file_type_str != "multivalueedgelist" && file_type_str != "metis") {
+
+                //
+                std::cout << "file type string: " << file_type_str << std::endl;
+                //
+
                 logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
                 assert(false);
             }
@@ -664,6 +677,10 @@ namespace graphchi {
         logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
         return nshards;
+    } else {
+        //
+        std::cout << "preprocessed file exists" << std::endl;
+        //
     }
     
     
