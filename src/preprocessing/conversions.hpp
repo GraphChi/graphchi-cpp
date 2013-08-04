@@ -677,10 +677,6 @@ namespace graphchi {
         logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
         return nshards;
-    } else {
-        //
-        std::cout << "preprocessed file exists" << std::endl;
-        //
     }
     
     
