@@ -62,7 +62,9 @@
 #include "util/ioutil.hpp"
 #include "util/radixSort.hpp"
 #include "util/kwaymerge.hpp"
-
+#ifdef DYNAMICEDATA
+#include "util/qsort.hpp"
+#endif 
 namespace graphchi {
     template <typename VT, typename ET> class sharded_graph_output;
     
@@ -377,12 +379,20 @@ namespace graphchi {
         /**
          * Add edge to be preprocessed with a value.
          */
-        void preprocessing_add_edge(vid_t from, vid_t to, EdgeDataType val) {
+        void preprocessing_add_edge(vid_t from, vid_t to, EdgeDataType val, bool input_value=false) {
             if (from == to) {
                 // Do not allow self-edges
                 return;
             }  
-            curshovel_buffer[curshovel_idx++] = edge_with_value<EdgeDataType>(from, to, val);
+            edge_with_value<EdgeDataType> e(from, to, val);
+#ifdef DYNAMICEDATA
+            e.is_chivec_value = input_value;
+            if (e.src == last_added_edge.src && e.dst == last_added_edge.dst) {
+                e.valindex = last_added_edge.valindex + 1;
+            }
+            last_added_edge = e;
+#endif
+            curshovel_buffer[curshovel_idx++] = e;
             if (curshovel_idx == shovelsize) {
                 flush_shovel();
             }
@@ -395,7 +405,7 @@ namespace graphchi {
         void preprocessing_add_edge_multival(vid_t from, vid_t to, std::vector<EdgeDataType> & vals) {
             typename std::vector<EdgeDataType>::iterator iter;
             for(iter=vals.begin(); iter != vals.end(); ++iter) {
-                preprocessing_add_edge(from, to, *iter);
+                preprocessing_add_edge(from, to, *iter, true);
             }
             max_vertex_id = std::max(std::max(from, to), max_vertex_id);
         }
@@ -576,7 +586,11 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
             
             m.start_time("finish_shard.sort");
+#ifndef DYNAMICEDATA
             iSort(shovelbuf, (int)numedges, max_vertex_id, srcF<EdgeDataType>());
+#else
+            quickSort(shovelbuf, (int)numedges, edge_t_src_less<EdgeDataType>);
+#endif
             m.stop_time("finish_shard.sort");
 
             // Remove duplicates
