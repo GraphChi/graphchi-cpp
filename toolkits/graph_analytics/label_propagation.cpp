@@ -128,7 +128,7 @@ int main(int argc, const char ** argv) {
 
 
   //load graph (adj matrix) from file
-  int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, true);
+  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, true);
   if (M != N)
     logstream(LOG_FATAL)<<"Label propagation supports only square matrices" << std::endl;
 
