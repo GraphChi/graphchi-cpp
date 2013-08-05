@@ -592,7 +592,7 @@ namespace graphchi {
         }
         
         int nshards = sharderobj.execute_sharding(nshards_string);
-        logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename  << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
         return nshards;
     }
@@ -616,7 +616,7 @@ namespace graphchi {
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
-        nshards = convert<dummyC<EdgeDataType>, EdgeDataType>(basefilename, nshards_string, preprocessor);
+        nshards = convert<dummyC<EdgeDataType>, EdgeDataType>(basefilename, nshards_string);
         return nshards;
     }
     
@@ -639,7 +639,7 @@ namespace graphchi {
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
-        nshards = convert<EdgeDataType, EdgeDataType>(basefilename, nshards_string, preprocessor);
+        nshards = convert<EdgeDataType, EdgeDataType>(basefilename, nshards_string);
         return nshards;
     }
     

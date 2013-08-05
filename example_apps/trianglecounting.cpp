@@ -422,6 +422,14 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
 };
 
  
+/**
+  * Reads preprocessed shards and creates new ones after ordering by
+  * degree. Some wasted computation here.
+  */
+void order_by_degree(std::string &filename, int nshards);
+void order_by_degree(std::string &filename, int nshards) {
+    
+}
 
 
 int main(int argc, const char ** argv) {
@@ -439,10 +447,10 @@ int main(int argc, const char ** argv) {
     
     /* Preprocess the file, and order the vertices in the order of their degree.
        Mapping from original ids to new ids is saved separately. */
-    OrderByDegree<EdgeDataType> * orderByDegreePreprocessor = new OrderByDegree<EdgeDataType> ();
-    int nshards          = convert_if_notexists<EdgeDataType>(filename, 
-                                                                get_option_string("nshards", "auto"),
-                                                                    orderByDegreePreprocessor);
+    int nshards          = convert_if_notexists_novalues<EdgeDataType>(filename, 
+                                                                get_option_string("nshards", "auto"));
+    order_by_degree(filename, nshards);
+    
     
     /* Initialize adjacency container */
     adjcontainer = new adjlist_container();
@@ -451,7 +459,7 @@ int main(int argc, const char ** argv) {
     
     /* Run */
     TriangleCountingProgram program;
-    graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + orderByDegreePreprocessor->getSuffix(),
+    graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + "degord",
                                                                       nshards, scheduler, m); 
     engine.set_enable_deterministic_parallelism(false);
     

@@ -137,18 +137,18 @@ namespace graphchi {
     template <typename EdgeDataType>
     struct shard_flushinfo {
         std::string shovelname;
-        int numedges;
+        size_t numedges;
         edge_with_value<EdgeDataType> * buffer;
         vid_t max_vertex;
         
-        shard_flushinfo(std::string shovelname, vid_t max_vertex, int numedges, edge_with_value<EdgeDataType> * buffer) :
+        shard_flushinfo(std::string shovelname, vid_t max_vertex, size_t numedges, edge_with_value<EdgeDataType> * buffer) :
         shovelname(shovelname), numedges(numedges), buffer(buffer), max_vertex(max_vertex) {}
         
         void flush() {
             /* Sort */
             // TODO: remove duplicates here!
             logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
-            iSort(buffer, numedges, max_vertex, dstF<EdgeDataType>());
+            iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<EdgeDataType>());
             logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
             int f = open(shovelname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             writea(f, buffer, numedges * sizeof(edge_with_value<EdgeDataType>));
@@ -169,14 +169,14 @@ namespace graphchi {
     template <typename EdgeDataType>
     struct shovel_merge_source : public merge_source<edge_with_value<EdgeDataType> > {
         
-        int bufsize_bytes;
-        int bufsize_edges;
+        size_t bufsize_bytes;
+        size_t bufsize_edges;
         std::string shovelfile;
-        int idx;
-        int bufidx;
+        size_t idx;
+        size_t bufidx;
         edge_with_value<EdgeDataType> * buffer;
         int f;
-        int numedges;
+        size_t numedges;
         
         shovel_merge_source(size_t bufsize_bytes, std::string shovelfile) : bufsize_bytes(bufsize_bytes), 
         shovelfile(shovelfile), idx(0), bufidx(0) {
@@ -191,8 +191,8 @@ namespace graphchi {
             assert(f>=0);
             
             buffer = (edge_with_value<EdgeDataType> *) malloc(bufsize_bytes);
-            numedges = (int) (get_filesize(shovelfile) / sizeof(edge_with_value<EdgeDataType> ));
-            bufsize_edges = (int) (bufsize_bytes / sizeof(edge_with_value<EdgeDataType>));
+            numedges =   (get_filesize(shovelfile) / sizeof(edge_with_value<EdgeDataType> ));
+            bufsize_edges =   (bufsize_bytes / sizeof(edge_with_value<EdgeDataType>));
             load_next();
         }
         
@@ -210,7 +210,7 @@ namespace graphchi {
         }
         
         void load_next() {
-            size_t len = std::min(bufsize_bytes, (int) ((numedges - idx) * sizeof(edge_with_value<EdgeDataType>)));
+            size_t len = std::min(bufsize_bytes,  ((numedges - idx) * sizeof(edge_with_value<EdgeDataType>)));
             preada(f, buffer, len, idx * sizeof(edge_with_value<EdgeDataType>));
             bufidx = 0;
         }

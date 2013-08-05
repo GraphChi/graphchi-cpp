@@ -72,7 +72,7 @@ class kway_merge {
 
 public:
     kway_merge(std::vector<merge_source<T> *> sources, merge_sink<T> * sink): sources(sources), sink(sink), tip((int)sources.size()) {
-        K = sources.size();
+        K = (int) sources.size();
     }
     
     ~kway_merge() {
