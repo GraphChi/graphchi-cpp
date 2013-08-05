@@ -211,10 +211,10 @@ int main(int argc, const char ** argv) {
   niters *= 2; //each NMF iteration is composed of two sub iters
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training, NULL, 0, 0, 3, TRAINING, false);
+  int nshards = convert_matrixmarket<float>(training, 0, 0, 3, TRAINING, false);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION, false);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION, false);
     if (vshards != -1)
        init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &nmf_predict);
   }
