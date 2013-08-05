@@ -134,7 +134,6 @@ void load_seeds_from_txt_file(std::map<std::string,uint> & map, const std::strin
   int line = 0;
   while (true){
     int rc = getline(&linebuf, &linesize, f);
-    char * to_free = linebuf;
     if (rc == -1)
       break;
 

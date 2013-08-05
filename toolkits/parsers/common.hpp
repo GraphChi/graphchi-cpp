@@ -49,7 +49,6 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
   int line = 0;
   while (true){
     int rc = getline(&linebuf, &linesize, f);
-    char * to_free = linebuf;
     if (rc == -1)
       break;
 

@@ -964,6 +964,11 @@ namespace graphchi {
             assert(degreeOutF >= 0);
             int trerr = ftruncate(degreeOutF, ginfo.nvertices * sizeof(int) * 2);
             assert(trerr == 0);
+            if (trerr != 0) {
+                logstream(LOG_FATAL) << "Could not truncate!" << std::endl;
+                exit(0);
+            }
+            
             for(int window=0; window<nshards; window++) {
                 metrics_entry mwi = m.start_time();
                 

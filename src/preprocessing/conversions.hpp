@@ -183,6 +183,7 @@ namespace graphchi {
             return dir;
         } else {
             assert(false);
+            return "n/a";
         }
     }
     
@@ -194,6 +195,7 @@ namespace graphchi {
             return f;
         } else {
             assert(false);
+            return "n/a";
         }
     }
     
