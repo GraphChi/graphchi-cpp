@@ -673,6 +673,12 @@ namespace graphchi {
     }
     
     template <typename EdgeDataType>
+    int convert_if_notexists(std::string basefilename, std::string nshards_string) {
+        bool b;
+        return convert_if_notexists<EdgeDataType, EdgeDataType>(basefilename, nshards_string, b);
+    }
+    
+    template <typename EdgeDataType>
     int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string) {
         bool b;
         return convert_if_notexists_novalues<EdgeDataType>(basefilename, nshards_string, b);
