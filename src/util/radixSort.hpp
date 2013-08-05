@@ -28,7 +28,6 @@
 #include <math.h>
 #include "graphchi_types.hpp"
 
-using namespace std;
 
 
 
