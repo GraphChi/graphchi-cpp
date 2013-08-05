@@ -16,6 +16,7 @@ src/Eigen
 conf/graphchi.cnf.local
 *.la
 *.a
+*~
 
 bin
 
