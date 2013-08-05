@@ -50,25 +50,25 @@ int main(int argc, const char ** argv) {
     std::string nshards_str = get_option_string_interactive("nshards", "Number of shards to create, or 'auto'");
     
     if (edge_data_type == "float") {
-        convert<float>(basefile, nshards_str);
+        convert<float, float>(basefile, nshards_str);
     } if (edge_data_type == "float-float") {
-        convert<PairContainer<float> >(basefile, nshards_str);
+        convert<PairContainer<float>, PairContainer<float> >(basefile, nshards_str);
     } else if (edge_data_type == "int") {
-        convert<int>(basefile, nshards_str);
+        convert<int, int>(basefile, nshards_str);
     } else if (edge_data_type == "uint") {
-        convert<unsigned int>(basefile, nshards_str);
+        convert<unsigned int, unsigned int>(basefile, nshards_str);
     } else if (edge_data_type == "int-int") {
-        convert<PairContainer<int> >(basefile, nshards_str);
+        convert<PairContainer<int>, PairContainer<int> >(basefile, nshards_str);
     } else if (edge_data_type == "short") {
-        convert<short>(basefile, nshards_str);
+        convert<short, short>(basefile, nshards_str);
     } else if (edge_data_type == "double") {
-        convert<double>(basefile, nshards_str);
+        convert<double, double>(basefile, nshards_str);
     } else if (edge_data_type == "char") {
-        convert<char>(basefile, nshards_str);
+        convert<char, char>(basefile, nshards_str);
     } else if (edge_data_type == "boolean") {
-        convert<bool>(basefile, nshards_str);
+        convert<bool, bool>(basefile, nshards_str);
     } else if (edge_data_type == "long") {
-        convert<long>(basefile, nshards_str);
+        convert<long, long>(basefile, nshards_str);
     } else if (edge_data_type == "none") {
         convert_none(basefile, nshards_str);
     } else {
