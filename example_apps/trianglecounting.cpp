@@ -58,6 +58,8 @@
 
 #include "graphchi_basic_includes.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
+#include "engine/auxdata/degree_data.hpp"
+#include "preprocessing/util/orderbydegree.hpp"
 
 using namespace graphchi;
 
@@ -422,14 +424,6 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
 };
 
  
-/**
-  * Reads preprocessed shards and creates new ones after ordering by
-  * degree. Some wasted computation here.
-  */
-void order_by_degree(std::string &filename, int nshards);
-void order_by_degree(std::string &filename, int nshards) {
-    
-}
 
 
 int main(int argc, const char ** argv) {
@@ -449,7 +443,14 @@ int main(int argc, const char ** argv) {
        Mapping from original ids to new ids is saved separately. */
     int nshards          = convert_if_notexists_novalues<EdgeDataType>(filename, 
                                                                 get_option_string("nshards", "auto"));
-    order_by_degree(filename, nshards);
+    
+    if (nshards == 1) {
+        logstream(LOG_FATAL) << "Triangle counting does not work in in-memory mode. Please set --nshards=2" << std::endl;
+        exit(1);
+    }
+    assert(nshards > 1);
+    
+    order_by_degree<EdgeDataType>(filename, nshards, m);
     
     
     /* Initialize adjacency container */
@@ -459,7 +460,7 @@ int main(int argc, const char ** argv) {
     
     /* Run */
     TriangleCountingProgram program;
-    graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + "degord",
+    graphchi_dynamicgraph_engine<VertexDataType, EdgeDataType> engine(filename + "_degord",
                                                                       nshards, scheduler, m); 
     engine.set_enable_deterministic_parallelism(false);
     

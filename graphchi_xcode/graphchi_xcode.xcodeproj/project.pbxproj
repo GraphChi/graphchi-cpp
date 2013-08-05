@@ -224,7 +224,6 @@
 		5F359BF615955CD100AF7672 /* functional_bulksync.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_bulksync.hpp; sourceTree = "<group>"; };
 		5F359BF715955D1B00AF7672 /* functional_defs.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_defs.hpp; sourceTree = "<group>"; };
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
-		5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = binary_adjacency_list.hpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
 		5F41F79717B0068800C5FD90 /* atomic.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = atomic.hpp; sourceTree = "<group>"; };
 		5F41F79817B0068800C5FD90 /* binary_minheap.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = binary_minheap.hpp; sourceTree = "<group>"; };
@@ -242,6 +241,7 @@
 		5F41F7A417B0068800C5FD90 /* readdeg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = readdeg.cpp; sourceTree = "<group>"; };
 		5F41F7A517B0068800C5FD90 /* synchronized_queue.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = synchronized_queue.hpp; sourceTree = "<group>"; };
 		5F41F7A617B0068800C5FD90 /* toplist.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = toplist.hpp; sourceTree = "<group>"; };
+		5F41F80317B00BC600C5FD90 /* orderbydegree.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = orderbydegree.hpp; sourceTree = "<group>"; };
 		5F54B84615FD4B2500B3842C /* chivector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = chivector.hpp; sourceTree = "<group>"; };
 		5F54B84715FD4C1900B3842C /* dynamicdata_smoketest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = dynamicdata_smoketest.cpp; sourceTree = "<group>"; };
 		5F54B85115FD4D9F00B3842C /* test_dynamicedata */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test_dynamicedata; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -687,14 +687,6 @@
 			path = functional;
 			sourceTree = "<group>";
 		};
-		5F3AA7AB15A632A300B467C1 /* formats */ = {
-			isa = PBXGroup;
-			children = (
-				5F3AA7AC15A632A300B467C1 /* binary_adjacency_list.hpp */,
-			);
-			path = formats;
-			sourceTree = "<group>";
-		};
 		5F41F79617B0068800C5FD90 /* util */ = {
 			isa = PBXGroup;
 			children = (
@@ -714,6 +706,14 @@
 				5F41F7A417B0068800C5FD90 /* readdeg.cpp */,
 				5F41F7A517B0068800C5FD90 /* synchronized_queue.hpp */,
 				5F41F7A617B0068800C5FD90 /* toplist.hpp */,
+			);
+			path = util;
+			sourceTree = "<group>";
+		};
+		5F41F80217B00BC600C5FD90 /* util */ = {
+			isa = PBXGroup;
+			children = (
+				5F41F80317B00BC600C5FD90 /* orderbydegree.hpp */,
 			);
 			path = util;
 			sourceTree = "<group>";
@@ -885,10 +885,10 @@
 			isa = PBXGroup;
 			children = (
 				5FCC1D091595000F0003D0E9 /* conversions.hpp */,
-				5F3AA7AB15A632A300B467C1 /* formats */,
 				5FCC1CD81594F1890003D0E9 /* sharder.hpp */,
 				5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */,
 				5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */,
+				5F41F80217B00BC600C5FD90 /* util */,
 			);
 			path = preprocessing;
 			sourceTree = "<group>";
