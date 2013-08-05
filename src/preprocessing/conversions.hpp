@@ -376,8 +376,8 @@ namespace graphchi {
      * See http://people.sc.fsu.edu/~jburkardt/data/metis_graph/metis_graph.html for format documentation.
      * NOTE: contributed by clstaudt
      */
-    template <typename EdgeDataType>
-    void convert_metis(std::string inputPath, sharder<EdgeDataType> &sharderobj) {
+    template <typename EdgeDataType, typename FinalEdgeDataType>
+    void convert_metis(std::string inputPath, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
 
         std::cout << "[INFO] reading METIS graph file" << std::endl;
         
@@ -622,17 +622,17 @@ namespace graphchi {
         sharderobj.start_preprocessing();
         
         if (file_type_str == "adjlist") {
-            convert_adjlist<EdgeDataType>(basefilename, sharderobj);
+            convert_adjlist<EdgeDataType, FinalEdgeDataType>(basefilename, sharderobj);
         } else if (file_type_str == "edgelist") {
-            convert_edgelist<EdgeDataType>(basefilename, sharderobj);
+            convert_edgelist<EdgeDataType, FinalEdgeDataType>(basefilename, sharderobj);
 #ifdef DYNAMICEDATA
         } else if (file_type_str == "multivalueedgelist" ) {
-            convert_edgelist<EdgeDataType>(basefilename, sharderobj, true);
+            convert_edgelist<EdgeDataType, FinalEdgeDataType>(basefilename, sharderobj, true);
 #endif
         } else if (file_type_str == "binedgelist") {
-            convert_binedgelistval<EdgeDataType>(basefilename, sharderobj);
+            convert_binedgelistval<EdgeDataType, FinalEdgeDataType>(basefilename, sharderobj);
         } else if (file_type_str == "metis") {
-            convert_metis<EdgeDataType>(basefilename, sharderobj);
+            convert_metis<EdgeDataType, FinalEdgeDataType>(basefilename, sharderobj);
         } else {
             assert(false);
         }
@@ -662,7 +662,7 @@ namespace graphchi {
         sharderobj.set_no_edgevalues();
         
         std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary, binedgelist");
-        if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary"  && file_type_str != "binedgelist") {
+        if (file_type_str != "adjlist" && file_type_str != "edgelist" && file_type_str != "cassovary"  && file_type_str != "binedgelist" && file_type_str != "metis") {
             logstream(LOG_ERROR) << "You need to specify filetype: 'edgelist' or 'adjlist'." << std::endl;
             assert(false);
         }
@@ -678,6 +678,8 @@ namespace graphchi {
             convert_cassovary<dummy>(basefilename, sharderobj);
         } else if (file_type_str == "binedgelist") {
             convert_binedgelist<dummy>(basefilename, sharderobj);
+        } else if (file_type_str == "metis") {
+            convert_metis<dummy>(basefilename, sharderobj);
         }
         
         /* Finish preprocessing */
