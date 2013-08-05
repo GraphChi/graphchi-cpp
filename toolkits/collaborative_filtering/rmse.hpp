@@ -98,7 +98,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   size_t nz;   
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
-    return; //missing validaiton data, nothing to compute
+    return; //missing test data, nothing to compute
   }
   FILE * fout = NULL;
   if (dosave)
