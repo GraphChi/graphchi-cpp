@@ -11,6 +11,7 @@
 *.lai
 
 graphchi_metrics.*
+src/Eigen
 
 conf/graphchi.cnf.local
 *.la
