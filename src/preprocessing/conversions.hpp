@@ -55,7 +55,7 @@ namespace graphchi {
     
     template <typename T>
     struct dummyC {
-       operator T() { return T(); }
+        operator T() { return T(); }
     };
     
     /* Simple string to number parsers */
@@ -115,7 +115,7 @@ namespace graphchi {
     
 #ifdef DYNAMICEDATA
     static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> &values, char * s);
-
+    
     void parse_multiple(std::vector<dummy> & values, char * s) {
         assert(false);
     }
@@ -503,32 +503,14 @@ namespace graphchi {
     
     
     
-    
-    /**
-     * An abstract class for defining preprocessor objects
-     * that modify the preprocessed binary input prior
-     * to sharding.
-     */
-    template <typename EdgeDataType>
-    class SharderPreprocessor {
-    public:
-        virtual ~SharderPreprocessor() {}
-        virtual std::string getSuffix() = 0;
-        virtual void reprocess(std::string preprocFilename, std::string basefileName) = 0;
-    };
-    
     /**
      * Converts a graph input to shards. Preprocessing has several steps,
      * see sharder.hpp for more information.
      */
     template <typename EdgeDataType, typename FinalEdgeDataType>
-    int convert(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
-        std::string suffix = "";
-        if (preprocessor != NULL) {
-            suffix = preprocessor->getSuffix();
-        }
-        sharder<EdgeDataType, FinalEdgeDataType> sharderobj(basefilename + suffix);
-    
+    int convert(std::string basefilename, std::string nshards_string) {
+        sharder<EdgeDataType, FinalEdgeDataType> sharderobj(basefilename);
+        
         std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist");
         if (file_type_str != "adjlist" && file_type_str != "edgelist"  && file_type_str != "binedgelist" &&
             file_type_str != "multivalueedgelist") {
@@ -556,17 +538,13 @@ namespace graphchi {
         /* Finish preprocessing */
         sharderobj.end_preprocessing();
         
-        if (preprocessor != NULL) {
-            //preprocessor->reprocess(sharderobj.preprocessed_name(), basefilename);
-            assert(false); // NEED TO REIMPLEMENT
-        }         
         vid_t max_vertex_id = get_option_int("maxvertex", 0);
         if (max_vertex_id > 0) {
             sharderobj.set_max_vertex_id(max_vertex_id);
         }
         
         int nshards = sharderobj.execute_sharding(nshards_string);
-        logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Successfully finished sharding for " << basefilename << std::endl;
         logstream(LOG_INFO) << "Created " << nshards << " shards." << std::endl;
         return nshards;
     }
@@ -578,8 +556,7 @@ namespace graphchi {
      */
     int convert_none(std::string basefilename, std::string nshards_string);
     int convert_none(std::string basefilename, std::string nshards_string) {
-        std::string suffix = "";
-        sharder<dummy> sharderobj(basefilename + suffix);
+        sharder<dummy> sharderobj(basefilename);
         sharderobj.set_no_edgevalues();
         
         std::string file_type_str = get_option_string_interactive("filetype", "edgelist, adjlist, cassovary, binedgelist");
@@ -603,7 +580,7 @@ namespace graphchi {
         
         /* Finish preprocessing */
         sharderobj.end_preprocessing();
-    
+        
         if (get_option_int("skipsharding", 0) == 1) {
             std::cout << "Skip sharding..." << std::endl;
             exit(0);
@@ -621,26 +598,21 @@ namespace graphchi {
     }
     
     template <typename EdgeDataType>
-    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string, bool &didexist,
-                             SharderPreprocessor<dummyC<EdgeDataType> > * preprocessor = NULL) {
+    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string, bool &didexist) {
         int nshards;
-        std::string suffix = "";
-        if (preprocessor != NULL) {
-            suffix = preprocessor->getSuffix();
-        }
         
         /* Check if input file is already sharded */
-        if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
+        if ((nshards = find_shards<EdgeDataType>(basefilename, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             didexist = true;
-            if (check_origfile_modification_earlier<EdgeDataType>(basefilename + suffix, nshards)) {
+            if (check_origfile_modification_earlier<EdgeDataType>(basefilename, nshards)) {
                 return nshards;
             }
             
         }
         didexist = false;
         
-        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename << std::endl;
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
@@ -649,26 +621,21 @@ namespace graphchi {
     }
     
     template <typename EdgeDataType>
-    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
-                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist) {
         int nshards;
-        std::string suffix = "";
-        if (preprocessor != NULL) {
-            suffix = preprocessor->getSuffix();
-        }
         
         /* Check if input file is already sharded */
-        if ((nshards = find_shards<EdgeDataType>(basefilename + suffix, nshards_string))) {
+        if ((nshards = find_shards<EdgeDataType>(basefilename, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             didexist = true;
-            if (check_origfile_modification_earlier<EdgeDataType>(basefilename + suffix, nshards)) {
+            if (check_origfile_modification_earlier<EdgeDataType>(basefilename, nshards)) {
                 return nshards;
             }
             
         }
         didexist = false;
         
-        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename  << std::endl;
         
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(EdgeDataType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
@@ -678,49 +645,37 @@ namespace graphchi {
     
     // First type is for the input phase, second is what is needed in computation
     template <typename EdgeDataType, typename FinalEdgeType>
-    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist,
-                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+    int convert_if_notexists(std::string basefilename, std::string nshards_string, bool &didexist) {
         int nshards;
-        std::string suffix = "";
-        if (preprocessor != NULL) {
-            suffix = preprocessor->getSuffix();
-        }
         
         /* Check if input file is already sharded */
-        if ((nshards = find_shards<FinalEdgeType>(basefilename + suffix, nshards_string))) {
+        if ((nshards = find_shards<FinalEdgeType>(basefilename, nshards_string))) {
             logstream(LOG_INFO) << "Found preprocessed files for " << basefilename << ", num shards=" << nshards << std::endl;
             didexist = true;
-            if (check_origfile_modification_earlier<FinalEdgeType>(basefilename + suffix, nshards)) {
+            if (check_origfile_modification_earlier<FinalEdgeType>(basefilename, nshards)) {
                 return nshards;
             }
             
         }
         didexist = false;
         
-        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename + suffix << std::endl;
+        logstream(LOG_INFO) << "Did not find preprocessed shards for " << basefilename  << std::endl;
         logstream(LOG_INFO) << "(Edge-value size: " << sizeof(FinalEdgeType) << ")" << std::endl;
         logstream(LOG_INFO) << "Will try create them now..." << std::endl;
-        nshards = convert<EdgeDataType, FinalEdgeType>(basefilename, nshards_string, preprocessor);
+        nshards = convert<EdgeDataType, FinalEdgeType>(basefilename, nshards_string);
         return nshards;
     }
-
+    
     template <typename EdgeDataType, typename FinalEdgeType>
-    int convert_if_notexists(std::string basefilename, std::string nshards_string,
-                             SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+    int convert_if_notexists(std::string basefilename, std::string nshards_string) {
         bool b;
-        return convert_if_notexists<EdgeDataType, FinalEdgeType>(basefilename, nshards_string, b, preprocessor);
+        return convert_if_notexists<EdgeDataType, FinalEdgeType>(basefilename, nshards_string, b);
     }
     
     template <typename EdgeDataType>
-    int convert_if_notexists(std::string basefilename, std::string nshards_string, SharderPreprocessor<EdgeDataType> * preprocessor = NULL) {
+    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string) {
         bool b;
-        return convert_if_notexists<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
-    }
-    
-    template <typename EdgeDataType>
-    int convert_if_notexists_novalues(std::string basefilename, std::string nshards_string, SharderPreprocessor<dummyC<EdgeDataType> > * preprocessor = NULL) {
-        bool b;
-        return convert_if_notexists_novalues<EdgeDataType>(basefilename, nshards_string, b, preprocessor);
+        return convert_if_notexists_novalues<EdgeDataType>(basefilename, nshards_string, b);
     }
     
     
@@ -737,104 +692,7 @@ namespace graphchi {
         return a.deg < b.deg || (a.deg == b.deg && a.id < b.id);
     }
     
-    /**
-     * Special preprocessor which relabels vertices in ascending order
-     * of their degree.
-     */
-    template <typename EdgeDataType>
-    class OrderByDegree : public SharderPreprocessor<EdgeDataType> {
-        int phase;
-        
-    public:
-        typedef edge_with_value<EdgeDataType> edge_t;
-        vid_t * translate_table;
-        vid_t max_vertex_id;
-        vertex_degree * degarray;
-        OrderByDegree() {
-            degarray = NULL;
-        }
-        
-        ~OrderByDegree() {
-            if (degarray != NULL) free(degarray);
-            degarray = NULL;
-        }
-        
-        std::string getSuffix() {
-            return "_degord";
-        }
-        
-        vid_t translate(vid_t vid) {
-            if (vid > max_vertex_id) return vid;
-            return translate_table[vid];
-        }
-        
-        /**
-         * Callback function that binary_adjacency_list_reader
-         * invokes. In first phase, the degrees of vertice sare collected.
-         * In the next face, they are written out to the degree-ordered data.
-         * Note: this version does not preserve edge values!
-         */
-        void receive_edge(vid_t from, vid_t to, EdgeDataType value, bool is_value) {
-            assert(false); //REDO
-            if (phase == 0) {
-                degarray[from].deg++;
-                degarray[to].deg++;
-            } else {
-                //writer->add_edge(translate(from), translate(to)); // Value is ignored
-            }
-        }
-        void reprocess(std::string preprocessedFile, std::string baseFilename) {
-            assert(false); //REDO
-           // binary_adjacency_list_reader<EdgeDataType> reader(preprocessedFile);
-            //max_vertex_id = (vid_t) reader.get_max_vertex_id();
-            
-            degarray = (vertex_degree *) calloc(max_vertex_id + 1, sizeof(vertex_degree));
-            vid_t nverts = max_vertex_id + 1;
-            for(vid_t i=0; i < nverts; i++) {
-                degarray[i].id = i;
-            }
-            
-            phase = 0;
-            /* Reader will invoke receive_edge() above */
-           // reader.read_edges(this);
-            
-            /* Now sort */
-            quickSort(degarray, nverts, vertex_degree_less);
-            
-            /* Create translation table */
-            translate_table = (vid_t*) calloc(sizeof(vid_t), nverts);
-            for(vid_t i=0; i<nverts; i++) {
-                translate_table[degarray[i].id] = i;
-            }
-            delete degarray;
-            
-            /* Write translate table */
-            std::string translate_table_file = baseFilename + ".vertexmap";
-            int df = open(translate_table_file.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            if (df < 0) logstream(LOG_ERROR) << "Could not write vertex map: " << translate_table_file <<
-                " error: " << strerror(errno) << std::endl;
-            assert(df >= 0);
-            pwritea(df, translate_table, nverts * sizeof(vid_t), 0);
-            close(df);
-            
-            /* Now recreate the processed file */
-            std::string tmpfilename = preprocessedFile + ".old";
-            rename(preprocessedFile.c_str(), tmpfilename.c_str());
-            
-          //  writer = new binary_adjacency_list_writer<EdgeDataType>(preprocessedFile);
-        //    binary_adjacency_list_reader<EdgeDataType> reader2(tmpfilename);
-            
-            phase = 1;
-           // reader2.read_edges(this);
-            
-           // writer->finish();
-         //   delete writer;
-           // writer = NULL;
-            
-            delete translate_table;
-        }
-        
-    };
+    
     
 } // end namespace
 
