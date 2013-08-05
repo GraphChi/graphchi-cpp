@@ -456,7 +456,7 @@ int main(int argc, const char ** argv) {
   parse_command_line_args();
 
   mytimer.start();
-  int nshards          = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, false);
+  int nshards          = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, false);
   if (nshards != 1)
     logstream(LOG_FATAL)<<"This application currently supports only 1 shard" << std::endl;
   K                        = get_option_int("K", K);

@@ -351,7 +351,7 @@ int main(int argc, const char ** argv) {
   /* Preprocess data if needed, or discover preprocess files */
   int nshards = 0;
   if (tokens_per_row == 3)
-    nshards = convert_matrixmarket<edge_data>(training, NULL, 0, 0, 3, TRAINING, false);
+    nshards = convert_matrixmarket<edge_data>(training, 0, 0, 3, TRAINING, false);
   else if (tokens_per_row == 4)
     nshards = convert_matrixmarket4<edge_data4>(training);
   else logstream(LOG_FATAL)<<"--tokens_per_row should be either 3 or 4" << std::endl;

@@ -97,6 +97,9 @@ namespace graphchi {
 #else
         ss << ".edata.";
 #endif
+#ifndef GRAPHCHI_DISABLE_COMPRESSION
+        ss << ".Z." << std::endl;
+#endif
         ss << "e" << sizeof(EdgeDataType) << "B.";
         ss << p << "_" << nshards;
         

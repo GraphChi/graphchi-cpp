@@ -203,7 +203,7 @@ if (algorithm != SPARSE_USR_FACTOR && algorithm != SPARSE_BOTH_FACTORS && algori
   int nshards = convert_matrixmarket<EdgeDataType>(training);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &sparse_als_predict);
   }
  

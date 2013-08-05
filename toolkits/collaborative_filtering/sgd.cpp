@@ -182,10 +182,10 @@ int main(int argc, const char ** argv) {
   parse_implicit_command_line();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, false);
+  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, false);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION, false);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION, false);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &sgd_predict);
   }
 

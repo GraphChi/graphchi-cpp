@@ -219,7 +219,7 @@ int main(int argc, const char ** argv) {
   mytimer.start();
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<float>(training, NULL, 0, 0, 3, TRAINING, false);
+  int nshards = convert_matrixmarket<float>(training, 0, 0, 3, TRAINING, false);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, false);
   rmse_vec = zeros(number_of_omp_threads());
   print_config();

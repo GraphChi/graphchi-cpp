@@ -283,7 +283,6 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
   double val, time;
   bool active_edge = true;
 
-  if (!sharderobj.preprocessed_file_exists()) {
     for (size_t i=0; i<nz; i++)
     {
       int rc = fscanf(f, "%d %d %lg %lg\n", &I, &J, &time, &val);
@@ -338,10 +337,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
     sharderobj.end_preprocessing();
 
-  } else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
-
+ 
   fclose(f);
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
@@ -388,7 +384,6 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
 
   uint I, J;
   double val = 1.0;
-  if (!sharderobj.preprocessed_file_exists()) {
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: "
       << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
@@ -441,9 +436,8 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     logstream(LOG_DEBUG)<<"Finished loading " << nz_sim << " ratings from file: " << similarity_file << std::endl;
     write_global_mean(base_filename, TRAINING);
     sharderobj.end_preprocessing();
-  } else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
+
+    
   fclose(f);
   fclose(fsim);
 
@@ -464,7 +458,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge_type> * preprocessor = NULL, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING, int allow_square = true) {
+int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edges = 0, int tokens_per_row = 3, int type = TRAINING, int allow_square = true) {
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   FILE *f;
   size_t nz;
@@ -500,8 +494,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
   double val = 1.0;
   bool active_edge = true;
 
-  if (!sharderobj.preprocessed_file_exists()) {
-    for (size_t i=0; i<nz; i++)
+  for (size_t i=0; i<nz; i++)
     {
       if (tokens_per_row == 3){
         int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
@@ -553,14 +546,7 @@ int convert_matrixmarket(std::string base_filename, SharderPreprocessor<als_edge
     }
     write_global_mean(base_filename, type);
     sharderobj.end_preprocessing();
-
-    if (preprocessor != NULL) {
-      preprocessor->reprocess(sharderobj.preprocessed_name(), base_filename);
-    }
-
-  } else {
-    logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
-  }
+ 
   fclose(f);
 
 

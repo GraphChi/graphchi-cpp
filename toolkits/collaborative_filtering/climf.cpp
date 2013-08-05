@@ -208,11 +208,11 @@ int main(int argc, const char ** argv) {
 
   /* Preprocess data if needed, or discover preprocess files */
   bool allow_square = false;
-  int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, allow_square);
+  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, allow_square);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file, 0.01);
 
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION);
     init_mrr_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards);
   }
 

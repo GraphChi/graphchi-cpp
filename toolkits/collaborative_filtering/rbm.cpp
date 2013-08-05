@@ -405,7 +405,7 @@ int main(int argc, const char ** argv) {
   rbm_init();
 
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, NULL, 0, 0, 3, VALIDATION);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &rbm_predict);
   }
 
