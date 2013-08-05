@@ -149,7 +149,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
       }
     }
     ctx.scheduler->remove_tasks(0, (int) ctx.nvertices - 1);
-    for (int i=0; i< ctx.nvertices; i++)
+    for (int i=0; i< (int)ctx.nvertices; i++)
       if (active_nodes[i])
         ctx.scheduler->add_task(i);
   }
