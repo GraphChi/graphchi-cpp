@@ -503,7 +503,7 @@ int main(int argc, const char ** argv) {
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training/*+orderByDegreePreprocessor->getSuffix()*/  ,nshards, true, m); 
+  graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, true, m); 
   set_engine_flags(engine);
 
   //open output files as the number of operating threads
