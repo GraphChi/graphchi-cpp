@@ -358,7 +358,6 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
      * Called before an iteration starts.
      */
     void before_iteration(int iteration, graphchi_context &gcontext) {
-        gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
         if (gcontext.iteration % 2 == 0) {
             // Schedule vertices that were pivots on last iteration, so they can
             // keep count of the triangles counted by their lower id neighbros.
