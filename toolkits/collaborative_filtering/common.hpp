@@ -38,7 +38,7 @@
 
 #include <stdio.h>
 #ifdef __APPLE__
-#include "getline.hpp" //fix for missing getline() function on MAC OS
+//#include "getline.hpp" //fix for missing getline() function on MAC OS
 #endif 
 
 using namespace graphchi;

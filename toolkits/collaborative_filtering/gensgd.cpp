@@ -40,17 +40,17 @@
 #include "../parsers/common.hpp"
 #include <omp.h>
 #define MAX_FEATURES 256
-#define FEATURE_WIDTH 11 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
-double gensgd_rate1 = 1e-02;
-double gensgd_rate2 = 1e-02;
-double gensgd_rate3 = 1e-02;
-double gensgd_rate4 = 1e-02;
-double gensgd_rate5 = 1e-02;
-double gensgd_mult_dec = 0.9;
+double gensgd_rate1 = 1e-03;
+double gensgd_rate2 = 1e-03;
+double gensgd_rate3 = 1e-03;
+double gensgd_rate4 = 1e-03;
+double gensgd_rate5 = 1e-03;
+double gensgd_mult_dec = 0.9999999;
 double gensgd_regw = 1e-3;
 double gensgd_regv = 1e-3;
-double gensgd_reg0 = 1e-1;
+double gensgd_reg0 = 1e-2;
 bool debug = false;
 std::string user_file; //optional file with user features
 std::string item_file; //optional file with item features
@@ -1290,6 +1290,8 @@ int main(int argc, const char ** argv) {
       logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
     if (node >= file_columns)
       logstream(LOG_FATAL)<<"Feature id using the --feature=XX command should be < file_columns (counting starts from zero)" << std::endl;
+    if (node == fc.from_pos || node == fc.to_pos || node == fc.val_pos)
+      logstream(LOG_FATAL)<<"Feature id " << node << " can not be equal to --from_pos, --to_pos or --val_pos " << std::endl;
     fc.feature_selection[node] = true;
     fc.total_features++;
     while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
