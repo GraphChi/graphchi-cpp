@@ -677,23 +677,7 @@ namespace graphchi {
         bool b;
         return convert_if_notexists_novalues<EdgeDataType>(basefilename, nshards_string, b);
     }
-    
-    
-    
-    struct vertex_degree {
-        int deg;
-        vid_t id;
-        vertex_degree() {}
-        vertex_degree(int deg, vid_t id) : deg(deg), id(id) {}
-    };
-    
-    static bool vertex_degree_less(const vertex_degree &a, const vertex_degree &b);
-    static bool vertex_degree_less(const vertex_degree &a, const vertex_degree &b) {
-        return a.deg < b.deg || (a.deg == b.deg && a.id < b.id);
-    }
-    
-    
-    
+         
 } // end namespace
 
 #endif
