@@ -184,7 +184,7 @@ int main(int argc, const char ** argv) {
   load_map_from_txt_file(contexts.string2nodeid, contexts_file, 1);
   load_map_from_txt_file(nouns.string2nodeid, nouns_file, 1);
     //load graph (adj matrix) from file
-  int nshards = convert_matrixmarket<EdgeDataType>(training, NULL, 0, 0, 3, TRAINING, true);
+  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, true);
 
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem);
 
