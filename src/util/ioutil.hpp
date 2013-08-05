@@ -76,11 +76,12 @@ template <typename T>
 size_t readfull(int f, T ** buf) {
      off_t sz = lseek(f, 0, SEEK_END);
      lseek(f, 0, SEEK_SET);
-     *buf = (char*)malloc(sz);
+     *buf = (T*)malloc(sz);
     preada(f, *buf, sz, 0);
     return sz;
 }
- template <typename T>
+
+template <typename T>
 void pwritea(int f, T * tbuf, size_t nbytes, size_t off) {
     size_t nwritten = 0;
     assert(f>0);
