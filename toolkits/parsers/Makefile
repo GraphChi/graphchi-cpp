@@ -5,7 +5,7 @@
 # *
 # * @section LICENSE
 # *
-# * Copyright [2012] [Carngie Mellon University]
+# * Copyright [2012] [Carnegie Mellon University]
 # * 
 # * Licensed under the Apache License, Version 2.0 (the "License");
 # * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 #  Written by Danny Bickson
 #  Thanks to Yucheng Low for fixing the Makefile
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
-CPPFLAGS = -O3  -DNDEBUG $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wall -Wno-strict-aliasing 
+CPPFLAGS = -O3  -DNDEBUG $(INCFLAGS) -DEIGEN_NDEBUG -fopenmp -Wno-strict-aliasing 
 LINKFLAGS = -lz
 # Note : on Ubuntu on some compilers -lz is not detected properly so it is 
 # deliberatively set to be the last flag.
