@@ -82,6 +82,9 @@ namespace graphchi {
         size_t blocksize;
         metrics &m;
 
+        bool disable_async_writes;
+
+        
     public:
         bool only_adjacency;
         
@@ -98,6 +101,7 @@ namespace graphchi {
             adjdata = NULL;
             only_adjacency = false;
             is_loaded = false;
+            disable_async_writes= false;
             adj_session = -1;
             edgedata = NULL;
         }
@@ -124,6 +128,11 @@ namespace graphchi {
             if (edgedata != NULL)
                 free(edgedata);
             edgedata = NULL;
+        }
+        
+        
+        void set_disable_async_writes(bool b) {
+            disable_async_writes = b;
         }
         
         /* Dynamic edata */ 

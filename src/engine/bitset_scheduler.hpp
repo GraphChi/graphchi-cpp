@@ -37,40 +37,62 @@ namespace graphchi {
     
     class bitset_scheduler : public ischeduler {
     private:
-        dense_bitset bitset;
+        dense_bitset * curiteration_bitset;
+        dense_bitset * nextiteration_bitset;
     public:
         bool has_new_tasks;
         
-        bitset_scheduler(int nvertices) : bitset(nvertices) {
+        bitset_scheduler(int nvertices) {
+            curiteration_bitset = new dense_bitset(nvertices);
+            nextiteration_bitset = new dense_bitset(nvertices);
         }
         
-        virtual ~bitset_scheduler() {}
+        void new_iteration(int iteration) {
+            if (iteration > 0) {
+                // Swap
+                dense_bitset * tmp = curiteration_bitset;
+                curiteration_bitset = nextiteration_bitset;
+                nextiteration_bitset = tmp;
+                nextiteration_bitset->clear();
+            }   
+            
+        }
+        
+        virtual ~bitset_scheduler() {
+            delete nextiteration_bitset;
+            delete curiteration_bitset;
+        }
         
         inline void add_task(vid_t vertex) {
-            bitset.set_bit(vertex);
+            nextiteration_bitset->set_bit(vertex);
             has_new_tasks = true;
         }
         
         void resize(vid_t maxsize) {
-            bitset.resize(maxsize);
+            curiteration_bitset->resize(maxsize);
+            nextiteration_bitset->resize(maxsize);
+            
         }
         
         inline bool is_scheduled(vid_t vertex) {
-            return bitset.get(vertex);
+            return curiteration_bitset->get(vertex);
         }
         
-        inline void remove_task(vid_t vertex) {
-            bitset.clear_bit(vertex);
-        }
         
-        void remove_tasks(vid_t fromvertex, vid_t tovertex) {
-            bitset.clear_bits(fromvertex, tovertex);
-        }
         
         void add_task_to_all() {
             has_new_tasks = true;
-            bitset.setall();
+            curiteration_bitset->setall();
         }
+        
+        size_t num_tasks() { 
+            size_t n = 0;
+            for(vid_t i=0; i < curiteration_bitset->size(); i++) {
+                n += curiteration_bitset->get(i);
+            }
+            return n;
+        }
+        
     };
     
 }

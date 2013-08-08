@@ -86,8 +86,8 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 397416203;
-			PBXWorkspaceStateSaveDate = 397416203;
+			PBXPerProjectTemplateStateSaveDate = 397665759;
+			PBXWorkspaceStateSaveDate = 397665759;
 		};
 		perUserProjectItems = {
 			5F41F77B17B0057900C5FD90 = 5F41F77B17B0057900C5FD90 /* PBXTextBookmark */;
@@ -213,11 +213,6 @@
 		name = kwaymerge.hpp;
 		path = ../src/util/kwaymerge.hpp;
 		sourceTree = "<group>";
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {950, 1521}}";
-			sepNavSelRange = "{1904, 0}";
-			sepNavVisRange = "{1143, 1384}";
-		};
 	};
 	5F41F7AA17B006AE00C5FD90 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
@@ -354,11 +349,6 @@
 		name = orderbydegree.hpp;
 		path = ../src/preprocessing/util/orderbydegree.hpp;
 		sourceTree = "<group>";
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1069, 2041}}";
-			sepNavSelRange = "{1712, 0}";
-			sepNavVisRange = "{403, 1763}";
-		};
 	};
 	5F41F8A117B0157600C5FD90 /* PBXBookmark */ = {
 		isa = PBXBookmark;
@@ -927,11 +917,6 @@
 		name = conversions.hpp;
 		path = ../src/preprocessing/conversions.hpp;
 		sourceTree = "<group>";
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {803, 8762}}";
-			sepNavSelRange = "{18199, 0}";
-			sepNavVisRange = "{17609, 2227}";
-		};
 	};
 	5FCC1DD71599194B0003D0E9 /* graphchi_basic_includes.hpp */ = {
 		uiCtxt = {
@@ -1216,11 +1201,6 @@
 		name = graph_objects.hpp;
 		path = ../src/api/graph_objects.hpp;
 		sourceTree = "<group>";
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1265, 4862}}";
-			sepNavSelRange = "{7054, 0}";
-			sepNavVisRange = "{6767, 2322}";
-		};
 	};
 	5FCC229215A1EC330003D0E9 /* als_graphlab.cpp */ = {
 		uiCtxt = {
@@ -1381,7 +1361,7 @@
 		hitCount = 0;
 		ignoreCount = 0;
 		lineNumber = 267;
-		modificationTime = 397418581.107948;
+		modificationTime = 397418581.1079479;
 		originalNumberOfMultipleMatches = 1;
 		state = 0;
 	};
