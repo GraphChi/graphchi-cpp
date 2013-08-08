@@ -6,7 +6,7 @@ MIT Technology Review article about GraphChi: ["Your laptop can now analyze big 
 
 ### NEW: Graph contraction algorithms
 
-Read about graph contraction technique, which we used to implemented efficient minimum spanning forest computation [[ Graph-Contraction-Algorithms ]]
+Read about graph contraction technique, which we used to implemented efficient minimum spanning forest computation [ Graph Contraction Algorithms ](https://github.com/GraphChi/graphchi-cpp/wiki/Graph-Contraction-Algorithms).
 
 ### NEW: GraphChi version 0.2
 
