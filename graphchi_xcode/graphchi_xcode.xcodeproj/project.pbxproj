@@ -413,6 +413,7 @@
 		5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = streaming_pagerank.cpp; sourceTree = "<group>"; };
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FE3D5AE15FD5E520061B039 /* dynamicblock.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = dynamicblock.hpp; sourceTree = "<group>"; };
+		5FF7749917B3E1A200F84939 /* sharder.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = sharder.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -888,6 +889,7 @@
 				5FCC1CD81594F1890003D0E9 /* sharder.hpp */,
 				5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */,
 				5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */,
+				5FF7749817B3E1A200F84939 /* dynamicdata */,
 				5F41F80217B00BC600C5FD90 /* util */,
 			);
 			path = preprocessing;
@@ -1155,6 +1157,14 @@
 				5F74B04615D35B6400ED3EA9 /* random.cpp */,
 			);
 			path = graphlab2_1_GAS_api;
+			sourceTree = "<group>";
+		};
+		5FF7749817B3E1A200F84939 /* dynamicdata */ = {
+			isa = PBXGroup;
+			children = (
+				5FF7749917B3E1A200F84939 /* sharder.hpp */,
+			);
+			path = dynamicdata;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

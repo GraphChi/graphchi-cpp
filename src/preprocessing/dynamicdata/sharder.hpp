@@ -26,10 +26,11 @@
  * can process.
  */
 
+/**
+ * @section TODO
+ * Change all C-style IO to Unix-style IO.
+ */
 
-#ifdef DYNAMICEDATA
-#include "preprocessing/dynamicdata/sharder.hpp"  // Special sharder if dynamic edata used.
-#else
 
 #ifndef GRAPHCHI_SHARDER_DEF
 #define GRAPHCHI_SHARDER_DEF
@@ -61,8 +62,9 @@
 #include "util/ioutil.hpp"
 #include "util/radixSort.hpp"
 #include "util/kwaymerge.hpp"
-
-
+#ifdef DYNAMICEDATA
+#include "util/qsort.hpp"
+#endif 
 namespace graphchi {
     template <typename VT, typename ET> class sharded_graph_output;
     
@@ -84,10 +86,20 @@ namespace graphchi {
         vid_t dst;
         EdgeDataType value;
         
-
+#ifdef DYNAMICEDATA
+        // For dynamic edge data, we need to know if the value needs to be added
+        // to the vector, or are we storing an empty vector.
+        bool is_chivec_value;
+        uint16_t valindex;
+#endif
         edge_with_value() {}
         
-        edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {}
+        edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {
+#ifdef DYNAMICEDATA
+            is_chivec_value = false;
+            valindex = 0;
+#endif
+        }
         
         // Order primarily by dst, then by src
         bool operator< (edge_with_value<EdgeDataType> &x2) {
@@ -101,6 +113,11 @@ namespace graphchi {
     template <typename EdgeDataType>
     bool edge_t_src_less(const edge_with_value<EdgeDataType> &a, const edge_with_value<EdgeDataType> &b) {
         if (a.src == b.src) {
+#ifdef DYNAMICEDATA
+            if (a.dst == b.dst) {
+                return a.valindex < b.valindex;
+            }
+#endif
             return a.dst < b.dst;
         }
         return a.src < b.src;
@@ -251,6 +268,10 @@ namespace graphchi {
         DuplicateEdgeFilter<EdgeDataType> * duplicate_edge_filter;
         
         bool no_edgevalues;
+#ifdef DYNAMICEDATA
+        edge_t last_added_edge;
+#endif
+        
         metrics m;
         
         
@@ -364,7 +385,13 @@ namespace graphchi {
                 return;
             }  
             edge_with_value<EdgeDataType> e(from, to, val);
-
+#ifdef DYNAMICEDATA
+            e.is_chivec_value = input_value;
+            if (e.src == last_added_edge.src && e.dst == last_added_edge.dst) {
+                e.valindex = last_added_edge.valindex + 1;
+            }
+            last_added_edge = e;
+#endif
             curshovel_buffer[curshovel_idx++] = e;
             if (curshovel_idx == shovelsize) {
                 flush_shovel();
@@ -374,7 +401,16 @@ namespace graphchi {
             shoveled_edges++;
         }
         
-
+#ifdef DYNAMICEDATA
+        void preprocessing_add_edge_multival(vid_t from, vid_t to, std::vector<EdgeDataType> & vals) {
+            typename std::vector<EdgeDataType>::iterator iter;
+            for(iter=vals.begin(); iter != vals.end(); ++iter) {
+                preprocessing_add_edge(from, to, *iter, true);
+            }
+            max_vertex_id = std::max(std::max(from, to), max_vertex_id);
+        }
+        
+#endif
         
         /**
          * Add edge without value to be preprocessed
@@ -408,6 +444,14 @@ namespace graphchi {
             close(f);
             
             m.stop_time("edata_flush");
+            
+            
+#ifdef DYNAMICEDATA
+            // Write block's uncompressed size
+            write_block_uncompressed_size(block_filename, len);
+            
+#endif
+            
             blockid++;
         }
         
@@ -475,7 +519,12 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                 
                 nshards = (int) ( 1 + (numedges * sizeof(FinalEdgeDataType) / max_shardsize) + 0.5);
-                            
+                
+#ifdef DYNAMICEDATA
+                // For dynamic edge data, more working memory is needed, thus the number of shards is larger.
+                nshards = (int) ( 2 + 4 * (numedges * sizeof(FinalEdgeDataType) / max_shardsize) + 0.5);
+#endif
+                
             } else {
                 nshards = atoi(nshards_string.c_str());
             }
@@ -537,8 +586,11 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
             
             m.start_time("finish_shard.sort");
+#ifndef DYNAMICEDATA
             iSort(shovelbuf, (int)numedges, max_vertex_id, srcF<EdgeDataType>());
-
+#else
+            quickSort(shovelbuf, (int)numedges, edge_t_src_less<EdgeDataType>);
+#endif
             m.stop_time("finish_shard.sort");
 
             // Remove duplicates
@@ -582,18 +634,59 @@ namespace graphchi {
             char * ebufptr = ebuf;
             
             vid_t curvid=0;
-
+#ifdef DYNAMICEDATA
+            vid_t lastdst = 0xffffffff;
+            int jumpover = 0;
+            size_t num_uniq_edges = 0;
+            size_t last_edge_count = 0;
+#endif
             size_t istart = 0;
             size_t tot_edatabytes = 0;
             for(size_t i=0; i <= numedges; i++) {
                 if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
-
+#ifdef DYNAMICEDATA
+                i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
+                jumpover = 0;
+#endif //DYNAMICEDATA
                 edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                 
-
+#ifdef DYNAMICEDATA
+                
+                if (lastdst == edge.dst && edge.src == curvid) {
+                    // Currently not supported
+                    logstream(LOG_ERROR) << "Duplicate edge in the stream - aborting" << std::endl;
+                    assert(false);
+                }
+                lastdst = edge.dst;
+#endif
                 
                 if (!edge.stopper()) {
+#ifndef DYNAMICEDATA
                     bwrite_edata<FinalEdgeDataType>(ebuf, ebufptr, FinalEdgeDataType(edge.value), tot_edatabytes, edfname, edgecounter);
+#else
+                    /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
+                    if (edge.is_chivec_value) {
+                        // Need to check how many values for this edge
+                        int count = 1;
+                        while(shovelbuf[i + count].valindex == count) { count++; }
+                        
+                        assert(count < 32768);
+                        
+                        typename chivector<EdgeDataType>::sizeword_t szw;
+                        ((uint16_t *) &szw)[0] = (uint16_t)count;  // Sizeword with length and capacity = count
+                        ((uint16_t *) &szw)[1] = (uint16_t)count;
+                        bwrite_edata<typename chivector<EdgeDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
+                        for(int j=0; j < count; j++) {
+                            bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(shovelbuf[i + j].value), tot_edatabytes, edfname, edgecounter);
+                        }
+                        jumpover = count - 1; // Jump over
+                    } else {
+                        // Just write size word with zero
+                        bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
+                    }
+                    num_uniq_edges++;
+                    
+#endif
                     edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two or more calls to bwrite_edata before incrementing
                 }
                 if (degrees != NULL && edge.src != edge.dst) {
@@ -603,8 +696,13 @@ namespace graphchi {
                 
                 if ((edge.src != curvid) || edge.stopper()) {
                     // New vertex
+#ifndef DYNAMICEDATA
                     size_t count = i - istart;
-
+#else
+                    size_t count = num_uniq_edges - 1 - last_edge_count;
+                    last_edge_count = num_uniq_edges - 1;
+                    if (edge.stopper()) count++;  
+#endif
                     assert(count>0 || curvid==0);
                     if (count>0) {
                         if (count < 255) {
@@ -616,10 +714,23 @@ namespace graphchi {
                         }
                     }
                     
+#ifndef DYNAMICEDATA
                     for(size_t j=istart; j < i; j++) {
                         bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                     }
+#else
+                    // Special dealing with dynamic edata because some edges can be present multiple
+                    // times in the shovel.
+                    for(size_t j=istart; j < i; j++) {
+                        if (j == istart || shovelbuf[j - 1].dst != shovelbuf[j].dst) {
+                            bwrite(f, buf, bufptr,  shovelbuf[j].dst);
+                        }
+                    }
+#endif
                     istart = i;
+#ifdef DYNAMICEDATA
+                    istart += jumpover;
+#endif
                     
                     // Handle zeros
                     if (!edge.stopper()) {
@@ -651,7 +762,12 @@ namespace graphchi {
                 
                 std::string sizefilename = edfname + ".size";
                 std::ofstream ofs(sizefilename.c_str());
-                ofs << tot_edatabytes;     
+#ifndef DYNAMICEDATA
+                ofs << tot_edatabytes;
+#else
+                ofs << num_uniq_edges * sizeof(int); // For dynamic edge data, write the number of edges.
+#endif
+                
                 ofs.close();
             }
             free(ebuf);
@@ -753,7 +869,16 @@ namespace graphchi {
             // of the vertex degrees in-memory (heuristic)
             bool count_degrees_inmem = membudget_mb * 1024 * 1024 / 3 > max_vertex_id * sizeof(degree);
             degrees = NULL;
-
+#ifdef DYNAMICEDATA
+            if (!count_degrees_inmem) {
+                /* Temporary: force in-memory count of degrees because the PSW-based computation
+                 is not yet compatible with dynamic edge data.
+                 */
+                logstream(LOG_WARNING) << "Dynamic edge data support only sharding when the vertex degrees can be computed in-memory." << std::endl;
+                logstream(LOG_WARNING) << "If the program gets very slow (starts swapping), the data size is too big." << std::endl;
+                count_degrees_inmem = true;
+            }
+#endif
             if (count_degrees_inmem) {
                 degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
             }
@@ -788,8 +913,11 @@ namespace graphchi {
             
             
             if (!count_degrees_inmem) {
+#ifndef DYNAMICEDATA
                 // Use memory-efficient (but slower) method to create degree-data
-                create_degree_file();                
+                create_degree_file();
+#endif
+                
             } else {
                 std::string degreefname = filename_degree_data(basefilename);
                 int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -812,6 +940,7 @@ namespace graphchi {
         typedef memory_shard<int, dummy_t> memshard_t;
         
         
+#ifndef DYNAMICEDATA
         void create_degree_file() {
             // Initialize IO
             stripedio * iomgr = new stripedio(m);
@@ -932,6 +1061,7 @@ namespace graphchi {
             m.stop_time("degrees.runtime");
             delete iomgr;
         }
+#endif
         
         template <typename A, typename B> friend class sharded_graph_output;
     }; // End class sharder
@@ -1011,6 +1141,5 @@ namespace graphchi {
 
 #endif
 
-#endif // ifdef DYNAMICEDATA
 
 
