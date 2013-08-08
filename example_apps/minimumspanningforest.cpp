@@ -24,6 +24,9 @@
  * @section DESCRIPTION
  * Minimum spanning forest based on Boruvska steps. Also alternatively implementation using
  * star contraction.
+ *
+ * This application demonstrates how graph contraction algorithms can be implemented efficiently
+ * with GraphChi.
  */
 
 #define GRAPHCHI_DISABLE_COMPRESSION
