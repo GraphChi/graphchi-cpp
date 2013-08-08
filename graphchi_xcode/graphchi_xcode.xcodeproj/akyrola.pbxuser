@@ -2,8 +2,8 @@
 {
 	08FB7793FE84155DC02AAC07 /* Project object */ = {
 		activeBuildConfigurationName = Debug;
-		activeExecutable = 5FCC2131159DF1F20003D0E9 /* trianglecounting */;
-		activeTarget = 5FCC2128159DF1F20003D0E9 /* trianglecounting */;
+		activeExecutable = 5FCB4690174AA11C0023D9D7 /* test_dynamicedata */;
+		activeTarget = 5F54B84915FD4D9F00B3842C /* test_dynamicedata */;
 		addToTargets = (
 		);
 		breakpoints = (
@@ -164,7 +164,7 @@
 		fRef = 5F78366C15DD718A00954509 /* sharder.hpp */;
 		name = "sharder.hpp: 658";
 		rLen = 0;
-		rLoc = 23495;
+		rLoc = 20994;
 		rType = 0;
 		vrLen = 3755;
 		vrLoc = 21833;
@@ -202,7 +202,7 @@
 		fRef = 5FCC1D65159503890003D0E9 /* conversions.hpp */;
 		name = "conversions.hpp: 594";
 		rLen = 0;
-		rLoc = 22012;
+		rLoc = 22016;
 		rType = 0;
 		vrLen = 3496;
 		vrLoc = 20430;
@@ -395,9 +395,9 @@
 		path = ../src/preprocessing/sharder.hpp;
 		sourceTree = "<group>";
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1181, 15366}}";
-			sepNavSelRange = "{3686, 4}";
-			sepNavVisRange = "{18924, 3033}";
+			sepNavIntBoundsRect = "{{0, 0}, {1167, 12870}}";
+			sepNavSelRange = "{37090, 1662}";
+			sepNavVisRange = "{37024, 1926}";
 		};
 	};
 	5F7A0FE11589160900748D0D /* Source Control */ = {
@@ -518,9 +518,9 @@
 	};
 	5F7A10471589266800748D0D /* memoryshard.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {964, 5538}}";
-			sepNavSelRange = "{0, 0}";
-			sepNavVisRange = "{1010, 1985}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 5876}}";
+			sepNavSelRange = "{877, 71}";
+			sepNavVisRange = "{0, 2025}";
 			sepNavWindowFrame = "{{898, 63}, {1022, 1026}}";
 		};
 	};
@@ -622,6 +622,21 @@
 		autoAttachOnCrash = 1;
 		breakpointsEnabled = 0;
 		configStateDict = {
+			"PBXLSLaunchAction-0" = {
+				PBXLSLaunchAction = 0;
+				PBXLSLaunchStartAction = 1;
+				PBXLSLaunchStdioStyle = 2;
+				PBXLSLaunchStyle = 0;
+				class = PBXLSRunLaunchConfig;
+				commandLineArgs = (
+				);
+				displayName = "Executable Runner";
+				environment = {
+				};
+				identifier = com.apple.Xcode.launch.runConfig;
+				remoteHostInfo = "";
+				startActionInfo = "";
+			};
 		};
 		customDataFormattersEnabled = 1;
 		dataTipCustomDataFormattersEnabled = 1;
@@ -629,6 +644,7 @@
 		dataTipSortType = 0;
 		debuggerPlugin = GDBDebugging;
 		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
 		enableDebugStr = 1;
 		environmentEntries = (
 		);
@@ -636,9 +652,12 @@
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
 		name = test_dynamicedata;
+		savedGlobals = {
+		};
 		showTypeColumn = 0;
 		sourceDirectories = (
 		);
+		startupPath = "/Users/akyrola/Projects/GraphCHI/graphchi-cpp/";
 	};
 	5FCB4691174AA11C0023D9D7 /* gensgd */ = {
 		isa = PBXExecutable;
@@ -756,6 +775,11 @@
 		name = conversions.hpp;
 		path = ../src/preprocessing/conversions.hpp;
 		sourceTree = "<group>";
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {964, 10283}}";
+			sepNavSelRange = "{12594, 0}";
+			sepNavVisRange = "{11457, 2665}";
+		};
 	};
 	5FCC1DD71599194B0003D0E9 /* graphchi_basic_includes.hpp */ = {
 		uiCtxt = {
@@ -1217,6 +1241,13 @@
 		rType = 0;
 		vrLen = 2735;
 		vrLoc = 8487;
+	};
+	5FF7749917B3E1A200F84939 /* sharder.hpp */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {964, 15288}}";
+			sepNavSelRange = "{950, 0}";
+			sepNavVisRange = "{750, 1071}";
+		};
 	};
 	8DD76F620486A84900D96B5E /* pagerank */ = {
 		activeExec = 0;

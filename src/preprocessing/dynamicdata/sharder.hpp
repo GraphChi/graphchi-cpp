@@ -23,14 +23,13 @@
  * @section DESCRIPTION
  *
  * Sharder converts a graph into shards which the GraphChi engine
- * can process.
+ * can process. For DYNAMICEDATA
  */
+ 
 
-/**
- * @section TODO
- * Change all C-style IO to Unix-style IO.
- */
-
+#ifndef DYNAMICEDATA
+  error(Can be used only with DYNAMICEDATA)
+#endif 
 
 #ifndef GRAPHCHI_SHARDER_DEF
 #define GRAPHCHI_SHARDER_DEF
@@ -86,19 +85,15 @@ namespace graphchi {
         vid_t dst;
         EdgeDataType value;
         
-#ifdef DYNAMICEDATA
         // For dynamic edge data, we need to know if the value needs to be added
         // to the vector, or are we storing an empty vector.
         bool is_chivec_value;
         uint16_t valindex;
-#endif
         edge_with_value() {}
         
         edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {
-#ifdef DYNAMICEDATA
             is_chivec_value = false;
             valindex = 0;
-#endif
         }
         
         // Order primarily by dst, then by src
@@ -113,11 +108,9 @@ namespace graphchi {
     template <typename EdgeDataType>
     bool edge_t_src_less(const edge_with_value<EdgeDataType> &a, const edge_with_value<EdgeDataType> &b) {
         if (a.src == b.src) {
-#ifdef DYNAMICEDATA
             if (a.dst == b.dst) {
                 return a.valindex < b.valindex;
             }
-#endif
             return a.dst < b.dst;
         }
         return a.src < b.src;
@@ -268,9 +261,7 @@ namespace graphchi {
         DuplicateEdgeFilter<EdgeDataType> * duplicate_edge_filter;
         
         bool no_edgevalues;
-#ifdef DYNAMICEDATA
         edge_t last_added_edge;
-#endif
         
         metrics m;
         
@@ -385,13 +376,12 @@ namespace graphchi {
                 return;
             }  
             edge_with_value<EdgeDataType> e(from, to, val);
-#ifdef DYNAMICEDATA
+
             e.is_chivec_value = input_value;
             if (e.src == last_added_edge.src && e.dst == last_added_edge.dst) {
                 e.valindex = last_added_edge.valindex + 1;
             }
             last_added_edge = e;
-#endif
             curshovel_buffer[curshovel_idx++] = e;
             if (curshovel_idx == shovelsize) {
                 flush_shovel();
@@ -401,8 +391,7 @@ namespace graphchi {
             shoveled_edges++;
         }
         
-#ifdef DYNAMICEDATA
-        void preprocessing_add_edge_multival(vid_t from, vid_t to, std::vector<EdgeDataType> & vals) {
+         void preprocessing_add_edge_multival(vid_t from, vid_t to, std::vector<EdgeDataType> & vals) {
             typename std::vector<EdgeDataType>::iterator iter;
             for(iter=vals.begin(); iter != vals.end(); ++iter) {
                 preprocessing_add_edge(from, to, *iter, true);
@@ -410,8 +399,7 @@ namespace graphchi {
             max_vertex_id = std::max(std::max(from, to), max_vertex_id);
         }
         
-#endif
-        
+         
         /**
          * Add edge without value to be preprocessed
          */
@@ -446,12 +434,8 @@ namespace graphchi {
             m.stop_time("edata_flush");
             
             
-#ifdef DYNAMICEDATA
-            // Write block's uncompressed size
+             // Write block's uncompressed size
             write_block_uncompressed_size(block_filename, len);
-            
-#endif
-            
             blockid++;
         }
         
@@ -517,13 +501,9 @@ namespace graphchi {
                 
                 double max_shardsize = membudget_mb * 1024. * 1024. / 8;
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
-                
-                nshards = (int) ( 1 + (numedges * sizeof(FinalEdgeDataType) / max_shardsize) + 0.5);
-                
-#ifdef DYNAMICEDATA
+                                
                 // For dynamic edge data, more working memory is needed, thus the number of shards is larger.
                 nshards = (int) ( 2 + 4 * (numedges * sizeof(FinalEdgeDataType) / max_shardsize) + 0.5);
-#endif
                 
             } else {
                 nshards = atoi(nshards_string.c_str());
@@ -586,11 +566,8 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
             
             m.start_time("finish_shard.sort");
-#ifndef DYNAMICEDATA
-            iSort(shovelbuf, (int)numedges, max_vertex_id, srcF<EdgeDataType>());
-#else
+
             quickSort(shovelbuf, (int)numedges, edge_t_src_less<EdgeDataType>);
-#endif
             m.stop_time("finish_shard.sort");
 
             // Remove duplicates
@@ -634,23 +611,18 @@ namespace graphchi {
             char * ebufptr = ebuf;
             
             vid_t curvid=0;
-#ifdef DYNAMICEDATA
             vid_t lastdst = 0xffffffff;
             int jumpover = 0;
             size_t num_uniq_edges = 0;
             size_t last_edge_count = 0;
-#endif
             size_t istart = 0;
             size_t tot_edatabytes = 0;
             for(size_t i=0; i <= numedges; i++) {
                 if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
-#ifdef DYNAMICEDATA
                 i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
                 jumpover = 0;
-#endif //DYNAMICEDATA
                 edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
                 
-#ifdef DYNAMICEDATA
                 
                 if (lastdst == edge.dst && edge.src == curvid) {
                     // Currently not supported
@@ -658,12 +630,10 @@ namespace graphchi {
                     assert(false);
                 }
                 lastdst = edge.dst;
-#endif
                 
                 if (!edge.stopper()) {
-#ifndef DYNAMICEDATA
-                    bwrite_edata<FinalEdgeDataType>(ebuf, ebufptr, FinalEdgeDataType(edge.value), tot_edatabytes, edfname, edgecounter);
-#else
+
+                    
                     /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
                     if (edge.is_chivec_value) {
                         // Need to check how many values for this edge
@@ -685,8 +655,6 @@ namespace graphchi {
                         bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
                     }
                     num_uniq_edges++;
-                    
-#endif
                     edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two or more calls to bwrite_edata before incrementing
                 }
                 if (degrees != NULL && edge.src != edge.dst) {
@@ -696,13 +664,10 @@ namespace graphchi {
                 
                 if ((edge.src != curvid) || edge.stopper()) {
                     // New vertex
-#ifndef DYNAMICEDATA
-                    size_t count = i - istart;
-#else
+
                     size_t count = num_uniq_edges - 1 - last_edge_count;
                     last_edge_count = num_uniq_edges - 1;
                     if (edge.stopper()) count++;  
-#endif
                     assert(count>0 || curvid==0);
                     if (count>0) {
                         if (count < 255) {
@@ -714,11 +679,6 @@ namespace graphchi {
                         }
                     }
                     
-#ifndef DYNAMICEDATA
-                    for(size_t j=istart; j < i; j++) {
-                        bwrite(f, buf, bufptr,  shovelbuf[j].dst);
-                    }
-#else
                     // Special dealing with dynamic edata because some edges can be present multiple
                     // times in the shovel.
                     for(size_t j=istart; j < i; j++) {
@@ -726,11 +686,8 @@ namespace graphchi {
                             bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                         }
                     }
-#endif
                     istart = i;
-#ifdef DYNAMICEDATA
                     istart += jumpover;
-#endif
                     
                     // Handle zeros
                     if (!edge.stopper()) {
@@ -762,12 +719,8 @@ namespace graphchi {
                 
                 std::string sizefilename = edfname + ".size";
                 std::ofstream ofs(sizefilename.c_str());
-#ifndef DYNAMICEDATA
-                ofs << tot_edatabytes;
-#else
-                ofs << num_uniq_edges * sizeof(int); // For dynamic edge data, write the number of edges.
-#endif
-                
+
+                ofs << num_uniq_edges * sizeof(int); // For dynamic edge data, write the number of edges.                
                 ofs.close();
             }
             free(ebuf);
@@ -869,7 +822,6 @@ namespace graphchi {
             // of the vertex degrees in-memory (heuristic)
             bool count_degrees_inmem = membudget_mb * 1024 * 1024 / 3 > max_vertex_id * sizeof(degree);
             degrees = NULL;
-#ifdef DYNAMICEDATA
             if (!count_degrees_inmem) {
                 /* Temporary: force in-memory count of degrees because the PSW-based computation
                  is not yet compatible with dynamic edge data.
@@ -878,7 +830,6 @@ namespace graphchi {
                 logstream(LOG_WARNING) << "If the program gets very slow (starts swapping), the data size is too big." << std::endl;
                 count_degrees_inmem = true;
             }
-#endif
             if (count_degrees_inmem) {
                 degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
             }
@@ -913,11 +864,8 @@ namespace graphchi {
             
             
             if (!count_degrees_inmem) {
-#ifndef DYNAMICEDATA
                 // Use memory-efficient (but slower) method to create degree-data
-                create_degree_file();
-#endif
-                
+                create_degree_file();                
             } else {
                 std::string degreefname = filename_degree_data(basefilename);
                 int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -940,202 +888,12 @@ namespace graphchi {
         typedef memory_shard<int, dummy_t> memshard_t;
         
         
-#ifndef DYNAMICEDATA
-        void create_degree_file() {
-            // Initialize IO
-            stripedio * iomgr = new stripedio(m);
-            std::vector<slidingshard_t * > sliding_shards;
-            
-            int subwindow = 5000000;
-            m.set("subwindow", (size_t)subwindow);
-            
-            int loadthreads = 4;
-            
-            m.start_time("degrees.runtime");
-            
-            /* Initialize streaming shards */
-            int blocksize = compressed_block_size;
-            
-            for(int p=0; p < nshards; p++) {
-                logstream(LOG_INFO) << "Initialize streaming shard: " << p << std::endl;
-                sliding_shards.push_back(
-                                         new slidingshard_t(iomgr, filename_shard_edata<dummy_t>(basefilename, p, nshards),
-                                                            filename_shard_adj(basefilename, p, nshards), intervals[p].first,
-                                                            intervals[p].second,
-                                                            blocksize, m, true, true));
-            }
-            
-            graphchi_context ginfo;
-            ginfo.nvertices = 1 + intervals[nshards - 1].second;
-            ginfo.scheduler = NULL;
-            
-            std::string outputfname = filename_degree_data(basefilename);
-            
-            int degreeOutF = open(outputfname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            if (degreeOutF < 0) {
-                logstream(LOG_ERROR) << "Could not create: " << degreeOutF << std::endl;
-            }
-            assert(degreeOutF >= 0);
-            int trerr = ftruncate(degreeOutF, ginfo.nvertices * sizeof(int) * 2);
-            assert(trerr == 0);
-            if (trerr != 0) {
-                logstream(LOG_FATAL) << "Could not truncate!" << std::endl;
-                exit(0);
-            }
-            
-            for(int window=0; window<nshards; window++) {
-                metrics_entry mwi = m.start_time();
-                
-                vid_t interval_st = intervals[window].first;
-                vid_t interval_en = intervals[window].second;
-                
-                /* Flush stream shard for the window */
-                sliding_shards[window]->flush();
-                
-                /* Load shard[window] into memory */
-                memshard_t memshard(iomgr, filename_shard_edata<FinalEdgeDataType>(basefilename, window, nshards), filename_shard_adj(basefilename, window, nshards),
-                                    interval_st, interval_en, blocksize, m);
-                memshard.only_adjacency = true;
-                logstream(LOG_INFO) << "Interval: " << interval_st << " " << interval_en << std::endl;
-                
-                for(vid_t subinterval_st=interval_st; subinterval_st <= interval_en; ) {
-                    vid_t subinterval_en = std::min(interval_en, subinterval_st + subwindow);
-                    logstream(LOG_INFO) << "(Degree proc.) Sub-window: [" << subinterval_st << " - " << subinterval_en << "]" << std::endl;
-                    assert(subinterval_en >= subinterval_st && subinterval_en <= interval_en);
-                    
-                    /* Preallocate vertices */
-                    metrics_entry men = m.start_time();
-                    int nvertices = subinterval_en - subinterval_st + 1;
-                    std::vector< graphchi_vertex<int, dummy_t> > vertices(nvertices, graphchi_vertex<int, dummy_t>()); // preallocate
-                    
-                    
-                    for(int i=0; i < nvertices; i++) {
-                        vertices[i] = graphchi_vertex<int, dummy_t>(subinterval_st + i, NULL, NULL, 0, 0);
-                        vertices[i].scheduled =  true;
-                    }
-                    
-                    metrics_entry me = m.start_time();
-                    omp_set_num_threads(loadthreads);
-#pragma omp parallel for
-                    for(int p=-1; p < nshards; p++)  {
-                        if (p == (-1)) {
-                            // if first window, now need to load the memshard
-                            if (memshard.loaded() == false) {
-                                memshard.load();
-                            }
-                            
-                            /* Load vertices from memshard (only inedges for now so can be done in parallel) */
-                            memshard.load_vertices(subinterval_st, subinterval_en, vertices);
-                        } else {
-                            /* Stream forward other than the window partition */
-                            if (p != window) {
-                                sliding_shards[p]->read_next_vertices(nvertices, subinterval_st, vertices, false);
-                            }
-                        }
-                    }
-                    
-                    m.stop_time(me, "stream_ahead", window);
-                    
-                    
-                    metrics_entry mev = m.start_time();
-                    // Read first current values
-                    
-                    int * vbuf = (int*) malloc(nvertices * sizeof(int) * 2);
-                    
-                    for(int i=0; i<nvertices; i++) {
-                        vbuf[2 * i] = vertices[i].num_inedges();
-                        vbuf[2 * i +1] = vertices[i].num_outedges();
-                    }
-                    pwritea(degreeOutF, vbuf, nvertices * sizeof(int) * 2, subinterval_st * sizeof(int) * 2);
-                    
-                    free(vbuf);
-                    
-                    // Move window
-                    subinterval_st = subinterval_en+1;
-                }
-                /* Move the offset of the window-shard forward */
-                sliding_shards[window]->set_offset(memshard.offset_for_stream_cont(), memshard.offset_vid_for_stream_cont(),
-                                                   memshard.edata_ptr_for_stream_cont());
-            }
-            close(degreeOutF);
-            m.stop_time("degrees.runtime");
-            delete iomgr;
-        }
-#endif
         
         template <typename A, typename B> friend class sharded_graph_output;
     }; // End class sharder
     
     
-    /**
-     * Outputs new edges into a shard - can be used from an update function
-     */
-    template <typename VT, typename ET>
-    class sharded_graph_output : public ioutput<VT, ET> {
-        
-        sharder<ET> * sharderobj;
-        mutex lock;
-        
-    public:
-        sharded_graph_output(std::string filename, DuplicateEdgeFilter<ET> * filter = NULL) {
-            sharderobj = new sharder<ET>(filename);
-            sharderobj->set_duplicate_filter(filter);
-            sharderobj->start_preprocessing();
-        }
-        
-        ~sharded_graph_output() {
-            delete sharderobj;
-            sharderobj = NULL;
-        }
-        
-        
-        
-    public:
-        void output_edge(vid_t from, vid_t to) {
-            assert(false); // Need to use the custom method
-        }
-                
-        
-        virtual void output_edge(vid_t from, vid_t to, float value) {
-            assert(false); // Need to use the custom method
-        }
-        
-        virtual void output_edge(vid_t from, vid_t to, double value) {
-            assert(false); // Need to use the custom method
-        }
-        
-        
-        virtual void output_edge(vid_t from, vid_t to, int value)  {
-            assert(false); // Need to use the custom method
-        }
-        
-        virtual void output_edge(vid_t from, vid_t to, size_t value)  {
-            assert(false); // Need to use the custom method
-        }
-        
-        void output_edgeval(vid_t from, vid_t to, ET value) {
-            lock.lock();
-            sharderobj->preprocessing_add_edge(from, to, value);
-            lock.unlock();
-        }
-        
-        void output_value(vid_t vid, VT value) {
-            assert(false);  // Not used here
-        }
-        
-        
-        void close() {
-        }
-        
-        size_t finish_sharding() {
-            sharderobj->end_preprocessing();
-
-            sharderobj->execute_sharding("auto");
-            return sharderobj->nshards;
-        }
-        
-    };
-    
+  
 }; // namespace
 
 
