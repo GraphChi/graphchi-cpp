@@ -22,7 +22,8 @@
  
  *
  * @section DESCRIPTION
- * Minimum spanning forest based on Boruvska steps.
+ * Minimum spanning forest based on Boruvska steps. Also alternatively implementation using
+ * star contraction.
  */
 
 #define GRAPHCHI_DISABLE_COMPRESSION
@@ -253,6 +254,10 @@ struct BoruvskaStarContractionStep : public GraphChiProgram<VertexDataType, Edge
 double totalMST = 0.0;
 mutex lock;
 
+/**
+  * Update function that writes the contracted graph for next iteration and
+  * outputs also the minimum spanning edges.
+  */
 struct ContractionStep : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     bool new_edges;

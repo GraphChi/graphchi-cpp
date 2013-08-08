@@ -5,7 +5,6 @@
 		activeExecutable = 5FCC2131159DF1F20003D0E9 /* trianglecounting */;
 		activeTarget = 5FCC2128159DF1F20003D0E9 /* trianglecounting */;
 		addToTargets = (
-			5FCC2128159DF1F20003D0E9 /* trianglecounting */,
 		);
 		breakpoints = (
 			5FCC250915A392C70003D0E9 /* streaming_pagerank.cpp:267 */,
@@ -154,16 +153,16 @@
 	};
 	5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {938, 1092}}";
-			sepNavSelRange = "{2415, 0}";
-			sepNavVisRange = "{432, 1983}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 1170}}";
+			sepNavSelRange = "{2135, 0}";
+			sepNavVisRange = "{102, 2483}";
 		};
 	};
 	5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1216, 11206}}";
-			sepNavSelRange = "{28174, 0}";
-			sepNavVisRange = "{29581, 1071}";
+			sepNavIntBoundsRect = "{{0, 0}, {1650, 15184}}";
+			sepNavSelRange = "{14921, 0}";
+			sepNavVisRange = "{12819, 3561}";
 		};
 	};
 	5F41F77B17B0057900C5FD90 /* PBXTextBookmark */ = {
@@ -227,7 +226,7 @@
 		fRef = 5FCC1D65159503890003D0E9 /* conversions.hpp */;
 		name = "conversions.hpp: 594";
 		rLen = 0;
-		rLoc = 22012;
+		rLoc = 22020;
 		rType = 0;
 		vrLen = 3496;
 		vrLoc = 20430;
@@ -419,7 +418,7 @@
 		fRef = 5FCC1D091595000F0003D0E9 /* conversions.hpp */;
 		name = "conversions.hpp: 502";
 		rLen = 0;
-		rLoc = 18199;
+		rLoc = 18207;
 		rType = 0;
 		vrLen = 2370;
 		vrLoc = 17609;
@@ -459,6 +458,20 @@
 		executables = (
 			5FCB4690174AA11C0023D9D7 /* test_dynamicedata */,
 		);
+	};
+	5F54B85515FD519100B3842C /* memoryshard.hpp */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1391, 5850}}";
+			sepNavSelRange = "{7220, 0}";
+			sepNavVisRange = "{4488, 3025}";
+		};
+	};
+	5F54B85715FD519100B3842C /* slidingshard.hpp */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1041, 6539}}";
+			sepNavSelRange = "{17137, 0}";
+			sepNavVisRange = "{14794, 2721}";
+		};
 	};
 	5F56F701159A741F00423ECE /* vertex_aggregator.hpp */ = {
 		uiCtxt = {
@@ -643,9 +656,9 @@
 	};
 	5F7A10311589266800748D0D /* ischeduler.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1067, 956}}";
-			sepNavSelRange = "{1, 811}";
-			sepNavVisRange = "{0, 1167}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 952}}";
+			sepNavSelRange = "{2004, 0}";
+			sepNavVisRange = "{0, 2004}";
 		};
 	};
 	5F7A10351589266800748D0D /* degree_data.hpp */ = {
@@ -679,24 +692,24 @@
 	};
 	5F7A10471589266800748D0D /* memoryshard.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {964, 5538}}";
-			sepNavSelRange = "{0, 0}";
-			sepNavVisRange = "{1010, 1985}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 5837}}";
+			sepNavSelRange = "{16764, 0}";
+			sepNavVisRange = "{13555, 3209}";
 			sepNavWindowFrame = "{{898, 63}, {1022, 1026}}";
 		};
 	};
 	5F7A10A7158A669300748D0D /* bitset_scheduler.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {893, 988}}";
-			sepNavSelRange = "{1720, 0}";
-			sepNavVisRange = "{0, 1942}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 1339}}";
+			sepNavSelRange = "{1977, 0}";
+			sepNavVisRange = "{809, 1920}";
 		};
 	};
 	5F7B64DB158A747A0032CE47 /* slidingshard.hpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1267, 5837}}";
-			sepNavSelRange = "{11890, 0}";
-			sepNavVisRange = "{10127, 1990}";
+			sepNavIntBoundsRect = "{{0, 0}, {1146, 7059}}";
+			sepNavSelRange = "{7271, 704}";
+			sepNavVisRange = "{5776, 3125}";
 			sepNavWindowFrame = "{{61, 155}, {999, 976}}";
 		};
 	};
@@ -917,6 +930,11 @@
 		name = conversions.hpp;
 		path = ../src/preprocessing/conversions.hpp;
 		sourceTree = "<group>";
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {964, 10296}}";
+			sepNavSelRange = "{12598, 0}";
+			sepNavVisRange = "{11061, 2493}";
+		};
 	};
 	5FCC1DD71599194B0003D0E9 /* graphchi_basic_includes.hpp */ = {
 		uiCtxt = {
@@ -1127,9 +1145,9 @@
 	};
 	5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {901, 6227}}";
+			sepNavIntBoundsRect = "{{0, 0}, {964, 6344}}";
 			sepNavSelRange = "{9808, 41}";
-			sepNavVisRange = "{8728, 2235}";
+			sepNavVisRange = "{8487, 2725}";
 			sepNavWindowFrame = "{{978, 46}, {827, 866}}";
 		};
 	};
@@ -1361,7 +1379,7 @@
 		hitCount = 0;
 		ignoreCount = 0;
 		lineNumber = 267;
-		modificationTime = 397418581.1079479;
+		modificationTime = 397666256.29678;
 		originalNumberOfMultipleMatches = 1;
 		state = 0;
 	};
