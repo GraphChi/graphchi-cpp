@@ -78,6 +78,11 @@ namespace graphchi {
             return curiteration_bitset->get(vertex);
         }
         
+        /* Remove all tasks from next iteration */
+        virtual void remove_tasks() {
+            nextiteration_bitset->clear();
+        }
+        
         
         
         void add_task_to_all() {

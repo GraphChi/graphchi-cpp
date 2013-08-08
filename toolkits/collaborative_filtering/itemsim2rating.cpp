@@ -294,7 +294,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    * on even iterations, schedules only item nodes
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-    gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
     if (gcontext.iteration % 2 == 0){
       for (vid_t i=0; i < M; i++){
         //even iterations, schedule only user nodes
