@@ -43,7 +43,7 @@ namespace graphchi {
         virtual bool is_scheduled(vid_t vertex) = 0;
         virtual size_t num_tasks() = 0;
         virtual void new_iteration(int iteration) = 0;
-        virtual void remove_tasks() = 0;
+        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) = 0;
     };
     
     
@@ -65,7 +65,7 @@ namespace graphchi {
         virtual size_t num_tasks() { return 0; }
         virtual void new_iteration(int iteration) {} 
         
-        virtual void remove_tasks() {}
+        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) {}
     };
     
 }

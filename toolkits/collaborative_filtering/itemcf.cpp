@@ -376,6 +376,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    * on even iterations, schedules only item nodes
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
+      gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
     if (gcontext.iteration == 0)
       written_pairs = zeros(gcontext.execthreads);
 
@@ -462,6 +463,8 @@ int main(int argc, const char ** argv) {
   if (K <= 0)
     logstream(LOG_FATAL)<<"Please specify the number of ratings to generate for each user using the --K command" << std::endl;
 
+ logstream(LOG_INFO) << "M = " << M << std::endl;
+    
   assert(M > 0 && N > 0);
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
