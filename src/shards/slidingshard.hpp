@@ -158,6 +158,7 @@ namespace graphchi {
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
         bool disable_writes;
         bool async_edata_loading;
+        bool disable_async_writes;
         // bool need_read_outedges; // Disabled - does not work with compressed data: whole block needs to be read.
         
         
@@ -182,7 +183,7 @@ namespace graphchi {
             curblock = NULL;
             curadjblock = NULL;
             window_start_edataoffset = 0;
-            
+            disable_async_writes = false;
             
             while(blocksize % sizeof(ET) != 0) blocksize++;
             assert(blocksize % sizeof(ET)==0);
@@ -191,7 +192,7 @@ namespace graphchi {
             if (!only_adjacency) {
                 edatafilesize = get_shard_edata_filesize<ET>(filename_edata);
                 logstream(LOG_DEBUG) << "Total edge data size: " << edatafilesize  << ", " << filename_edata
-                  << "sizeof(ET): " << sizeof(ET) << std::endl;
+                << "sizeof(ET): " << sizeof(ET) << std::endl;
             } else {
                 // Nothing
             }
@@ -216,15 +217,28 @@ namespace graphchi {
                 curadjblock->release(iomgr);
                 delete curadjblock;
                 curadjblock = NULL;
-            }
-            
-            
+            }            
             iomgr->close_session(adjfile_session);
         }
         
         
         size_t num_edges() {
             return edatafilesize / sizeof(ET);
+        }
+        
+        // Init edge data blocks
+        void initdata() {
+            logstream(LOG_DEBUG) << "Initialize edge data: " << filename_edata << std::endl;
+            ET * initblock = (ET *) malloc(blocksize);
+            for(int i=0; i < (int) (blocksize/sizeof(ET)); i++) initblock[i] = ET();
+            for(size_t off=0; off < edatafilesize; off+=blocksize) {
+                std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (off / blocksize), blocksize);
+                size_t len = std::min(blocksize, edatafilesize - off);
+                int f = open(blockfilename.c_str(), O_WRONLY);
+                pwritea(f, initblock, len, 0);
+                close(f);
+            }
+            free(initblock);
         }
         
     protected:
@@ -432,6 +446,7 @@ namespace graphchi {
          * Commit modifications.
          */
         void commit(sblock &b, bool synchronously, bool disable_writes=false) {
+            if (disable_async_writes) synchronously = true;
             if (synchronously) {
                 metrics_entry me = m.start_time();
                 if (!disable_writes) b.commit_now(iomgr);
@@ -480,6 +495,10 @@ namespace graphchi {
                     activeblocks.erase(activeblocks.begin() + (unsigned int)i);
                 }
             }
+        }
+        
+        void set_disable_async_writes(bool b) {
+            disable_async_writes = b;
         }
         
         std::string get_info_json() {

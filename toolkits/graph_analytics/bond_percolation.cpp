@@ -141,6 +141,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void before_iteration(int iteration, graphchi_context &ctx) {
     changes = 0;
+    ctx.scheduler->remove_tasks(0, (int) ctx.nvertices - 1);
     if (iteration == 0 && !edge_count) {
       /* initialize  each vertex with its own lable */
       vertex_values = new VertexDataType[ctx.nvertices];
@@ -148,7 +149,6 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         vertex_values[i] = i;
       }
     }
-    ctx.scheduler->remove_tasks(0, (int) ctx.nvertices - 1);
     for (int i=0; i< (int)ctx.nvertices; i++)
       if (active_nodes[i])
         ctx.scheduler->add_task(i);

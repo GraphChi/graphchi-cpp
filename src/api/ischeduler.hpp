@@ -34,20 +34,22 @@
 #include "logger/logger.hpp"
 
 namespace graphchi {
-
+    
     class ischeduler {
-        public:
-            virtual ~ischeduler() {} 
-            virtual void add_task(vid_t vid) = 0;
-            virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) = 0;
-            virtual void add_task_to_all()  = 0;
-            virtual bool is_scheduled(vid_t vertex) = 0;
+    public:
+        virtual ~ischeduler() {} 
+        virtual void add_task(vid_t vid) = 0;
+        virtual void add_task_to_all()  = 0;
+        virtual bool is_scheduled(vid_t vertex) = 0;
+        virtual size_t num_tasks() = 0;
+        virtual void new_iteration(int iteration) = 0;
+        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) = 0;
     };
     
     
     /** 
-      * Implementation of the scheduler which actually does nothing.
-      */
+     * Implementation of the scheduler which actually does nothing.
+     */
     class non_scheduler : public ischeduler {
         int nwarnings;
     public:
@@ -58,12 +60,14 @@ namespace graphchi {
                 logstream(LOG_WARNING) << "Tried to add task to scheduler, but scheduling was not enabled!" << std::endl;
             } 
         }
-        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) { }
         virtual void add_task_to_all() { }
         virtual bool is_scheduled(vid_t vertex) { return true; }
-
+        virtual size_t num_tasks() { return 0; }
+        virtual void new_iteration(int iteration) {} 
+        
+        virtual void remove_tasks(vid_t fromvertex, vid_t tovertex) {}
     };
-
+    
 }
 
 

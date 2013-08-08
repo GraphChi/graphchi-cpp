@@ -414,6 +414,7 @@
 		5FCC243415A378E70003D0E9 /* streaming_pagerank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = streaming_pagerank; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FE3D5AE15FD5E520061B039 /* dynamicblock.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = dynamicblock.hpp; sourceTree = "<group>"; };
 		5FF7749917B3E1A200F84939 /* sharder.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = sharder.hpp; sourceTree = "<group>"; };
+		5FF774DD17B3E94100F84939 /* minimumspanningforest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = minimumspanningforest.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1107,6 +1108,7 @@
 				5FCC1EBE1599F59A0003D0E9 /* communitydetection.cpp */,
 				5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */,
 				5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */,
+				5FF774DD17B3E94100F84939 /* minimumspanningforest.cpp */,
 				5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */,
 				5FCC1EC11599F59A0003D0E9 /* pagerank_functional.cpp */,
 				5FCC242B15A378DC0003D0E9 /* streaming_pagerank.cpp */,

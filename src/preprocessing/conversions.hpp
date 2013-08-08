@@ -1,4 +1,4 @@
-;/**
+/**
   * @file
   * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
   * @version 1.0
