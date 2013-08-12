@@ -23,7 +23,8 @@
  * @section DESCRIPTION
  *
  * Connected components that uses the Union-Find algorithm. Requires
- * O(|V|) of RAM.
+ * O(|V|) of RAM, but only one pass of the data. Thus much faster than
+ * the completely disk based "connectedcomponents.cpp" example app.
  */
 
 #define GRAPHCHI_DISABLE_COMPRESSION
