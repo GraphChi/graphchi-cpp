@@ -63,7 +63,7 @@ namespace graphchi {
             delete curiteration_bitset;
         }
         
-        inline void add_task(vid_t vertex, bool also_this_iteration) {
+        inline void add_task(vid_t vertex, bool also_this_iteration=false) {
             nextiteration_bitset->set_bit(vertex);
             if (also_this_iteration) {
                 // If possible, add to schedule already this iteration
