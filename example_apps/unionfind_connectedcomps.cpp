@@ -25,6 +25,10 @@
  * Connected components that uses the Union-Find algorithm. Requires
  * O(|V|) of RAM, but only one pass of the data. Thus much faster than
  * the completely disk based "connectedcomponents.cpp" example app.
+ *
+ * NOTE/REMARK: THERE IS NO REAL REASON TO USE GRAPHCHI FOR THIS ALGORITHM.
+ * A SIMPLE CODE THAT READ THE GRAPH ONE EDGE A TIME WOULD BE SUFFICIENT.
+ *
  */
 
 #define GRAPHCHI_DISABLE_COMPRESSION
