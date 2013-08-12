@@ -26,6 +26,9 @@
  * O(|V|) of RAM, but only one pass of the data. Thus much faster than
  * the completely disk based "connectedcomponents.cpp" example app.
  *
+ * Highly optimized non-idiomatic GraphChi code that uses an overloaded vertex
+ * class to prevent actually creating the graph in memory.
+ *
  * NOTE/REMARK: THERE IS NO REAL REASON TO USE GRAPHCHI FOR THIS ALGORITHM.
  * A SIMPLE CODE THAT READ THE GRAPH ONE EDGE A TIME WOULD BE SUFFICIENT.
  *
@@ -46,7 +49,7 @@ std::vector<unsigned int> setCounts; // Union-find
 
 /* Find operator of Union-Find with path compression */
 vid_t Find(vid_t x);
-vid_t Find(vid_t x) {
+inline vid_t Find(vid_t x) {
     if (sets[x] != x) {
         sets[x] = Find(sets[x]);
     }
@@ -55,7 +58,7 @@ vid_t Find(vid_t x) {
 
 /* Union-operator of Union-Find */
 void Unite(vid_t u, vid_t v);
-void Unite(vid_t u, vid_t v) {
+inline void Unite(vid_t u, vid_t v) {
     int a = Find(u);
     int b = Find(v);
     if (setCounts[a] > setCounts[b]) {
@@ -80,26 +83,57 @@ typedef bool EdgeDataType; // not relevant
 
 size_t ne = 0;
 
+ class UnionFindVertex : public graphchi_vertex<VertexDataType, EdgeDataType> {
+public:
+    
+        
+    UnionFindVertex() : graphchi_vertex<VertexDataType, EdgeDataType> () {}
+    
+    UnionFindVertex(vid_t _id, 
+                      graphchi_edge<EdgeDataType> * iptr, 
+                      graphchi_edge<EdgeDataType> * optr, 
+                      int indeg, 
+                      int outdeg) : 
+    graphchi_vertex<VertexDataType, EdgeDataType> (_id, NULL, NULL, indeg, outdeg) { 
+    }
+    
+    void add_inedge(vid_t src, EdgeDataType * ptr, bool special_edge) {
+        vid_t setDst = Find(this->id());
+        vid_t setSrc = Find(src);
+        // If in same component, nothing to do, otherwise, Unite
+        if (setSrc != setDst) {
+            Unite(this->id(), src);
+        }
+        ne++;
+    }
+    
+       
+    void add_outedge(vid_t dst, EdgeDataType * ptr, bool special_edge) {
+        assert(false);
+    }
+    
+    bool computational_edges() {
+        return true;
+    }
+};
+
+
+
+
+
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.
  */
-struct UnionFindProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+struct UnionFindProgram : public GraphChiProgram<VertexDataType, EdgeDataType, UnionFindVertex> {
     
     
     /**
      *  Vertex update function.
      */
-    void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-        for(int i=0; i<vertex.num_inedges(); i++) {
-            vid_t setSrc = Find(vertex.id());
-            vid_t setDst = Find(vertex.inedge(i)->vertexid);
-            // If in same component, nothing to do, otherwise, Unite
-            if (setSrc != setDst) {
-                Unite(vertex.id(), vertex.inedge(i)->vertexid);
-            }
-            ne++;
-        }
+    void update(UnionFindVertex &vertex, graphchi_context &gcontext) {
+        // do nothing -- all done in the special vertex class
     }
     
     /**
@@ -160,7 +194,7 @@ int main(int argc, const char ** argv) {
     
     /* Run */
     UnionFindProgram unionFind;
-    graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, false, m); 
+    graphchi_engine<VertexDataType, EdgeDataType, UnionFindVertex > engine(filename, nshards, false, m); 
     engine.set_disable_outedges(true);
     engine.set_only_adjacency(true);
     engine.set_modifies_inedges(false);
