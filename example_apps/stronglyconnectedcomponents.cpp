@@ -35,8 +35,10 @@
 #define SUPPORT_DELETIONS 1
 
 #include <string>
+#include <ostream>
 
 #include "graphchi_basic_includes.hpp"
+#include "util/labelanalysis.hpp"
 
 
 using namespace graphchi;
@@ -80,7 +82,28 @@ struct SCCinfo {
     SCCinfo(vid_t color) : color(color), confirmed(false) {}
     SCCinfo(vid_t color, bool confirmed) : color(color), confirmed(confirmed) {}
 
+   friend std::ostream& operator<< (std::ostream &out, SCCinfo &scc) {
+        out << scc.color;
+        return out;
+    }
+    
 };
+
+/* Overloaded operators to help with labelanalysis.hpp */
+
+bool operator<(const SCCinfo &a, const SCCinfo &b);
+bool operator<(const SCCinfo &a, const SCCinfo &b) {
+    return a.color < b.color;
+}
+
+bool operator==(const SCCinfo &a, const SCCinfo &b);
+bool operator==(const SCCinfo &a, const SCCinfo &b) {
+    return a.color == b.color;
+}
+bool operator!=(const SCCinfo &a, const SCCinfo &b);
+bool operator!=(const SCCinfo &a, const SCCinfo &b) {
+    return a.color != b.color;
+}
 
 typedef SCCinfo VertexDataType;
 typedef bidirectional_label EdgeDataType;
@@ -209,7 +232,6 @@ struct SCCBackward : public GraphChiProgram<VertexDataType, EdgeDataType> {
             }
             if (match) {
                 propagate = true;
-                std::cout << "Vertex " << vertex.id() << " is part of SCC=" << vertexdata.color << " outedges:" << vertex.num_outedges() << std::endl;
                 vertex.remove_alloutedges();
                 vertex.set_data(SCCinfo(vertexdata.color, true));
             } else {
@@ -224,7 +246,6 @@ struct SCCBackward : public GraphChiProgram<VertexDataType, EdgeDataType> {
                 edgedata.my_label(vertex.id(), vertex.inedge(i)->vertexid) = vertexdata.color;
                 vertex.inedge(i)->set_data(edgedata);
                 gcontext.scheduler->add_task(vertex.inedge(i)->vertexid);
-                std::cout << "Schedule : " << vertex.inedge(i)->vertexid << std::endl;
             }
         }
     }
@@ -285,7 +306,8 @@ int main(int argc, const char ** argv) {
             engine2.run(backwardSCC, 1000);
         }
     }
-    
+    analyze_labels<VertexDataType>(filename);
+
     delete_shards<EdgeDataType>(filename, nshards);
 
     

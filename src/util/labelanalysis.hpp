@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <errno.h>
 #include <assert.h>
+#include <fstream>
 
 #include "io/stripedio.hpp"
 #include "logger/logger.hpp"
@@ -111,9 +112,9 @@ void analyze_labels(std::string basefilename, int printtop = 20) {
         /* Then collect */
         std::vector<labelcount_t> newlabels;
         newlabels.reserve(nt);
-        vid_t lastlabel = 0xffffffff;
+        LabelType lastlabel = LabelType(0xffffffff);
         for(int i=0; i < nt; i++) {
-            if (buffer[i] != 0xffffffff) {
+            if (buffer[i] != LabelType(0xffffffff)) {
                 if (buffer[i] != lastlabel) {
                     newlabels.push_back(labelcount_t(buffer[i], 1));
                 } else {
@@ -162,16 +163,17 @@ void analyze_labels(std::string basefilename, int printtop = 20) {
     std::sort(curlabels.begin(), curlabels.end(), label_count_greater<LabelType>);
     
     /* Write output file */
-    std::string outname = basefilename + "_components.txt";
-    FILE * resf = fopen(outname.c_str(), "w");
+    std::string outname = basefilename + ".components";
+    std::ofstream resf;
+    resf.open(outname.c_str());
     if (resf == NULL) {
         logstream(LOG_ERROR) << "Could not write label outputfile : " << outname << std::endl;
         return;
     }
     for(int i=0; i < (int) curlabels.size(); i++) {
-        fprintf(resf, "%u,%u\n", curlabels[i].label, curlabels[i].count + 1);
+        resf << curlabels[i].label << "," << curlabels[i].count + 1 << std::endl;
     }
-    fclose(resf);
+    resf.close();
     
     std::cout << "Total number of different labels (components/communities): " << curlabels.size() << std::endl;
     std::cout << "List of labels was written to file: " << outname << std::endl;
