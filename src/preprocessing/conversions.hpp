@@ -336,10 +336,11 @@ namespace graphchi {
                     }
                     i++;
                 }
-                if (num != i)
+                if (num != i) {
                     logstream(LOG_ERROR) << "Mismatch when reading adjacency list: " << num << " != " << i << " s: " << std::string(s)
                     << " on line: " << linenum << std::endl;
-                assert(num == i);
+                    continue;
+                }
             }
         }
         free(s);
