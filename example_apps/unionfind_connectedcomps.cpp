@@ -151,6 +151,9 @@ int main(int argc, const char ** argv) {
     int nshards          = convert_if_notexists_novalues<EdgeDataType>(filename, 
                                                               get_option_string("nshards", "auto"));
     
+    // Always run with only thread only (code is not thread-safe)
+    set_conf("execthreads", "1");
+    
     /* Run */
     UnionFindProgram unionFind;
     graphchi_engine<VertexDataType, EdgeDataType> engine(filename, nshards, false, m); 
