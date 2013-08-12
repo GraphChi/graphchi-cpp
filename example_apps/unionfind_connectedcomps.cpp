@@ -43,41 +43,19 @@
 using namespace graphchi;
 
 
-std::vector<vid_t> sets;
-std::vector<unsigned int> setCounts; // Union-find
+vid_t *  sets;
+unsigned int * setCounts; // Union-find
 
 
 /* Find operator of Union-Find with path compression */
 vid_t Find(vid_t x);
 inline vid_t Find(vid_t x) {
-    if (sets[x] != x) {
-        sets[x] = Find(sets[x]);
+    while (sets[x] != x) {
+        x = sets[x] = sets[sets[x]];
     }
     return sets[x];
 }
 
-/* Union-operator of Union-Find */
-void Unite(vid_t u, vid_t v);
-inline void Unite(vid_t u, vid_t v) {
-    int a = Find(u);
-    int b = Find(v);
-    if (setCounts[a] > setCounts[b]) {
-        // A is bigger set, merge with A
-        sets[b] = a;
-        setCounts[a] += setCounts[b];
-    } else {
-        // or vice versa
-        sets[a] = b;
-        setCounts[b] += setCounts[a];
-    }
-}
-
- 
-
-/**
- * Type definitions. Remember to create suitable graph shards using the
- * Sharder-program. 
- */
 typedef vid_t VertexDataType;
 typedef bool EdgeDataType; // not relevant
 
@@ -97,12 +75,20 @@ public:
     graphchi_vertex<VertexDataType, EdgeDataType> (_id, NULL, NULL, indeg, outdeg) { 
     }
     
-    void add_inedge(vid_t src, EdgeDataType * ptr, bool special_edge) {
-        vid_t setDst = Find(this->id());
+    inline void add_inedge(vid_t src, EdgeDataType * ptr, bool special_edge) {
+        vid_t setDst = Find(this->vertexid);
         vid_t setSrc = Find(src);
         // If in same component, nothing to do, otherwise, Unite
         if (setSrc != setDst) {
-            Unite(this->id(), src);
+            if (setCounts[setSrc] > setCounts[setDst]) {
+                // A is bigger set, merge with A
+                sets[setDst] = setSrc;
+                setCounts[setSrc] += setCounts[setDst];
+            } else {
+                // or vice versa
+                sets[setSrc] = setDst;
+                setCounts[setDst] += setCounts[setSrc];
+            }
         }
         ne++;
     }
@@ -141,9 +127,12 @@ struct UnionFindProgram : public GraphChiProgram<VertexDataType, EdgeDataType, U
      */
     void before_iteration(int iteration, graphchi_context &gcontext) {
         /* Initialize */
-        sets.resize(gcontext.nvertices);
+        sets = new vid_t[gcontext.nvertices];
         for(vid_t i=0; i<gcontext.nvertices; i++) sets[i] = i;
-        setCounts.resize(gcontext.nvertices);
+        setCounts = new unsigned int[gcontext.nvertices];
+        // All sets start with 1
+        for(vid_t i=0; i<gcontext.nvertices; i++) setCounts[i] = 1;
+
     }
     
     /**
@@ -153,7 +142,7 @@ struct UnionFindProgram : public GraphChiProgram<VertexDataType, EdgeDataType, U
         
         // Now find everyone
         logstream(LOG_INFO) << "Final finds..." << std::endl;
-        for(size_t i=0; i<sets.size(); i++) {
+        for(size_t i=0; i<gcontext.nvertices; i++) {
             sets[i] = Find(i);
         }
     }
@@ -206,7 +195,7 @@ int main(int argc, const char ** argv) {
     
     
     FILE * f = fopen(outputfile.c_str(), "w");
-    fwrite(&sets[0], sizeof(vid_t), sets.size(), f);
+    fwrite(sets, sizeof(vid_t), engine.num_vertices(), f);
     fclose(f);
     
     /* Analyze */
