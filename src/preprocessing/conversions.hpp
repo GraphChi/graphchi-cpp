@@ -391,8 +391,8 @@ namespace graphchi {
         std::string line; // current line
 
         // handle header line
-        int n;  // number of nodes
-        int m;  // number of edges
+        int n = 0;  // number of nodes
+        int m = 0;  // number of edges
         int weighted; // indicates weight scheme: 
 
         if (std::getline(graphFile, line)) {

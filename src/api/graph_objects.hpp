@@ -354,6 +354,21 @@ namespace graphchi {
         void VARIABLE_IS_NOT_USED remove_outedge(int i) {
             remove_edgev(outedge(i));
         }
+        
+        void VARIABLE_IS_NOT_USED remove_alledges() {
+            for(int j=this->num_edges()-1; j>=0; j--) remove_edge(j);
+        }
+        
+        
+        void VARIABLE_IS_NOT_USED remove_alloutedges() {
+            for(int j=this->num_outedges()-1; j>=0; j--) remove_outedge(j);
+        }
+        
+        void VARIABLE_IS_NOT_USED remove_allinedges() {
+            for(int j=this->num_inedges()-1; j>=0; j--) remove_inedge(j);
+        }
+        
+        
 #endif
         
         

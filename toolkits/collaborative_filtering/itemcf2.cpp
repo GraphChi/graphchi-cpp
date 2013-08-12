@@ -404,7 +404,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    * on even iterations, schedules only item nodes
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-    gcontext.scheduler->remove_tasks(0, (int) gcontext.nvertices - 1);
+    gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
     if (gcontext.iteration % 2 == 0){
       memset(relevant_items, 0, sizeof(bool)*N);
       for (vid_t i=0; i < M+N; i++){
