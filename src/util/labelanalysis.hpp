@@ -179,7 +179,7 @@ void analyze_labels(std::string basefilename, int printtop = 20) {
     std::cout << "List of labels was written to file: " << outname << std::endl;
     
     for(int i=0; i < (int)std::min((size_t)printtop, curlabels.size()); i++) {
-        std::cout << (i+1) << ". label: " << curlabels[i].label << ", size: " << curlabels[i].count << std::endl;
+        std::cout << (i+1) << ". label: " << curlabels[i].label << ", size: " << curlabels[i].count + 1 << std::endl;
     }
     
     free(buffer);

@@ -181,7 +181,7 @@ struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
                 bidirectional_label edgedata = vertex.outedge(i)->get_data();
                 edgedata.my_label(vertex.id(), vertex.outedge(i)->vertexid) = vertexdata.color;
                 vertex.outedge(i)->set_data(edgedata);
-                gcontext.scheduler->add_task(vertex.outedge(i)->vertexid);
+                gcontext.scheduler->add_task(vertex.outedge(i)->vertexid, true);
             }
         }
     }
@@ -245,7 +245,7 @@ struct SCCBackward : public GraphChiProgram<VertexDataType, EdgeDataType> {
                 bidirectional_label edgedata = vertex.inedge(i)->get_data();
                 edgedata.my_label(vertex.id(), vertex.inedge(i)->vertexid) = vertexdata.color;
                 vertex.inedge(i)->set_data(edgedata);
-                gcontext.scheduler->add_task(vertex.inedge(i)->vertexid);
+                gcontext.scheduler->add_task(vertex.inedge(i)->vertexid, true);
             }
         }
     }
