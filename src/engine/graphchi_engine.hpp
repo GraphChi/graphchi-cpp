@@ -320,7 +320,7 @@ namespace graphchi {
             degree_handler->load(fromvid, maxvid);
             
             /* If is in-memory-mode, memory budget is not considered. */
-            if (is_inmemory_mode()) {
+            if (is_inmemory_mode() || svertex_t().computational_edges()) {
                 return maxvid;
             } else {
                 size_t memreq = 0;
@@ -480,7 +480,8 @@ namespace graphchi {
             for(iter=0; iter<niters; iter++) {
                 logstream(LOG_INFO) << "In-memory mode: Iteration " << iter << " starts. (" << chicontext.runtime() << " secs)" << std::endl;
                 chicontext.iteration = iter;
-                userprogram.before_iteration(iter, chicontext);
+                if (iter > 0) // First one run before -- ugly
+                    userprogram.before_iteration(iter, chicontext);
                 userprogram.before_exec_interval(0, (int)num_vertices(), chicontext);
                 
                 if (use_selective_scheduling) {
@@ -774,8 +775,7 @@ namespace graphchi {
                 chicontext.reset_deltas(exec_threads);
                 
                 /* Call iteration-begin event handler */
-                if (!is_inmemory_mode())  // Run sepately
-                    userprogram.before_iteration(iter, chicontext);
+                userprogram.before_iteration(iter, chicontext);
                 
                 /* Check scheduler. If no scheduled tasks, terminate. */
                 if (use_selective_scheduling) {

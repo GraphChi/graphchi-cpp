@@ -279,7 +279,7 @@ float get_node_id(char * pch, int pos, size_t i, bool read_only = false){
   return ret;
 }
 
-float get_value(char * pch, bool read_only){
+float get_value(char * pch, bool read_only, const char * linebuf_debug, int i){
   float ret;
   if (!fc.rehash_value){
     if ( pch[0] == '"' ) {
@@ -304,7 +304,8 @@ float get_value(char * pch, bool read_only){
 
   }    
   if (std::isnan(ret) || std::isinf(ret))
-    logstream(LOG_FATAL)<<"Failed to read value" << std::endl;
+    logstream(LOG_WARNING)<<"Failed to read value (inf/nan) on line: " << i << " " << 
+       "[" << linebuf_debug << "]" << std::endl;
   return ret;
 }
 
@@ -386,7 +387,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
       pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token, type);
       if (pch == NULL && type == TEST)
          return true;
-      val = get_value(pch, type != TRAINING);
+      val = get_value(pch, type != TRAINING, linebuf_debug, i);
       token++;
     }
     else { 

@@ -105,8 +105,6 @@ namespace graphchi {
             value.resize(nvalues);
             read(f, &value[0], sizeof(VectorElementType) * nvalues);
             read(f, &hdr, sizeof(HeaderDataType));
-           
-            std::cout << src << " - " << dst << " " << *((int*)&value[0]) << std::endl;
         }
         
         void writee(int f) {
@@ -448,7 +446,6 @@ namespace graphchi {
         
         int blockid;
         
-        template <typename T>
         void edata_flush(char * buf, char * bufptr, std::string & shard_filename, size_t totbytes) {
             int len = (int) (bufptr - buf);
             
@@ -473,7 +470,7 @@ namespace graphchi {
             if (no_edgevalues) return;
             
             if (edgecounter == edges_per_block) {
-                edata_flush<T>(buf, bufptr, shard_filename, totbytes);
+                edata_flush(buf, bufptr, shard_filename, totbytes);
                 bufptr = buf;
                 edgecounter = 0;
             }
@@ -616,15 +613,12 @@ namespace graphchi {
             
             vid_t curvid=0;
             vid_t lastdst = 0xffffffff;
-            int jumpover = 0;
             size_t num_uniq_edges = 0;
             size_t last_edge_count = 0;
             size_t istart = 0;
             size_t tot_edatabytes = 0;
             for(size_t i=0; i <= numedges; i++) {
                 if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
-                i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
-                jumpover = 0;
                 edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, std::vector<VectorElementType>())); // Last "element" is a stopper
                 
                 if (lastdst == edge.dst && edge.src == curvid) {
@@ -635,10 +629,8 @@ namespace graphchi {
                 lastdst = edge.dst;
                 
                 if (!edge.stopper()) {
-
-                    
                     /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
-                     bwrite_edata<HeaderDataType>(ebuf, ebufptr, shovelbuf[i].hdr, tot_edatabytes, edfname, edgecounter);
+                    bwrite_edata<HeaderDataType>(ebuf, ebufptr, shovelbuf[i].hdr, tot_edatabytes, edfname, edgecounter);
                     
                     if (edge.is_chivec_value) {
                         // Need to check how many values for this edge
@@ -650,11 +642,9 @@ namespace graphchi {
                         ((uint16_t *) &szw)[1] = (uint16_t)count;
                         bwrite_edata<typename chivector<VectorElementType, HeaderDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
                         for(int j=0; j < count; j++) {
-                                bwrite_edata<VectorElementType>(ebuf, ebufptr, shovelbuf[i].value[j], tot_edatabytes, edfname, edgecounter);
+                            bwrite_edata<VectorElementType>(ebuf, ebufptr, shovelbuf[i].value[j], tot_edatabytes, edfname, edgecounter);
                         }
                   
-                    
-                        jumpover = count - 1; // Jump over
                     } else {
                         // Just write size word with zero
                         bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
@@ -684,15 +674,10 @@ namespace graphchi {
                         }
                     }
                     
-                    // Special dealing with dynamic edata because some edges can be present multiple
-                    // times in the shovel.
                     for(size_t j=istart; j < i; j++) {
-                        if (j == istart || shovelbuf[j - 1].dst != shovelbuf[j].dst) {
-                            bwrite(f, buf, bufptr,  shovelbuf[j].dst);
-                        }
+                        bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                     }
                     istart = i;
-                    istart += jumpover;
                     
                     // Handle zeros
                     if (!edge.stopper()) {
@@ -720,7 +705,7 @@ namespace graphchi {
             
             /* Write edata size file */
             if (!no_edgevalues) {
-                edata_flush<VectorElementType>(ebuf, ebufptr, edfname, tot_edatabytes);
+                edata_flush(ebuf, ebufptr, edfname, tot_edatabytes);
                 
                 std::string sizefilename = edfname + ".size";
                 std::ofstream ofs(sizefilename.c_str());

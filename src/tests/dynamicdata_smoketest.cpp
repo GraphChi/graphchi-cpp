@@ -139,8 +139,7 @@ int main(int argc, const char ** argv) {
     std::string filename = get_option_string("file");  // Base filename
     int niters           = get_option_int("niters", 4); // Number of iterations
     bool scheduler       = false;                       // Whether to use selective scheduling
-    
-    /* Detect the number of shards or preprocess an input to create them */
+
     int nshards          = convert_if_notexists<vid_t>(filename, get_option_string("nshards", "auto"));
     
     /* Run */
