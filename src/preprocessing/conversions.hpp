@@ -654,14 +654,9 @@ namespace graphchi {
      * Converts a graph input to shards with no edge values. Preprocessing has several steps,
      * see sharder.hpp for more information.
      */
-<<<<<<< HEAD
-    int convert_none(std::string basefilename, std::string nshards_string);
-    int convert_none(std::string basefilename, std::string nshards_string) {
-        
-=======
+
     static int VARIABLE_IS_NOT_USED convert_none(std::string basefilename, std::string nshards_string);
     static int VARIABLE_IS_NOT_USED convert_none(std::string basefilename, std::string nshards_string) {
->>>>>>> 13bfbb4b4436505ef2f94cc03edb6bd689bff699
         sharder<dummy> sharderobj(basefilename);
         sharderobj.set_no_edgevalues();
         
