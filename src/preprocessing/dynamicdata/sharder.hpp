@@ -105,6 +105,8 @@ namespace graphchi {
             value.resize(nvalues);
             read(f, &value[0], sizeof(VectorElementType) * nvalues);
             read(f, &hdr, sizeof(HeaderDataType));
+           
+            std::cout << src << " - " << dst << " " << *((int*)&value[0]) << std::endl;
         }
         
         void writee(int f) {
@@ -209,6 +211,8 @@ namespace graphchi {
             
             bufsize_edges = bufsize_bytes / sizeof(edge_with_value<VectorElementType, HeaderDataType>);
             read(f, &numedges, sizeof(size_t));
+            
+            std::cout << "numedges: " << numedges << std::endl;
             load_next();
         }
         
@@ -217,7 +221,6 @@ namespace graphchi {
         void finish() {
             close(f);
             remove(shovelfile.c_str());
-            buffer.clear();
         }
         
         void load_next() {
@@ -413,8 +416,8 @@ namespace graphchi {
                  return;
              }
              edge_with_value<VectorElementType, HeaderDataType> e(from, to, vals, hdr);
-             
              e.is_chivec_value = true;
+             
              curshovel_buffer[curshovel_idx++] = e;
              if (curshovel_idx == shovelsize) {
                  flush_shovel();
