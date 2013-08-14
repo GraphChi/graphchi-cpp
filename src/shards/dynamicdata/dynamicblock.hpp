@@ -102,17 +102,24 @@ namespace graphchi {
             // First compute size
             size = 0;
             for(int i=0; i < nitems; i++) {
-                size += chivecs[i].capacity() * sizeof(typename ET::element_type_t) + sizeof(typename ET::sizeword_t);
+                size += chivecs[i].capacity() * sizeof(typename ET::element_type_t) + sizeof(typename ET::sizeword_t) + sizeof(typename ET::header_t);
             }
             
             *outdata = (uint8_t *) malloc(size);
             uint8_t * ptr = *outdata;
             for(int i=0; i < nitems; i++) {
                 ET & vec = chivecs[i];
+                
+                /* Write header */
+                ((typename ET::header_t *) ptr)[0] = vec.header();
+                ptr += sizeof(typename ET::header_t);
+                
+                /* Write size information */
                 ((uint16_t *) ptr)[0] = vec.size();
                 ((uint16_t *) ptr)[1] = vec.capacity();
-
                 ptr += sizeof(typename ET::sizeword_t);
+                
+                /* Write elements */
                 vec.write((typename ET::element_type_t *)  ptr);
                 ptr += vec.capacity() * sizeof(typename ET::element_type_t);
             }
