@@ -96,6 +96,7 @@ namespace graphchi {
             return (dst < x2.dst);
         }
         
+        // TODO: use buffered I/O
         void reade(int f) {
             read(f, &src, sizeof(vid_t));
             read(f, &dst, sizeof(vid_t));
@@ -191,13 +192,14 @@ namespace graphchi {
         size_t bufidx;
         std::vector<edge_with_value<VectorElementType, HeaderDataType> > buffer;
         int f;
+        size_t edgesread;
         size_t numedges;
         size_t bufsize_edges;
         
         shovel_merge_source(size_t bufsize_bytes, std::string shovelfile) : bufsize_bytes(bufsize_bytes), 
         shovelfile(shovelfile), idx(0), bufidx(0) {
             f = open(shovelfile.c_str(), O_RDONLY);
-            
+            edgesread = 0;
             if (f < 0) {
                 logstream(LOG_ERROR) << "Could not open shovel file: " << shovelfile << std::endl;
                 printf("Error: %d, %s\n", errno, strerror(errno));
@@ -221,11 +223,12 @@ namespace graphchi {
         void load_next() {
             size_t nread = 0;
             buffer.clear();
-            while(nread < bufsize_bytes) {
+            while(nread < bufsize_bytes && edgesread < numedges) {
                 edge_with_value<VectorElementType, HeaderDataType> edge;
                 edge.reade(f);
                 buffer.push_back(edge);
                 nread += sizeof(vid_t) * 2 + sizeof(uint16_t) + sizeof(HeaderDataType) + edge.value.size() * sizeof(VectorElementType);
+                edgesread++;
             }
             bufidx = 0;
         }

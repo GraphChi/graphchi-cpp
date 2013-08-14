@@ -143,9 +143,9 @@ int generatedata(std::string filename) {
     std::cout << "Generating data..." << std::endl;
   
     shouldbe = 0;
-    int totalVertices =  200000; // 2 million
+    int totalVertices =  1000;
     for(int i=0; i < totalVertices; i++) {
-        int nedges = random() % 50;
+        int nedges = random() % 10;
         for(int j=0; j < nedges; j++) {
             int dst = (totalVertices / nedges) * j + i % nedges; 
             if (dst != i) {
