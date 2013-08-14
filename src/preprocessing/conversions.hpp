@@ -117,8 +117,7 @@ namespace graphchi {
     
 #ifdef DYNAMICEDATA
     static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> &values, char * s);
-    
-    void parse_multiple(std::vector<dummy> & values, char * s) {
+    static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> & values, char * s) {
         assert(false);
     }
     
@@ -160,8 +159,8 @@ namespace graphchi {
     
     
     // http://www.linuxquestions.org/questions/programming-9/c-list-files-in-directory-379323/
-    int getdir (std::string dir, std::vector<std::string> &files);
-    int getdir (std::string dir, std::vector<std::string> &files)
+    static int VARIABLE_IS_NOT_USED getdir (std::string dir, std::vector<std::string> &files);
+    static int VARIABLE_IS_NOT_USED getdir (std::string dir, std::vector<std::string> &files)
     {
         DIR *dp;
         struct dirent *dirp;
@@ -177,8 +176,8 @@ namespace graphchi {
         return 0;
     }
     
-    std::string get_dirname(std::string arg);
-    std::string get_dirname(std::string arg) {
+    static VARIABLE_IS_NOT_USED std::string get_dirname(std::string arg);
+    static VARIABLE_IS_NOT_USED std::string get_dirname(std::string arg) {
         size_t a = arg.find_last_of("/");
         if (a != arg.npos) {
             std::string dir = arg.substr(0, a);
@@ -189,8 +188,8 @@ namespace graphchi {
         }
     }
     
-    std::string get_filename(std::string arg);
-    std::string get_filename(std::string arg) {
+    static std::string VARIABLE_IS_NOT_USED get_filename(std::string arg);
+    static std::string VARIABLE_IS_NOT_USED get_filename(std::string arg) {
         size_t a = arg.find_last_of("/");
         if (a != arg.npos) {
             std::string f = arg.substr(a + 1);
@@ -351,7 +350,8 @@ namespace graphchi {
      * @param[in]   line        line from input file containing node indices
      * @param[out]  adjacencies     node indices extracted from line
      */
-    static std::vector<vid_t> parseLine(std::string line) {
+    static std::vector<vid_t> VARIABLE_IS_NOT_USED parseLine(std::string line);
+    static std::vector<vid_t> VARIABLE_IS_NOT_USED parseLine(std::string line) {
 
         std::stringstream stream(line);
         std::string token;
@@ -654,9 +654,9 @@ namespace graphchi {
      * Converts a graph input to shards with no edge values. Preprocessing has several steps,
      * see sharder.hpp for more information.
      */
-    int convert_none(std::string basefilename, std::string nshards_string);
-    int convert_none(std::string basefilename, std::string nshards_string) {
-        
+
+    static int VARIABLE_IS_NOT_USED convert_none(std::string basefilename, std::string nshards_string);
+    static int VARIABLE_IS_NOT_USED convert_none(std::string basefilename, std::string nshards_string) {
         sharder<dummy> sharderobj(basefilename);
         sharderobj.set_no_edgevalues();
         
