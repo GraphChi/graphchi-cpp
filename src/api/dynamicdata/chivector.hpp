@@ -37,33 +37,26 @@ namespace graphchi {
 
     
 #define MINCAPACITY 2
-    
 
-/**
-  * Pool the extension parts of chi-vectors
-  */
-template <typename T>
-class extension_pool {
-        
-};
     
-    
-template <typename T>
+template <typename T, typename HeaderType>
 class chivector {
 
     uint16_t nsize;
     uint16_t ncapacity;
+    HeaderType hdr; // statically sized header
     T * data;
     std::vector<T> * extensions;  // TODO: use a more memory efficient system?
     
 public:
     typedef T element_type_t;
+    typedef HeaderType header_t;
     typedef uint32_t sizeword_t;
     chivector() {
         extensions = NULL;
     }
     
-    chivector(uint16_t sz, uint16_t cap, T * dataptr) : data(dataptr) {
+    chivector(uint16_t sz, uint16_t cap, HeaderType hdr, T * dataptr) : hdr(hdr), data(dataptr) {
         nsize = sz;
         ncapacity = cap;
         assert(cap >= nsize);
@@ -75,6 +68,10 @@ public:
             delete extensions;
             extensions = NULL;
         }
+    }
+    
+    HeaderType & header() {
+        return hdr;
     }
     
     void write(T * dest) {

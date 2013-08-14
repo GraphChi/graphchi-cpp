@@ -54,10 +54,7 @@
 #endif
 
 namespace graphchi {
-    
-    struct dummy {
-    };
-    
+   
     template <typename T>
     struct dummyC {
         operator T() { return T(); }
@@ -276,7 +273,7 @@ namespace graphchi {
                         logstream(LOG_FATAL) << "Each edge needs at least one value." << std::endl;
                         assert(vals.size() > 0);
                     }
-                    sharderobj.preprocessing_add_edge_multival(from, to, vals);
+                    sharderobj.preprocessing_add_edge_multival(from, to, dummy(), vals);
                 }
                 
 #else
@@ -658,6 +655,7 @@ namespace graphchi {
      */
     int convert_none(std::string basefilename, std::string nshards_string);
     int convert_none(std::string basefilename, std::string nshards_string) {
+        
         sharder<dummy> sharderobj(basefilename);
         sharderobj.set_no_edgevalues();
         

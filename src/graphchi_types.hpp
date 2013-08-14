@@ -52,6 +52,11 @@ namespace graphchi {
             }
         }
     };
+    
+    // Empty data type
+    struct dummy {
+    };
+    
 
 }
 

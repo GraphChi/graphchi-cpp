@@ -83,9 +83,11 @@ namespace graphchi {
             uint8_t * ptr = data;
             for(int i=0; i < nitems; i++) {
                 assert(ptr - data <= datasize);
+                typename ET::header_t hdr = *((typename ET::header_t *) ptr);
+                ptr += sizeof(typename ET::header_t);
                 typename ET::sizeword_t * sz = ((typename ET::sizeword_t *) ptr);
                 ptr += sizeof(typename ET::sizeword_t);
-                chivecs[i] = ET(((uint16_t *)sz)[0], ((uint16_t *)sz)[1], (typename ET::element_type_t *) ptr);
+                chivecs[i] = ET(((uint16_t *)sz)[0], ((uint16_t *)sz)[1], hdr,  (typename ET::element_type_t *) ptr);
                 ptr += (int) ((uint16_t *)sz)[1] * sizeof(typename ET::element_type_t);
             }
         }

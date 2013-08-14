@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "api/chifilenames.hpp"
 #include "api/graphchi_context.hpp"
@@ -65,117 +66,136 @@
 #include "util/qsort.hpp"
 #endif 
 namespace graphchi {
-    template <typename VT, typename ET> class sharded_graph_output;
-    
+     
     
 #define SHARDER_BUFSIZE (64 * 1024 * 1024)
     
     enum ProcPhase  { COMPUTE_INTERVALS=1, SHOVEL=2 };
+ 
     
-    template <typename EdgeDataType>
-    class DuplicateEdgeFilter {
-    public:
-        virtual bool acceptFirst(EdgeDataType& first, EdgeDataType& second) = 0;
-    };
-    
-    
-    template <typename EdgeDataType>
+    template <typename VectorElementType, typename HeaderDataType>
     struct edge_with_value {
         vid_t src;
         vid_t dst;
-        EdgeDataType value;
+        HeaderDataType hdr;
+        std::vector<VectorElementType> value;
         
         // For dynamic edge data, we need to know if the value needs to be added
         // to the vector, or are we storing an empty vector.
         bool is_chivec_value;
-        uint16_t valindex;
         edge_with_value() {}
         
-        edge_with_value(vid_t src, vid_t dst, EdgeDataType value) : src(src), dst(dst), value(value) {
-            is_chivec_value = false;
-            valindex = 0;
+        edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value) : src(src), dst(dst), value(value) {
+        }
+        
+        edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value, HeaderDataType hdr) : src(src), dst(dst), value(value), hdr(hdr) {
         }
         
         // Order primarily by dst, then by src
-        bool operator< (edge_with_value<EdgeDataType> &x2) {
+        bool operator< (edge_with_value<VectorElementType, HeaderDataType> &x2) {
             return (dst < x2.dst);
+        }
+        
+        void reade(int f) {
+            read(f, &src, sizeof(vid_t));
+            read(f, &dst, sizeof(vid_t));
+            uint16_t nvalues;
+            read(f, &nvalues, sizeof(uint16_t));
+            value.resize(nvalues);
+            read(f, &value[0], sizeof(VectorElementType) * nvalues);
+            read(f, &hdr, sizeof(HeaderDataType));
+        }
+        
+        void writee(int f) {
+            writea(f, &src, sizeof(vid_t));
+            writea(f, &dst, sizeof(vid_t));
+            uint16_t nvalues = value.size();
+            assert(value.size() < 1<<16);
+            writea(f, &nvalues, sizeof(uint16_t));
+            writea(f, &value[0], sizeof(VectorElementType) * nvalues);
+            writea(f, &hdr, sizeof(HeaderDataType));
         }
         
         
         bool stopper() { return src == 0 && dst == 0; }
     };
     
-    template <typename EdgeDataType>
-    bool edge_t_src_less(const edge_with_value<EdgeDataType> &a, const edge_with_value<EdgeDataType> &b) {
+    template <typename VectorElementType, typename HeaderDataType>
+    bool edge_t_src_less(const edge_with_value<VectorElementType, HeaderDataType> &a, const edge_with_value<VectorElementType, HeaderDataType> &b) {
         if (a.src == b.src) {
-            if (a.dst == b.dst) {
-                return a.valindex < b.valindex;
-            }
             return a.dst < b.dst;
         }
         return a.src < b.src;
     }
     
-    template <typename EdgeDataType>
-    bool edge_t_dst_less(const edge_with_value<EdgeDataType> &a, const edge_with_value<EdgeDataType> &b) {
+    template <typename VectorElementType, typename HeaderDataType>
+    bool edge_t_dst_less(const edge_with_value<VectorElementType, HeaderDataType> &a, const edge_with_value<VectorElementType, HeaderDataType> &b) {
         return a.dst < b.dst;
     }
     
-    template <class EdgeDataType>
-    struct dstF {inline vid_t operator() (edge_with_value<EdgeDataType> a) {return a.dst;} };
+    template <class VectorElementType, typename HeaderDataType>
+    struct dstF {inline vid_t operator() (edge_with_value<VectorElementType, HeaderDataType> a) {return a.dst;} };
     
-    template <class EdgeDataType>
-    struct srcF {inline vid_t operator() (edge_with_value<EdgeDataType> a) {return a.src;} };
+    template <class VectorElementType, typename HeaderDataType>
+    struct srcF {inline vid_t operator() (edge_with_value<VectorElementType, HeaderDataType> a) {return a.src;} };
     
   
     
-    template <typename EdgeDataType>
+    template <typename VectorElementType, typename HeaderDataType>
     struct shard_flushinfo {
         std::string shovelname;
         size_t numedges;
-        edge_with_value<EdgeDataType> * buffer;
+        edge_with_value<VectorElementType, HeaderDataType> * buffer;
         vid_t max_vertex;
         
-        shard_flushinfo(std::string shovelname, vid_t max_vertex, size_t numedges, edge_with_value<EdgeDataType> * buffer) :
+        shard_flushinfo(std::string shovelname, vid_t max_vertex, size_t numedges, edge_with_value<VectorElementType, HeaderDataType> * buffer) :
         shovelname(shovelname), numedges(numedges), buffer(buffer), max_vertex(max_vertex) {}
         
         void flush() {
             /* Sort */
             // TODO: remove duplicates here!
             logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
-            iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<EdgeDataType>());
+            iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<VectorElementType, HeaderDataType>());
             logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
             int f = open(shovelname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-            writea(f, buffer, numedges * sizeof(edge_with_value<EdgeDataType>));
+            //writea(f, buffer, numedges * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+            
+            writea(f, &numedges, sizeof(size_t));
+            
+            /* Write the edges into file. This is quite a bit more complicated than with non-dynamic data... */
+            for(size_t i=0; i<numedges; i++) {
+                edge_with_value<VectorElementType, HeaderDataType> &edge = buffer[i];
+                edge.writee(f);
+            }
+            
             close(f);
             free(buffer);
         }
     };
     
     // Run in a thread
-    template <typename EdgeDataType>
+    template <typename VectorElementType, typename HeaderDataType>
     static void * shard_flush_run(void * _info) {
-        shard_flushinfo<EdgeDataType> * task = (shard_flushinfo<EdgeDataType>*)_info;
+        shard_flushinfo<VectorElementType, HeaderDataType> * task = (shard_flushinfo<VectorElementType, HeaderDataType>*)_info;
         task->flush();
         return NULL;
     }
     
     
-    template <typename EdgeDataType>
-    struct shovel_merge_source : public merge_source<edge_with_value<EdgeDataType> > {
+    template <typename VectorElementType, typename HeaderDataType=dummy>
+    struct shovel_merge_source : public merge_source<edge_with_value<VectorElementType, HeaderDataType> > {
         
         size_t bufsize_bytes;
-        size_t bufsize_edges;
         std::string shovelfile;
         size_t idx;
         size_t bufidx;
-        edge_with_value<EdgeDataType> * buffer;
+        std::vector<edge_with_value<VectorElementType, HeaderDataType> > buffer;
         int f;
         size_t numedges;
+        size_t bufsize_edges;
         
         shovel_merge_source(size_t bufsize_bytes, std::string shovelfile) : bufsize_bytes(bufsize_bytes), 
         shovelfile(shovelfile), idx(0), bufidx(0) {
-            assert(bufsize_bytes % sizeof(edge_with_value<EdgeDataType>) == 0);
             f = open(shovelfile.c_str(), O_RDONLY);
             
             if (f < 0) {
@@ -185,28 +205,28 @@ namespace graphchi {
             
             assert(f>=0);
             
-            buffer = (edge_with_value<EdgeDataType> *) malloc(bufsize_bytes);
-            numedges =   (get_filesize(shovelfile) / sizeof(edge_with_value<EdgeDataType> ));
-            bufsize_edges =   (bufsize_bytes / sizeof(edge_with_value<EdgeDataType>));
+            bufsize_edges = bufsize_bytes / sizeof(edge_with_value<VectorElementType, HeaderDataType>);
+            read(f, &numedges, sizeof(size_t));
             load_next();
         }
         
-        virtual ~shovel_merge_source() {
-            if (buffer != NULL) free(buffer);
-            buffer = NULL;
-        }
+        virtual ~shovel_merge_source() {}
         
         void finish() {
             close(f);
             remove(shovelfile.c_str());
-
-            free(buffer);
-            buffer = NULL;
+            buffer.clear();
         }
         
         void load_next() {
-            size_t len = std::min(bufsize_bytes,  ((numedges - idx) * sizeof(edge_with_value<EdgeDataType>)));
-            preada(f, buffer, len, idx * sizeof(edge_with_value<EdgeDataType>));
+            size_t nread = 0;
+            buffer.clear();
+            while(nread < bufsize_bytes) {
+                edge_with_value<VectorElementType, HeaderDataType> edge;
+                edge.reade(f);
+                buffer.push_back(edge);
+                nread += sizeof(vid_t) * 2 + sizeof(uint16_t) + sizeof(HeaderDataType) + edge.value.size() * sizeof(VectorElementType);
+            }
             bufidx = 0;
         }
         
@@ -214,13 +234,13 @@ namespace graphchi {
             return idx < numedges;
         }
         
-        edge_with_value<EdgeDataType> next() {
+        edge_with_value<VectorElementType, HeaderDataType> & next() {
             if (bufidx == bufsize_edges) {
                 load_next();
             }
             idx++;
             if (idx == numedges) {
-                edge_with_value<EdgeDataType> x = buffer[bufidx++];
+                edge_with_value<VectorElementType, HeaderDataType> &x = buffer[bufidx++];
                 finish();
                 return x;
             }
@@ -228,10 +248,10 @@ namespace graphchi {
         }
     };
     
-    template <typename EdgeDataType, typename FinalEdgeDataType=EdgeDataType>
-    class sharder : public merge_sink<edge_with_value<EdgeDataType> > {
+    template <typename VectorElementType, typename HeaderDataType=dummy>
+    class sharder : public merge_sink<edge_with_value<VectorElementType, HeaderDataType> > {
         
-        typedef edge_with_value<EdgeDataType> edge_t;
+        typedef edge_with_value<VectorElementType, HeaderDataType> edge_t;
         
     protected:
         std::string basefilename;
@@ -258,7 +278,6 @@ namespace graphchi {
         
         vid_t filter_max_vertex;
         
-        DuplicateEdgeFilter<EdgeDataType> * duplicate_edge_filter;
         
         bool no_edgevalues;
         edge_t last_added_edge;
@@ -271,31 +290,27 @@ namespace graphchi {
         int numshovels;
         size_t shoveled_edges;
         bool shovel_sorted;
-        edge_with_value<EdgeDataType> * curshovel_buffer;
+        edge_with_value<VectorElementType, HeaderDataType> * curshovel_buffer;
         std::vector<pthread_t> shovelthreads;
         
     public:
         
         sharder(std::string basefilename) : basefilename(basefilename), m("sharder") {          
             
-            edgedatasize = sizeof(FinalEdgeDataType);
+            edgedatasize = sizeof(VectorElementType);
             no_edgevalues = false;
             compressed_block_size = 4096 * 1024;
             filter_max_vertex = 0;
             curshovel_buffer = NULL;
-            while (compressed_block_size % sizeof(FinalEdgeDataType) != 0) compressed_block_size++;
-            edges_per_block = compressed_block_size / sizeof(FinalEdgeDataType);
-            duplicate_edge_filter = NULL;
+            while (compressed_block_size % sizeof(VectorElementType) != 0) compressed_block_size++;
+            edges_per_block = compressed_block_size / sizeof(VectorElementType);
         }
         
         
         virtual ~sharder() {
             if (curshovel_buffer == NULL) free(curshovel_buffer);
         }
-        
-        void set_duplicate_filter(DuplicateEdgeFilter<EdgeDataType> * filter) {
-            this->duplicate_edge_filter = filter;
-        }
+  
         
         void set_max_vertex_id(vid_t maxid) {
             filter_max_vertex = maxid;
@@ -311,12 +326,12 @@ namespace graphchi {
         void start_preprocessing() {
             m.start_time("preprocessing");
             numshovels = 0;
-            shovelsize = (1024l * 1024l * size_t(get_option_int("membudget_mb", 1024)) / 4l / sizeof(edge_with_value<EdgeDataType>));
+            shovelsize = (1024l * 1024l * size_t(get_option_int("membudget_mb", 1024)) / 4l / sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             curshovel_idx = 0;
             
             logstream(LOG_INFO) << "Starting preprocessing, shovel size: " << shovelsize << std::endl;
             
-            curshovel_buffer = (edge_with_value<EdgeDataType> *) calloc(shovelsize, sizeof(edge_with_value<EdgeDataType>));
+            curshovel_buffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shovelsize, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             
             assert(curshovel_buffer != NULL);
             
@@ -337,7 +352,7 @@ namespace graphchi {
         
         void flush_shovel(bool async=true) {
             /* Flush in separate thread unless the last one */
-            shard_flushinfo<EdgeDataType> * flushinfo = new shard_flushinfo<EdgeDataType>(shovel_filename(numshovels), max_vertex_id, curshovel_idx, curshovel_buffer);
+            shard_flushinfo<VectorElementType, HeaderDataType> * flushinfo = new shard_flushinfo<VectorElementType, HeaderDataType>(shovel_filename(numshovels), max_vertex_id, curshovel_idx, curshovel_buffer);
             
             if (!async) {
                 curshovel_buffer = NULL;
@@ -357,9 +372,9 @@ namespace graphchi {
                     }
                     shovelthreads.clear();
                 }
-                curshovel_buffer = (edge_with_value<EdgeDataType> *) calloc(shovelsize, sizeof(edge_with_value<EdgeDataType>));
+                curshovel_buffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shovelsize, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
                 pthread_t t;
-                int ret = pthread_create(&t, NULL, shard_flush_run<EdgeDataType>, (void*)flushinfo);
+                int ret = pthread_create(&t, NULL, shard_flush_run<VectorElementType, HeaderDataType>, (void*)flushinfo);
                 shovelthreads.push_back(t);
                 assert(ret>=0);
             }
@@ -370,17 +385,15 @@ namespace graphchi {
         /**
          * Add edge to be preprocessed with a value.
          */
-        void preprocessing_add_edge(vid_t from, vid_t to, EdgeDataType val, bool input_value=false) {
+        void preprocessing_add_edge(vid_t from, vid_t to, VectorElementType val, bool input_value=false) {
             if (from == to) {
                 // Do not allow self-edges
                 return;
-            }  
-            edge_with_value<EdgeDataType> e(from, to, val);
+            }
+            assert(!input_value);
+            edge_with_value<VectorElementType, HeaderDataType> e(from, to, std::vector<VectorElementType>(0));
 
             e.is_chivec_value = input_value;
-            if (e.src == last_added_edge.src && e.dst == last_added_edge.dst) {
-                e.valindex = last_added_edge.valindex + 1;
-            }
             last_added_edge = e;
             curshovel_buffer[curshovel_idx++] = e;
             if (curshovel_idx == shovelsize) {
@@ -391,12 +404,21 @@ namespace graphchi {
             shoveled_edges++;
         }
         
-         void preprocessing_add_edge_multival(vid_t from, vid_t to, std::vector<EdgeDataType> & vals) {
-            typename std::vector<EdgeDataType>::iterator iter;
-            for(iter=vals.begin(); iter != vals.end(); ++iter) {
-                preprocessing_add_edge(from, to, *iter, true);
-            }
-            max_vertex_id = std::max(std::max(from, to), max_vertex_id);
+         void preprocessing_add_edge_multival(vid_t from, vid_t to, HeaderDataType hdr, std::vector<VectorElementType> & vals) {
+             if (from == to) {
+                 // Do not allow self-edges
+                 return;
+             }
+             edge_with_value<VectorElementType, HeaderDataType> e(from, to, vals, hdr);
+             
+             e.is_chivec_value = true;
+             curshovel_buffer[curshovel_idx++] = e;
+             if (curshovel_idx == shovelsize) {
+                 flush_shovel();
+             }
+             
+             max_vertex_id = std::max(std::max(from, to), max_vertex_id);
+             shoveled_edges++;
         }
         
          
@@ -404,7 +426,7 @@ namespace graphchi {
          * Add edge without value to be preprocessed
          */
         void preprocessing_add_edge(vid_t from, vid_t to) {
-            preprocessing_add_edge(from, to, EdgeDataType());
+            preprocessing_add_edge(from, to, VectorElementType());
         }
         
         /** Buffered write function */
@@ -503,7 +525,7 @@ namespace graphchi {
                 logstream(LOG_INFO) << "Determining maximum shard size: " << (max_shardsize / 1024. / 1024.) << " MB." << std::endl;
                                 
                 // For dynamic edge data, more working memory is needed, thus the number of shards is larger.
-                nshards = (int) ( 2 + 4 * (numedges * sizeof(FinalEdgeDataType) / max_shardsize) + 0.5);
+                nshards = (int) ( 2 + 4 * (numedges * sizeof(VectorElementType) / max_shardsize) + 0.5);
                 
             } else {
                 nshards = atoi(nshards_string.c_str());
@@ -535,7 +557,7 @@ namespace graphchi {
         
         std::string shovel_filename(int idx) {
             std::stringstream ss;
-            ss << basefilename << sizeof(EdgeDataType) << "." << idx << ".shovel";
+            ss << basefilename << sizeof(VectorElementType) << "." << idx << ".shovel";
             return ss.str();
         }
         
@@ -555,7 +577,7 @@ namespace graphchi {
             logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
             
             std::string fname = filename_shard_adj(basefilename, shard, nshards);
-            std::string edfname = filename_shard_edata<FinalEdgeDataType>(basefilename, shard, nshards);
+            std::string edfname = filename_shard_edata<VectorElementType>(basefilename, shard, nshards);
             std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
             
             /* Make the block directory */
@@ -567,33 +589,9 @@ namespace graphchi {
             
             m.start_time("finish_shard.sort");
 
-            quickSort(shovelbuf, (int)numedges, edge_t_src_less<EdgeDataType>);
+            quickSort(shovelbuf, (int)numedges, edge_t_src_less<VectorElementType, HeaderDataType>);
             m.stop_time("finish_shard.sort");
 
-            // Remove duplicates
-            if (duplicate_edge_filter != NULL && numedges > 0) {
-                edge_t * tmpbuf = (edge_t*) calloc(numedges, sizeof(edge_t));
-                size_t i = 1;
-                tmpbuf[0] = shovelbuf[0];
-                for(size_t j=1; j<numedges; j++) {
-                    edge_t prev = tmpbuf[i - 1];
-                    edge_t cur = shovelbuf[j];
-                    
-                    if (prev.src == cur.src && prev.dst == cur.dst) {
-                        if (duplicate_edge_filter->acceptFirst(cur.value, prev.value)) {
-                            // Replace the edge with the newer one
-                            tmpbuf[i - 1] = cur;
-                        }
-                    } else {
-                        tmpbuf[i++] = cur;
-                    }
-                }
-                numedges = i;
-                logstream(LOG_DEBUG) << "After duplicate elimination: " << numedges << " edges" << std::endl;
-                free(shovelbuf);
-                shovelbuf = tmpbuf; tmpbuf = NULL;
-            }
-            
             // Create the final file
             int f = open(fname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             if (f < 0) {
@@ -621,8 +619,7 @@ namespace graphchi {
                 if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
                 i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
                 jumpover = 0;
-                edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, EdgeDataType())); // Last "element" is a stopper
-                
+                edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, std::vector<VectorElementType>())); // Last "element" is a stopper
                 
                 if (lastdst == edge.dst && edge.src == curvid) {
                     // Currently not supported
@@ -635,20 +632,22 @@ namespace graphchi {
 
                     
                     /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
+                     bwrite_edata<HeaderDataType>(ebuf, ebufptr, shovelbuf[i].hdr, tot_edatabytes, edfname, edgecounter);
+                    
                     if (edge.is_chivec_value) {
                         // Need to check how many values for this edge
-                        int count = 1;
-                        while(shovelbuf[i + count].valindex == count) { count++; }
+                        int count = shovelbuf[i].value.size();
                         
                         assert(count < 32768);
-                        
-                        typename chivector<EdgeDataType>::sizeword_t szw;
+                        typename chivector<VectorElementType, HeaderDataType>::sizeword_t szw;
                         ((uint16_t *) &szw)[0] = (uint16_t)count;  // Sizeword with length and capacity = count
                         ((uint16_t *) &szw)[1] = (uint16_t)count;
-                        bwrite_edata<typename chivector<EdgeDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
+                        bwrite_edata<typename chivector<VectorElementType, HeaderDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
                         for(int j=0; j < count; j++) {
-                            bwrite_edata<EdgeDataType>(ebuf, ebufptr, EdgeDataType(shovelbuf[i + j].value), tot_edatabytes, edfname, edgecounter);
+                                bwrite_edata<VectorElementType>(ebuf, ebufptr, shovelbuf[i].value[j], tot_edatabytes, edfname, edgecounter);
                         }
+                  
+                    
                         jumpover = count - 1; // Jump over
                     } else {
                         // Just write size word with zero
@@ -715,7 +714,7 @@ namespace graphchi {
             
             /* Write edata size file */
             if (!no_edgevalues) {
-                edata_flush<FinalEdgeDataType>(ebuf, ebufptr, edfname, tot_edatabytes);
+                edata_flush<VectorElementType>(ebuf, ebufptr, edfname, tot_edatabytes);
                 
                 std::string sizefilename = edfname + ".size";
                 std::ofstream ofs(sizefilename.c_str());
@@ -735,11 +734,11 @@ namespace graphchi {
         size_t shard_capacity;
         size_t sharded_edges;
         int shardnum;
-        edge_with_value<EdgeDataType> * sinkbuffer;
+        edge_with_value<VectorElementType, HeaderDataType> * sinkbuffer;
         vid_t prevvid;
         vid_t this_interval_start;
         
-        virtual void add(edge_with_value<EdgeDataType> val) {
+        virtual void add(edge_with_value<VectorElementType, HeaderDataType> val) {
             if (cur_shard_counter >= edges_per_shard && val.dst != prevvid) {
                 createnextshard();
             }
@@ -748,7 +747,7 @@ namespace graphchi {
                 /* Really should have a way to limit shard sizes, but probably not needed in practice */
                 logstream(LOG_WARNING) << "Shard " << shardnum << " overflowing! " << cur_shard_counter << " / " << shard_capacity << std::endl;
                 shard_capacity = (size_t) (1.2 * shard_capacity);
-                sinkbuffer = (edge_with_value<EdgeDataType>*) realloc(sinkbuffer, shard_capacity * sizeof(edge_with_value<EdgeDataType>));
+                sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType>*) realloc(sinkbuffer, shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             }
             
             sinkbuffer[cur_shard_counter++] = val;
@@ -760,8 +759,8 @@ namespace graphchi {
             assert(shardnum < nshards);
             intervals.push_back(std::pair<vid_t, vid_t>(this_interval_start, (shardnum == nshards - 1 ? max_vertex_id : prevvid)));
             this_interval_start = prevvid + 1;
-            finish_shard(shardnum++, sinkbuffer, cur_shard_counter * sizeof(edge_with_value<EdgeDataType>));
-            sinkbuffer = (edge_with_value<EdgeDataType> *) malloc(shard_capacity * sizeof(edge_with_value<EdgeDataType>));
+            finish_shard(shardnum++, sinkbuffer, cur_shard_counter * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+            sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType> *) malloc(shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             cur_shard_counter = 0;
             
             // Adjust edges per hard so that it takes into account how many edges have been spilled now
@@ -820,19 +819,7 @@ namespace graphchi {
             
             // Check if we have enough memory to keep track
             // of the vertex degrees in-memory (heuristic)
-            bool count_degrees_inmem = membudget_mb * 1024 * 1024 / 3 > max_vertex_id * sizeof(degree);
-            degrees = NULL;
-            if (!count_degrees_inmem) {
-                /* Temporary: force in-memory count of degrees because the PSW-based computation
-                 is not yet compatible with dynamic edge data.
-                 */
-                logstream(LOG_WARNING) << "Dynamic edge data support only sharding when the vertex degrees can be computed in-memory." << std::endl;
-                logstream(LOG_WARNING) << "If the program gets very slow (starts swapping), the data size is too big." << std::endl;
-                count_degrees_inmem = true;
-            }
-            if (count_degrees_inmem) {
-                degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
-            }
+            degrees = (degree *) calloc(1 + max_vertex_id, sizeof(degree));
             
             // KWAY MERGE
             sharded_edges = 0;
@@ -840,45 +827,40 @@ namespace graphchi {
             shard_capacity = edges_per_shard / 2 * 3;  // Shard can go 50% over
             shardnum = 0;
             this_interval_start = 0;
-            sinkbuffer = (edge_with_value<EdgeDataType> *) calloc(shard_capacity, sizeof(edge_with_value<EdgeDataType>));
+            sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shard_capacity, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             logstream(LOG_INFO) << "Edges per shard: " << edges_per_shard << " nshards=" << nshards << " total: " << shoveled_edges << std::endl;
             cur_shard_counter = 0;
             
             /* Initialize kway merge sources */
             size_t B = membudget_mb * 1024 * 1024 / 2 / numshovels;
-            while (B % sizeof(edge_with_value<EdgeDataType>) != 0) B++;
+            while (B % sizeof(edge_with_value<VectorElementType, HeaderDataType>) != 0) B++;
             logstream(LOG_INFO) << "Buffer size in merge phase: " << B << std::endl;
             prevvid = (-1);
-            std::vector< merge_source<edge_with_value<EdgeDataType> > *> sources;
+            std::vector< merge_source<edge_with_value<VectorElementType, HeaderDataType> > *> sources;
             for(int i=0; i < numshovels; i++) {
-                sources.push_back(new shovel_merge_source<EdgeDataType>(B, shovel_filename(i)));
+                sources.push_back(new shovel_merge_source<VectorElementType, HeaderDataType>(B, shovel_filename(i)));
             }
             
-            kway_merge<edge_with_value<EdgeDataType> > merger(sources, this);
+            kway_merge<edge_with_value<VectorElementType, HeaderDataType> > merger(sources, this);
             merger.merge();
             
             // Delete sources
             for(int i=0; i < (int)sources.size(); i++) {
-                delete (shovel_merge_source<EdgeDataType> *)sources[i];
+                delete (shovel_merge_source<VectorElementType, HeaderDataType> *)sources[i];
             }
             
             
-            if (!count_degrees_inmem) {
-                // Use memory-efficient (but slower) method to create degree-data
-                create_degree_file();                
-            } else {
-                std::string degreefname = filename_degree_data(basefilename);
-                int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                if (degreeOutF < 0) {
-                    logstream(LOG_ERROR) << "Could not create: " << degreeOutF << std::endl;
-                    assert(degreeOutF >= 0);
-                }
-                
-                writea(degreeOutF, degrees, sizeof(degree) * (1 + max_vertex_id));
-                free(degrees);
-                close(degreeOutF);
+            
+            std::string degreefname = filename_degree_data(basefilename);
+            int degreeOutF = open(degreefname.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+            if (degreeOutF < 0) {
+                logstream(LOG_ERROR) << "Could not create: " << degreeOutF << std::endl;
+                assert(degreeOutF >= 0);
             }
             
+            writea(degreeOutF, degrees, sizeof(degree) * (1 + max_vertex_id));
+            free(degrees);
+            close(degreeOutF);
         }
         
         
@@ -888,8 +870,6 @@ namespace graphchi {
         typedef memory_shard<int, dummy_t> memshard_t;
         
         
-        
-        template <typename A, typename B> friend class sharded_graph_output;
     }; // End class sharder
     
     

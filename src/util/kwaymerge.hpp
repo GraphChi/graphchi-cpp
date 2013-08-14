@@ -41,7 +41,7 @@ template <typename T>
 class merge_source {
 public:
     virtual bool has_more() = 0;
-    virtual T next() = 0;
+    virtual T & next() = 0;
 };
 template <typename T>
 class merge_sink {
