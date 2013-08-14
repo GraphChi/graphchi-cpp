@@ -38,7 +38,7 @@ namespace graphchi {
     class ischeduler {
     public:
         virtual ~ischeduler() {} 
-        virtual void add_task(vid_t vid) = 0;
+        virtual void add_task(vid_t vid, bool also_this_iteration=false) = 0;
         virtual void add_task_to_all()  = 0;
         virtual bool is_scheduled(vid_t vertex) = 0;
         virtual size_t num_tasks() = 0;
@@ -55,7 +55,7 @@ namespace graphchi {
     public:
         non_scheduler() : nwarnings(0) {}
         virtual ~non_scheduler() {} 
-        virtual void add_task(vid_t vid) {
+        virtual void add_task(vid_t vid, bool also_this_iteration=false) {
             if (nwarnings++ % 10000 == 0) {
                 logstream(LOG_WARNING) << "Tried to add task to scheduler, but scheduling was not enabled!" << std::endl;
             } 

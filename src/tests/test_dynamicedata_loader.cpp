@@ -30,6 +30,7 @@
 
 #define DYNAMICEDATA 1
 #define DYNAMICVERTEXDATA 1   
+#define GRAPHCHI_DISABLE_COMPRESSION 1
 
 #include <string>
 

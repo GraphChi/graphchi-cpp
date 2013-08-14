@@ -83,7 +83,7 @@ namespace graphchi {
         // For dynamic edge data, we need to know if the value needs to be added
         // to the vector, or are we storing an empty vector.
         bool is_chivec_value;
-        edge_with_value() {}
+        edge_with_value() : value(std::vector<VectorElementType>(0)) {}
         
         edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value) : src(src), dst(dst), value(value) {
         }
@@ -100,18 +100,23 @@ namespace graphchi {
         void reade(int f) {
             read(f, &src, sizeof(vid_t));
             read(f, &dst, sizeof(vid_t));
-            uint16_t nvalues;
-            read(f, &nvalues, sizeof(uint16_t));
-            value.resize(nvalues);
-            read(f, &value[0], sizeof(VectorElementType) * nvalues);
-            read(f, &hdr, sizeof(HeaderDataType));
-           
-            std::cout << src << " - " << dst << " " << *((int*)&value[0]) << std::endl;
+            read(f, &is_chivec_value, sizeof(bool));
+
+            if (is_chivec_value) {
+                uint16_t nvalues;
+                read(f, &nvalues, sizeof(uint16_t));
+                value.resize(nvalues);
+                read(f, &value[0], sizeof(VectorElementType) * nvalues);
+                read(f, &hdr, sizeof(HeaderDataType));
+            }
+            //std::cout << src << " - " << dst << " " << *((int*)&value[0]) << std::endl;
         }
         
         void writee(int f) {
             writea(f, &src, sizeof(vid_t));
             writea(f, &dst, sizeof(vid_t));
+            writea(f, &is_chivec_value, sizeof(bool));
+
             uint16_t nvalues = value.size();
             assert(value.size() < 1<<16);
             writea(f, &nvalues, sizeof(uint16_t));
@@ -240,7 +245,7 @@ namespace graphchi {
             return idx < numedges;
         }
         
-        edge_with_value<VectorElementType, HeaderDataType> & next() {
+        edge_with_value<VectorElementType, HeaderDataType> next() {
             if (bufidx == bufsize_edges) {
                 load_next();
             }
@@ -268,7 +273,6 @@ namespace graphchi {
         int nshards;
         std::vector< std::pair<vid_t, vid_t> > intervals;
         
-        int phase;
         
         int vertexchunk;
         size_t nedges;
@@ -277,7 +281,6 @@ namespace graphchi {
         int compressed_block_size;
         
         int * bufptrs;
-        size_t bufsize;
         size_t edgedatasize;
         size_t ebuffer_size;
         size_t edges_per_block;
@@ -441,7 +444,7 @@ namespace graphchi {
             if (bufptr + sizeof(T) - buf >= SHARDER_BUFSIZE) {
                 writea(f, buf, bufptr - buf);
                 bufptr = buf;
-            }
+            } 
             *((T*)bufptr) = val;
             bufptr += sizeof(T);
         }
@@ -453,6 +456,8 @@ namespace graphchi {
             int len = (int) (bufptr - buf);
             
             m.start_time("edata_flush");
+            
+            std::cout << shard_filename << std::endl;
             
             std::string block_filename = filename_shard_edata_block(shard_filename, blockid, compressed_block_size);
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -569,10 +574,6 @@ namespace graphchi {
         
         
         int lastpart;
-        
-        
-        
-        
         degree * degrees;
         
         virtual void finish_shard(int shard, edge_t * shovelbuf, size_t shovelsize) {
@@ -616,15 +617,12 @@ namespace graphchi {
             
             vid_t curvid=0;
             vid_t lastdst = 0xffffffff;
-            int jumpover = 0;
             size_t num_uniq_edges = 0;
             size_t last_edge_count = 0;
             size_t istart = 0;
             size_t tot_edatabytes = 0;
             for(size_t i=0; i <= numedges; i++) {
                 if (i % 10000000 == 0) logstream(LOG_DEBUG) << i << " / " << numedges << std::endl;
-                i += jumpover;  // With dynamic values, there might be several values for one edge, and thus the edge repeated in the data.
-                jumpover = 0;
                 edge_t edge = (i < numedges ? shovelbuf[i] : edge_t(0, 0, std::vector<VectorElementType>())); // Last "element" is a stopper
                 
                 if (lastdst == edge.dst && edge.src == curvid) {
@@ -635,15 +633,14 @@ namespace graphchi {
                 lastdst = edge.dst;
                 
                 if (!edge.stopper()) {
-
-                    
+                    assert(i < numedges);
                     /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
                      bwrite_edata<HeaderDataType>(ebuf, ebufptr, shovelbuf[i].hdr, tot_edatabytes, edfname, edgecounter);
                     
                     if (edge.is_chivec_value) {
                         // Need to check how many values for this edge
                         int count = shovelbuf[i].value.size();
-                        
+                        std::cout << edge.src << " -- " << edge.dst << " count: " << count << std::endl;
                         assert(count < 32768);
                         typename chivector<VectorElementType, HeaderDataType>::sizeword_t szw;
                         ((uint16_t *) &szw)[0] = (uint16_t)count;  // Sizeword with length and capacity = count
@@ -654,7 +651,6 @@ namespace graphchi {
                         }
                   
                     
-                        jumpover = count - 1; // Jump over
                     } else {
                         // Just write size word with zero
                         bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
@@ -684,15 +680,10 @@ namespace graphchi {
                         }
                     }
                     
-                    // Special dealing with dynamic edata because some edges can be present multiple
-                    // times in the shovel.
                     for(size_t j=istart; j < i; j++) {
-                        if (j == istart || shovelbuf[j - 1].dst != shovelbuf[j].dst) {
-                            bwrite(f, buf, bufptr,  shovelbuf[j].dst);
-                        }
+                        bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                     }
                     istart = i;
-                    istart += jumpover;
                     
                     // Handle zeros
                     if (!edge.stopper()) {
