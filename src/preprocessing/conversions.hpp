@@ -120,8 +120,7 @@ namespace graphchi {
     
 #ifdef DYNAMICEDATA
     static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> &values, char * s);
-    
-    void parse_multiple(std::vector<dummy> & values, char * s) {
+    static void VARIABLE_IS_NOT_USED parse_multiple(std::vector<dummy> & values, char * s) {
         assert(false);
     }
     
