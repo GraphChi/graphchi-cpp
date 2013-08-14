@@ -204,7 +204,7 @@ namespace graphchi {
             return idx < numedges;
         }
         
-        edge_with_value<EdgeDataType> & next() {
+        edge_with_value<EdgeDataType> next() {
             if (bufidx == bufsize_edges) {
                 load_next();
             }

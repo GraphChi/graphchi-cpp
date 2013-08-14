@@ -85,7 +85,7 @@ namespace graphchi {
         edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value) : src(src), dst(dst), value(value) {
         }
         
-        edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value, HeaderDataType hdr) : src(src), dst(dst), value(value), hdr(hdr) {
+        edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value, HeaderDataType hdr) : src(src), dst(dst), hdr(hdr), value(value){
         }
         
         // Order primarily by dst, then by src
@@ -95,28 +95,31 @@ namespace graphchi {
         
         // TODO: use buffered I/O
         void reade(int f) {
-            read(f, &src, sizeof(vid_t));
-            read(f, &dst, sizeof(vid_t));
-            read(f, &is_chivec_value, sizeof(bool));
+            ssize_t l;
+            l = read(f, &src, sizeof(vid_t)); assert(l == sizeof(vid_t));
+            l = read(f, &dst, sizeof(vid_t)); assert(l == sizeof(vid_t));
+            l = read(f, &is_chivec_value, sizeof(bool)); assert(l == sizeof(bool));
             if (is_chivec_value) {
                 uint16_t nvalues;
-                read(f, &nvalues, sizeof(uint16_t));
+                l = read(f, &nvalues, sizeof(uint16_t));  assert(l == sizeof(uint16_t));
                 value.resize(nvalues);
-                read(f, &value[0], sizeof(VectorElementType) * nvalues);
-                read(f, &hdr, sizeof(HeaderDataType));
+                // TODO: basically should loop here?
+                l = read(f, &value[0], sizeof(VectorElementType) * nvalues); assert(l == sizeof(VectorElementType) * nvalues);
+                l = read(f, &hdr, sizeof(HeaderDataType));  assert(l == sizeof(HeaderDataType));
             }
         }
         
         void writee(int f) {
-            writea(f, &src, sizeof(vid_t));
-            writea(f, &dst, sizeof(vid_t));
-            writea(f, &is_chivec_value, sizeof(bool));
+            ssize_t l;
+            l = write(f, &src, sizeof(vid_t));  assert(l == sizeof(vid_t));
+            l = write(f, &dst, sizeof(vid_t));  assert(l == sizeof(vid_t));
+            l = write(f, &is_chivec_value, sizeof(bool));  assert(l == sizeof(bool));
             if (is_chivec_value) {
                 uint16_t nvalues = value.size();
                 assert(value.size() < 1<<16);
-                writea(f, &nvalues, sizeof(uint16_t));
-                writea(f, &value[0], sizeof(VectorElementType) * nvalues);
-                writea(f, &hdr, sizeof(HeaderDataType));
+                l = write(f, &nvalues, sizeof(uint16_t));  assert(l == sizeof(uint16_t));
+                l = write(f, &value[0], sizeof(VectorElementType) * nvalues);  assert(l == sizeof(VectorElementType) * nvalues);
+                l = write(f, &hdr, sizeof(HeaderDataType));    assert(l == sizeof(HeaderDataType));
             }
         }
         
