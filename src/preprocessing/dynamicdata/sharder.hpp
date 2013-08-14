@@ -60,11 +60,8 @@
 #include "shards/slidingshard.hpp"
 #include "output/output.hpp"
 #include "util/ioutil.hpp"
-#include "util/radixSort.hpp"
 #include "util/kwaymerge.hpp"
-#ifdef DYNAMICEDATA
 #include "util/qsort.hpp"
-#endif 
 namespace graphchi {
      
     
@@ -83,7 +80,7 @@ namespace graphchi {
         // For dynamic edge data, we need to know if the value needs to be added
         // to the vector, or are we storing an empty vector.
         bool is_chivec_value;
-        edge_with_value() {}
+        edge_with_value() : value(std::vector<VectorElementType>(0)) {}
         
         edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value) : src(src), dst(dst), value(value) {
         }
@@ -100,21 +97,27 @@ namespace graphchi {
         void reade(int f) {
             read(f, &src, sizeof(vid_t));
             read(f, &dst, sizeof(vid_t));
-            uint16_t nvalues;
-            read(f, &nvalues, sizeof(uint16_t));
-            value.resize(nvalues);
-            read(f, &value[0], sizeof(VectorElementType) * nvalues);
-            read(f, &hdr, sizeof(HeaderDataType));
+            read(f, &is_chivec_value, sizeof(bool));
+            if (is_chivec_value) {
+                uint16_t nvalues;
+                read(f, &nvalues, sizeof(uint16_t));
+                value.resize(nvalues);
+                read(f, &value[0], sizeof(VectorElementType) * nvalues);
+                read(f, &hdr, sizeof(HeaderDataType));
+            }
         }
         
         void writee(int f) {
             writea(f, &src, sizeof(vid_t));
             writea(f, &dst, sizeof(vid_t));
-            uint16_t nvalues = value.size();
-            assert(value.size() < 1<<16);
-            writea(f, &nvalues, sizeof(uint16_t));
-            writea(f, &value[0], sizeof(VectorElementType) * nvalues);
-            writea(f, &hdr, sizeof(HeaderDataType));
+            writea(f, &is_chivec_value, sizeof(bool));
+            if (is_chivec_value) {
+                uint16_t nvalues = value.size();
+                assert(value.size() < 1<<16);
+                writea(f, &nvalues, sizeof(uint16_t));
+                writea(f, &value[0], sizeof(VectorElementType) * nvalues);
+                writea(f, &hdr, sizeof(HeaderDataType));
+            }
         }
         
         
@@ -134,13 +137,7 @@ namespace graphchi {
         return a.dst < b.dst;
     }
     
-    template <class VectorElementType, typename HeaderDataType>
-    struct dstF {inline vid_t operator() (edge_with_value<VectorElementType, HeaderDataType> a) {return a.dst;} };
-    
-    template <class VectorElementType, typename HeaderDataType>
-    struct srcF {inline vid_t operator() (edge_with_value<VectorElementType, HeaderDataType> a) {return a.src;} };
-    
-  
+
     
     template <typename VectorElementType, typename HeaderDataType>
     struct shard_flushinfo {
@@ -156,7 +153,7 @@ namespace graphchi {
             /* Sort */
             // TODO: remove duplicates here!
             logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
-            iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<VectorElementType, HeaderDataType>());
+            quickSort(buffer, numedges, edge_t_dst_less<VectorElementType, HeaderDataType>);
             logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
             int f = open(shovelname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             //writea(f, buffer, numedges * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
@@ -238,7 +235,7 @@ namespace graphchi {
             return idx < numedges;
         }
         
-        edge_with_value<VectorElementType, HeaderDataType> & next() {
+        edge_with_value<VectorElementType, HeaderDataType> next() {
             if (bufidx == bufsize_edges) {
                 load_next();
             }
@@ -455,7 +452,7 @@ namespace graphchi {
             int f = open(block_filename.c_str(), O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             write_compressed(f, buf, len);
             close(f);
-            
+                        
             m.stop_time("edata_flush");
             
             
@@ -630,11 +627,11 @@ namespace graphchi {
                 
                 if (!edge.stopper()) {
                     /* If we have dynamic edge data, we need to write the header of chivector - if there are edge values */
-                    bwrite_edata<HeaderDataType>(ebuf, ebufptr, shovelbuf[i].hdr, tot_edatabytes, edfname, edgecounter);
+                    bwrite_edata<HeaderDataType>(ebuf, ebufptr, edge.hdr, tot_edatabytes, edfname, edgecounter);
                     
                     if (edge.is_chivec_value) {
                         // Need to check how many values for this edge
-                        int count = shovelbuf[i].value.size();
+                        int count = edge.value.size();
                         
                         assert(count < 32768);
                         typename chivector<VectorElementType, HeaderDataType>::sizeword_t szw;
@@ -642,12 +639,12 @@ namespace graphchi {
                         ((uint16_t *) &szw)[1] = (uint16_t)count;
                         bwrite_edata<typename chivector<VectorElementType, HeaderDataType>::sizeword_t>(ebuf, ebufptr, szw, tot_edatabytes, edfname, edgecounter);
                         for(int j=0; j < count; j++) {
-                            bwrite_edata<VectorElementType>(ebuf, ebufptr, shovelbuf[i].value[j], tot_edatabytes, edfname, edgecounter);
+                            bwrite_edata<VectorElementType>(ebuf, ebufptr, edge.value[j], tot_edatabytes, edfname, edgecounter);
                         }
-                  
+                                          
                     } else {
                         // Just write size word with zero
-                        bwrite_edata<int>(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
+                        bwrite_edata<typename chivector<VectorElementType, HeaderDataType>::sizeword_t >(ebuf, ebufptr, 0, tot_edatabytes, edfname, edgecounter);
                     }
                     num_uniq_edges++;
                     edgecounter++; // Increment edge counter here --- notice that dynamic edata case makes two or more calls to bwrite_edata before incrementing
@@ -740,10 +737,12 @@ namespace graphchi {
                 shard_capacity = (size_t) (1.2 * shard_capacity);
                 sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType>*) realloc(sinkbuffer, shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             }
-            
+                        
             sinkbuffer[cur_shard_counter++] = val;
             prevvid = val.dst;
             sharded_edges++;
+            
+            
         }
         
         void createnextshard() {
@@ -753,6 +752,9 @@ namespace graphchi {
             finish_shard(shardnum++, sinkbuffer, cur_shard_counter * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType> *) malloc(shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             cur_shard_counter = 0;
+            
+            std::cout << "Allocated sinkbuffer: " << shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>) << ", shard_capacity=" << shard_capacity << std::endl;
+            std::cout << "sinkbuffer:" << sinkbuffer << std::endl;
             
             // Adjust edges per hard so that it takes into account how many edges have been spilled now
             logstream(LOG_INFO) << "Remaining edges: " << (shoveled_edges - sharded_edges) << " remaining shards:" << (nshards - shardnum)

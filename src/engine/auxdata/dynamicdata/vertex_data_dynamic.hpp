@@ -142,9 +142,9 @@ namespace graphchi {
             std::string bfilename = blockfilename(blockid);
             if (!file_exists(bfilename)) {
                 mkdir(dirname.c_str(), 0777);
-                size_t initsize = verticesperblock * sizeof(typename VertexDataType::sizeword_t);
+                size_t initsize = verticesperblock * (sizeof(typename VertexDataType::header_t) + sizeof(typename VertexDataType::sizeword_t));
                 int f = open(bfilename.c_str(),  O_RDWR | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
-                uint8_t * zeros = (uint8_t *) calloc(verticesperblock, sizeof(typename VertexDataType::sizeword_t));
+                uint8_t * zeros = (uint8_t *) calloc(verticesperblock, sizeof(typename VertexDataType::header_t) + sizeof(typename VertexDataType::sizeword_t));
                 write_compressed(f, zeros, initsize);
                 free(zeros);
 
@@ -162,9 +162,10 @@ namespace graphchi {
             db.fd = iomgr->open_session(blockfname, false, true);
             int realsize = get_block_uncompressed_size(blockfname, -1);
             assert(realsize > 0);
-            
             iomgr->managed_malloc(db.fd, &db.data, realsize, 0);
             iomgr->managed_preada_now(db.fd, &db.data, realsize, 0);
+            assert(db.data);
+
             db.dblock = new dynamicdata_block<VertexDataType>(verticesperblock, (uint8_t *)db.data, realsize);
             return db;
         }
