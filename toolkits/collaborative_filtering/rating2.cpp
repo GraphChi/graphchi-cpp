@@ -208,7 +208,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     //compute only for user nodes
-    if (vertex.id() >= (uint)end_user || vertex.id() < (uint)start_user)
+    if (vertex.id() >= std::min(M,(uint)end_user) || vertex.id() < (uint)start_user)
       return;
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
