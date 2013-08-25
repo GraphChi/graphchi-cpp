@@ -39,6 +39,8 @@
 #include "eigen_wrapper.hpp"
 #include "../parsers/common.hpp"
 #include <omp.h>
+#define GRAPHCHI_DISABLE_COMPRESSION //remove this if you want to save memory but increase runtime
+
 #define MAX_FEATURES 256
 #define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
@@ -46,7 +48,6 @@ double gensgd_rate1 = 1e-03;
 double gensgd_rate2 = 1e-03;
 double gensgd_rate3 = 1e-03;
 double gensgd_rate4 = 1e-03;
-double gensgd_rate5 = 1e-03;
 double gensgd_mult_dec = 0.9999999;
 double gensgd_regw = 1e-3;
 double gensgd_regv = 1e-3;
@@ -85,17 +86,19 @@ enum _cold_start{
    GLOBAL = 1, 
    ITEM = 3
 };
+
 struct feature_control{
   std::vector<double_map> node_id_maps;
   double_map val_map;
   int rehash_value;
-  int last_item;
   std::vector<stats> stats_array;
   int feature_num;
   int node_features;
   int node_links;
   int total_features;
   std::vector<bool> feature_selection;
+  std::vector<int> real_features_indicators;
+  std::vector<int> feature_positions;
   const std::string default_feature_str;
   std::vector<int> offsets;
   bool hash_strings;
@@ -105,7 +108,6 @@ struct feature_control{
 
   feature_control(){
     rehash_value = 0;
-    last_item = 0;
     total_features = 0;
     node_features = 0;
     feature_num = FEATURE_WIDTH;
@@ -115,6 +117,8 @@ struct feature_control{
     val_pos = -1;
     node_links = 0;
     feature_selection.resize(MAX_FEATURES+3);
+    real_features_indicators.resize(MAX_FEATURES+3);
+    feature_positions.resize(MAX_FEATURES+3);
   }
 };
 
@@ -138,7 +142,7 @@ int num_feature_bins(){
 }
 
 int calc_feature_num(){
-  return 2+fc.total_features+fc.last_item+fc.node_features;
+  return 2+fc.total_features+fc.node_features;
 }
 void get_offsets(std::vector<int> & offsets){
   assert(offsets.size() >= 2);
@@ -170,14 +174,12 @@ vec errors_vec;
 struct vertex_data {
   vec pvec;
   double bias;
-  int last_item;
   float avg_rating;
   sparse_vec features;
   sparse_vec links; //links to other users or items
 
   vertex_data() {
     bias = 0;
-    last_item = 0;
     avg_rating = -1;
   }
   void set_val(int index, float val){
@@ -203,6 +205,8 @@ struct edge_data {
 };
 
 
+vertex_data real_features[FEATURE_WIDTH]; 
+
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -224,7 +228,7 @@ int calc_feature_node_array_size(uint node, uint item){
     assert(item <= N);
     assert(fc.offsets[1]+item < latent_factors_inmem.size());
   }
-  int ret =  fc.total_features+fc.last_item;
+  int ret =  fc.total_features;
   if (node != (uint)-1)
     ret+= (1+nnz(latent_factors_inmem[node].features));
   if (item != (uint)-1)
@@ -304,7 +308,7 @@ float get_value(char * pch, bool read_only, const char * linebuf_debug, int i){
 
   }    
   if (std::isnan(ret) || std::isinf(ret))
-    logstream(LOG_WARNING)<<"Failed to read value (inf/nan) on line: " << i << " " << 
+    logstream(LOG_FATAL)<<"Failed to read value (inf/nan) on line: " << i << " " << 
        "[" << linebuf_debug << "]" << std::endl;
   return ret;
 }
@@ -432,8 +436,9 @@ float compute_prediction(
     const uint J, 
     const float val, 
     double & prediction, 
-    float * valarray, 
-    float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, vec * psum), 
+    const float * valarray,
+    int val_array_len, 
+    float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum), 
     vec * psum, 
     vertex_data **& node_array){
 
@@ -470,14 +475,19 @@ float compute_prediction(
 
   /* 2) FEATURES GIVEN IN RATING LINE */
   for (int j=0; j< fc.total_features; j++){
-    uint pos = (uint)ceil(valarray[j]+fc.offsets[j+loc]-fc.stats_array[j].minval);
-    //assert(pos >= 0 && pos < latent_factors_inmem.size());
-    if (pos < 0 || pos >= latent_factors_inmem.size())
-      logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
-        " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
-    node_array[j+index] = & latent_factors_inmem[pos];
+    assert(fc.feature_positions[j] < FEATURE_WIDTH);
+    if (fc.real_features_indicators[fc.feature_positions[j]]){
+      node_array[j+index] = & real_features[j];
+    } else {
+      uint pos = (uint)ceil(valarray[j]+fc.offsets[j+loc]-fc.stats_array[j].minval);
+      if (pos < 0 || pos >= latent_factors_inmem.size())
+        logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
+          " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
+      node_array[j+index] = & latent_factors_inmem[pos];
+    }
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
+
   }
   index+= fc.total_features;
   loc += fc.total_features;
@@ -532,17 +542,8 @@ float compute_prediction(
   }
   }
 
-  if (fc.last_item){
-    uint pos = latent_factors_inmem[I].last_item + fc.offsets[2+fc.total_features+fc.node_features];
-    assert(pos < latent_factors_inmem.size());
-    node_array[index] = &latent_factors_inmem[pos];
-    if (node_array[index]->pvec[0] >= 1e5)
-      logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
-    index++;
-    loc+=1;
-  }
   assert(index == calc_feature_node_array_size(I,J));
-  (*prediction_func)((const vertex_data**)node_array, calc_feature_node_array_size(I,J), val, prediction, psum);
+  (*prediction_func)((const vertex_data**)node_array, calc_feature_node_array_size(I,J), valarray, val_array_len, val, prediction, psum);
   return pow(val - prediction,2);
 } 
 
@@ -630,7 +631,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
     if (I>= M || J >= N || I < 0 || J < 0){
       if (i == 0)
-        logstream(LOG_FATAL)<<"Failed to parsed first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers?" << std::endl;
+        logstream(LOG_FATAL)<<"Failed to parse first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers? [ " << linebuf_debug << " ] " << " I : " << I << " J: " << J << std::endl;
       else 
         logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
     }
@@ -837,7 +838,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
   compute validation rmse
   */
   void validation_rmse_N(
-      float (*prediction_func)(const vertex_data ** array, int arraysize, float rating, double & prediction, vec * psum)
+      float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum)
       ,graphchi_context & gcontext, 
       feature_control & fc, 
       bool square = false) {
@@ -882,7 +883,6 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
       if (active_edge){
         assert(size == num_feature_bins());
-        size = 0; //to avoid warning
         if (I == (uint)-1 || J == (uint)-1){
           new_validation_users++;
           continue;
@@ -893,7 +893,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         for (int k=0; k< calc_feature_node_array_size(I,J); k++)
           node_array[k] = NULL;
         vec sum;
-        compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
+        compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
         delete [] node_array;
         dvalidation_rmse += pow(prediction - val, 2);
         if (calc_error) 
@@ -920,7 +920,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
 /* compute predictions for test data */
 void test_predictions_N(
-    float (*prediction_func)(const vertex_data ** node_array, int node_array_size, float rating, double & predictioni, vec * sum), 
+    float (*prediction_func)(const vertex_data ** node_array, int node_array_size, const float * val_array, int val_array_size, float rating, double & predictioni, vec * sum), 
     feature_control & fc, 
     bool square = false) {
   FILE * f = NULL;
@@ -957,7 +957,7 @@ void test_predictions_N(
   char linebuf_debug[1024];
   for (i=0; i<nz; i++)
   {
-
+    int size = num_feature_bins();
     if (!read_line(f, test, i, I, J, val, valarray, TEST, linebuf_debug))
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
@@ -982,7 +982,7 @@ void test_predictions_N(
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
-    compute_prediction(I, J, val, prediction, &valarray[0], prediction_func, &sum, node_array);
+    compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
     if (binary_prediction)
       prediction = (prediction > cutoff);
     fprintf(fout, "%12.8lg\n", prediction);
@@ -1003,20 +1003,33 @@ void test_predictions_N(
 /* This function implements equation (5) in the libFM paper:
  * http://www.csie.ntu.edu.tw/~b97053/paper/Factorization%20Machines%20with%20libFM.pdf
  * Note that in our implementation x_i are all 1 so the formula is slightly simpler */
-float gensgd_predict(const vertex_data** node_array, int node_array_size,
-    const float rating, double& prediction, vec* sum){
+float gensgd_predict(const vertex_data** node_array, int node_array_size, 
+                     const float * val_array, int val_array_size, 
+                     const float rating, double& prediction, vec* sum){
 
+  
   vec sum_sqr = zeros(D);
   *sum = zeros(D);
   prediction = globalMean;
   assert(!std::isnan(prediction));
-  for (int i=0; i< node_array_size; i++)
-    prediction += node_array[i]->bias;
+  assert(fc.feature_positions.size() > node_array_size+2);
+
+  for (int i=0; i< node_array_size; i++){
+    if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
+      prediction += node_array[i]->bias * val_array[i-2];
+    else
+      prediction += node_array[i]->bias;
+  }
+
   assert(!std::isnan(prediction));
 
   for (int j=0; j< D; j++){
     for (int i=0; i< node_array_size; i++){
-      sum->operator[](j) += node_array[i]->pvec[j];
+      if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
+        sum->operator[](j) += node_array[i]->pvec[j] * val_array[i-2];
+      else 
+        sum->operator[](j) += node_array[i]->pvec[j] ;
+
       if (sum->operator[](j) >= 1e5)
         logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
       sum_sqr[j] += pow(node_array[i]->pvec[j],2);
@@ -1024,6 +1037,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
     assert(!std::isnan(prediction));
   }
+
   //truncate prediction to allowed values
   prediction = std::min((double)prediction, maxval);
   prediction = std::max((double)prediction, minval);
@@ -1033,17 +1047,17 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   return err*err; 
 
 }
-float gensgd_predict(const vertex_data** node_array, int node_array_size,
+/*float gensgd_predict(const vertex_data** node_array, int node_array_size, const float * val_array, int val_array_size,
     const float rating, double & prediction){
   vec sum;
-  return gensgd_predict(node_array, node_array_size, rating, prediction, &sum);
-}
+  return gensgd_predict(node_array, node_array_size, val_array, val_array_size, rating, prediction, &sum);
+}*/
 
 
 void init_gensgd(bool load_factors_from_file){
 
   srand(time(NULL));
-  int nodes = M+N+num_feature_bins()+fc.last_item*M;
+  int nodes = M+N+num_feature_bins();
   latent_factors_inmem.resize(nodes);
   int howmany = calc_feature_num();
   logstream(LOG_DEBUG)<<"Going to calculate: " << howmany << " offsets." << std::endl;
@@ -1056,6 +1070,9 @@ void init_gensgd(bool load_factors_from_file){
     for (int i=0; i< nodes; i++){
       latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
     }
+#pragma omp parallel for
+    for (int i=0; i< FEATURE_WIDTH; i++)
+      real_features[i].pvec = randu(D)*factor;
   }
 }
 
@@ -1090,23 +1107,11 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    *  Vertex update function - computes the least square step
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-    if (fc.last_item && gcontext.iteration == 0){
-      if (is_user(vertex.id()) && vertex.num_outedges() > 0) { //user node. find the last rated item and store it. we assume items are sorted by time!
-        vertex_data& user = latent_factors_inmem[vertex.id()]; 
-        int max_time = 0;
-        for(int e=0; e < vertex.num_outedges(); e++) {
-          const edge_data & edge = vertex.outedge(e)->get_data();
-          if (edge.features[0] >= max_time){ //first feature is time
-            max_time = (int)ceil(edge.features[0]);
-            user.last_item = vertex.outedge(e)->vertex_id() - M;
-          }
-        }
-      }
-      else if (is_user(vertex.id()) && vertex.num_outedges() == 0)
+    if (is_user(vertex.id()) && vertex.num_outedges() == 0){
+      if (gcontext.iteration == 0)
         vertex_with_no_edges++;
       return;
-    } 
-
+    }
 
     if (cold_start == ITEM && gcontext.iteration == 0){
        vertex_data & item = latent_factors_inmem[vertex.id()];
@@ -1119,9 +1124,6 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
     //go over all user nodes
     if (is_user(vertex.id())){
-      //vertex_data& user = latent_factors_inmem[vertex.id()]; 
-      //assert(user.last_item >= 0 && user.last_item < (int)N);
-
 
       //go over all observed ratings
       for(int e=0; e < vertex.num_outedges(); e++) {
@@ -1136,7 +1138,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         vec sum;
 
         //compute current prediction
-        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, gensgd_predict, &sum, node_array);
+        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, howmany, gensgd_predict, &sum, node_array);
         if (calc_error)
           if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
             errors_vec[omp_get_thread_num()]++;
@@ -1148,7 +1150,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         //update node biases and  vectors
         for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.outedge(e)->vertex_id()-M); i++){
 
-          double gensgd_rate;    
+          double gensgd_rate = 0;    
           if (i == 0)  //user
             gensgd_rate = gensgd_rate1;
           else if (i == 1) //item
@@ -1157,8 +1159,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
             gensgd_rate = gensgd_rate3;
           else if (i < 2+fc.total_features+fc.node_features) //user and item features
             gensgd_rate = gensgd_rate4;
-          else 
-            gensgd_rate = gensgd_rate5; //last item
+          assert(gensgd_rate != 0);
 
           node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           assert(!std::isnan(node_array[i]->bias));
@@ -1188,7 +1189,6 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     gensgd_rate2 *= gensgd_mult_dec;
     gensgd_rate3 *= gensgd_mult_dec;
     gensgd_rate4 *= gensgd_mult_dec;
-    gensgd_rate5 *= gensgd_mult_dec;
     training_rmse_N(iteration, gcontext);
     validation_rmse_N(&gensgd_predict, gcontext, fc);
   };
@@ -1201,9 +1201,6 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     if (calc_error)
       errors_vec = zeros(gcontext.execthreads);
   }
-
-
-
 };
 
 
@@ -1241,17 +1238,29 @@ int main(int argc, const char ** argv) {
   gensgd_rate2 = get_option_float("gensgd_rate2", gensgd_rate2);
   gensgd_rate3 = get_option_float("gensgd_rate3", gensgd_rate3);
   gensgd_rate4 = get_option_float("gensgd_rate4", gensgd_rate4);
-  gensgd_rate5 = get_option_float("gensgd_rate5", gensgd_rate5);
   gensgd_regw = get_option_float("gensgd_regw", gensgd_regw);
   gensgd_regv = get_option_float("gensgd_regv", gensgd_regv);
   gensgd_reg0 = get_option_float("gensgd_reg0", gensgd_reg0);
   gensgd_mult_dec = get_option_float("gensgd_mult_dec", gensgd_mult_dec);
-  fc.last_item = get_option_int("last_item", fc.last_item);
   fc.hash_strings = get_option_int("rehash", fc.hash_strings);
   user_file = get_option_string("user_file", user_file);
   user_links = get_option_string("user_links", user_links);
   item_file = get_option_string("item_file", item_file);
   file_columns = get_option_int("file_columns"); //get the number of columns in the edge file
+  limit_rating = get_option_int("limit_rating", limit_rating);
+  calc_error = get_option_int("calc_error", calc_error);
+  has_header_titles = get_option_int("has_header_titles", has_header_titles);
+  has_user_titles = get_option_int("has_user_titles", has_user_titles);
+  has_item_titles = get_option_int("has_item_titles", has_item_titles);
+  fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
+  cutoff = get_option_float("cutoff", cutoff);
+  json_input = get_option_int("json_input", json_input);
+  cold_start = get_option_int("cold_start", cold_start);
+  binary_prediction = get_option_int("binary_prediction", 0);
+  std::string string_features = get_option_string("features", fc.default_feature_str);
+  std::string real_features = get_option_string("real_features", "");
+
+  //input sanity checks
   if (file_columns < 3)
     logstream(LOG_FATAL)<<"You must have at least 3 columns in input file: [from] [to] [value] on each line"<<std::endl;
   if (file_columns >= FEATURE_WIDTH)
@@ -1265,24 +1274,14 @@ int main(int argc, const char ** argv) {
   if (fc.from_pos >= file_columns || fc.to_pos >= file_columns || fc.val_pos >= file_columns)
     logstream(LOG_FATAL)<<"Please note that column numbering of from_pos, to_pos and val_pos starts from zero and should be smaller than file_columns" << std::endl;
   if (fc.from_pos == fc.to_pos || fc.from_pos == fc.val_pos || fc.to_pos == fc.val_pos)
-    logstream(LOG_FATAL)<<"from_pos, to_pos and val_pos should have uniqu values" << std::endl; 
+    logstream(LOG_FATAL)<<"from_pos, to_pos and val_pos should have different values" << std::endl; 
   if (fc.val_pos == -1)
     logstream(LOG_FATAL)<<"you must specify a target column using --val_pos=XXX. Colmn index starts from 0." << std::endl;
-  limit_rating = get_option_int("limit_rating", limit_rating);
-  calc_error = get_option_int("calc_error", calc_error);
-  has_header_titles = get_option_int("has_header_titles", has_header_titles);
-  has_user_titles = get_option_int("has_user_titles", has_user_titles);
-  has_item_titles = get_option_int("has_item_titles", has_item_titles);
-  fc.rehash_value = get_option_int("rehash_value", fc.rehash_value);
-  cutoff = get_option_float("cutoff", cutoff);
-  json_input = get_option_int("json_input", json_input);
-  cold_start = get_option_int("cold_start", cold_start);
-  binary_prediction = get_option_int("binary_prediction", 0);
-
+  
   parse_command_line_args();
   parse_implicit_command_line();
 
-  std::string string_features = get_option_string("features", fc.default_feature_str);
+  //parse features (optional)
   if (string_features != ""){
     char * pfeatures = strdup(string_features.c_str());
     char * pch = strtok(pfeatures, ",\n\r\t ");
@@ -1303,7 +1302,31 @@ int main(int argc, const char ** argv) {
       fc.total_features++;
     }
   }
-  fc.node_id_maps.resize(2+fc.total_features);
+  //parse real features (optional)
+  if (real_features != ""){
+    int i=0;
+    char * pfeatures = strdup(real_features.c_str());
+    char * pch = strtok(pfeatures, ",\n\r\t ");
+    int node = atoi(pch);
+    if (node < 0 || node >= MAX_FEATURES+3)
+      logstream(LOG_FATAL)<<"Feature id using the --real_features=XX command should be non negative, starting from zero"<<std::endl;
+    if (node >= file_columns)
+      logstream(LOG_FATAL)<<"Feature id using the --real_feature=XX command should be < file_columns (counting starts from zero)" << std::endl;
+    if (node == fc.from_pos || node == fc.to_pos || node == fc.val_pos)
+      logstream(LOG_FATAL)<<"Feature id " << node << " can not be equal to --from_pos, --to_pos or --val_pos " << std::endl;
+    fc.real_features_indicators[node] = true;
+    fc.feature_positions[i] = node;
+    i++;
+    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+      node = atoi(pch);
+      if (node < 0 || node >= MAX_FEATURES+3)
+        logstream(LOG_FATAL)<<"Feature id using the --real_features=XX command should be non negative, starting from zero"<<std::endl;
+      fc.real_features_indicators[node] = true;
+      fc.feature_positions[i] = node;
+      i++;
+    }
+  }
+   fc.node_id_maps.resize(2+fc.total_features);
   fc.stats_array.resize(fc.total_features);
 
   int nshards = convert_matrixmarket_N<edge_data>(training, false, fc, limit_rating);
@@ -1319,7 +1342,7 @@ int main(int argc, const char ** argv) {
   if (json_input)
     has_header_titles = 1;
   if (has_header_titles && header_titles.size() == 0)
-    logstream(LOG_FATAL)<<"Please delete temp files (using : \"rm -f " << training << ".*\") and run again" << std::endl;
+    logstream(LOG_FATAL)<<"Please delete temp files (using --clean_cache=1 ) and run again" << std::endl;
 
   logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
   for (int i=0; i < MAX_FEATURES+3; i++)
@@ -1346,6 +1369,7 @@ int main(int argc, const char ** argv) {
     fc.offsets.resize(calc_feature_num());
     get_offsets(fc.offsets);
   }
+
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
