@@ -41,6 +41,9 @@ const double epsilon = 1e-16;
 timer mytimer;
 int tokens_per_row = 3;
 int algo = 0;
+int start_user=0;
+int end_user=INT_MAX;
+
 #define BIAS_POS -1
 
 enum {
@@ -152,8 +155,8 @@ void rating_stats(){
 
   double min=1e100, max=0, avg=0;
   int cnt = 0;
-  int startv = 0;
-  int endv = M;
+  int startv = std::max(0, start_user);
+  int endv = std::min(M, (uint)end_user);
 
   for (int i=startv; i< endv; i++){
     vertex_data& data = latent_factors_inmem[i];
@@ -205,7 +208,7 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
     //compute only for user nodes
-    if (vertex.id() >= M)
+    if (vertex.id() >= (uint)end_user || vertex.id() < (uint)start_user)
       return;
 
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
@@ -310,8 +313,8 @@ struct  MMOutputter_ids{
 
 
 void output_knn_result(std::string filename) {
-  MMOutputter_ratings ratings(filename + ".ratings", 0, M,"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
-  MMOutputter_ids mmoutput_ids(filename + ".ids", 0, M ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top K ratings). Note: 0 item id means there are no more items to recommend for this user.");
+  MMOutputter_ratings ratings(filename + ".ratings", std::max(start_user,0),std::min((uint)end_user,M),"This file contains user scalar ratings. In each row i, num_ratings top scalar ratings of different items for user i. (First column: user id, next columns, top K ratings)");
+  MMOutputter_ids mmoutput_ids(filename + ".ids", std::max(start_user, 0), std::min((uint)end_user,M) ,"This file contains item ids matching the ratings. In each row i, num_ratings top item ids for user i. (First column: user id, next columns, top K ratings). Note: 0 item id means there are no more items to recommend for this user.");
  
   std::cout << "Rating output files (in matrix market format): " << filename << ".ratings" <<
                                                                     ", " << filename + ".ids " << std::endl;
@@ -328,7 +331,7 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("nmf-inmemory-factors");
+  metrics m("rating2");
 
   knn_sample_percent = get_option_float("knn_sample_percent", 1.0);
   if (knn_sample_percent <= 0 || knn_sample_percent > 1)
@@ -346,6 +349,13 @@ int main(int argc, const char ** argv) {
   else if (algorithm == "biassgd")
     algo = BIASSGD;
   else logstream(LOG_FATAL)<<"--algorithm should be svd++ or biassgd"<<std::endl;
+  //optional, compute rating to a user subset
+  start_user = get_option_int("start_user", start_user);
+  if (start_user > 0)
+    start_user--;
+  end_user   = get_option_int("end_user",   end_user);
+  end_user--;
+
   parse_command_line_args();
 
   /* Preprocess data if needed, or discover preprocess files */
