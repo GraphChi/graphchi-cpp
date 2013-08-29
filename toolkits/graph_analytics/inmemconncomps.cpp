@@ -56,7 +56,10 @@ using namespace graphchi;
  */
 typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef vid_t EdgeDataType;
-VertexDataType * vertex_values;
+vid_t * vertex_values;
+vid_t * edge_count;
+mutex mymutex;
+
 size_t changes = 0;
 timer mytimer;
 
@@ -124,6 +127,40 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
 
 };
 
+/**
+ * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type>
+ * class. The main logic is usually in the update function.
+ */
+struct EdgeCountProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+
+    
+  /**
+   *  Vertex update function.
+   *  On first iteration ,each vertex chooses a label = the vertex id.
+   *  On subsequent iterations, each vertex chooses the minimum of the neighbor's
+   *  label (and itself).
+   */
+  void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+
+    vid_t curmin = vertex_values[vertex.id()];
+    for(int i=0; i < vertex.num_edges(); i++) {
+      vid_t other = vertex_values[vertex.edge(i)->vertex_id()];
+      assert(other != vertex.id());
+      if (curmin == other && vertex.id() < vertex.edge(i)->vertex_id()){
+          mymutex.lock();
+          edge_count[curmin]++;
+          mymutex.unlock();
+      } 
+    }
+  }
+
+  void before_iteration(int iteration, graphchi_context &ctx) {
+     ctx.set_last_iteration(1);
+  }
+ 
+};
+
+
 int main(int argc, const char ** argv) {
   /* GraphChi initialization will read the command line
      arguments and the configuration file. */
@@ -163,15 +200,31 @@ int main(int argc, const char ** argv) {
     FILE * pfile = fopen((filename + "-components").c_str(), "w");
     if (!pfile)
       logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
-    fprintf(pfile, "%%%%MatrixMarket matrix array real general\n");
-    fprintf(pfile, "%lu %u\n", engine.num_vertices()-1, 1);
     for (uint i=1; i< engine.num_vertices(); i++){
       fprintf(pfile, "%u\n", vertex_values[i]);
       assert(vertex_values[i] >= 0 && vertex_values[i] < engine.num_vertices());
     }
     fclose(pfile); 
     logstream(LOG_INFO)<<"Saved succesfully to out file: " << filename << "-components" << " time for saving: " << mytimer.current_time() << std::endl;
+
+    /* compute edge count for each component */
+    edge_count = new vid_t[engine.num_vertices()];
+    memset(edge_count, 0, sizeof(vid_t)*engine.num_vertices());
+    EdgeCountProgram program2;
+    engine.run(program2, 1);
+
+    pfile = fopen((filename + "-edges").c_str(), "w");
+    if (!pfile)
+      logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
+    for (uint i=1; i< engine.num_vertices(); i++){
+      if (edge_count[i] > 0)
+         fprintf(pfile, "%u %u\n", i, edge_count[i]);
+    }
+    fclose(pfile); 
+    logstream(LOG_INFO)<<"Saved succesfully to out file: " << filename << "-edges" << " time for saving: " << mytimer.current_time() << std::endl;
   } 
+
+
   return 0;
 }
 
