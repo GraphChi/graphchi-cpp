@@ -58,6 +58,7 @@ typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef vid_t EdgeDataType;
 vid_t * vertex_values;
 vid_t * edge_count;
+vid_t * out_degree;
 mutex mymutex;
 
 size_t changes = 0;
@@ -149,6 +150,7 @@ struct EdgeCountProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
       if (curmin == other && vertex.id() < vertex.edge(i)->vertex_id()){
           mymutex.lock();
           edge_count[curmin]++;
+          out_degree[vertex.id()]++;
           mymutex.unlock();
       } 
     }
@@ -197,23 +199,25 @@ int main(int argc, const char ** argv) {
 
   /* Run analysis of the connected components  (output is written to a file) */
   if (output_labels){
+    /* compute edge count for each component */
+    edge_count = new vid_t[engine.num_vertices()];
+    out_degree = new vid_t[engine.num_vertices()];
+    memset(edge_count, 0, sizeof(vid_t)*engine.num_vertices());
+    memset(out_degree, 0, sizeof(vid_t)*engine.num_vertices());
+    EdgeCountProgram program2;
+    engine.run(program2, 1);
+
     FILE * pfile = fopen((filename + "-components").c_str(), "w");
     if (!pfile)
       logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
     for (uint i=1; i< engine.num_vertices(); i++){
-      fprintf(pfile, "%u\n", vertex_values[i]);
+      fprintf(pfile, "%u %u %u\n", i, vertex_values[i], out_degree[i]);
       assert(vertex_values[i] >= 0 && vertex_values[i] < engine.num_vertices());
     }
     fclose(pfile); 
     logstream(LOG_INFO)<<"Saved succesfully to out file: " << filename << "-components" << " time for saving: " << mytimer.current_time() << std::endl;
 
-    /* compute edge count for each component */
-    edge_count = new vid_t[engine.num_vertices()];
-    memset(edge_count, 0, sizeof(vid_t)*engine.num_vertices());
-    EdgeCountProgram program2;
-    engine.run(program2, 1);
-
-    pfile = fopen((filename + "-edges").c_str(), "w");
+   pfile = fopen((filename + "-edges").c_str(), "w");
     if (!pfile)
       logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
     for (uint i=1; i< engine.num_vertices(); i++){
