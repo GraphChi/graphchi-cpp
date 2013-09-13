@@ -63,7 +63,6 @@ namespace graphchi {
      
         virtual void open_file(std::string base_filename) {
             filename = filename_degree_data(base_filename);
-            iomgr->allow_preloading(filename);
             filedesc = iomgr->open_session(filename.c_str(), false);
         }
         

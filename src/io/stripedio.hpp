@@ -49,12 +49,12 @@
 #include "util/ioutil.hpp"
 #include "util/cmdopts.hpp"
 
+#define CACHED_SESSION_ID (-1)
 
 
 namespace graphchi {
     
     static size_t get_filesize(std::string filename);
-    struct pinned_file;
     
     /**
      * Defines a striped file access.
@@ -63,7 +63,7 @@ namespace graphchi {
         std::string filename;    
         std::vector<int> readdescs;
         std::vector<int> writedescs;
-        pinned_file * pinned_to_memory;
+        
         int start_mplex;
         bool open;
         bool compressed;
@@ -126,13 +126,88 @@ namespace graphchi {
         stripe_chunk(int mplex_thread, size_t offset, size_t len) : mplex_thread(mplex_thread), offset(offset), len(len) {}
     };
     
-
-    struct pinned_file {
-        std::string filename;
-        size_t length;
-        uint8_t * data;
-        bool touched;
+    struct cached_block {
+        size_t len;
+        void * data;
+        
+        cached_block(size_t len, void * data) : len(len), data(data) {}
+        
+        ~cached_block() {
+            free(data);
+            data = NULL;
+        }
     };
+    
+    
+    /**
+      * Simple cache attached to the io manager. 
+      */
+    class block_cache {
+        size_t cache_budget_bytes;
+        size_t cache_size;
+        mutex lock;  // TODO: read-write-lock
+        bool full;
+        std::map<std::string, cached_block *> cachemap;
+        
+        size_t hits, misses;
+        
+    public:
+    
+        block_cache(size_t cache_budget_bytes) : cache_budget_bytes(cache_budget_bytes), cache_size(0), full(false) {
+            hits = misses = 0;
+        }
+        
+        ~block_cache() {
+            logstream(LOG_INFO) << "Cache stats: hits=" << hits << " misses=" << misses << std::endl;
+
+            std::map<std::string, cached_block *>::iterator it = cachemap.begin();
+            for(; it != cachemap.end(); ++it) {
+                delete it->second;
+            }
+        }
+        
+        bool consider_caching(std::string filename, void * data, size_t len) {
+            bool did_cache = false;
+            if (!full && len + cache_size <= cache_budget_bytes) {
+                lock.lock();
+                if (len + cache_size <= cache_budget_bytes) {
+                    cache_size += len;
+                    did_cache = true;
+                    std::cout << cache_size <<  ": adding to cache: " << filename << std::endl;
+                    cachemap.insert(std::pair<std::string, cached_block*>(filename, new cached_block(len, data)));
+                }
+                if (cache_size > cache_budget_bytes) {
+                    full = true; // If full, we can avoid locking
+                }
+                lock.unlock();
+            }
+            return did_cache;
+        }
+        
+        void * get_cached(std::string filename) {
+            bool acquired_mutex = false;
+            if (!full) {
+                acquired_mutex = true;
+                lock.lock();
+            }
+            
+            void * ret = NULL;
+            std::map<std::string, cached_block *>::iterator lookup = cachemap.find(filename);
+            if (lookup != cachemap.end()) {
+                ret =  lookup->second->data;
+                hits++;
+            } else {
+                misses++;
+            }
+            
+            if (acquired_mutex) {
+                lock.unlock();
+            }
+            return ret;
+        }
+        friend class stripedio;
+    };
+    
     
     class stripedio {
         
@@ -141,36 +216,22 @@ namespace graphchi {
         int stripesize;
         int multiplex;
         std::string multiplex_root;
-        bool disable_preloading;
         
         std::vector< synchronized_queue<iotask> > mplex_readtasks;
         std::vector< synchronized_queue<iotask> > mplex_writetasks;
         std::vector< synchronized_queue<iotask> > mplex_priotasks;
         std::vector< pthread_t > threads;
         std::vector< thrinfo * > thread_infos;
-        metrics &m;
-        
-        /* Memory-pinned files */
-        std::vector<pinned_file *> preloaded_files;
-        mutex preload_lock;
-        size_t preloaded_bytes;
-        size_t max_preload_bytes;
-        
+        metrics &m;        
         
         int niothreads; // threads per mplex
         
+        block_cache cache;
+        
     public:
-        stripedio( metrics &_m) : m(_m) {
-            disable_preloading = false;
+        stripedio( metrics &_m) : m(_m), cache(0) {
             stripesize = get_option_int("io.stripesize", 4096 * 1024 / 2);
 
-            preloaded_bytes = 0;
-            max_preload_bytes = 1024 * 1024 * get_option_long("preload.max_megabytes", 0);
-            
-            if (max_preload_bytes > 0) {
-                logstream(LOG_INFO) << "Preloading maximum " << max_preload_bytes << " bytes." << std::endl;
-            }
-            
             multiplex = get_option_int("multiplex", 1);
             if (multiplex>1) {
                 multiplex_root = get_option_string("multiplex_root", "<not-set>");
@@ -183,7 +244,7 @@ namespace graphchi {
             // Start threads (niothreads is now threads per multiplex)
             niothreads = get_option_int("niothreads", 1);
             m.set("niothreads", (size_t)niothreads);
-            
+       
             logstream(LOG_DEBUG) << "Start io-manager with " << niothreads << " threads." << std::endl;
             
             // Each multiplex partition has its own queues
@@ -237,18 +298,15 @@ namespace graphchi {
                     sessions[j] = NULL;
                 }
             }
-            
-            for(std::vector<pinned_file *>::iterator it=preloaded_files.begin(); 
-                it != preloaded_files.end(); ++it) {
-                pinned_file * preloaded = (*it);
-                delete preloaded->data;
-                delete preloaded;
-            }
         }
         
-        void set_disable_preloading(bool b) {
-            disable_preloading = b;
-            if (b) logstream(LOG_INFO) << "Disabled preloading." << std::endl;
+        void set_cache_budget(size_t c) {
+            cache.cache_budget_bytes = c;
+            cache.full = false;
+        }
+        
+        block_cache & get_block_cache() {
+            return cache;
         }
         
         bool multiplexed() {
@@ -287,15 +345,12 @@ namespace graphchi {
             io_descriptor * iodesc = new io_descriptor();
             iodesc->open = true;
             iodesc->compressed = compressed;
-            iodesc->pinned_to_memory = is_preloaded(filename);
+            iodesc->filename = filename;
             iodesc->start_mplex = hash(filename) % multiplex;
             sessions.push_back(iodesc);
             mlock.unlock();
             
-            if (NULL != iodesc->pinned_to_memory) {
-                logstream(LOG_INFO) << "Opened preloaded session: " << filename << std::endl;
-                return session_id;
-            }
+            
             
             for(int i=0; i<multiplex; i++) {
                 std::string fname = multiplexprefix(i) + filename;
@@ -342,14 +397,19 @@ namespace graphchi {
             iodesc->open = false;
             mlock.unlock();
             if (wasopen) {
-              //  std::cout << "Closing: " << iodesc->filename << " " << iodesc->readdescs[0] << std::endl;
                 for(std::vector<int>::iterator it=iodesc->readdescs.begin(); it!=iodesc->readdescs.end(); ++it) {
                     close(*it);
                 }
- //               for(std::vector<int>::iterator it=iodesc->writedescs.begin(); it!=iodesc->writedescs.end(); ++it) {
-  //                  close(*it);
-  //              }
             }
+        }
+        
+        void first_pass_finished() {
+            // Optimization
+            cache.full = true;
+        }
+        
+        std::string & get_session_filename(int session) {
+            return sessions[session]->filename;
         }
         
         int mplex_for_offset(int session, size_t off) {
@@ -397,88 +457,13 @@ namespace graphchi {
        
         
         
-        /**
-         * Pinned sessions process files that are permanently
-         * pinned to memory.
-         */
-        bool pinned_session(int session) {
-            return sessions[session]->pinned_to_memory;
-        }
+        
         
         bool compressed_session(int session) {
             return sessions[session]->compressed;
         }
         
-        /**
-         * Call to allow files to be preloaded. Note: using this requires
-         * that all files are accessed with same path. This is true if
-         * standard chifilenames.hpp -given filenames are used.
-         */
-        void allow_preloading(std::string filename) {
-            if (disable_preloading) {
-                return;
-            }
-            preload_lock.lock();
-            assert(max_preload_bytes == 0);
-           /* size_t filesize = get_filesize(filename);
-            if (preloaded_bytes + filesize <= max_preload_bytes) {
-                preloaded_bytes += filesize;
-                m.set("preload_bytes", preloaded_bytes);
-                
-                pinned_file * pfile = new pinned_file();
-                pfile->filename = filename;
-                pfile->length = filesize;
-                pfile->data = (uint8_t*) malloc(filesize);
-                pfile->touched = false;
-                assert(pfile->data != NULL);
-                
-                int fid = open(filename.c_str(), O_RDONLY);
-                if (fid < 0) {
-                    logstream(LOG_ERROR) << "Could not read file: " << filename 
-                    << " error: " << strerror(errno) << std::endl;
-                }
-                assert(fid >= 0);
-                
-                logstream(LOG_INFO) << "Preloading: " << filename << std::endl;
-                preada(fid, pfile->data, filesize, 0);    
-                close(fid);
-                preloaded_files.push_back(pfile);
-            }*/
-            preload_lock.unlock();
-        }
-        
-        void commit_preloaded() {
-            for(std::vector<pinned_file *>::iterator it=preloaded_files.begin(); 
-                it != preloaded_files.end(); ++it) {
-                pinned_file * preloaded = (*it);
-                if (preloaded->touched) {
-                    logstream(LOG_INFO) << "Commit preloaded file: " << preloaded->filename << std::endl;
-                    int fid = open(preloaded->filename.c_str(), O_WRONLY);
-                    if (fid < 0) {
-                        logstream(LOG_ERROR) << "Could not read file: " << preloaded->filename 
-                            << " error: " << strerror(errno) << std::endl;
-                        continue;
-                    }
-                    pwritea(fid, preloaded->data, preloaded->length, 0);
-                    close(fid);
-                }
-                preloaded->touched = false;
-            }
-        }
-        
-        pinned_file * is_preloaded(std::string filename) {
-            preload_lock.lock();
-            pinned_file * preloaded = NULL;
-            for(std::vector<pinned_file *>::iterator it=preloaded_files.begin(); 
-                it != preloaded_files.end(); ++it) {
-                if (filename == (*it)->filename) {
-                    preloaded = *it;
-                    break;
-                }
-            }
-            preload_lock.unlock();
-            return preloaded;
-        }
+       
         
         
         // Note: data is freed after write!
@@ -573,50 +558,28 @@ namespace graphchi {
         
         
         /** 
-         * Memory managed versino of the I/O functions. 
+         * Memory managed version of the I/O functions. Note, currently this management is not
+         * used. Prior there was a file preloading option that allowed it, but it has been now disabled.
          */
         
         template <typename T>
         void managed_pwritea_async(int session, T ** tbuf, size_t nbytes, size_t off, bool free_after, bool close_fd=false) {
-
-            if (!pinned_session(session)) {
-                pwritea_async(session, *tbuf, nbytes, off, free_after, close_fd);
-            } else {
-                // Do nothing but mark the descriptor as 'dirty'
-                sessions[session]->pinned_to_memory->touched = true;
-            }
+            pwritea_async(session, *tbuf, nbytes, off, free_after, close_fd);
         }
         
         template <typename T>
         void managed_preada_now(int session,  T ** tbuf, size_t nbytes, size_t off) {
-            if (!pinned_session(session)) {
-                preada_now(session, *tbuf, nbytes,  off);
-            } else {
-                io_descriptor * iodesc = sessions[session];
-                *tbuf = (T*) (iodesc->pinned_to_memory->data + off);
-            }
+            preada_now(session, *tbuf, nbytes,  off);
         }
         
         template <typename T>
         void managed_pwritea_now(int session, T ** tbuf, size_t nbytes, size_t off) {
-            if (!pinned_session(session)) {
-                pwritea_now(session, *tbuf, nbytes, off);
-            } else {
-                // Do nothing but mark the descriptor as 'dirty'
-                sessions[session]->pinned_to_memory->touched = true;
-            }
+            pwritea_now(session, *tbuf, nbytes, off);
         }
         
         template<typename T>
         void managed_malloc(int session, T ** tbuf, size_t nbytes, size_t noff) {
-        
-            
-            if (!pinned_session(session)) {
-                *tbuf = (T*) malloc(nbytes);
-            } else {
-                io_descriptor * iodesc = sessions[session];
-                *tbuf = (T*) (iodesc->pinned_to_memory->data + noff);
-            }
+            *tbuf = (T*) malloc(nbytes);
         }
         
         /**
@@ -624,30 +587,18 @@ namespace graphchi {
           */
         template <typename T>
         void managed_preada_async(int session, T ** tbuf, size_t nbytes, size_t off, volatile int * doneptr = NULL) {
-            if (!pinned_session(session)) {
-              
-                preada_async(session, *tbuf, nbytes,  off, doneptr);
-            } else {
-                io_descriptor * iodesc = sessions[session];
-                *tbuf = (T*) (iodesc->pinned_to_memory->data + off);
-                if (doneptr != NULL) {
-                    __sync_sub_and_fetch(doneptr, 1);
-                }
-            }
+            preada_async(session, *tbuf, nbytes,  off, doneptr);
         }
         
         template <typename T>
         void managed_release(int session, T ** ptr) {
-            if (!pinned_session(session)) {
-                assert(*ptr != NULL);
-                free(*ptr);
-            }
+            assert(*ptr != NULL);
+            free(*ptr);
             *ptr = NULL;
         }
         
         
         void truncate(int session, size_t nbytes) {
-            assert(!pinned_session(session));
             assert(multiplex <= 1);  // We do not support truncating on multiplex yet
             int stat = ftruncate(sessions[session]->writedescs[0], nbytes); 
             if (stat != 0) {

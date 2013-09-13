@@ -63,6 +63,7 @@ namespace graphchi {
         int filedesc;
         
         VertexDataType * loaded_chunk;
+        bool was_cached;
 
 
         virtual void open_file(std::string base_filename) {
@@ -74,15 +75,15 @@ namespace graphchi {
         vertex_data_store(std::string base_filename, size_t nvertices, stripedio * iomgr) : iomgr(iomgr), loaded_chunk(NULL){
             vertex_st = vertex_en = 0;
             filename = filename_vertex_data<VertexDataType>(base_filename);
+            was_cached = false;
             check_size(nvertices);
-            iomgr->allow_preloading(filename);
             open_file(filename);
         }    
         
         virtual ~vertex_data_store() {
             iomgr->close_session(filedesc);
             iomgr->wait_for_writes();
-            if (loaded_chunk != NULL) {
+            if (loaded_chunk != NULL && !was_cached) {
                 iomgr->managed_release(filedesc, &loaded_chunk);
             }    
         }
@@ -112,7 +113,6 @@ namespace graphchi {
             if (loaded_chunk != NULL) {
                 iomgr->managed_release(filedesc, &loaded_chunk);
             }
-            
             iomgr->managed_malloc(filedesc, &loaded_chunk, datasize, datastart);
             iomgr->managed_preada_now(filedesc, &loaded_chunk, datasize, datastart);
         }

@@ -115,7 +115,7 @@ namespace graphchi {
             int nblocks = (int) block_edatasessions.size();
             
             for(int i=0; i < nblocks; i++) {
-                if (edgedata[i] != NULL) {
+                if (edgedata[i] != NULL && block_edatasessions[i] != CACHED_SESSION_ID) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     iomgr->close_session(block_edatasessions[i]);
                 }
@@ -157,14 +157,24 @@ namespace graphchi {
                     /* Write asynchronously blocks that will not be needed by the sliding windows on
                      this iteration. */
                     if (i >= start_stream_block || disable_async_writes) {
-                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
-                        iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                        iomgr->close_session(block_edatasessions[i]);
-                        
+                        if (block_edatasessions[i] != CACHED_SESSION_ID) {
+                            // Try to include in cache. If succeeds, do not release.
+                            if (false == iomgr->get_block_cache().consider_caching(
+                                    iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i])) {
+                                iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                            }
+                            iomgr->close_session(block_edatasessions[i]);
+                        } else {
+                            iomgr->close_session(block_edatasessions[i]);
+                            block_edatasessions[i] = CACHED_SESSION_ID;
+                        }
                         edgedata[i] = NULL;
                         
                     } else {
-                        iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
+                        if (block_edatasessions[i] != CACHED_SESSION_ID) {
+                            iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
+                        }
                         edgedata[i] = NULL;
                     }
                 }
@@ -179,16 +189,26 @@ namespace graphchi {
                 int endblock = (int) (last / blocksize);
 #pragma omp parallel for
                 for(int i=0; i < nblocks; i++) {
-                    if (i >= startblock && i <= endblock) {
-                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
+                        if (false == iomgr->get_block_cache().consider_caching(
+                                                                               iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i])) {
+                            if (i >= startblock && i <= endblock) {
+                                iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                            }
+                            iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                            iomgr->close_session(block_edatasessions[i]);
+                        } else {
+                            iomgr->close_session(block_edatasessions[i]);
+                            block_edatasessions[i] = CACHED_SESSION_ID;
+                        }
                     }
-                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     edgedata[i] = NULL;
-                    iomgr->close_session(block_edatasessions[i]);
                 }
             } else {
                 for(int i=0; i < nblocks; i++) {
-                    iomgr->close_session(block_edatasessions[i]);
+                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
+                        iomgr->close_session(block_edatasessions[i]);
+                    }
                 }
             }
             
@@ -198,7 +218,9 @@ namespace graphchi {
             // FIXME: this is duplicated code from destructor
             for(int i=0; i < nblocks; i++) {
                 if (edgedata[i] != NULL) {
-                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
+                        iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                    }
                 }
             }
             block_edatasessions.clear();
@@ -229,16 +251,25 @@ namespace graphchi {
                     size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
                     
                     compressedsize += get_filesize(block_filename);
-                    int blocksession = iomgr->open_session(block_filename, false, true); // compressed
-                    block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
-                    
-                    edgedata[blockid] = NULL;
-                    iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
-                    if (async_edata_loading) {
-                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
+
+                    /* Check if cached */
+                    void * cachedblock = iomgr->get_block_cache().get_cached(block_filename);
+                    if (cachedblock != NULL) {
+                        // Cached
+                        block_edatasessions.push_back(CACHED_SESSION_ID);
+                        edgedata[blockid] = (char*)cachedblock;
                     } else {
-                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
+                        int blocksession = iomgr->open_session(block_filename, false, true); // compressed
+                        block_edatasessions.push_back(blocksession);
+                        
+                        edgedata[blockid] = NULL;
+                        iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
+                        if (async_edata_loading) {
+                            iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
+                        } else {
+                            iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
+                        }
                     }
                     blockid++;
                     
