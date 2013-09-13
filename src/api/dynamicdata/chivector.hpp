@@ -32,6 +32,7 @@
 
 #include <vector>
 #include <stdint.h>
+#include "graphchi_types.hpp"
 
 namespace graphchi {
 
@@ -39,7 +40,7 @@ namespace graphchi {
 #define MINCAPACITY 2
 
     
-template <typename T, typename HeaderType>
+template <typename T, typename HeaderType=dummy>
 class chivector {
 
     uint16_t nsize;

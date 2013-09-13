@@ -85,10 +85,9 @@ struct DynamicDataLoaderTestProgram : public GraphChiProgram<VertexDataType, Edg
                 assert(evector->get(k) == expected);
             }
             
-            assert(evector->header().a == vertex.id() + vertex.edge(i)->vertex_id());
-            assert(evector->header().b == gcontext.iteration %2);
-            evector->header().b  = !evector->header().b;
-            
+            assert(evector->header().a >= vertex.id() + vertex.edge(i)->vertex_id() + gcontext.iteration);
+            assert(evector->header().b == (vertex.id() + vertex.edge(i)->vertex_id()) % 2);
+            evector->header().a = vertex.id() + vertex.edge(i)->vertex_id() + gcontext.iteration;
             lock.lock();
             checksum += evector->get(0);
             lock.unlock();
@@ -144,7 +143,7 @@ int generatedata(std::string filename) {
     std::cout << "Generating data..." << std::endl;
   
     shouldbe = 0;
-    int totalVertices =  1000;
+    int totalVertices =  200000;
     for(int i=0; i < totalVertices; i++) {
         int nedges = random() % 10;
         for(int j=0; j < nedges; j++) {
@@ -152,15 +151,15 @@ int generatedata(std::string filename) {
             if (dst != i) {
                 std::vector<vid_t> edgevec;
                 if ((i + dst) % 3 == 1) {
+                    edgevec.push_back(i + dst);
                     edgevec.push_back(i + dst + 1);
                     edgevec.push_back(i + dst + 2);
                 } else {
                     edgevec.push_back(i + dst);
-                    edgevec.push_back(i + dst + 1);
                 }
                 shouldbe += 2 * (i + dst);
                 
-                sharderobj.preprocessing_add_edge_multival(i, dst, header_t(i + dst, true), edgevec);
+                sharderobj.preprocessing_add_edge_multival(i, dst, header_t(i + dst, (i + dst) % 2), edgevec);
             }
         }
     }     

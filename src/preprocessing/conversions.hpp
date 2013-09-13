@@ -204,6 +204,7 @@ namespace graphchi {
      * Converts graph from an edge list format. Input may contain
      * value for the edges. Self-edges are ignored.
      */
+
     template <typename EdgeDataType, typename FinalEdgeDataType>
     void convert_edgelist(std::string inputfile, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj, bool multivalue_edges=false) {
         
