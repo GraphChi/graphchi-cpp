@@ -7,7 +7,7 @@
  * @section LICENSE
  *
  * Copyright [2012] [Aapo Kyrola, Guy Blelloch, Carlos Guestrin / Carnegie Mellon University]
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -126,27 +126,13 @@ namespace graphchi {
         stripe_chunk(int mplex_thread, size_t offset, size_t len) : mplex_thread(mplex_thread), offset(offset), len(len) {}
     };
     
-    
-    struct streaming_task {
-        stripedio * iomgr;
-        int session;
-        size_t len;
-        volatile size_t curpos;
-        char ** buf;
-        streaming_task() {}
-        streaming_task(stripedio * iomgr, int session, size_t len, char ** buf) : iomgr(iomgr), session(session), len(len), curpos(0), buf(buf) {}
-    };
-    
+
     struct pinned_file {
         std::string filename;
         size_t length;
         uint8_t * data;
         bool touched;
     };
-    
-    // Forward declaration
-    static void * stream_read_loop(void * _info);    
-    
     
     class stripedio {
         
@@ -408,13 +394,7 @@ namespace graphchi {
                 mplex_readtasks[chunk.mplex_thread].push(task);
             }
         }
-        
-        /* Used for pipelined read */
-        void launch_stream_reader(streaming_task  * task) {
-            pthread_t t;
-            int ret = pthread_create(&t, NULL, stream_read_loop, (void*)task);
-            assert(ret>=0);
-        }
+       
         
         
         /**
@@ -520,7 +500,7 @@ namespace graphchi {
         }
         
         template <typename T>
-        void preada_now(int session,  T * tbuf, size_t nbytes, size_t off) {
+        void preada_now(int session,  T * tbuf, size_t nbytes, size_t off, bool dupfd=false) {
             metrics_entry me = m.start_time();
             if (compressed_session(session)) {
                 // Compressed sessions do not support multiplexing for now
@@ -553,7 +533,14 @@ namespace graphchi {
                 }
                 delete refptr;
             } else {
-                preada(sessions[session]->readdescs[threads.size()], tbuf, nbytes, off);
+                if (!dupfd) {
+                    preada(sessions[session]->readdescs[threads.size()], tbuf, nbytes, off);
+                } else {
+                    int filedesc = dup(sessions[session]->readdescs[threads.size()]);
+                    preada(filedesc, tbuf, nbytes, off);
+                    close(filedesc);
+
+                }
             }
             m.stop_time(me, "preada_now", false);
         }
@@ -776,34 +763,7 @@ namespace graphchi {
     }
     
     
-    static void * stream_read_loop(void * _info) {
-        streaming_task * task = (streaming_task*)_info;
-        timeval start, end;
-        gettimeofday(&start, NULL);
-        size_t bufsize = 32*1024*1024; // 32 megs
-        char * tbuf;
-        
-        /**
-         * If this is not pinned, we just malloc the
-         * buffer. Otherwise - shuold just return pointer
-         * to the in-memory file buffer.
-         */
-        if (task->iomgr->pinned_session(task->session)) {
-            __sync_add_and_fetch(&task->curpos, task->len);
-            return NULL;
-        }
-        tbuf = *task->buf;
-        while(task->curpos < task->len) {
-            size_t toread = std::min((size_t)task->len - (size_t)task->curpos, (size_t)bufsize);
-            task->iomgr->preada_now(task->session, tbuf + task->curpos, toread, task->curpos);
-            __sync_add_and_fetch(&task->curpos, toread);
-        }
-        
-        gettimeofday(&end, NULL);
-        
-        return NULL;
-    }
-    
+   
     static size_t get_filesize(std::string filename) {
         std::string fname = filename;
         int f = open(fname.c_str(), O_RDONLY);

@@ -76,7 +76,6 @@ namespace graphchi {
         
         std::vector<int> block_edatasessions;
         int adj_session;
-        streaming_task adj_stream_session;
         
         bool is_loaded;
         size_t blocksize;
@@ -281,9 +280,17 @@ namespace graphchi {
             
             adj_session = iomgr->open_session(filename_adj, true);
             iomgr->managed_malloc(adj_session, &adjdata, adjfilesize, 0);
-            adj_stream_session = streaming_task(iomgr, adj_session, adjfilesize, (char**) &adjdata);
             
-            iomgr->launch_stream_reader(&adj_stream_session);
+            size_t bufsize = 16 * 1204 * 1024;
+            int n = (int) (adjfilesize / bufsize + 1);
+
+#pragma omp parallel for
+            for(int i=0; i < n; i++) {
+                size_t toread = std::min(adjfilesize - i * bufsize, (size_t)bufsize);
+                iomgr->preada_now(adj_session, adjdata + i * bufsize, toread, i * bufsize, true);
+            }
+            
+            
             /* Initialize edge data asynchonous reading */
             if (!only_adjacency) {
                 load_edata();
@@ -291,15 +298,7 @@ namespace graphchi {
         }
         
         
-        /* Dynamic edata */ 
-        inline void check_stream_progress(int toread, size_t pos) {
-            if (adj_stream_session.curpos == adjfilesize) return;
-            
-            while(adj_stream_session.curpos < toread+pos) {
-                usleep(20000);
-                if (adj_stream_session.curpos == adjfilesize) return;
-            }
-        }
+        
         
         /* Dynamic edata */ 
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
@@ -323,7 +322,6 @@ namespace graphchi {
             bool setoffset = false;
             bool setrangeoffset = false;
             while (ptr < end) {
-                check_stream_progress(6, ptr-adjdata); // read at least 6 bytes
                 if (!setoffset && vid > range_end) {
                     // This is where streaming should continue. Notice that because of the
                     // non-zero counters, this might be a bit off.
@@ -364,7 +362,6 @@ namespace graphchi {
                     vertex = &prealloc[vid-window_st];
                     if (!vertex->scheduled) vertex = NULL;
                 }
-                check_stream_progress(n * 4, ptr - adjdata);
                 bool any_edges = false;
                 while(--n>=0) {
                     int blockid = (int) (edgeptr / blocksize);
