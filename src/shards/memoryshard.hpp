@@ -163,11 +163,11 @@ namespace graphchi {
                                     iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i])) {
                                 iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
                                 iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                                iomgr->close_session(block_edatasessions[i]);
+                            } else {
+                                iomgr->close_session(block_edatasessions[i]);
+                                block_edatasessions[i] = CACHED_SESSION_ID;
                             }
-                            iomgr->close_session(block_edatasessions[i]);
-                        } else {
-                            iomgr->close_session(block_edatasessions[i]);
-                            block_edatasessions[i] = CACHED_SESSION_ID;
                         }
                         edgedata[i] = NULL;
                         
