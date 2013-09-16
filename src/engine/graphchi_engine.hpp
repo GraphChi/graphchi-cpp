@@ -485,21 +485,30 @@ namespace graphchi {
                 userprogram.before_exec_interval(0, (int)num_vertices(), chicontext);
                 
                 if (use_selective_scheduling) {
-                    scheduler->new_iteration(iter);
                     if (iter > 0 && !scheduler->has_new_tasks) {
                         logstream(LOG_INFO) << "No new tasks to run!" << std::endl;
+                        niters = iter;
                         break;
                     }
+                    scheduler->new_iteration(iter);
+                    
+                    bool newtasks = false;
                     for(int i=0; i < (int)vertices.size(); i++) { // Could, should parallelize
                         if (iter == 0 || scheduler->is_scheduled(i)) {
                             vertices[i].scheduled =  true;
+                            newtasks = true;
                             nupdates++;
                             work += vertices[i].inc + vertices[i].outc;
                         } else {
                             vertices[i].scheduled = false;
                         }
                     }
-                    
+                    if (!newtasks) {
+                        // Finished
+                        niters = iter;
+                        break;
+
+                    }
                     scheduler->has_new_tasks = false; // Kind of misleading since scheduler may still have tasks - but no new tasks.
                 } else {
                     nupdates += num_vertices();
