@@ -75,6 +75,9 @@ struct bidirectional_label {
     
 };
 
+// Id for the output stream for contracted graph
+int CONTRACTED_GRAPH_OUTPUT;
+
 struct SCCinfo {
     vid_t color;
     bool confirmed;
@@ -258,6 +261,25 @@ struct SCCBackward : public GraphChiProgram<VertexDataType, EdgeDataType> {
     void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {}
 };
 
+graphchi_engine<VertexDataType, EdgeDataType> * gengine = NULL;
+
+/* Simple contraction step that just outputs the non-deleted edges. Would be better
+   done automatically, but the dynamic engine is a bit flaky. */
+struct ContractionStep : public GraphChiProgram<VertexDataType, EdgeDataType> {
+    
+    ContractionStep() {
+    }
+    void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+        
+        // Loop over only in-edges and output them. This way deleted edges won't be included.
+        for(int i=0; i < vertex.num_inedges(); i++) {
+            graphchi_edge<EdgeDataType> * e = vertex.inedge(i);
+            gengine->output(CONTRACTED_GRAPH_OUTPUT)->output_edgeval(e->vertex_id(), vertex.id(),
+                                                                     e->get_data());
+        }
+    }
+
+};
 
 int main(int argc, const char ** argv) {
     /* GraphChi initialization will read the command line 
@@ -297,13 +319,54 @@ int main(int argc, const char ** argv) {
         if (first_iteration) {
             engine.set_reset_vertexdata(true);
         }
+        engine.set_save_edgesfiles_after_inmemmode(true);
         engine.run(forwardSCC, 1000);
         
         if (remainingvertices) {
             std::cout  << "STARTING BACKWARD " << std::endl;
             SCCBackward backwardSCC;
-            graphchi_engine<VertexDataType, EdgeDataType> engine2(filename, nshards, scheduler, m); 
+            graphchi_engine<VertexDataType, EdgeDataType> engine2(filename, nshards, scheduler, m);
+            engine2.set_save_edgesfiles_after_inmemmode(true);
             engine2.run(backwardSCC, 1000);
+
+            int orig_numshards = (int) engine2.get_intervals().size();
+
+            if (orig_numshards > 1) {
+                metrics_entry me = m.start_time();
+                // Contract deleted edges --- this is a bit hacky solution, as the dynamic engine would
+                // do it automatically. But currently one cannot call the dynamic engine repetitively. 
+                graphchi_engine<VertexDataType, EdgeDataType> engine3(filename, nshards, false, m);
+                
+                std::string contractedname = filename + "C";
+                ContractionStep contraction;
+                sharded_graph_output<VertexDataType, EdgeDataType> shardedout(contractedname, NULL);
+                gengine = &engine3;
+
+                CONTRACTED_GRAPH_OUTPUT = (int)engine3.add_output(&shardedout);
+                engine3.set_disable_vertexdata_storage();
+                engine3.set_modifies_inedges(false);
+                engine3.set_modifies_outedges(false);
+                engine3.set_disable_outedges(true);
+                engine3.run(contraction, 1);
+                
+                // Copy vertex file
+                std::string old_vertex_filename = filename_vertex_data<VertexDataType>(filename);
+                std::string new_vertex_filename = filename_vertex_data<VertexDataType>(contractedname);
+                
+                rename(old_vertex_filename.c_str(), new_vertex_filename.c_str());
+                
+                // Clean up
+                delete_shards<EdgeDataType>(filename, orig_numshards);
+                
+                nshards = (int)shardedout.finish_sharding();
+                filename = contractedname;
+                gengine = NULL;
+                
+                std::cout << "New filename: " << filename << ", edges:" << shardedout.num_edges() << std::endl;
+                m.stop_time(me, "runtime"); // include sharding in runtime
+
+            }
+
         }
     }
     analyze_labels<VertexDataType>(filename);

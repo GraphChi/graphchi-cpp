@@ -826,7 +826,8 @@ namespace graphchi {
             }
             assert(shoveled_edges == sharded_edges);
             
-            logstream(LOG_INFO) << "Created " << shardnum << " shards, expected: " << nshards << std::endl;
+            
+            logstream(LOG_INFO) << "Created " << shardnum << " shards, for " << sharded_edges << " edges";
             assert(shardnum <= nshards);
             free(sinkbuffer);
             sinkbuffer = NULL;
@@ -1075,9 +1076,10 @@ namespace graphchi {
         
         sharder<ET> * sharderobj;
         mutex lock;
-        
+        size_t num_edges_;
+    
     public:
-        sharded_graph_output(std::string filename, DuplicateEdgeFilter<ET> * filter = NULL) {
+        sharded_graph_output(std::string filename, DuplicateEdgeFilter<ET> * filter = NULL) : num_edges_(0) {
             sharderobj = new sharder<ET>(filename);
             sharderobj->set_duplicate_filter(filter);
             sharderobj->start_preprocessing();
@@ -1116,6 +1118,7 @@ namespace graphchi {
         void output_edgeval(vid_t from, vid_t to, ET value) {
             lock.lock();
             sharderobj->preprocessing_add_edge(from, to, value);
+            num_edges_++;
             lock.unlock();
         }
         
@@ -1125,6 +1128,10 @@ namespace graphchi {
         
         
         void close() {
+        }
+        
+        size_t num_edges() {
+            return num_edges_;
         }
         
         size_t finish_sharding() {
