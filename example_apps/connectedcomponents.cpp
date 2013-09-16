@@ -53,7 +53,7 @@
 using namespace graphchi;
 
 int         iterationcount = 0;
-
+bool        scheduler = false;
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -78,11 +78,11 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
         
-        if (gcontext.scheduler != NULL) gcontext.scheduler->remove_tasks(vertex.id(), vertex.id());
+        if (scheduler) gcontext.scheduler->remove_tasks(vertex.id(), vertex.id());
         
         if (gcontext.iteration == 0) {
             vertex.set_data(vertex.id());
-            if (gcontext.scheduler != NULL)  gcontext.scheduler->add_task(vertex.id());
+            if (scheduler)  gcontext.scheduler->add_task(vertex.id());
         }
         
         /* On subsequent iterations, find the minimum label of my neighbors */
@@ -109,7 +109,7 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
                 if (label < vertex.edge(i)->get_data()) {
                     vertex.edge(i)->set_data(label);
                     /* Schedule neighbor for update */
-                    if (gcontext.scheduler != NULL) gcontext.scheduler->add_task(vertex.edge(i)->vertex_id(), true);
+                    if (scheduler) gcontext.scheduler->add_task(vertex.edge(i)->vertex_id(), true);
                     converged = false;
                 }
             }
@@ -163,7 +163,7 @@ int main(int argc, const char ** argv) {
     /* Basic arguments for application */
     std::string filename = get_option_string("file");  // Base filename
     int niters           = get_option_int("niters", 1000); // Number of iterations (max)
-    bool scheduler       = get_option_int("scheduler", false);
+    scheduler            = get_option_int("scheduler", false);
     
     /* Process input file - if not already preprocessed */
     int nshards             = (int) convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
@@ -186,7 +186,7 @@ int main(int argc, const char ** argv) {
     metrics_report(m);
     std::cout << "Gauss-Seidel iterations: " << iterationcount << std::endl;
     FILE * logf = fopen("cc_log.txt", "a");
-    fprintf(logf, "async,%s,%d,%d\n", filename.c_str(), iterationcount, get_option_int("randomization"));
+    fprintf(logf, "async,%s,%d,%d\n", filename.c_str(), iterationcount, get_option_int("randomization", 0));
     fclose(logf);
     return 0;
 }

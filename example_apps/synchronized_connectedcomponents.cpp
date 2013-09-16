@@ -56,7 +56,7 @@ int iterationcount = 0;
 struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     std::vector<PairContainer<vid_t> > inmemory_vertices;
-    
+    bool converged;
     
     /**
      *  Vertex update function.
@@ -70,8 +70,6 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         
         if (gcontext.iteration == 0) {
             vertex.set_data(vertex.id());
-            gcontext.scheduler->add_task(vertex.id());
-
         }
         
         /* On subsequent iterations, find the minimum label of my neighbors */
@@ -83,17 +81,11 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         }
         
         /* Set my label */
-        bool schedule_neighbors = curmin < vertex.get_data();
+        if (curmin < vertex.get_data()) {
+            converged = false;
+        }
         vertex.set_data(curmin);
         inmemory_vertices[vertex.id()].set_newval(gcontext.iteration, curmin);
-        
-        for(int i=0; i < vertex.num_edges(); i++) {
-            if (schedule_neighbors) {
-                /* Schedule neighbor for update */
-                gcontext.scheduler->add_task(vertex.edge(i)->vertex_id());
-                                
-            }  
-        }
     }
     /**
      * Called before an iteration starts.
@@ -106,7 +98,21 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
             }
         }
         iterationcount++;
+        converged = iteration > 0;
+
     }
+
+    
+    /**
+     * Called after an iteration has finished.
+     */
+    void after_iteration(int iteration, graphchi_context &ginfo) {
+        if (converged) {
+            std::cout << "Converged!" << std::endl;
+            ginfo.set_last_iteration(iteration);
+        }
+    }
+    
 };
 
 int main(int argc, const char ** argv) {
@@ -121,7 +127,7 @@ int main(int argc, const char ** argv) {
     /* Basic arguments for application */
     std::string filename = get_option_string("file");  // Base filename
     int niters           = get_option_int("niters", 1000); // Number of iterations (max)
-    bool scheduler       = true;    // Always run with scheduler
+    bool scheduler       = false;    // Always run with scheduler
     
     /* Process input file - if not already preprocessed */
     int nshards             = (int) convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
