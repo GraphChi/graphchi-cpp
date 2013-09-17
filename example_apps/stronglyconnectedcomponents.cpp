@@ -75,6 +75,9 @@ struct bidirectional_label {
     
 };
 
+int super_step = 0;
+
+
 // Id for the output stream for contracted graph
 int CONTRACTED_GRAPH_OUTPUT;
 
@@ -125,10 +128,13 @@ static void VARIABLE_IS_NOT_USED remove_edgev(graphchi_edge<bidirectional_label>
 
 bool first_iteration = true;
 bool remainingvertices = true;
+mutex debugmutex;
 /**
  * FORWARD-PHASE
  */
 struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
+    
+    size_t remaining;
     
     /**
      *  Vertex update function.
@@ -152,7 +158,21 @@ struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
             return;
         }
         remainingvertices = true;
-
+        
+        if (super_step > 5) {
+            debugmutex.lock();
+            remaining++;
+            std::cout << "Vertex " << vertex.id() << " still remaining: (iter " << gcontext.iteration << ")" << vertex.num_inedges()
+            << " out:" << vertex.num_outedges() << std::endl;
+            for(int i=0; i < vertex.num_outedges(); i++) {
+                std::cout << " " << vertex.id() << " ---> " << vertex.outedge(i)->vertex_id() << std::endl;
+            }
+            for(int i=0; i < vertex.num_inedges(); i++) {
+                std::cout << " " << vertex.id() << " <--- " << vertex.inedge(i)->vertex_id() << std::endl;
+            }
+            debugmutex.unlock();
+        }
+        
         VertexDataType vertexdata = vertex.get_data();
         bool propagate = false;
         if (gcontext.iteration == 0) {
@@ -190,10 +210,14 @@ struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
     }
     
     void before_iteration(int iteration, graphchi_context &gcontext) {
+        remaining = 0;
     }
     
     void after_iteration(int iteration, graphchi_context &gcontext) {
         first_iteration = false;
+        if (super_step > 5) {
+            std::cout << "Still remaining: " << remaining << std::endl;
+        }
     }
     void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) { }
   
@@ -308,7 +332,6 @@ int main(int argc, const char ** argv) {
  
     
     /* Run */
-    int super_step = 0;
     while(remainingvertices) {
         std::cout  << "STARTING SUPER STEP: " << super_step << std::endl;
         super_step++;
