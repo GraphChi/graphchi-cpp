@@ -106,6 +106,7 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     bool rows = vertex.id() < (uint)info.get_start_node(false);
     if (info.is_square()) 
       rows = mi.A_transpose;
+    (void) rows; // unused
     assert(mi.r_offset >=0);
     //store previous value for convergence detection
     if (mi.prev_offset >= 0)

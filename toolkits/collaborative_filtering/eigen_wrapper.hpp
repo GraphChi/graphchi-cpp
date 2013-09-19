@@ -39,12 +39,18 @@
 #include <fstream>
 #include <ostream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+
 #include "Eigen/Dense"
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 #include "Eigen/Sparse"
 #include "Eigen/Cholesky"
 #include "Eigen/Eigenvalues"
 #include "Eigen/SVD"
+
+#pragma GCC diagnostic pop
+
 #define EIGEN_DONT_PARALLELIZE //eigen parallel for loop interfers with ours.
 using namespace Eigen;
 

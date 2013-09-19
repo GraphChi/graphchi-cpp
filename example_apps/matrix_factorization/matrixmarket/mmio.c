@@ -190,12 +190,12 @@ int mm_write_mtx_crd_size(FILE *f, uint M, uint N, size_t nz)
         return 0;
 }
 
-int mm_read_mtx_crd_size(FILE *f, uint *_M, uint *_N, size_t *nz )
+int mm_read_mtx_crd_size(FILE *f, uint *_MM, uint *_NN, size_t *nz )
 {
     char line[MM_MAX_LINE_LENGTH];
 
     /* set return null parameter values, in case we exit with errors */
-    *_M = *_N = *nz = 0;
+    *_MM = *_NN = *nz = 0;
 
     /* now continue scanning until you reach the end-of-comments */
     do 
@@ -205,7 +205,7 @@ int mm_read_mtx_crd_size(FILE *f, uint *_M, uint *_N, size_t *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%u %u %llu", _M, _N, (long long unsigned int*)nz) == 3)
+    if (sscanf(line, "%u %u %llu", _MM, _NN, (long long unsigned int*)nz) == 3)
         return 0;
     else return MM_UNSUPPORTED_TYPE;
 }
