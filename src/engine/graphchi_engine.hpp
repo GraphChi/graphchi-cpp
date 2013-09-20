@@ -844,7 +844,7 @@ namespace graphchi {
                         /* Determine the sub interval */
                         sub_interval_en = determine_next_window(exec_interval,
                                                                 sub_interval_st, 
-                                                                std::min(interval_en, sub_interval_st + maxwindow), 
+                                                                std::min(interval_en, (is_inmemory_mode() ? interval_en : sub_interval_st + maxwindow)), 
                                                                 size_t(membudget_mb) * 1024 * 1024);
                         assert(sub_interval_en >= sub_interval_st);
                         
