@@ -310,7 +310,6 @@ namespace graphchi {
             }
             while(true) {
                 std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
-                logstream(LOG_DEBUG) << "Deleting " << block_filename << " exists: " << file_exists(block_filename) << std::endl;
                 if (file_exists(block_filename)) {
                     int err = remove(block_filename.c_str());
                     if (err != 0) logstream(LOG_ERROR) << "Error removing file " << block_filename
