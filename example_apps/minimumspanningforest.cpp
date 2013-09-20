@@ -399,6 +399,8 @@ int main(int argc, const char ** argv) {
         engine.set_save_edgesfiles_after_inmemmode(true);
         engine.run(contraction, 1);
 
+        metrics_entry me = m.start_time();
+
         // Clean up
         delete_shards<EdgeDataType>(filename, orig_numshards);
 
@@ -411,6 +413,9 @@ int main(int argc, const char ** argv) {
         
         nshards = (int)shardedout.finish_sharding();
         filename = contractedname;
+        
+        m.stop_time(me, "runtime"); // include sharding in runtime
+
         
     }
     m.stop_time("msf-total-runtime");
