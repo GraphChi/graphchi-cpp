@@ -29,6 +29,12 @@ int main(int argc, const char ** argv) {
     sprintf(filename, "%s_%d.edgelist", type.c_str(), n);
     FILE * f = fopen(filename, "w");
     
+    if (type == "chain") {
+        for(int x=0; x<n - 1; x++) {
+            fprintf(f, "%d %d\n", x, x + 1);
+        }
+    }
+    
     if (type == "grid") {
         for(int x=0; x<n; x++) {
             for(int y=0; y<n; y++) {
