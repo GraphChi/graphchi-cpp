@@ -143,9 +143,10 @@ namespace graphchi {
         std::string multiplex_root;
         bool disable_preloading;
         
-        std::vector< synchronized_queue<iotask> > mplex_readtasks;
-        std::vector< synchronized_queue<iotask> > mplex_writetasks;
-        std::vector< synchronized_queue<iotask> > mplex_priotasks;
+        synchronized_queue<iotask> * mplex_readtasks;
+        synchronized_queue<iotask> * mplex_writetasks;
+        synchronized_queue<iotask> * mplex_priotasks;
+
         std::vector< pthread_t > threads;
         std::vector< thrinfo * > thread_infos;
         metrics &m;
@@ -185,13 +186,11 @@ namespace graphchi {
             m.set("niothreads", (size_t)niothreads);
             
             logstream(LOG_DEBUG) << "Start io-manager with " << niothreads << " threads." << std::endl;
-            
+
             // Each multiplex partition has its own queues
-            for(int i=0; i < multiplex * niothreads; i++) {
-                mplex_readtasks.push_back(synchronized_queue<iotask>());
-                mplex_writetasks.push_back(synchronized_queue<iotask>());
-                mplex_priotasks.push_back(synchronized_queue<iotask>());
-            }
+            mplex_readtasks = new synchronized_queue<iotask>[multiplex * niothreads];
+            mplex_writetasks = new synchronized_queue<iotask>[multiplex * niothreads];
+            mplex_priotasks = new synchronized_queue<iotask>[multiplex * niothreads];
             
             int k = 0;
             for(int i=0; i < multiplex; i++) {
@@ -244,6 +243,10 @@ namespace graphchi {
                 delete preloaded->data;
                 delete preloaded;
             }
+
+            delete [] mplex_readtasks;
+            delete [] mplex_writetasks;
+            delete [] mplex_priotasks;
         }
         
         void set_disable_preloading(bool b) {

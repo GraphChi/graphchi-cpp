@@ -193,7 +193,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
 float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra);
 
 
-void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size_t & nz, uint nodes, size_t edges, int type);
+void detect_matrix_size(std::string filename, FILE *&f, uint &_MM, uint &_NN, size_t & nz, uint nodes, size_t edges, int type);
 
 /**
   compute validation rmse

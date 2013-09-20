@@ -315,6 +315,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   char linebuf_debug[1024];
 
   int token = 0;
+  I = J = 0;
   index = 0;
 
   int rc = getline(&linebuf, &linesize, f);
@@ -506,7 +507,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   uint I, J;
   std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
   std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
-  float val;
+  float val = 0.0f;
 
   if (limit_rating > 0)
     nz = limit_rating;
@@ -585,14 +586,14 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
     std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
     std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
     uint I, J;
-    float val;
+    float val = 0.0f;
     int skipped_features = 0;
     int skipped_nodes = 0;
     int errors = 0; 
 
     //FOR ROC. ROC code thanks to Justin Yan.
-    double _M = 0;
-    double _N = 0;
+    double _MM = 0;
+    double _NN = 0;
     std::vector<std::pair<double, double> > realPrediction;
     double avg_pred = 0;
 
@@ -644,18 +645,18 @@ static bool mySort(const std::pair<double, double> &p1,const std::pair<double, d
       for(iter=realPrediction.begin();iter!=realPrediction.end();iter++)
       {
         L.push_back(iter->first);
-        if(iter->first > cutoff) _M++;
-        else _N++;
+        if(iter->first > cutoff) _MM++;
+        else _NN++;
       }
       std::vector<double>:: iterator iter2;
       int i=0;
       for(iter2=L.begin();iter2!=L.end();iter2++)
       {
-        if(*iter2 > cutoff) ret += ((_M+_N) - i);
+        if(*iter2 > cutoff) ret += ((_MM+_NN) - i);
         i++;
       }
-      double ret2 = _M *(_M+1)/2;
-      roc= (ret-ret2)/(_M*_N);
+      double ret2 = _MM *(_MM+1)/2;
+      roc= (ret-ret2)/(_MM*_NN);
       std::cout<<" Validation ROC: " << roc << std::endl;
     }
     else std::cout<<std::endl;
@@ -706,7 +707,7 @@ void test_predictions_N(
 
   std::vector<uint> valarray; valarray.resize(FEATURE_WIDTH);
   std::vector<uint> positions; positions.resize(FEATURE_WIDTH);
-  float val;
+  float val = 0.0f;
   double prediction;
   uint I,J;
   int skipped_features = 0;
@@ -808,12 +809,14 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   last_training_rmse = dtraining_rmse;
   dtraining_rmse = 0;
   size_t total_errors = 0;
+#if 0 // unused
   int start = 0;
   int end = M;
   if (items){
     start = M;
     end = M+N;
   }
+#endif // 0
   dtraining_rmse = sum(rmse_vec);
   if (calc_error){
     total_errors = sum(errors_vec); 

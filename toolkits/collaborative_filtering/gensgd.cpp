@@ -42,7 +42,7 @@
 #define GRAPHCHI_DISABLE_COMPRESSION //remove this if you want to save memory but increase runtime
 
 #define MAX_FEATURES 256
-#define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 34 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-03;
 double gensgd_rate2 = 1e-03;
@@ -349,6 +349,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   char * linebuf = NULL;
   size_t linesize = 0;
 
+  I = J = 0;
   int token = 0;
   int index = 0;
   int rc = getline(&linebuf, &linesize, f);
@@ -611,7 +612,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   int val_array_len = std::max(1, fc.total_features);
   assert(val_array_len < FEATURE_WIDTH);
   std::vector<float> valarray; valarray.resize(val_array_len);
-  float val;
+  float val = 0.0f;
 
   if (!fc.hash_strings){
     for (int i=0; i< fc.total_features; i++){
@@ -870,7 +871,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
-    float val;
+    float val = 0.0f;
 
     char linebuf_debug[1024];
     for (size_t i=0; i<nz; i++)
@@ -949,7 +950,7 @@ void test_predictions_N(
   FILE * fout = open_file((test + ".predict").c_str(),"w");
 
   std::vector<float> valarray; valarray.resize(fc.total_features);
-  float val;
+  float val = 0.0f;
   double prediction;
   uint I,J;
 
@@ -1081,12 +1082,14 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   last_training_rmse = dtraining_rmse;
   dtraining_rmse = 0;
   size_t total_errors = 0;
+#if 0 // unused 
   int start = 0;
   int end = M;
   if (items){
     start = M;
     end = M+N;
   }
+#endif // 0
   dtraining_rmse = sum(rmse_vec);
   if (calc_error)
     total_errors = (size_t)sum(errors_vec);

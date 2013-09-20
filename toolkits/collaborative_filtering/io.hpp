@@ -66,7 +66,7 @@ void read_matrix_market_banner_and_size(FILE * f, MM_typecode & matcode, uint & 
   }
 }
 
-void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
+void detect_matrix_size(std::string filename, FILE *&f, uint &_MM, uint &_NN, size_t & nz, uint nodes = 0, size_t edges = 0, int type = TRAINING){
 
   MM_typecode matcode;
   bool info_file = false;
@@ -76,7 +76,7 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size
     /* auto detect presence of file named base_filename.info to find out matrix market size */
     if ((ff = fopen((filename + ":info").c_str(), "r")) != NULL) {
       info_file = true;
-      read_matrix_market_banner_and_size(ff, matcode, _M, _N, nz, filename + ":info");
+      read_matrix_market_banner_and_size(ff, matcode, _MM, _NN, nz, filename + ":info");
       fclose(ff);
     }
   }
@@ -88,10 +88,10 @@ void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size
     else logstream(LOG_FATAL)<<"Failed to open input file: " << filename << std::endl;
   }
   if (!info_file && nodes == 0 && edges == 0){
-    read_matrix_market_banner_and_size(f, matcode, _M, _N, nz, filename);
+    read_matrix_market_banner_and_size(f, matcode, _MM, _NN, nz, filename);
   }
   else if (nodes > 0 && edges > 0){
-    _M = _N = nodes;
+    _MM = _NN = nodes;
     nz = edges;
   }
 }

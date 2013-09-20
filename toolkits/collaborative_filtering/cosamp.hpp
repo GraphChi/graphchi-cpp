@@ -66,7 +66,7 @@ vec CoSaMP(const mat & Phi, const vec & u, int K, int max_iter, double tol1, int
     vec b;
     bool ret = backslash(phit, u, b);
     assert(ret);
-    ret = false;//avoid warning
+    (void) ret; //avoid warning
     b= fabs(b);
     ivec z3 = sort_index(b);
     z3 = reverse(z3);
@@ -98,7 +98,7 @@ void test_cosamp(){
    vec right = init_vec("0 1.2032 0", 3);
    double diff = norm(ret - right);
    assert(diff <1e-4);
-   diff = 0; //avoid warning
+   (void) diff; //avoid warning
 
 }
 
