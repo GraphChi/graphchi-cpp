@@ -11,6 +11,7 @@
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F648EE617B82B9900EFEE76 /* stronglyconnectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648EDE17B80D7800EFEE76 /* stronglyconnectedcomponents.cpp */; };
 		5F648FC117B94BB700EFEE76 /* unionfind_connectedcomps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648FC017B94BB700EFEE76 /* unionfind_connectedcomps.cpp */; };
+		5F684CEF17ECDD2D00E1FA0A /* randomweightinject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */; };
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
 		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
@@ -268,6 +269,7 @@
 		5F64B8D517E7C25F003DC271 /* graphgenerators.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphgenerators.h; sourceTree = "<group>"; };
 		5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
 		5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_data_dynamic.hpp; sourceTree = "<group>"; };
+		5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = randomweightinject.cpp; sourceTree = "<group>"; };
 		5F74B03715D349EF00ED3EA9 /* cgs_lda_vertexprogram.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = cgs_lda_vertexprogram.hpp; sourceTree = "<group>"; };
 		5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = cgs_lda.cpp; sourceTree = "<group>"; };
 		5F74B04215D3532600ED3EA9 /* graphlab_lda */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphlab_lda; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -731,6 +733,7 @@
 				5F41F7A617B0068800C5FD90 /* toplist.hpp */,
 				5F64B8D417E7C25F003DC271 /* graphgenerators.cpp */,
 				5F64B8D517E7C25F003DC271 /* graphgenerators.h */,
+				5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */,
 			);
 			path = util;
 			sourceTree = "<group>";
@@ -1548,6 +1551,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F648FC117B94BB700EFEE76 /* unionfind_connectedcomps.cpp in Sources */,
+				5F684CEF17ECDD2D00E1FA0A /* randomweightinject.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
