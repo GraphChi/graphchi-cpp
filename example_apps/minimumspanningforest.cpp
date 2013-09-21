@@ -356,7 +356,7 @@ int main(int argc, const char ** argv) {
     int nshards          = get_option_int("nshards", 0);
     delete_shards<EdgeDataType>(filename, nshards);
     
-    convert_if_notexists<double, EdgeDataType>(filename, get_option_string("nshards", "10"));
+    convert_if_notexists<double, EdgeDataType>(filename, get_option_string("nshards", "0"));
     
     contractionType = get_option_string("algo", "boruvska") == "boruvska" ? BORUVSKA : STAR;
     
