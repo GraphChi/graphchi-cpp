@@ -88,6 +88,7 @@ struct bidirectional_component_weight {
     
 };
 
+
 class AcceptMinimum : public DuplicateEdgeFilter<bidirectional_component_weight> {
     bool acceptFirst(bidirectional_component_weight &first, bidirectional_component_weight &second) {
         return (first.weight < second.weight);
@@ -393,7 +394,7 @@ int main(int argc, const char ** argv) {
         
         ContractionStep contraction;
         engine.set_disable_vertexdata_storage();
-        engine.set_modifies_inedges(true);
+        engine.set_modifies_inedges(false);
         engine.set_modifies_outedges(false);
         engine.set_disable_outedges(true);
         engine.set_save_edgesfiles_after_inmemmode(true);
