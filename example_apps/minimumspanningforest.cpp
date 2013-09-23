@@ -158,7 +158,7 @@ struct BoruvskaStarContractionStep : public GraphChiProgram<VertexDataType, Edge
         if (gcontext.iteration == 0) {
             num_active_vertices ++;
             num_edges += vertex.num_inedges();
-            int min_edge_weight = (1<<31);
+            int min_edge_weight = 0;
             int min_edge_idx = 0;
         
             // TODO: replace with reductions
@@ -167,7 +167,7 @@ struct BoruvskaStarContractionStep : public GraphChiProgram<VertexDataType, Edge
                 EdgeDataType edata = vertex.edge(i)->get_data();
                 
                 int w = edata.weight;
-                if (w < min_edge_weight || (w == min_edge_weight && edata.in_mst)) {  // Tie-breaking
+                if (i == 0 || w < min_edge_weight || (w == min_edge_weight && edata.in_mst)) {  // Tie-breaking
                     min_edge_idx = i;
                     min_edge_weight = w;
                 }

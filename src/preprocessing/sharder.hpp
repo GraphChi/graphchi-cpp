@@ -66,7 +66,7 @@
 #include "util/qsort.hpp"
 #endif 
 namespace graphchi {
-    template <typename VT, typename ET> class sharded_graph_output;
+    template <typename VT, typename ET, typename ETFinal> class sharded_graph_output;
     
     
 #define SHARDER_BUFSIZE (64 * 1024 * 1024)
@@ -1064,23 +1064,23 @@ namespace graphchi {
         }
 #endif
         
-        template <typename A, typename B> friend class sharded_graph_output;
+        template <typename A, typename B, typename C> friend class sharded_graph_output;
     }; // End class sharder
     
     
     /**
      * Outputs new edges into a shard - can be used from an update function
      */
-    template <typename VT, typename ET>
+    template <typename VT, typename ET, typename ETFinal=ET>
     class sharded_graph_output : public ioutput<VT, ET> {
         
-        sharder<ET> * sharderobj;
+        sharder<ETFinal> * sharderobj;
         mutex lock;
         size_t num_edges_;
     
     public:
-        sharded_graph_output(std::string filename, DuplicateEdgeFilter<ET> * filter = NULL) : num_edges_(0) {
-            sharderobj = new sharder<ET>(filename);
+        sharded_graph_output(std::string filename, DuplicateEdgeFilter<ETFinal> * filter = NULL) : num_edges_(0) {
+            sharderobj = new sharder<ETFinal>(filename);
             sharderobj->set_duplicate_filter(filter);
             sharderobj->start_preprocessing();
         }
@@ -1115,12 +1115,14 @@ namespace graphchi {
             assert(false); // Need to use the custom method
         }
         
-        void output_edgeval(vid_t from, vid_t to, ET value) {
+        void output_edgeval(vid_t from, vid_t to, ETFinal value) {
             lock.lock();
             sharderobj->preprocessing_add_edge(from, to, value);
             num_edges_++;
             lock.unlock();
         }
+        
+    
         
         void output_value(vid_t vid, VT value) {
             assert(false);  // Not used here
