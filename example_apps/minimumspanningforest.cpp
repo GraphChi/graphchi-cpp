@@ -395,6 +395,8 @@ int main(int argc, const char ** argv) {
         complog = fopen("msflog_star.txt", "w");
 
     }
+    
+     
     /* NOTE: because of optimizing the first iteration data size, this is a terrible mess */
     for(int MSF_iteration=0; MSF_iteration < 100; MSF_iteration++) {
         logstream(LOG_INFO) << "MSF ITERATION " << MSF_iteration << " contraction: " << contractionType << std::endl;
@@ -451,7 +453,7 @@ int main(int argc, const char ** argv) {
             engine.set_modifies_outedges(true);
             engine.set_disable_outedges(false);
             
-            engine.run(boruvska_starcontraction, 2);
+            engine.run(boruvska_starcontraction, (nshards > 2 ? 2 : 4)); // hack
             
             
             /* Step 2: Run contraction */
