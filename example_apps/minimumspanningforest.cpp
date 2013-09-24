@@ -217,7 +217,8 @@ struct BoruvskaStarContractionStep : public GraphChiProgram<VertexDataType, Edge
             for(int i=0; i < vertex.num_edges(); i++) {
                 graphchi_edge<EdgeDataType> * e = vertex.edge(i);
                 if (e->get_data().in_mst) {
-                    min_component_id = std::min(e->get_data().neighbor_label(vertex.id(), e->vertex_id()), min_component_id);
+                    min_component_id = std::min(
+                                                std::min(e->get_data().neighbor_label(vertex.id(), e->vertex_id()), e->vertex_id()), min_component_id);
                 }
             }
             

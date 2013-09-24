@@ -393,7 +393,7 @@ namespace graphchi {
                               sliding_shards[p]->set_disable_async_writes(true); // Cannot write async if we use randomization, because async assumes we can write previous vertices edgedata because we won't touch them this iteration  
                             }
                             sliding_shards[p]->read_next_vertices((int) vertices.size(), sub_interval_st, vertices,
-                                                                  scheduler != NULL && chicontext.iteration == 0);
+                                                                  (randomization || scheduler != NULL) && chicontext.iteration == 0);
                             
                         }
                     }

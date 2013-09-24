@@ -155,7 +155,7 @@ int main(int argc, const char ** argv) {
     /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
     graphchi_init(argc, argv);
-    
+
     /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
     metrics m("connected-components");
