@@ -129,7 +129,18 @@ namespace graphchi {
     }
     
     template <class EdgeDataType>
-    struct dstF {inline vid_t operator() (edge_with_value<EdgeDataType> a) {return a.dst;} };
+    struct dstF {
+        inline vid_t operator() (edge_with_value<EdgeDataType> a) {return a.dst;}
+    };
+    
+    
+    // Sorts by first dst then src
+    template <class EdgeDataType>
+    struct dstSrcF {
+        size_t maxvertex;
+        dstSrcF(vid_t maxvertex) : maxvertex(maxvertex + 1) {}
+        inline size_t operator() (edge_with_value<EdgeDataType> a) {return size_t(a.dst) * maxvertex + a.src;}
+    };
     
     template <class EdgeDataType>
     struct srcF {inline vid_t operator() (edge_with_value<EdgeDataType> a) {return a.src;} };
@@ -142,16 +153,48 @@ namespace graphchi {
         size_t numedges;
         edge_with_value<EdgeDataType> * buffer;
         vid_t max_vertex;
+        DuplicateEdgeFilter<EdgeDataType> *  duplicate_filter;
         
-        shard_flushinfo(std::string shovelname, vid_t max_vertex, size_t numedges, edge_with_value<EdgeDataType> * buffer) :
-        shovelname(shovelname), numedges(numedges), buffer(buffer), max_vertex(max_vertex) {}
+        shard_flushinfo(std::string shovelname, vid_t max_vertex, size_t numedges, edge_with_value<EdgeDataType> * buffer, DuplicateEdgeFilter<EdgeDataType> * duplicate_filter) :
+        shovelname(shovelname), numedges(numedges), buffer(buffer), max_vertex(max_vertex), duplicate_filter(duplicate_filter) {}
         
         void flush() {
             /* Sort */
             // TODO: remove duplicates here!
-            logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
-            iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<EdgeDataType>());
-            logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
+    
+            if (duplicate_filter != NULL) {
+                // Sort by dst, then by src so can effectively remove duplicates
+                logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
+                iSort(buffer, (intT)numedges, intT(max_vertex)*intT(max_vertex)+intT(max_vertex), dstSrcF<EdgeDataType>(max_vertex));
+                logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
+           
+                edge_with_value<EdgeDataType> * tmpbuf = (edge_with_value<EdgeDataType> *) calloc(sizeof(edge_with_value<EdgeDataType>), numedges);
+                size_t i = 1;
+                tmpbuf[0] = buffer[0];
+                for(size_t j=1; j<numedges; j++) {
+                    edge_with_value<EdgeDataType> prev = tmpbuf[i - 1];
+                    edge_with_value<EdgeDataType> cur = buffer[j];
+                    if (prev.src == cur.src && prev.dst == cur.dst) {
+                        if (duplicate_filter->acceptFirst(cur.value, prev.value)) {
+                            // Replace the edge with the newer one
+                            tmpbuf[i - 1] = cur;
+                        }
+                    } else {
+                        tmpbuf[i++] = cur;
+                    }
+                }
+                std::cout << "Pre-duplicate filter while shoveling: " << numedges << " --> " << i << std::endl;
+                numedges = i;
+                free(buffer);
+                buffer = tmpbuf;
+            } else {
+                logstream(LOG_INFO) << "Sorting shovel: " << shovelname << ", max:" << max_vertex << std::endl;
+                iSort(buffer, (intT)numedges, (intT)max_vertex, dstF<EdgeDataType>());
+                logstream(LOG_INFO) << "Sort done." << shovelname << std::endl;
+                
+            }
+            
+            
             int f = open(shovelname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             writea(f, buffer, numedges * sizeof(edge_with_value<EdgeDataType>));
             close(f);
@@ -282,6 +325,7 @@ namespace graphchi {
         bool shovel_sorted;
         edge_with_value<EdgeDataType> * curshovel_buffer;
         std::vector<pthread_t> shovelthreads;
+        std::vector<shard_flushinfo<EdgeDataType> *> shoveltasks;
         
     public:
         
@@ -346,8 +390,9 @@ namespace graphchi {
         
         void flush_shovel(bool async=true) {
             /* Flush in separate thread unless the last one */
-            shard_flushinfo<EdgeDataType> * flushinfo = new shard_flushinfo<EdgeDataType>(shovel_filename(numshovels), max_vertex_id, curshovel_idx, curshovel_buffer);
-            
+            shard_flushinfo<EdgeDataType> * flushinfo = new shard_flushinfo<EdgeDataType>(shovel_filename(numshovels), max_vertex_id, curshovel_idx, curshovel_buffer, duplicate_edge_filter);
+            shoveltasks.push_back(flushinfo);
+
             if (!async) {
                 curshovel_buffer = NULL;
                 flushinfo->flush();
@@ -398,7 +443,6 @@ namespace graphchi {
             }
             
             max_vertex_id = std::max(std::max(from, to), max_vertex_id);
-            shoveled_edges++;
         }
         
 #ifdef DYNAMICEDATA
@@ -506,6 +550,13 @@ namespace graphchi {
     protected:
         
         virtual void determine_number_of_shards(std::string nshards_string) {
+            /* Count shoveled edges */
+            shoveled_edges = 0;
+            for(int i=0; i<(int)shoveltasks.size(); i++) {
+                shoveled_edges += shoveltasks[i]->numedges;
+                delete shoveltasks[i];
+            }
+            
             if (nshards_string.find("auto") != std::string::npos || nshards_string == "0") {
                 logstream(LOG_INFO) << "Determining number of shards automatically." << std::endl;
                 
@@ -824,7 +875,8 @@ namespace graphchi {
             if (shoveled_edges != sharded_edges) {
                 logstream(LOG_INFO) << "Shoveled " << shoveled_edges << " but sharded " << sharded_edges << " edges" << std::endl;
             }
-            assert(shoveled_edges == sharded_edges);
+            if (duplicate_edge_filter == NULL)
+                assert(shoveled_edges == sharded_edges);
             
             
             logstream(LOG_INFO) << "Created " << shardnum << " shards, for " << sharded_edges << " edges";
