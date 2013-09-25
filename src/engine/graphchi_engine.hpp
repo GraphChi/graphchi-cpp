@@ -308,7 +308,7 @@ namespace graphchi {
          * keep running from memory.
          */
         bool is_inmemory_mode() {
-            return nshards == 1;
+            return (nshards == 1 && num_vertices() < 2 * maxwindow); // Do not switch to in-memory mode if num of vertices too high. Ugly heuristic.
         }
         
         
