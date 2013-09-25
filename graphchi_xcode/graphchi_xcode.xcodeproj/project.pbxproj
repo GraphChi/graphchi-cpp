@@ -10,8 +10,8 @@
 		5F0A1FCF16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F0A1FCD16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F648EE617B82B9900EFEE76 /* stronglyconnectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648EDE17B80D7800EFEE76 /* stronglyconnectedcomponents.cpp */; };
-		5F648FC117B94BB700EFEE76 /* unionfind_connectedcomps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648FC017B94BB700EFEE76 /* unionfind_connectedcomps.cpp */; };
-		5F684CEF17ECDD2D00E1FA0A /* randomweightinject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */; };
+		5F684D0717F3656700E1FA0A /* contractionresearch.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F684D0617F3656700E1FA0A /* contractionresearch.1 */; };
+		5F684D0D17F3658300E1FA0A /* contractionresearch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F684D0B17F3658300E1FA0A /* contractionresearch.cpp */; };
 		5F74B04415D3533200ED3EA9 /* cgs_lda.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */; };
 		5F74B04915D35BD200ED3EA9 /* random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04615D35B6400ED3EA9 /* random.cpp */; };
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
@@ -49,6 +49,16 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		5F684D0017F3656700E1FA0A /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				5F684D0717F3656700E1FA0A /* contractionresearch.1 in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -270,6 +280,10 @@
 		5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
 		5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_data_dynamic.hpp; sourceTree = "<group>"; };
 		5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = randomweightinject.cpp; sourceTree = "<group>"; };
+		5F684D0217F3656700E1FA0A /* contractionresearch */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = contractionresearch; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F684D0417F3656700E1FA0A /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		5F684D0617F3656700E1FA0A /* contractionresearch.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = contractionresearch.1; sourceTree = "<group>"; };
+		5F684D0B17F3658300E1FA0A /* contractionresearch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = contractionresearch.cpp; sourceTree = "<group>"; };
 		5F74B03715D349EF00ED3EA9 /* cgs_lda_vertexprogram.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = cgs_lda_vertexprogram.hpp; sourceTree = "<group>"; };
 		5F74B03815D3530A00ED3EA9 /* cgs_lda.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = cgs_lda.cpp; sourceTree = "<group>"; };
 		5F74B04215D3532600ED3EA9 /* graphlab_lda */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphlab_lda; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -456,6 +470,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5F684CFF17F3656700E1FA0A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5F74B03D15D3532600ED3EA9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -549,6 +570,7 @@
 				5FCC1EBC1599F59A0003D0E9 /* example_apps */,
 				5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */,
 				5F7A0FE31589162F00748D0D /* src */,
+				5F684D0317F3656700E1FA0A /* contractionresearch */,
 				5F7A0FFC1589163E00748D0D /* Products */,
 			);
 			name = graphchi_xcode;
@@ -785,6 +807,15 @@
 			path = dynamicdata;
 			sourceTree = "<group>";
 		};
+		5F684D0317F3656700E1FA0A /* contractionresearch */ = {
+			isa = PBXGroup;
+			children = (
+				5F684D0417F3656700E1FA0A /* main.cpp */,
+				5F684D0617F3656700E1FA0A /* contractionresearch.1 */,
+			);
+			path = contractionresearch;
+			sourceTree = "<group>";
+		};
 		5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */ = {
 			isa = PBXGroup;
 			children = (
@@ -843,6 +874,7 @@
 				5F8D8B7216BF7B8500F54662 /* test_dynamicedata copy */,
 				5FA2B40B16E8EF58005B2F53 /* jinlianglda */,
 				5F648EEC17B82B9900EFEE76 /* SCC */,
+				5F684D0217F3656700E1FA0A /* contractionresearch */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1144,6 +1176,7 @@
 				5F648EDE17B80D7800EFEE76 /* stronglyconnectedcomponents.cpp */,
 				5F64B8D317E7B79C003DC271 /* synchronized_connectedcomponents.cpp */,
 				5F648FC017B94BB700EFEE76 /* unionfind_connectedcomps.cpp */,
+				5F684D0B17F3658300E1FA0A /* contractionresearch.cpp */,
 			);
 			name = example_apps;
 			path = ../example_apps;
@@ -1243,6 +1276,23 @@
 			name = SCC;
 			productName = connectedcomponents;
 			productReference = 5F648EEC17B82B9900EFEE76 /* SCC */;
+			productType = "com.apple.product-type.tool";
+		};
+		5F684D0117F3656700E1FA0A /* contractionresearch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F684D0A17F3656700E1FA0A /* Build configuration list for PBXNativeTarget "contractionresearch" */;
+			buildPhases = (
+				5F684CFE17F3656700E1FA0A /* Sources */,
+				5F684CFF17F3656700E1FA0A /* Frameworks */,
+				5F684D0017F3656700E1FA0A /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = contractionresearch;
+			productName = contractionresearch;
+			productReference = 5F684D0217F3656700E1FA0A /* contractionresearch */;
 			productType = "com.apple.product-type.tool";
 		};
 		5F74B03A15D3532600ED3EA9 /* graphlab_lda */ = {
@@ -1493,6 +1543,7 @@
 				5F8D8B6A16BF7B8500F54662 /* gensgd */,
 				5FA2B40316E8EF58005B2F53 /* jinlianglda */,
 				5F648EE317B82B9900EFEE76 /* SCC */,
+				5F684D0117F3656700E1FA0A /* contractionresearch */,
 			);
 		};
 /* End PBXProject section */
@@ -1519,6 +1570,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F648EE617B82B9900EFEE76 /* stronglyconnectedcomponents.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F684CFE17F3656700E1FA0A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F684D0D17F3658300E1FA0A /* contractionresearch.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1550,8 +1609,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F648FC117B94BB700EFEE76 /* unionfind_connectedcomps.cpp in Sources */,
-				5F684CEF17ECDD2D00E1FA0A /* randomweightinject.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1817,6 +1874,55 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		5F684D0817F3656700E1FA0A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		5F684D0917F3656700E1FA0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -2251,6 +2357,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		5F684D0A17F3656700E1FA0A /* Build configuration list for PBXNativeTarget "contractionresearch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F684D0817F3656700E1FA0A /* Debug */,
+				5F684D0917F3656700E1FA0A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 		5F74B03F15D3532600ED3EA9 /* Build configuration list for PBXNativeTarget "graphlab_lda" */ = {
 			isa = XCConfigurationList;
