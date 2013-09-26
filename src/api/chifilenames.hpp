@@ -351,6 +351,14 @@ namespace graphchi {
             if (err != 0) logstream(LOG_ERROR) << "Error removing file " << numv_filename
                 << ", " << strerror(errno) << std::endl;
         }
+        
+        /* Degree file */
+        std::string deg_filename = filename_degree_data(base_filename);
+        if (file_exists(deg_filename)) {
+            int err = remove(deg_filename.c_str());
+            if (err != 0) logstream(LOG_ERROR) << "Error removing file " << deg_filename
+                << ", " << strerror(errno) << std::endl;
+        }
     }
     
     
