@@ -276,7 +276,6 @@
 		5F648FC017B94BB700EFEE76 /* unionfind_connectedcomps.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = unionfind_connectedcomps.cpp; sourceTree = "<group>"; };
 		5F64B8D317E7B79C003DC271 /* synchronized_connectedcomponents.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = synchronized_connectedcomponents.cpp; sourceTree = "<group>"; };
 		5F64B8D417E7C25F003DC271 /* graphgenerators.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = graphgenerators.cpp; sourceTree = "<group>"; };
-		5F64B8D517E7C25F003DC271 /* graphgenerators.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphgenerators.h; sourceTree = "<group>"; };
 		5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
 		5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_data_dynamic.hpp; sourceTree = "<group>"; };
 		5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = randomweightinject.cpp; sourceTree = "<group>"; };
@@ -754,7 +753,6 @@
 				5F41F7A517B0068800C5FD90 /* synchronized_queue.hpp */,
 				5F41F7A617B0068800C5FD90 /* toplist.hpp */,
 				5F64B8D417E7C25F003DC271 /* graphgenerators.cpp */,
-				5F64B8D517E7C25F003DC271 /* graphgenerators.h */,
 				5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */,
 			);
 			path = util;

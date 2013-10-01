@@ -44,24 +44,39 @@ struct Contractor : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
     std::vector<vid_t> vertex_labels;
     std::vector<vid_t> vertex_labels_last;
+    std::vector<bool> coins;
+    std::string contraction_type;
     bool synchronous;
     
-    Contractor(bool synchronous) : synchronous(synchronous) {}
+    Contractor(bool synchronous, std::string contraction_type) : synchronous(synchronous), contraction_type(contraction_type) {}
     
     /**
      *  Vertex update function.
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-        
-        vid_t min_label = vertex_labels[vertex.id()];
-        
-        std::vector<vid_t> & nbr_labels = (synchronous ? vertex_labels_last : vertex_labels);
-        
-        /* Loop over all edges (ignore direction) */
-        for(int i=0; i < vertex.num_edges(); i++) {
-            min_label = std::min(min_label, nbr_labels[vertex.edge(i)->vertex_id()]);
+        if (contraction_type == "mlp") {
+            vid_t min_label = vertex_labels[vertex.id()];
+            
+            std::vector<vid_t> & nbr_labels = (synchronous ? vertex_labels_last : vertex_labels);
+            
+            /* Loop over all edges (ignore direction) */
+            for(int i=0; i < vertex.num_edges(); i++) {
+                min_label = std::min(min_label, nbr_labels[vertex.edge(i)->vertex_id()]);
+            }
+            vertex_labels[vertex.id()] = min_label;
+        } else {
+            // tails collapse into heads
+            bool me_heads = coins[vertex.id()];
+            if (!me_heads) {
+                /* Find first tail to collapse into */
+                for(int j=0; j<vertex.num_edges(); j++) {
+                    if (coins[vertex.edge(j)->vertex_id()]) {
+                        vertex_labels[vertex.id()] = vertex_labels[vertex.edge(j)->vertex_id()];
+                        return;
+                    }
+                }
+            }
         }
-        vertex_labels[vertex.id()] = min_label;
     }
     
     void print() {
@@ -76,6 +91,7 @@ struct Contractor : public GraphChiProgram<VertexDataType, EdgeDataType> {
     void before_iteration(int iteration, graphchi_context &gcontext) {
         if (iteration == 0) {
             // Initialize labels
+            
             vertex_labels.resize(gcontext.nvertices);
             for(vid_t v=0; v<gcontext.nvertices; v++) {
                 vertex_labels[v] = v;
@@ -91,7 +107,11 @@ struct Contractor : public GraphChiProgram<VertexDataType, EdgeDataType> {
                 print();
             }
             
-            
+            if (contraction_type == "star") {
+                for(vid_t v=0; v<gcontext.nvertices; v++) {
+                    coins.push_back(rand() % 2 == 0? true : false);
+                }
+            }
         }
         
         if (synchronous) {
@@ -119,6 +139,12 @@ struct Contractor : public GraphChiProgram<VertexDataType, EdgeDataType> {
         return n;
     }
    
+    bool contains_2() {
+        for(int i=0; i<vertex_labels.size(); i++) {
+            if (vertex_labels[i] == 2) return true;
+        }
+        return false;
+    }
     
     
 };
@@ -148,7 +174,7 @@ int main(int argc, const char ** argv) {
                                                               get_option_string("nshards", "auto"));
     logff = fopen("contraction_log.txt", "a");
 
-    Contractor program(get_option_int("sync"));
+    Contractor program(get_option_int("sync"), get_option_string("contraction", "mlp"));
 
     
     /* Run */
@@ -164,13 +190,17 @@ int main(int argc, const char ** argv) {
         program.print();
     }
     
-    fprintf(logff, "%s,random-initlabels,%s,%s,%u,%u,%lu,%lf\n", filename.c_str(), program.synchronous ? "synchronous" : "gauss-seidel",
+    fprintf(logff, "%s,%s,random-initlabels,%s,%s,%u,%u,%lu,%lf\n", filename.c_str(), program.contraction_type.c_str(), program.synchronous ? "synchronous" : "gauss-seidel",
             get_option_int("randomization", 0) ? "random-schedule" : "nonrandom-schedule", niters, engine.num_vertices(), program.unique_labels(),
             double(engine.num_vertices() - program.unique_labels()) / engine.num_vertices());
     fclose(logff);
     printf("%s,%s,%s,%u,%u,%lu,%lf\n", filename.c_str(), program.synchronous ? "synchronous" : "gauss-seidel",
             get_option_int("randomization", 0) ? "random-schedule" : "nonrandom-schedule", niters, engine.num_vertices(), program.unique_labels(),
             double(engine.num_vertices() - program.unique_labels()) / engine.num_vertices());
+    
+    FILE * twolog = fopen("twolog.txt", "a");
+    fprintf(twolog, "%d\n", program.contains_2());
+    fclose(twolog);
     
     return 0;
 }
