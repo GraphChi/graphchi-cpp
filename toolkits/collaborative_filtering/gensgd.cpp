@@ -71,6 +71,7 @@ int json_input = 0;
 int cold_start = 0;
 double inputGlobalMean = 0;
 int binary_prediction = 0;
+int verbose = 0; //print statistics about step sizes
 
 struct stats{
   float minval;
@@ -123,6 +124,8 @@ struct feature_control{
 };
 
 feature_control fc;
+
+vec stat1, stat2, stat3;
 
 int num_feature_bins(){
   int sum = 0;
@@ -1033,7 +1036,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 
       if (sum->operator[](j) >= 1e5)
         logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
-      sum_sqr[j] += pow(node_array[i]->pvec[j],2);
+      sum_sqr[j] += pow(node_array[i]->pvec[j] * val_array[i-2],2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
     assert(!std::isnan(prediction));
@@ -1148,7 +1151,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         float eui = pui - rui;
 
         //update global mean bias
-        globalMean -= gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
+        double step1 = gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
+        globalMean -= step1;
+        stat1[omp_get_thread_num()] += fabs(step1);
 
         //update node biases and  vectors
         for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.outedge(e)->vertex_id()-M); i++){
@@ -1164,12 +1169,17 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
             gensgd_rate = gensgd_rate4;
           assert(gensgd_rate != 0);
 
-          node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
+          double step2 = gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
+          node_array[i]->bias -= step2;
+          stat2[omp_get_thread_num()] += fabs(step2);
+
           assert(!std::isnan(node_array[i]->bias));
           assert(node_array[i]->bias < 1e5);
 
           vec grad =  sum - node_array[i]->pvec;
-          node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
+          vec step3 = gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
+          node_array[i]->pvec -= gensgd_rate * step3;
+          stat3[omp_get_thread_num()] += fabs(step3[0]);
           assert(!std::isnan(node_array[i]->pvec[0]));
           assert(node_array[i]->pvec[0] < 1e5);
         }
@@ -1181,6 +1191,14 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     }
 
   };
+
+
+void print_step_size(){
+   std::cout<<"Step size 1 " << sum(stat1)/(double)L <<
+              "  Step size 2 " << sum(stat2)/(double)L <<
+              "  Step size 3 " << sum(stat3)/(double)L << std::endl;
+
+}
 
   /**
    * Called after an iteration has finished.
@@ -1194,6 +1212,8 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     gensgd_rate4 *= gensgd_mult_dec;
     training_rmse_N(iteration, gcontext);
     validation_rmse_N(&gensgd_predict, gcontext, fc);
+    if (verbose)
+      print_step_size();
   };
 
   /**
@@ -1201,6 +1221,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
     rmse_vec = zeros(gcontext.execthreads);
+    stat1 = zeros(gcontext.execthreads);
+    stat2 = zeros(gcontext.execthreads);
+    stat3 = zeros(gcontext.execthreads);
     if (calc_error)
       errors_vec = zeros(gcontext.execthreads);
   }
@@ -1262,6 +1285,7 @@ int main(int argc, const char ** argv) {
   binary_prediction = get_option_int("binary_prediction", 0);
   std::string string_features = get_option_string("features", fc.default_feature_str);
   std::string real_features = get_option_string("real_features", "");
+  verbose = get_option_int("verbose",1); 
 
   //input sanity checks
   if (file_columns < 3)
