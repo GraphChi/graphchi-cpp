@@ -637,7 +637,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (i == 0)
         logstream(LOG_FATAL)<<"Failed to parse first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers? [ " << linebuf_debug << " ] " << " I : " << I << " J: " << J << std::endl;
       else 
-        logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
+        logstream(LOG_FATAL)<<"Problem parsing input line number: " << i <<" in file: " << base_filename << ".  Can not add edge from " << I << " to  J " << J << 
+                            " since matrix size is: " << M <<"x" <<N<< " [ original line: " << linebuf_debug << " ] . You probaably need to increase matrix size in the matrix market header." << std::endl;
     }
 
     bool active_edge = decide_if_edge_is_active(i, TRAINING);
@@ -1036,7 +1037,10 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 
       if (sum->operator[](j) >= 1e5)
         logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
-      sum_sqr[j] += pow(node_array[i]->pvec[j] * val_array[i-2],2);
+      if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
+         sum_sqr[j] += pow(node_array[i]->pvec[j] * val_array[i-2],2);
+      else
+         sum_sqr[j] += pow(node_array[i]->pvec[j], 2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
     assert(!std::isnan(prediction));
