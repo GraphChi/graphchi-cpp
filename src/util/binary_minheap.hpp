@@ -82,7 +82,9 @@ public:
     
     T min() { return values[0]; }
     void extractMin() {
-        values[0] = values[sz - 1];
+        if (sz > 1) {
+            values[0] = values[sz - 1];
+        }
         decrHeapSize();
         minHeapify(0);
     }

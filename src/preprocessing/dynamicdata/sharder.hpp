@@ -88,6 +88,56 @@ namespace graphchi {
         edge_with_value(vid_t src, vid_t dst, std::vector<VectorElementType> value, HeaderDataType hdr) : src(src), dst(dst), hdr(hdr), value(value){
         }
         
+        inline void docopy(const edge_with_value<VectorElementType, HeaderDataType> &x) {
+            
+            src = x.src; 
+            dst = x.dst;
+            hdr = x.hdr;
+            is_chivec_value = x.is_chivec_value;
+
+    
+            if (&x == this) {
+                // This can happen! (Also fixed an issue in binary_minhep that could cause this).
+                assert(false);
+                return;
+            }
+                
+            // Copy values one by one
+            size_t n = x.value.size();
+            
+            if (n > 0) {
+                value.reserve(n);
+    
+                for(size_t i=0; i<n; i++) {
+                     value.push_back(x.value[i]);
+                }
+            }
+        }
+        
+        // Copy constructor to go around bug in glibc bug http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625522
+        edge_with_value(const edge_with_value<VectorElementType, HeaderDataType> &x) : value(0) {
+            docopy(x);
+        }
+        
+        edge_with_value(edge_with_value<VectorElementType, HeaderDataType> &x) : value(0) {
+            docopy(x);
+        }
+        
+       
+       
+        edge_with_value<VectorElementType, HeaderDataType>& operator= (const edge_with_value<VectorElementType, HeaderDataType> &x) {
+             this->value = std::vector<VectorElementType>(0);
+             this->docopy(x);
+             return *this;
+         }
+         
+        edge_with_value<VectorElementType, HeaderDataType>& operator= (edge_with_value<VectorElementType, HeaderDataType> &x) {
+            this->value = std::vector<VectorElementType>(0);
+            this->docopy(x);
+            return *this;
+        }
+        
+        
         // Order primarily by dst, then by src
         bool operator< (edge_with_value<VectorElementType, HeaderDataType> &x2) {
             return (dst < x2.dst);
@@ -168,7 +218,7 @@ namespace graphchi {
             }
             
             close(f);
-            free(buffer);
+            delete [] buffer;
         }
     };
     
@@ -308,7 +358,7 @@ namespace graphchi {
         
         
         virtual ~sharder() {
-            if (curshovel_buffer == NULL) free(curshovel_buffer);
+            if (curshovel_buffer == NULL) delete [] curshovel_buffer;
         }
   
         
@@ -331,7 +381,7 @@ namespace graphchi {
             
             logstream(LOG_INFO) << "Starting preprocessing, shovel size: " << shovelsize << std::endl;
             
-            curshovel_buffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shovelsize, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+            curshovel_buffer = new edge_with_value<VectorElementType, HeaderDataType>[shovelsize];
             
             assert(curshovel_buffer != NULL);
             
@@ -372,7 +422,7 @@ namespace graphchi {
                     }
                     shovelthreads.clear();
                 }
-                curshovel_buffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shovelsize, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+                curshovel_buffer = new edge_with_value<VectorElementType, HeaderDataType>[shovelsize]; 
                 pthread_t t;
                 int ret = pthread_create(&t, NULL, shard_flush_run<VectorElementType, HeaderDataType>, (void*)flushinfo);
                 shovelthreads.push_back(t);
@@ -574,7 +624,7 @@ namespace graphchi {
             logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
             
             std::string fname = filename_shard_adj(basefilename, shard, nshards);
-            std::string edfname = filename_shard_edata<VectorElementType>(basefilename, shard, nshards);
+            std::string edfname = filename_shard_edata<int>(basefilename, shard, nshards);
             std::string edblockdirname = dirname_shard_edata_block(edfname, compressed_block_size);
             
             /* Make the block directory */
@@ -585,7 +635,7 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Shovel size:" << shovelsize << " edges: " << numedges << std::endl;
             
             m.start_time("finish_shard.sort");
-
+            std::cout << "Going to sort: " << shovelbuf[0].value.size() << std::endl;
             quickSort(shovelbuf, (int)numedges, edge_t_src_less<VectorElementType, HeaderDataType>);
             m.stop_time("finish_shard.sort");
 
@@ -697,7 +747,7 @@ namespace graphchi {
             /* Flush buffers and free memory */
             writea(f, buf, bufptr - buf);
             free(buf);
-            free(shovelbuf);
+            delete [] shovelbuf;
             close(f);
             
             /* Write edata size file */
@@ -737,8 +787,13 @@ namespace graphchi {
                 shard_capacity = (size_t) (1.2 * shard_capacity);
                 sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType>*) realloc(sinkbuffer, shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             }
-                        
+                     
+            std::cout << cur_shard_counter << ". add: " << val.src << ", " << val.dst << ", " << val.value.size() << std::endl;
+            assert(val.value.size() < 10000000);
             sinkbuffer[cur_shard_counter++] = val;
+            std::cout << cur_shard_counter << ". add: " << sinkbuffer[cur_shard_counter-1].src 
+                << ", " << sinkbuffer[cur_shard_counter-1].dst << ", " << sinkbuffer[cur_shard_counter-1].value.size() << std::endl;
+
             prevvid = val.dst;
             sharded_edges++;
             
@@ -750,7 +805,8 @@ namespace graphchi {
             intervals.push_back(std::pair<vid_t, vid_t>(this_interval_start, (shardnum == nshards - 1 ? max_vertex_id : prevvid)));
             this_interval_start = prevvid + 1;
             finish_shard(shardnum++, sinkbuffer, cur_shard_counter * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
-            sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType> *) malloc(shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+            sinkbuffer = new edge_with_value<VectorElementType, HeaderDataType>[shard_capacity]; 
+            //(edge_with_value<VectorElementType, HeaderDataType> *) malloc(shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>));
             cur_shard_counter = 0;
             
             std::cout << "Allocated sinkbuffer: " << shard_capacity * sizeof(edge_with_value<VectorElementType, HeaderDataType>) << ", shard_capacity=" << shard_capacity << std::endl;
@@ -773,7 +829,7 @@ namespace graphchi {
             
             logstream(LOG_INFO) << "Created " << shardnum << " shards, expected: " << nshards << std::endl;
             assert(shardnum <= nshards);
-            free(sinkbuffer);
+            delete [] sinkbuffer;
             sinkbuffer = NULL;
             
             /* Write intervals */
@@ -820,7 +876,7 @@ namespace graphchi {
             shard_capacity = edges_per_shard / 2 * 3;  // Shard can go 50% over
             shardnum = 0;
             this_interval_start = 0;
-            sinkbuffer = (edge_with_value<VectorElementType, HeaderDataType> *) calloc(shard_capacity, sizeof(edge_with_value<VectorElementType, HeaderDataType>));
+            sinkbuffer = new edge_with_value<VectorElementType, HeaderDataType> [shard_capacity];
             logstream(LOG_INFO) << "Edges per shard: " << edges_per_shard << " nshards=" << nshards << " total: " << shoveled_edges << std::endl;
             cur_shard_counter = 0;
             

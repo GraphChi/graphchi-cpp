@@ -74,6 +74,14 @@ public:
     HeaderType & header() {
         return hdr;
     }
+
+    const HeaderType & header() const {
+        return hdr;
+    }
+
+    double* const& get_data() const {
+        return data;
+    }
     
     void write(T * dest) {
         int sz = (int) this->size();
