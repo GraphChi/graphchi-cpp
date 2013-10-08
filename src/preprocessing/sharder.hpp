@@ -314,6 +314,24 @@ namespace graphchi {
             no_edgevalues = true;
         }
         
+        std::string preprocessed_name() {
+            return preprocess_filename<EdgeDataType>(basefilename);
+        }
+        
+        /**
+         * Checks if the preprocessed binary temporary file of a graph already exists,
+         * so it does not need to be recreated.
+         */
+        bool preprocessed_file_exists() {
+            int f = open(preprocessed_name().c_str(), O_RDONLY);
+            if (f >= 0) {
+                close(f);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        
         /**
          * Call to start a preprocessing session.
          */
