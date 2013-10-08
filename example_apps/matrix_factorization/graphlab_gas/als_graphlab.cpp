@@ -31,10 +31,14 @@
 
 #include <string>
 #include <algorithm>
+#include <stdint.h>
+#include <memory.h>
+#include <cstdlib>
+
+#include "graphchi_basic_includes.hpp"
 
 #include "../matrixmarket/mmio.h"
 #include "../matrixmarket/mmio.c"
-#include "graphchi_basic_includes.hpp"
 #include "api/graphlab2_1_GAS_api/graphlab.hpp"
 
 #include "als_vertex_program.hpp"
@@ -96,7 +100,8 @@ int convert_matrixmarket_for_ALS_graphlab(std::string base_filename) {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    uint M, N;
+    size_t nz;
     
     /**
      * Create sharder object
