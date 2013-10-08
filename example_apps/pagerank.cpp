@@ -117,7 +117,8 @@ struct PagerankProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
 int main(int argc, const char ** argv) {
     graphchi_init(argc, argv);
     metrics m("pagerank");
-    
+    global_logger().set_log_level(LOG_DEBUG);
+
     /* Parameters */
     std::string filename    = get_option_string("file"); // Base filename
     int niters              = get_option_int("niters", 4);

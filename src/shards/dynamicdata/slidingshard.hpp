@@ -351,6 +351,8 @@ namespace graphchi {
          * Read out-edges for vertices.
          */
         void read_next_vertices(int nvecs, vid_t start,  std::vector<svertex_t> & prealloc, bool record_index=false, bool disable_writes=false)  {
+            
+            
             metrics_entry me = m.start_time();
             if (!record_index)
                 move_close_to(start);

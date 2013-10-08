@@ -43,7 +43,7 @@ namespace graphchi {
     
     // a type that must hold MAX_RADIX bits
     typedef unsigned char bIndexT;
-    typedef int intT;
+    typedef long long int intT;
     
     // input in A, output in B
     template <class E, class F>
@@ -68,15 +68,15 @@ namespace graphchi {
     // a function to extract "bits" bits starting at bit location "offset"
     template <class E, class F>
     struct eBits {
-         int _mask;  intT _offset; F _f; 
+         intT _mask;  intT _offset; F _f; 
         eBits(int bits, intT offset, F f): _mask((1<<bits)-1),
         _offset(offset), _f(f) {}
         intT operator() (E p) {return _mask&(_f(p)>>_offset);}
     };
     
     template <class T>
-    int log2Up(T i) {
-        int a=0;
+    intT log2Up(T i) {
+        intT a=0;
         while ((1L << a) <= i) a++;
         return a;
     }
@@ -99,10 +99,10 @@ namespace graphchi {
         while (bitOffset < bits) {
             if (bitOffset+rbits > bits) rbits = bits-bitOffset;
             if (flipped)
-                radixStep(B, A, Tmp, counts, n, 1 << rbits,
+                radixStep(B, A, Tmp, counts, n, 1L << rbits,
                           eBits<E,F>(rbits,bitOffset,f));
             else
-                radixStep(A, B, Tmp, counts, n, 1 << rbits,
+                radixStep(A, B, Tmp, counts, n, 1L << rbits,
                           eBits<E,F>(rbits,bitOffset,f));
             bitOffset += rbits;
             flipped = !flipped;

@@ -174,7 +174,6 @@ struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
         }
         remainingvertices = true;
         
-        
         VertexDataType vertexdata = vertex.get_data();
         bool propagate = false;
         if (gcontext.iteration == 0) {
@@ -216,6 +215,8 @@ struct SCCForward : public GraphChiProgram<VertexDataType, EdgeDataType> {
             }
         }
     }
+    
+
     
     void after_iteration(int iteration, graphchi_context &gcontext) {
         first_iteration = false;
@@ -301,7 +302,7 @@ struct ContractionStep : public GraphChiProgram<VertexDataType, EdgeDataType> {
         // Loop over only in-edges and output them. This way deleted edges won't be included.
         for(int i=0; i < vertex.num_inedges(); i++) {
             graphchi_edge<EdgeDataType> * e = vertex.inedge(i);
-            gengine->output(CONTRACTED_GRAPH_OUTPUT)->output_edgeval(e->vertex_id(), vertex.id(),
+            ((sharded_graph_output<VertexDataType, EdgeDataType> *)gengine->output(CONTRACTED_GRAPH_OUTPUT))->output_edgeval(e->vertex_id(), vertex.id(),
                                                                      e->get_data());
         }
     }
