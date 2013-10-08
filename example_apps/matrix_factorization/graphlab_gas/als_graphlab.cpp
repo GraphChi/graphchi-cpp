@@ -152,24 +152,20 @@ int convert_matrixmarket_for_ALS_graphlab(std::string base_filename) {
         assert(M < 5 || N < 5 || nz < 10);
     }   
     
-    
-    if (!sharderobj.preprocessed_file_exists()) {
-        for (int i=0; i<nz; i++)
-        {
-            int I, J;
-            double val;
-            fscanf(f, "%d %d %lg\n", &I, &J, &val);
-            I--;  /* adjust from 1-based to 0-based */
-            J--;
-             
-            
-            sharderobj.preprocessing_add_edge(I, M + J, edge_data(val, edge_data::TRAIN));
-        }
-        sharderobj.end_preprocessing();
+
+    for (int i=0; i<nz; i++)
+    {
+        int I, J;
+        double val;
+        fscanf(f, "%d %d %lg\n", &I, &J, &val);
+        I--;  /* adjust from 1-based to 0-based */
+        J--;
+         
         
-    } else {
-        logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
+        sharderobj.preprocessing_add_edge(I, M + J, edge_data(val, edge_data::TRAIN));
     }
+    sharderobj.end_preprocessing();
+
     if (f !=stdin) fclose(f);
     
     

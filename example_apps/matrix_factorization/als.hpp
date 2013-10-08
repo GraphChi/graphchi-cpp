@@ -191,26 +191,22 @@ int convert_matrixmarket_for_ALS(std::string base_filename) {
         logstream(LOG_ERROR) << "File is suspiciously small. Something wrong? File: " << base_filename << std::endl;
         assert(M < 5 || N < 5 || nz < 10);
     }   
-    
-    
-    if (!sharderobj.preprocessed_file_exists()) {
-        for (size_t i=0; i<nz; i++)
-        {
-            uint I, J;
-            double val;
-            int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
-            if (rc != 3)
-              logstream(LOG_FATAL)<<"Error reading line: " << i << std::endl;
-            I--;  /* adjust from 1-based to 0-based */
-            J--;
-            
-            sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
-        }
-        sharderobj.end_preprocessing();
+
+
+    for (size_t i=0; i<nz; i++)
+    {
+        uint I, J;
+        double val;
+        int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
+        if (rc != 3)
+          logstream(LOG_FATAL)<<"Error reading line: " << i << std::endl;
+        I--;  /* adjust from 1-based to 0-based */
+        J--;
         
-    } else {
-        logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
+        sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val));
     }
+    sharderobj.end_preprocessing();
+    
     if (f !=stdin) fclose(f);
     
     
