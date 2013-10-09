@@ -129,8 +129,9 @@ namespace graphchi {
     struct cached_block {
         size_t len;
         void * data;
+        bool was_compressed;
         
-        cached_block(size_t len, void * data) : len(len), data(data) {}
+        cached_block(size_t len, void * data, bool was_compressed) : len(len), data(data), was_compressed(was_compressed) {}
         
         ~cached_block() {
             free(data);
@@ -166,15 +167,17 @@ namespace graphchi {
             }
         }
         
-        bool consider_caching(std::string filename, void * data, size_t len) {
+         
+        
+        bool consider_caching(std::string filename, void * data, size_t len, bool was_compresssed) {
             bool did_cache = false;
             if (!full && len + cache_size <= cache_budget_bytes) {
                 lock.lock();
                 if (len + cache_size <= cache_budget_bytes) {
                     cache_size += len;
                     did_cache = true;
-                    std::cout << cache_size <<  ": adding to cache: " << filename << std::endl;
-                    cachemap.insert(std::pair<std::string, cached_block*>(filename, new cached_block(len, data)));
+                    logstream(LOG_DEBUG) << "Cache size: " << cache_size << " / " << cache_budget_bytes <<   ": adding to cache: " << filename << std::endl;
+                    cachemap.insert(std::pair<std::string, cached_block*>(filename, new cached_block(len, data, was_compresssed)));
                 }
                 if (cache_size > cache_budget_bytes) {
                     full = true; // If full, we can avoid locking
@@ -236,6 +239,8 @@ namespace graphchi {
             multiplex = get_option_int("multiplex", 1);
             if (multiplex>1) {
                 multiplex_root = get_option_string("multiplex_root", "<not-set>");
+                logstream(LOG_FATAL) << "Multiplexing files is currently not supported! Let akyrola@cs.cmu.edu know if you need this support :)." << std::endl;
+                assert(multiplex == 1);
             } else {
                 multiplex_root = "";
                 stripesize = 1024*1024*1024;
@@ -309,6 +314,22 @@ namespace graphchi {
             return cache;
         }
         
+        /**
+          * Write to disk cached blocks.
+          */
+        void commit_cached_blocks() {
+            std::map<std::string, cached_block *>::iterator it = cache.cachemap.begin();
+            for(; it != cache.cachemap.end(); ++it) {
+                std::string fname = it->first;
+                cached_block * block = it->second;
+                
+                int session = open_session(fname, false, block->was_compressed);
+                pwritea_now(session, block->data, block->len, 0);
+                close_session(session);
+            }
+
+        }
+        
         bool multiplexed() {
             return multiplex>1;
         }
@@ -373,11 +394,6 @@ namespace graphchi {
                 }
             }
             iodesc->filename = filename;
-            if (iodesc->writedescs.size() > 0)  {
-           //     logstream(LOG_INFO) << "Opened write-session: " << session_id << "(" << iodesc->writedescs[0] << ") for " << filename << std::endl;
-            } else {
-           //     logstream(LOG_INFO) << "Opened read-session: " << session_id << "(" << iodesc->readdescs[0] << ") for " << filename << std::endl;
-            }
             return session_id;
         }
         

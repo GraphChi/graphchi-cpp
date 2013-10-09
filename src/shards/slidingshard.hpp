@@ -76,7 +76,7 @@ namespace graphchi {
                 if (active && data != NULL && writedesc >= 0) {
                     if (is_edata_block) {
                         std::string blockfilename = iomgr->get_session_filename(readdesc);
-                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset)) {
+                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
                             iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
                         } else {
                             readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release
@@ -96,7 +96,7 @@ namespace graphchi {
                     if (len > end-offset) len = end-offset;
                     if (is_edata_block) {
                         std::string blockfilename = iomgr->get_session_filename(readdesc);
-                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset)) {
+                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
                             iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
                         } else {
                             readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release

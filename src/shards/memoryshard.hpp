@@ -160,7 +160,7 @@ namespace graphchi {
                         if (block_edatasessions[i] != CACHED_SESSION_ID) {
                             // Try to include in cache. If succeeds, do not release.
                             if (false == iomgr->get_block_cache().consider_caching(
-                                    iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i])) {
+                                    iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i], true)) {
                                 iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
                                 iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                                 iomgr->close_session(block_edatasessions[i]);
@@ -191,7 +191,7 @@ namespace graphchi {
                 for(int i=0; i < nblocks; i++) {
                     if (block_edatasessions[i] != CACHED_SESSION_ID) {
                         if (false == iomgr->get_block_cache().consider_caching(
-                                                                               iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i])) {
+                                                                               iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i], true)) {
                             if (i >= startblock && i <= endblock) {
                                 iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
                             }

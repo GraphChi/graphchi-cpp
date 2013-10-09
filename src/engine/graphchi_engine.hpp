@@ -708,7 +708,7 @@ namespace graphchi {
             m.start_time("runtime");
             if (degree_handler == NULL)
                 degree_handler = create_degree_handler();
-            iomgr->set_cache_budget(membudget_mb * 1024 * 1024 - MAX_MEMBUDGET);
+            iomgr->set_cache_budget((size_t)std::max((long long int)0, (long long int)membudget_mb * 1024L * 1024L - (long long int)MAX_MEMBUDGET));
 
             randomization = get_option_int("randomization", 0) == 1;
             
@@ -962,6 +962,10 @@ namespace graphchi {
             if (vertex_data_handler != NULL) {
                 delete vertex_data_handler;
                 vertex_data_handler = NULL;
+            }
+            
+            if (modifies_inedges || modifies_outedges) {
+                iomgr->commit_cached_blocks();
             }
         }
         
