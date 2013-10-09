@@ -970,6 +970,12 @@ namespace graphchi {
                 outputs[i]->close();
             }   
             outputs.clear();
+            
+            // Commit vertex data
+            if (vertex_data_handler != NULL) {
+                delete vertex_data_handler;
+                vertex_data_handler = NULL;
+            }
         }
         
         virtual void iteration_finished() {

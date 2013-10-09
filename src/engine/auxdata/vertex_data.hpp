@@ -74,8 +74,9 @@ namespace graphchi {
                 filedesc = iomgr->open_session(filename.c_str(), false);
             } else {
                 mmap_length = get_filesize(filename);
-                filedesc = open(filename.c_str(), O_RDONLY);
-                mmap_file = (VertexDataType *) mmap(NULL, mmap_length, PROT_WRITE | PROT_READ, MAP_PRIVATE, filedesc, 0);
+                logstream(LOG_INFO) << "mmap_length=" << mmap_length << std::endl;
+                filedesc = open(filename.c_str(), O_RDWR);
+                mmap_file = (VertexDataType *) mmap(NULL, mmap_length, PROT_WRITE | PROT_READ, MAP_SHARED, filedesc, 0);
                 assert(mmap_file);
             }
         }
@@ -86,6 +87,7 @@ namespace graphchi {
             vertex_st = vertex_en = 0;
             filename = filename_vertex_data<VertexDataType>(base_filename);
             
+            mmap_file = NULL;
             use_mmap = get_option_int("mmap", 0);  // Whether to mmap the degree file to memory
             if (use_mmap) {
                 logstream(LOG_INFO) << "Use memory mapping for vertex data." << std::endl;
@@ -105,6 +107,8 @@ namespace graphchi {
                     iomgr->managed_release(filedesc, &loaded_chunk);
                 }
             } else {
+                logstream(LOG_INFO) << "Syncing vertex data..." << std::endl;
+                msync(mmap_file, mmap_length, MS_SYNC);
                 munmap(mmap_file, mmap_length);
                 close(filedesc);
             }
@@ -113,14 +117,17 @@ namespace graphchi {
             if (!use_mmap) {
                 checkarray_filesize<VertexDataType>(filename, nvertices);
             } else {
-                munmap(mmap_file, mmap_length);
-                ftruncate(filedesc, nvertices * sizeof(VertexDataType));
-                close(filedesc);
+                if (mmap_file) {
+                    msync(mmap_file, mmap_length, MS_SYNC);
+                    munmap(mmap_file, mmap_length);
+                    mmap_file = NULL;
+                    close(filedesc);
+                }
+                checkarray_filesize<VertexDataType>(filename, nvertices);
                 open_file();
             }
         }
         
-    public:
         void clear(size_t nvertices) {
             check_size(0);
             check_size(nvertices);

@@ -62,6 +62,8 @@ namespace graphchi {
         std::string filename;
         std::string base_filename;
 
+        bool modified;
+        
         int filedesc;
         
         bool use_mmap;
@@ -70,6 +72,7 @@ namespace graphchi {
      
         virtual void open_file(std::string base_filename) {
             filename = filename_degree_data(base_filename);
+            modified = false;
             if (!use_mmap) {
                 iomgr->allow_preloading(filename);
                 filedesc = iomgr->open_session(filename.c_str(), false);
@@ -104,6 +107,9 @@ namespace graphchi {
                 }        
                 iomgr->close_session(filedesc);
             } else {
+                if (modified) {
+                    msync(mmap_file, mmap_length, MS_SYNC);
+                }
                 munmap(mmap_file, mmap_length);
                 close(filedesc);
             }
@@ -145,6 +151,7 @@ namespace graphchi {
         }  
         
         virtual void set_degree(vid_t vertexid, int indegree, int outdegree) {
+            modified = true;
             if (!use_mmap) {
                 assert(vertexid >= vertex_st && vertexid <= vertex_en);
                 loaded_chunk[vertexid - vertex_st].indegree = indegree;
@@ -156,6 +163,7 @@ namespace graphchi {
         }
         
         virtual void set_degree(vid_t vertexid, degree d) {
+            modified = true;
             if (!use_mmap) {
                 assert(vertexid >= vertex_st && vertexid <= vertex_en);
                 loaded_chunk[vertexid - vertex_st] = d;
