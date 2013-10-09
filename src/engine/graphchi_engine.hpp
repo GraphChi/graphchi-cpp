@@ -378,9 +378,6 @@ namespace graphchi {
                     /* Load vertex edges from memory shard */
                     memoryshard->load_vertices(sub_interval_st, sub_interval_en, vertices, true, !disable_outedges);
                     
-                    /* Load vertices */ 
-                    vertex_data_handler->load(sub_interval_st, sub_interval_en);
-
                     /* Load vertices */
                     if (!disable_vertexdata_storage) {
                         vertex_data_handler->load(sub_interval_st, sub_interval_en);
@@ -683,7 +680,7 @@ namespace graphchi {
         }
         
         virtual void initialize_before_run() {
-            if (reset_vertexdata) {
+            if (reset_vertexdata && vertex_data_handler != NULL) {
                 vertex_data_handler->clear(num_vertices());
             }
         }
@@ -733,7 +730,7 @@ namespace graphchi {
             logstream(LOG_INFO) << "Licensed under the Apache License 2.0" << std::endl;
             logstream(LOG_INFO) << "Copyright Aapo Kyrola et al., Carnegie Mellon University (2012)" << std::endl;
             
-            if (vertex_data_handler == NULL)
+            if (vertex_data_handler == NULL && !disable_vertexdata_storage)
                 vertex_data_handler = new vertex_data_store<VertexDataType>(base_filename, num_vertices(), iomgr);
         
             initialize_before_run();
