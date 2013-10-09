@@ -73,12 +73,10 @@ namespace graphchi {
         size_t streaming_offset_edge_ptr;
         uint8_t * adjdata;
         char ** edgedata;
-        int * doneptr;
         std::vector<size_t> blocksizes;
         uint64_t chunkid;
         
         std::vector<int> block_edatasessions;
-        int adj_session;
         
         bool async_edata_loading;
         bool is_loaded;
@@ -101,9 +99,7 @@ namespace graphchi {
             adjdata = NULL;
             only_adjacency = false;
             is_loaded = false;
-            adj_session = -1;
             edgedata = NULL;
-            doneptr = NULL;
             disable_async_writes = false;
             async_edata_loading = !svertex_t().computational_edges();
 #ifdef SUPPORT_DELETIONS
@@ -120,16 +116,10 @@ namespace graphchi {
                     iomgr->close_session(block_edatasessions[i]);
                 }
             }
-            if (adj_session >= 0) {
-                if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
-                iomgr->close_session(adj_session);
-            }
+
             if (edgedata != NULL)
                 free(edgedata);
             edgedata = NULL;
-            if (doneptr != NULL) {
-                free(doneptr);
-            }
         }
         
         void set_disable_async_writes(bool b) {
@@ -214,7 +204,6 @@ namespace graphchi {
             
             m.stop_time(cm, "memshard_commit");
             
-            iomgr->managed_release(adj_session, &adjdata);
             // FIXME: this is duplicated code from destructor
             for(int i=0; i < nblocks; i++) {
                 if (edgedata[i] != NULL) {
@@ -240,11 +229,6 @@ namespace graphchi {
             size_t compressedsize = 0;
             int blockid = 0;
             
-            if (!async_edata_loading) {
-                doneptr = (int *) malloc(nblocks * sizeof(int));
-                for(int i=0; i < nblocks; i++) doneptr[i] = 1;
-            }
-            
             while(blockid < nblocks) {
                 std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
                 if (file_exists(block_filename)) {
@@ -259,9 +243,6 @@ namespace graphchi {
                         // Cached
                         block_edatasessions.push_back(CACHED_SESSION_ID);
                         edgedata[blockid] = (char*)cachedblock;
-                        if (!async_edata_loading) {
-                            doneptr[blockid] = 0;
-                        }
                     } else {
                         int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                         block_edatasessions.push_back(blocksession);
@@ -271,7 +252,7 @@ namespace graphchi {
                         if (async_edata_loading) {
                             iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
                         } else {
-                            iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
+                            iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
                         }
                     }
                     blockid++;
@@ -307,21 +288,9 @@ namespace graphchi {
             // so we need the edge data while loading
 #endif
             
-            //preada(adjf, adjdata, adjfilesize, 0);
-            
-            adj_session = iomgr->open_session(filename_adj, true);
-            iomgr->managed_malloc(adj_session, &adjdata, adjfilesize, 0);
-            
-            /* Load in parallel: replaces older stream solution */
-            size_t bufsize = 16 * 1024 * 1024;
-            int n = (int) (adjfilesize / bufsize + 1);
-
-#pragma omp parallel for
-            for(int i=0; i < n; i++) {
-                size_t toread = std::min(adjfilesize - i * bufsize, (size_t)bufsize);
-                iomgr->preada_now(adj_session, adjdata + i * bufsize, toread, i * bufsize, true);
-            }
-
+            /* Use mmaped file for adjacency */
+            adjdata = (uint8_t*)iomgr->get_mmaped_file(filename_adj, false);
+            assert(adjdata != NULL);
             
             /* Initialize edge data asynchonous reading */
             if (!only_adjacency) {
@@ -396,10 +365,6 @@ namespace graphchi {
                 bool any_edges = false;
                 while(--n>=0) {
                     int blockid = (int) (edgeptr / blocksize);
-                    if (!async_edata_loading && !only_adjacency) {
-                        /* Wait until blocks loaded (non-asynchronous version) */
-                        while(doneptr[edgeptr / blocksize] != 0) { usleep(10); }
-                    }
                     
                     vid_t target = *((vid_t*) ptr);
                     ptr += sizeof(vid_t);

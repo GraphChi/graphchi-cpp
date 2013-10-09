@@ -167,11 +167,11 @@ namespace graphchi {
         size_t adjoffset, edataoffset, adjfilesize, edatafilesize;
         size_t window_start_edataoffset;
         
+        uint8_t *adjdata;
+        
         std::vector<sblock> activeblocks;
-        int adjfile_session;
         int writedesc;
         sblock * curblock;
-        sblock * curadjblock;
         metrics &m;
         
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
@@ -200,7 +200,6 @@ namespace graphchi {
             disable_writes = false;
             only_adjacency = onlyadj;
             curblock = NULL;
-            curadjblock = NULL;
             window_start_edataoffset = 0;
             disable_async_writes = false;
             
@@ -216,7 +215,7 @@ namespace graphchi {
                 // Nothing
             }
             
-            adjfile_session = iomgr->open_session(filename_adj, true);
+            adjdata = (uint8_t *)iomgr->get_mmaped_file(filename_adj, false);
             save_offset();
             
             async_edata_loading = !svertex_t().computational_edges();
@@ -231,13 +230,7 @@ namespace graphchi {
                 curblock->release(iomgr);
                 delete curblock;
                 curblock = NULL;
-            }
-            if (curadjblock != NULL) {
-                curadjblock->release(iomgr);
-                delete curadjblock;
-                curadjblock = NULL;
-            }            
-            iomgr->close_session(adjfile_session);
+            }    
         }
         
         
@@ -284,8 +277,6 @@ namespace graphchi {
                 
                 if (curblock != NULL) // Move the pointer - this may invalidate the curblock, but it is being checked later
                     curblock->ptr += closest_offset.edataoffset - edataoffset;
-                if (curadjblock != NULL)
-                    curadjblock->ptr += closest_offset.adjoffset - adjoffset;
                 curvid = (vid_t)closest_vid;
                 adjoffset = closest_offset.adjoffset;
                 edataoffset = closest_offset.edataoffset;
@@ -330,33 +321,12 @@ namespace graphchi {
             }
         }
         
-        inline void check_adjblock(size_t toread) {
-            if (curadjblock == NULL || curadjblock->end <= adjoffset + toread) {
-                if (curadjblock != NULL) {
-                    curadjblock->release(iomgr);
-                    delete curadjblock;
-                    curadjblock = NULL;
-                }
-                sblock * newblock = new sblock(0, adjfile_session);
-                newblock->offset = adjoffset;
-                newblock->end = std::min(adjfilesize, adjoffset+blocksize);
-                assert(newblock->end > 0);
-                assert(newblock->end >= newblock->offset);
-                iomgr->managed_malloc(adjfile_session, &newblock->data, newblock->end - newblock->offset, adjoffset);
-                newblock->ptr = newblock->data;
-                metrics_entry me = m.start_time();
-                iomgr->managed_preada_now(adjfile_session, &newblock->data, newblock->end - newblock->offset, adjoffset);
-                m.stop_time(me, "blockload");
-                curadjblock = newblock;
-            }
-        }
         
         template <typename U>
         inline U read_val() {
-            check_adjblock(sizeof(U));
-            U res = *((U*)curadjblock->ptr);
+            uint8_t * adjptr = adjdata + adjoffset;
+            U res = *((U*)adjptr);
             adjoffset += sizeof(U);
-            curadjblock->ptr += sizeof(U);
             return res;
         }
         
@@ -373,8 +343,6 @@ namespace graphchi {
         inline void skip(int n, int sz) {
             size_t tot = n * sz;
             adjoffset += tot;
-            if (curadjblock != NULL)
-                curadjblock->ptr += tot;
             edataoffset += sizeof(ET)*n;
             if (curblock != NULL)
                 curblock->ptr += sizeof(ET)*n;
@@ -456,7 +424,6 @@ namespace graphchi {
                             
                             if (!((target >= range_st && target <= range_end))) {
                                 logstream(LOG_ERROR) << "Error : " << target << " not in [" << range_st << " - " << range_end << "]" << std::endl;
-                                iomgr->print_session(adjfile_session);
                             }
                             assert(target >= range_st && target <= range_end);
                         }
@@ -494,11 +461,6 @@ namespace graphchi {
          */
         void flush() {
             release_prior_to_offset(true);
-            if (curadjblock != NULL) {
-                curadjblock->release(iomgr);
-                delete curadjblock;
-                curadjblock = NULL;
-            }
         }
         
         /**
@@ -508,11 +470,6 @@ namespace graphchi {
             this->adjoffset = newoff;
             this->curvid = _curvid;
             this->edataoffset = edgeptr;
-            if (curadjblock != NULL) {
-                curadjblock->release(iomgr);
-                delete curadjblock;
-                curadjblock = NULL;
-            }
         }
         
         /**

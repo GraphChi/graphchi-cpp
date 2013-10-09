@@ -39,7 +39,8 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <errno.h>
-//#include <omp.h>
+#include <sys/mman.h>
+
 
 #include <vector>
 
@@ -67,6 +68,12 @@ namespace graphchi {
         int start_mplex;
         bool open;
         bool compressed;
+    };
+    
+    struct mmap_info {
+        void * ptr;
+        size_t length;
+        int filedesc;
     };
     
     
@@ -236,6 +243,12 @@ namespace graphchi {
         
         block_cache cache;
         
+        
+    private:
+        // MMAP 
+        mutex mmaplock;
+        std::map<std::string, mmap_info> mmaped;
+        
     public:
         stripedio( metrics &_m) : m(_m), cache(0) {
             stripesize = get_option_int("io.stripesize", 4096 * 1024 / 2);
@@ -306,7 +319,13 @@ namespace graphchi {
                     sessions[j] = NULL;
                 }
             }
-
+            
+            std::map<std::string, mmap_info>::iterator mmit = mmaped.begin();
+            for(; mmit != mmaped.end(); ++mmit) {
+                mmap_info minfo = mmit->second;
+                munmap((void*)minfo.ptr, minfo.length);
+                close(minfo.filedesc);
+            }
         }
         
         void set_cache_budget(size_t c) {
@@ -659,6 +678,39 @@ namespace graphchi {
         std::string multiplexprefix_random() {
             return multiplexprefix((int)random() % multiplex);
         }
+        
+        /**
+          * MMAP support
+          */
+        
+    public:
+        void * get_mmaped_file(std::string &filename, bool write) {
+            std::string cachekey = (write ? filename + "?w" : filename);
+            void * ptr = NULL;
+            mmaplock.lock();
+            
+            if (mmaped.find(cachekey) == mmaped.end()) {
+                logstream(LOG_DEBUG) << "Mmap: " << filename << std::endl;
+                /* Not mmaped yet, so open */
+                size_t mmap_length = get_filesize(filename);
+                int filedesc = open(filename.c_str(), (write ? O_RDWR : O_RDONLY));
+                ptr =  mmap(NULL, mmap_length, (write ? PROT_READ | PROT_WRITE : PROT_READ), MAP_SHARED, filedesc, 0);
+                if (!ptr) {
+                    logstream(LOG_FATAL) << "Could not mmap " << filename << std::endl;
+                }
+                assert(ptr);
+                mmap_info minfo;
+                minfo.ptr = ptr;
+                minfo.length = mmap_length;
+                minfo.filedesc = filedesc;
+                mmaped[cachekey] = minfo;
+            } else {
+                ptr = mmaped[cachekey].ptr;
+            }
+            mmaplock.unlock();
+            return ptr;
+        }
+        
     };
     
     
