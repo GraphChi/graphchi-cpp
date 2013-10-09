@@ -217,9 +217,10 @@ namespace graphchi {
         int multiplex;
         std::string multiplex_root;
         
-        std::vector< synchronized_queue<iotask> > mplex_readtasks;
-        std::vector< synchronized_queue<iotask> > mplex_writetasks;
-        std::vector< synchronized_queue<iotask> > mplex_priotasks;
+        synchronized_queue<iotask> * mplex_readtasks;
+        synchronized_queue<iotask> * mplex_writetasks;
+        synchronized_queue<iotask> * mplex_priotasks;
+
         std::vector< pthread_t > threads;
         std::vector< thrinfo * > thread_infos;
         metrics &m;        
@@ -246,13 +247,11 @@ namespace graphchi {
             m.set("niothreads", (size_t)niothreads);
        
             logstream(LOG_DEBUG) << "Start io-manager with " << niothreads << " threads." << std::endl;
-            
+
             // Each multiplex partition has its own queues
-            for(int i=0; i < multiplex * niothreads; i++) {
-                mplex_readtasks.push_back(synchronized_queue<iotask>());
-                mplex_writetasks.push_back(synchronized_queue<iotask>());
-                mplex_priotasks.push_back(synchronized_queue<iotask>());
-            }
+            mplex_readtasks = new synchronized_queue<iotask>[multiplex * niothreads];
+            mplex_writetasks = new synchronized_queue<iotask>[multiplex * niothreads];
+            mplex_priotasks = new synchronized_queue<iotask>[multiplex * niothreads];
             
             int k = 0;
             for(int i=0; i < multiplex; i++) {
@@ -298,6 +297,7 @@ namespace graphchi {
                     sessions[j] = NULL;
                 }
             }
+
         }
         
         void set_cache_budget(size_t c) {
@@ -357,22 +357,17 @@ namespace graphchi {
                 for(int j=0; j<niothreads+(multiplex == 1 ? 1 : 0); j++) { // Hack to have one fd for synchronous
                     int rddesc = open(fname.c_str(), (readonly ? O_RDONLY : O_RDWR));
                     if (rddesc < 0) logstream(LOG_ERROR)  << "Could not open: " << fname << " session: " << session_id
-                        << " error: " << strerror(errno) << std::endl;                    assert(rddesc>=0);
+                        << " error: " << strerror(errno) << std::endl;
+                    assert(rddesc>=0);
                     iodesc->readdescs.push_back(rddesc);
-#ifdef F_NOCACHE
-                    if (!readonly) 
-                        fcntl(rddesc, F_NOCACHE, 1);
-#endif
+
                     if (!readonly) {
                         int wrdesc = rddesc; // Change by Aapo: Aug 11, 2012. I don't think we need separate wrdesc?
 
                         if (wrdesc < 0) logstream(LOG_ERROR)  << "Could not open for writing: " << fname << " session: " << session_id
                             << " error: " << strerror(errno) << std::endl;
                         assert(wrdesc>=0);
-#ifdef F_NOCACHE
-                        fcntl(wrdesc, F_NOCACHE, 1);
-                        
-#endif
+
                         iodesc->writedescs.push_back(wrdesc);
                     }
                 }

@@ -279,6 +279,9 @@ namespace graphchi {
             indexentry closest_offset = lowerbd_iter->second;
             assert(closest_vid <= (int)v);
             if (closest_vid > (int)curvid) {   /* Note: this will fail if we have over 2B vertices! */
+                logstream(LOG_DEBUG)
+                << "Sliding shard, start: " << range_st << " moved to: " << closest_vid << " " << closest_offset.adjoffset << ", asked for : " << v << " was in: curvid= " << curvid  << " " << adjoffset << std::endl;
+                
                 if (curblock != NULL) // Move the pointer - this may invalidate the curblock, but it is being checked later
                     curblock->ptr += closest_offset.edataoffset - edataoffset;
                 if (curadjblock != NULL)
@@ -383,6 +386,7 @@ namespace graphchi {
          */
         void read_next_vertices(int nvecs, vid_t start,  std::vector<svertex_t> & prealloc, bool record_index=false, bool disable_writes=false)  {
             metrics_entry me = m.start_time();
+
             if (!record_index)
                 move_close_to(start);
             

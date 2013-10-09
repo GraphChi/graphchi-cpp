@@ -52,7 +52,8 @@
 
 using namespace graphchi;
 
-
+int         iterationcount = 0;
+bool        scheduler = false;
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -67,6 +68,8 @@ typedef vid_t EdgeDataType;
  */
 struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
+    bool converged;
+    
     /**
      *  Vertex update function.
      *  On first iteration ,each vertex chooses a label = the vertex id.
@@ -74,12 +77,12 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
      *  label (and itself). 
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
-        /* This program requires selective scheduling. */
-        assert(gcontext.scheduler != NULL);
+        
+        if (scheduler) gcontext.scheduler->remove_tasks(vertex.id(), vertex.id());
         
         if (gcontext.iteration == 0) {
             vertex.set_data(vertex.id());
-            gcontext.scheduler->add_task(vertex.id()); 
+            if (scheduler)  gcontext.scheduler->add_task(vertex.id());
         }
         
         /* On subsequent iterations, find the minimum label of my neighbors */
@@ -106,7 +109,8 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
                 if (label < vertex.edge(i)->get_data()) {
                     vertex.edge(i)->set_data(label);
                     /* Schedule neighbor for update */
-                    gcontext.scheduler->add_task(vertex.edge(i)->vertex_id()); 
+                    if (scheduler) gcontext.scheduler->add_task(vertex.edge(i)->vertex_id(), true);
+                    converged = false;
                 }
             }
         } else if (gcontext.iteration == 0) {
@@ -119,12 +123,18 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
      * Called before an iteration starts.
      */
     void before_iteration(int iteration, graphchi_context &info) {
+        iterationcount++;
+        converged = iteration > 0;
     }
     
     /**
      * Called after an iteration has finished.
      */
     void after_iteration(int iteration, graphchi_context &ginfo) {
+        if (converged) {
+            std::cout << "Converged!" << std::endl;
+            ginfo.set_last_iteration(iteration);
+        }
     }
     
     /**
@@ -145,15 +155,15 @@ int main(int argc, const char ** argv) {
     /* GraphChi initialization will read the command line 
      arguments and the configuration file. */
     graphchi_init(argc, argv);
-    
+
     /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
     metrics m("connected-components");
     
     /* Basic arguments for application */
     std::string filename = get_option_string("file");  // Base filename
-    int niters           = get_option_int("niters", 10); // Number of iterations (max)
-    bool scheduler       = true;    // Always run with scheduler
+    int niters           = get_option_int("niters", 1000); // Number of iterations (max)
+    scheduler            = get_option_int("scheduler", false);
     
     /* Process input file - if not already preprocessed */
     int nshards             = (int) convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));

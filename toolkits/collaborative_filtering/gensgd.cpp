@@ -42,7 +42,7 @@
 #define GRAPHCHI_DISABLE_COMPRESSION //remove this if you want to save memory but increase runtime
 
 #define MAX_FEATURES 256
-#define FEATURE_WIDTH 24 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 34 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
 double gensgd_rate1 = 1e-03;
 double gensgd_rate2 = 1e-03;
@@ -71,6 +71,7 @@ int json_input = 0;
 int cold_start = 0;
 double inputGlobalMean = 0;
 int binary_prediction = 0;
+int verbose = 0; //print statistics about step sizes
 
 struct stats{
   float minval;
@@ -123,6 +124,8 @@ struct feature_control{
 };
 
 feature_control fc;
+
+vec stat1, stat2, stat3;
 
 int num_feature_bins(){
   int sum = 0;
@@ -349,6 +352,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
   char * linebuf = NULL;
   size_t linesize = 0;
 
+  I = J = 0;
   int token = 0;
   int index = 0;
   int rc = getline(&linebuf, &linesize, f);
@@ -611,7 +615,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   int val_array_len = std::max(1, fc.total_features);
   assert(val_array_len < FEATURE_WIDTH);
   std::vector<float> valarray; valarray.resize(val_array_len);
-  float val;
+  float val = 0.0f;
 
   if (!fc.hash_strings){
     for (int i=0; i< fc.total_features; i++){
@@ -633,7 +637,8 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       if (i == 0)
         logstream(LOG_FATAL)<<"Failed to parse first line, there are too many tokens. Did you forget the --has_header_titles=1 flag when file has string column headers? [ " << linebuf_debug << " ] " << " I : " << I << " J: " << J << std::endl;
       else 
-        logstream(LOG_FATAL)<<"Bug: can not add edge from " << I << " to  J " << J << " since max is: " << M <<"x" <<N<<std::endl;
+        logstream(LOG_FATAL)<<"Problem parsing input line number: " << i <<" in file: " << base_filename << ".  Can not add edge from " << I << " to  J " << J << 
+                            " since matrix size is: " << M <<"x" <<N<< " [ original line: " << linebuf_debug << " ] . You probaably need to increase matrix size in the matrix market header." << std::endl;
     }
 
     bool active_edge = decide_if_edge_is_active(i, TRAINING);
@@ -870,7 +875,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     std::vector<float> valarray; valarray.resize(fc.total_features);
     uint I, J;
-    float val;
+    float val = 0.0f;
 
     char linebuf_debug[1024];
     for (size_t i=0; i<nz; i++)
@@ -949,7 +954,7 @@ void test_predictions_N(
   FILE * fout = open_file((test + ".predict").c_str(),"w");
 
   std::vector<float> valarray; valarray.resize(fc.total_features);
-  float val;
+  float val = 0.0f;
   double prediction;
   uint I,J;
 
@@ -1032,7 +1037,10 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
 
       if (sum->operator[](j) >= 1e5)
         logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
-      sum_sqr[j] += pow(node_array[i]->pvec[j],2);
+      if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
+         sum_sqr[j] += pow(node_array[i]->pvec[j] * val_array[i-2],2);
+      else
+         sum_sqr[j] += pow(node_array[i]->pvec[j], 2);
     }
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
     assert(!std::isnan(prediction));
@@ -1081,12 +1089,14 @@ void training_rmse_N(int iteration, graphchi_context &gcontext, bool items = fal
   last_training_rmse = dtraining_rmse;
   dtraining_rmse = 0;
   size_t total_errors = 0;
+#if 0 // unused 
   int start = 0;
   int end = M;
   if (items){
     start = M;
     end = M+N;
   }
+#endif // 0
   dtraining_rmse = sum(rmse_vec);
   if (calc_error)
     total_errors = (size_t)sum(errors_vec);
@@ -1145,7 +1155,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         float eui = pui - rui;
 
         //update global mean bias
-        globalMean -= gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
+        double step1 = gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
+        globalMean -= step1;
+        stat1[omp_get_thread_num()] += fabs(step1);
 
         //update node biases and  vectors
         for (int i=0; i < calc_feature_node_array_size(vertex.id(), vertex.outedge(e)->vertex_id()-M); i++){
@@ -1161,12 +1173,17 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
             gensgd_rate = gensgd_rate4;
           assert(gensgd_rate != 0);
 
-          node_array[i]->bias -= gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
+          double step2 = gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
+          node_array[i]->bias -= step2;
+          stat2[omp_get_thread_num()] += fabs(step2);
+
           assert(!std::isnan(node_array[i]->bias));
           assert(node_array[i]->bias < 1e5);
 
           vec grad =  sum - node_array[i]->pvec;
-          node_array[i]->pvec -= gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
+          vec step3 = gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
+          node_array[i]->pvec -= gensgd_rate * step3;
+          stat3[omp_get_thread_num()] += fabs(step3[0]);
           assert(!std::isnan(node_array[i]->pvec[0]));
           assert(node_array[i]->pvec[0] < 1e5);
         }
@@ -1178,6 +1195,14 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     }
 
   };
+
+
+void print_step_size(){
+   std::cout<<"Step size 1 " << sum(stat1)/(double)L <<
+              "  Step size 2 " << sum(stat2)/(double)L <<
+              "  Step size 3 " << sum(stat3)/(double)L << std::endl;
+
+}
 
   /**
    * Called after an iteration has finished.
@@ -1191,6 +1216,8 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     gensgd_rate4 *= gensgd_mult_dec;
     training_rmse_N(iteration, gcontext);
     validation_rmse_N(&gensgd_predict, gcontext, fc);
+    if (verbose)
+      print_step_size();
   };
 
   /**
@@ -1198,6 +1225,9 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
     rmse_vec = zeros(gcontext.execthreads);
+    stat1 = zeros(gcontext.execthreads);
+    stat2 = zeros(gcontext.execthreads);
+    stat3 = zeros(gcontext.execthreads);
     if (calc_error)
       errors_vec = zeros(gcontext.execthreads);
   }
@@ -1259,6 +1289,7 @@ int main(int argc, const char ** argv) {
   binary_prediction = get_option_int("binary_prediction", 0);
   std::string string_features = get_option_string("features", fc.default_feature_str);
   std::string real_features = get_option_string("real_features", "");
+  verbose = get_option_int("verbose",1); 
 
   //input sanity checks
   if (file_columns < 3)

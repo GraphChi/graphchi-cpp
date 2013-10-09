@@ -89,6 +89,10 @@ vid_t & my_label(bidirectional_label & bidir, vid_t myid, vid_t nbid) {
 typedef vid_t VertexDataType;       // vid_t is the vertex id type
 typedef bidirectional_label EdgeDataType;  // Note, 8-byte edge data
 
+void parse(bidirectional_label &x, const char * s) { } // Do nothing
+
+
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type> 
  * class. The main logic is usually in the update function.

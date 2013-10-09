@@ -40,6 +40,11 @@ namespace graphchi {
             right = ET();
         }
         
+        PairContainer(ET a, ET b) {
+            left = a;
+            right = b;
+        }
+        
         ET & oldval(int iter) {
             return (iter % 2 == 0 ? left : right);
         }
