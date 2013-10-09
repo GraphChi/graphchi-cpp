@@ -78,8 +78,8 @@ namespace graphchi {
                 filedesc = iomgr->open_session(filename.c_str(), false);
             } else {
                 mmap_length = get_filesize(filename);
-                filedesc = open(filename.c_str(), O_RDONLY);
-                mmap_file = (degree *) mmap(NULL, mmap_length, PROT_READ, MAP_PRIVATE, filedesc, 0);
+                filedesc = open(filename.c_str(), O_RDWR);
+                mmap_file = (degree *) mmap(NULL, mmap_length, PROT_READ | PROT_WRITE, MAP_SHARED, filedesc, 0);
                 assert(mmap_file);
             }
         }
