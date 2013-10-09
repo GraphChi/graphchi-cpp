@@ -12,8 +12,9 @@ niothreads = 2
 membudget_mb = 800
 
 # I/O settings
-#preload.max_megabytes = 300
 io.blocksize = 1048576 
+mmap = 1  # Use mmaped files where applicable
+
 
 # Comma-delimited list of metrics output reporters.
 # Can be "console", "file" or "html"
