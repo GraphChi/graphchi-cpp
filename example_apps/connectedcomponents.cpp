@@ -184,10 +184,6 @@ int main(int argc, const char ** argv) {
     
     /* Report execution metrics */
     metrics_report(m);
-    std::cout << "Gauss-Seidel iterations: " << iterationcount << std::endl;
-    FILE * logf = fopen("cc_log.txt", "a");
-    fprintf(logf, "async,%s,%d,%d\n", filename.c_str(), iterationcount, get_option_int("randomization", 0));
-    fclose(logf);
     return 0;
 }
 
