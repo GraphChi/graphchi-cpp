@@ -188,7 +188,6 @@ int main(int argc, const char ** argv) {
   engine.set_enable_deterministic_parallelism(false);
   engine.set_modifies_inedges(false);
   engine.set_modifies_outedges(false);
-  engine.set_preload_commit(false);
   engine.set_maxwindow(engine.num_vertices());
 
   mytimer.start();
