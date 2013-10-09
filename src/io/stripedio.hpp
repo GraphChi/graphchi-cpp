@@ -159,8 +159,10 @@ namespace graphchi {
         }
         
         ~block_cache() {
-            logstream(LOG_INFO) << "Cache stats: hits=" << hits << " misses=" << misses << std::endl;
-
+            if (hits + misses > 0) {
+                logstream(LOG_INFO) << "Cache stats: hits=" << hits << " misses=" << misses << std::endl;
+                logstream(LOG_INFO) << " -- in total had " << (cache_size / 1024 / 1024) << " MB in cache." << std::endl;
+            }
             std::map<std::string, cached_block *>::iterator it = cachemap.begin();
             for(; it != cachemap.end(); ++it) {
                 delete it->second;
@@ -176,7 +178,9 @@ namespace graphchi {
                 if (len + cache_size <= cache_budget_bytes) {
                     cache_size += len;
                     did_cache = true;
-                    logstream(LOG_DEBUG) << "Cache size: " << cache_size << " / " << cache_budget_bytes <<   ": adding to cache: " << filename << std::endl;
+                    if (cachemap.size() % 40 == 0) {
+                        logstream(LOG_DEBUG) << "Cache size: " << cache_size << " / " << cache_budget_bytes << std::endl;
+                    }
                     cachemap.insert(std::pair<std::string, cached_block*>(filename, new cached_block(len, data, was_compresssed)));
                 }
                 if (cache_size > cache_budget_bytes) {

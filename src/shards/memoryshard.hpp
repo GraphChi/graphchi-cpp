@@ -259,6 +259,9 @@ namespace graphchi {
                         // Cached
                         block_edatasessions.push_back(CACHED_SESSION_ID);
                         edgedata[blockid] = (char*)cachedblock;
+                        if (!async_edata_loading) {
+                            doneptr[blockid] = 0;
+                        }
                     } else {
                         int blocksession = iomgr->open_session(block_filename, false, true); // compressed
                         block_edatasessions.push_back(blocksession);
