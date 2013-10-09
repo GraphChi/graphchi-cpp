@@ -68,6 +68,8 @@ namespace graphchi {
         VertexDataType * mmap_file;
         size_t mmap_length;
         
+        vid_t last_nvertices;
+        
 
         virtual void open_file() {
             if (!use_mmap) {
@@ -88,6 +90,7 @@ namespace graphchi {
             filename = filename_vertex_data<VertexDataType>(base_filename);
             
             mmap_file = NULL;
+            last_nvertices = 0;
             use_mmap = get_option_int("mmap", 0);  // Whether to mmap the degree file to memory
             if (use_mmap) {
                 logstream(LOG_INFO) << "Use memory mapping for vertex data." << std::endl;
@@ -114,6 +117,7 @@ namespace graphchi {
             }
         }
         void check_size(size_t nvertices) {
+            if (nvertices == last_nvertices) return;
             if (!use_mmap) {
                 checkarray_filesize<VertexDataType>(filename, nvertices);
             } else {
@@ -126,6 +130,7 @@ namespace graphchi {
                 checkarray_filesize<VertexDataType>(filename, nvertices);
                 open_file();
             }
+            last_nvertices = nvertices;
         }
         
         void clear(size_t nvertices) {
