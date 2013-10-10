@@ -142,6 +142,7 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     if (mi.div_offset >= 0){
       val /= user.pvec[mi.div_offset];
     }
+    assert(mi.r_offset>=0 && mi.r_offset < user.pvec.size());
     user.pvec[mi.r_offset] = val;
   } //end update
 
@@ -673,6 +674,10 @@ void orthogonalize_vs_all(DistSlicedMat & mat, int curoffset, double &alpha){
 #pragma omp parallel for
       for (int i=mat.start_offset; i< current.offset; i++){
         for (int k=info.get_start_node(!current.transpose); k< info.get_end_node(!current.transpose); k++){
+          assert(i-mat.start_offset>=0 && i-mat.start_offset < curoffset);
+          assert(i < latent_factors_inmem[k].pvec.size());
+          assert(k < (int)latent_factors_inmem.size());
+          assert(current.offset < latent_factors_inmem[k].pvec.size());
           alphas[i-mat.start_offset] += latent_factors_inmem[k].pvec[i] * latent_factors_inmem[k].pvec[current.offset];
         }
       }

@@ -1017,7 +1017,7 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   *sum = zeros(D);
   prediction = globalMean;
   assert(!std::isnan(prediction));
-  assert(fc.feature_positions.size() > node_array_size+2);
+  assert((int)fc.feature_positions.size() > node_array_size+2);
 
   for (int i=0; i< node_array_size; i++){
     if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
