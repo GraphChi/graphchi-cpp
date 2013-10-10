@@ -72,6 +72,8 @@ double binary_relevance_thresh = 0;  // min rating for binary relevance
 int halt_on_mrr_decrease = 0;        // whether to halt if smoothed MRR increases
 int num_ratings = 10000;             // number of top predictions over which we compute actual MRR
 vec objective_vec;                   // cumulative sum of smoothed MRR per thread
+vec stat_vec;                        // verbose info about step size
+int verbose;                         // additional output about step size
 double training_objective;
 double last_training_objective;
 
