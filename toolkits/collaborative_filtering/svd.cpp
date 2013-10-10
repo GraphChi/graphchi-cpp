@@ -125,7 +125,7 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
   int nconv = 0;
    int its = 1;
    DistMat A(info);
-   DistSlicedMat U(info.is_square() ? data_size : 0, info.is_square() ? 2*data_size : data_size, true, info, "U");
+   DistSlicedMat U(info.is_square() ? data_size/2 : 0, info.is_square() ? data_size : data_size, true, info, "U");
    DistSlicedMat V(0, data_size, false, info, "V");
    vec alpha, beta, b;
    vec sigma = zeros(data_size);
