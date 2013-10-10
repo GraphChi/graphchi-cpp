@@ -671,7 +671,7 @@ void orthogonalize_vs_all(DistSlicedMat & mat, int curoffset, double &alpha){
   if (curoffset > 0){
     for (int j=0; j < mi.ortho_repeats; j++){
       memset(alphas, 0, sizeof(double)*curoffset);
-//#pragma omp parallel for
+#pragma omp parallel for
       for (int i=mat.start_offset; i< current.offset; i++){
         for (int k=info.get_start_node(!current.transpose); k< info.get_end_node(!current.transpose); k++){
           assert(i-mat.start_offset>=0 && i-mat.start_offset < curoffset);
@@ -682,7 +682,7 @@ void orthogonalize_vs_all(DistSlicedMat & mat, int curoffset, double &alpha){
         }
       }
       for (int i=mat.start_offset; i< current.offset; i++){
-//#pragma omp parallel for
+#pragma omp parallel for
         for (int k=info.get_start_node(!current.transpose); k< info.get_end_node(!current.transpose); k++){
           latent_factors_inmem[k].pvec[current.offset] -= alphas[i-mat.start_offset]  * latent_factors_inmem[k].pvec[i];
         }
