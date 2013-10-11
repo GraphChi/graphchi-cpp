@@ -58,7 +58,6 @@
 
 namespace graphchi {
     
-#define MAX_MEMBUDGET (1024L * 1024L * 800L)   // FIXME
     
     template <typename VertexDataType, typename EdgeDataType,
     typename svertex_t = graphchi_vertex<VertexDataType, EdgeDataType> >
@@ -314,7 +313,6 @@ namespace graphchi {
                 return maxvid;
             } else {
                 size_t memreq = 0;
-                size_t membudget_limited = std::min(membudget, size_t(MAX_MEMBUDGET));
                 int max_interval = maxvid - fromvid;
                 for(int i=0; i < max_interval; i++) {
                     degree deg = degree_handler->get_degree(fromvid + i);
@@ -323,7 +321,7 @@ namespace graphchi {
                     
                     // Raw data and object cost included
                     memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
-                    if (memreq > membudget_limited) {
+                    if (memreq > membudget) {
                         logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
                         return fromvid + i - 1;  // Previous was enough
                     }
@@ -705,7 +703,10 @@ namespace graphchi {
             m.start_time("runtime");
             if (degree_handler == NULL)
                 degree_handler = create_degree_handler();
-            iomgr->set_cache_budget((size_t)std::max((long long int)0, (long long int)membudget_mb * 1024L * 1024L - (long long int)MAX_MEMBUDGET));
+            iomgr->set_cache_budget(get_option_long("cachesize_mb", 0) * 1024L * 1024L);
+
+            m.set("cachesize_mb", get_option_int("cachesize_mb", 0));
+            m.set("membudget_mb", get_option_int("membudget_mb", 0));
 
             randomization = get_option_int("randomization", 0) == 1;
             
