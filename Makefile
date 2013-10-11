@@ -4,7 +4,7 @@ CPP = g++
 CPPFLAGS = -g -O3 $(INCFLAGS)  -fopenmp -Wall -Wno-strict-aliasing 
 LINKERFLAGS = -lz
 DEBUGFLAGS = -g -ggdb $(INCFLAGS)
-HEADERS=$(wildcard *.h**)
+HEADERS=$(shell find . -name '*.hpp')
 
 
 all: apps tests 
@@ -12,7 +12,8 @@ apps: example_apps/connectedcomponents example_apps/pagerank example_apps/pagera
 als: example_apps/matrix_factorization/als_edgefactors  example_apps/matrix_factorization/als_vertices_inmem
 tests: tests/basic_smoketest tests/bulksync_functional_test tests/dynamicdata_smoketest tests/test_dynamicedata_loader
 
-
+echo:
+	echo $(HEADERS)
 clean:
 	@rm -rf bin/*
 	cd toolkits/collaborative_filtering/; make clean; cd ../../
