@@ -58,7 +58,9 @@
 
 namespace graphchi {
     
-    template <typename VertexDataType, typename EdgeDataType,   
+#define MAX_MEMBUDGET (1024L * 1024L * 800L)   // FIXME
+    
+    template <typename VertexDataType, typename EdgeDataType,
     typename svertex_t = graphchi_vertex<VertexDataType, EdgeDataType> >
     
     class graphchi_engine {
@@ -97,7 +99,7 @@ namespace graphchi {
         bool enable_deterministic_parallelism;
         bool store_inedges;
         bool disable_vertexdata_storage;
-        bool preload_commit; //alow storing of modified edge data on preloaded data into memory
+
         bool randomization;
         bool initialize_edges_before_run;
         
@@ -148,9 +150,6 @@ namespace graphchi {
             /* Initialize IO */
             m.start_time("iomgr_init");
             iomgr = new stripedio(m);
-            if (disable_preloading()) {
-                iomgr->set_disable_preloading(true);
-            }
             m.stop_time("iomgr_init");
 #ifndef DYNAMICEDATA
             logstream(LOG_INFO) << "Initializing graphchi_engine. This engine expects " << sizeof(EdgeDataType)
@@ -174,7 +173,7 @@ namespace graphchi {
             modifies_outedges = true;
             modifies_inedges = true;
             save_edgesfiles_after_inmemmode = false;
-            preload_commit = true;
+
             only_adjacency = false;
             disable_outedges = false;
             reset_vertexdata = false;
@@ -234,10 +233,6 @@ namespace graphchi {
             return new degree_data(base_filename, iomgr);
         }
         
-        virtual bool disable_preloading() {
-            return false;
-        }
-        
         
             
         /**
@@ -267,11 +262,6 @@ namespace graphchi {
 #ifndef DYNAMICEDATA
                 std::string edata_filename = filename_shard_edata<EdgeDataType>(base_filename, p, nshards);
                 std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
-                /* Let the IO manager know that we will be reading these files, and
-                 it should decide whether to preload them or not.
-                 */
-                iomgr->allow_preloading(edata_filename);
-                iomgr->allow_preloading(adj_filename);
 #else
                 std::string edata_filename = filename_shard_edata<int>(base_filename, p, nshards);
                 std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
@@ -324,6 +314,7 @@ namespace graphchi {
                 return maxvid;
             } else {
                 size_t memreq = 0;
+                size_t membudget_limited = std::min(membudget, size_t(MAX_MEMBUDGET));
                 int max_interval = maxvid - fromvid;
                 for(int i=0; i < max_interval; i++) {
                     degree deg = degree_handler->get_degree(fromvid + i);
@@ -332,7 +323,7 @@ namespace graphchi {
                     
                     // Raw data and object cost included
                     memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
-                    if (memreq > membudget) {
+                    if (memreq > membudget_limited) {
                         logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
                         return fromvid + i - 1;  // Previous was enough
                     }
@@ -378,9 +369,6 @@ namespace graphchi {
                     /* Load vertex edges from memory shard */
                     memoryshard->load_vertices(sub_interval_st, sub_interval_en, vertices, true, !disable_outedges);
                     
-                    /* Load vertices */ 
-                    vertex_data_handler->load(sub_interval_st, sub_interval_en);
-
                     /* Load vertices */
                     if (!disable_vertexdata_storage) {
                         vertex_data_handler->load(sub_interval_st, sub_interval_en);
@@ -683,7 +671,7 @@ namespace graphchi {
         }
         
         virtual void initialize_before_run() {
-            if (reset_vertexdata) {
+            if (reset_vertexdata && vertex_data_handler != NULL) {
                 vertex_data_handler->clear(num_vertices());
             }
         }
@@ -717,6 +705,7 @@ namespace graphchi {
             m.start_time("runtime");
             if (degree_handler == NULL)
                 degree_handler = create_degree_handler();
+            iomgr->set_cache_budget((size_t)std::max((long long int)0, (long long int)membudget_mb * 1024L * 1024L - (long long int)MAX_MEMBUDGET));
 
             randomization = get_option_int("randomization", 0) == 1;
             
@@ -733,7 +722,7 @@ namespace graphchi {
             logstream(LOG_INFO) << "Licensed under the Apache License 2.0" << std::endl;
             logstream(LOG_INFO) << "Copyright Aapo Kyrola et al., Carnegie Mellon University (2012)" << std::endl;
             
-            if (vertex_data_handler == NULL)
+            if (vertex_data_handler == NULL && !disable_vertexdata_storage)
                 vertex_data_handler = new vertex_data_store<VertexDataType>(base_filename, num_vertices(), iomgr);
         
             initialize_before_run();
@@ -853,7 +842,7 @@ namespace graphchi {
                         /* Determine the sub interval */
                         sub_interval_en = determine_next_window(exec_interval,
                                                                 sub_interval_st, 
-                                                                std::min(interval_en, sub_interval_st + maxwindow), 
+                                                                std::min(interval_en, (is_inmemory_mode() ? interval_en : sub_interval_st + maxwindow)), 
                                                                 size_t(membudget_mb) * 1024 * 1024);
                         assert(sub_interval_en >= sub_interval_st);
                         
@@ -907,8 +896,6 @@ namespace graphchi {
                     } // while subintervals
 
                     if (memoryshard->loaded() && (save_edgesfiles_after_inmemmode || !is_inmemory_mode())) {
-                        logstream(LOG_INFO) << "Commit memshard" << std::endl;
-
                         memoryshard->commit(modifies_inedges, modifies_outedges & !disable_outedges);
                         
                         if (!randomization) {
@@ -943,11 +930,8 @@ namespace graphchi {
                     logstream(LOG_DEBUG) << "Last iteration is now: " << (niters-1) << std::endl;
                 }
                 iteration_finished();
+                iomgr->first_pass_finished(); // Tell IO-manager that we have passed over the graph (used for optimization)
             } // Iterations
-            
-            // Commit preloaded shards
-            if (preload_commit)
-              iomgr->commit_preloaded();
             
             m.stop_time("runtime");
             
@@ -970,6 +954,16 @@ namespace graphchi {
                 outputs[i]->close();
             }   
             outputs.clear();
+            
+            // Commit vertex data
+            if (vertex_data_handler != NULL) {
+                delete vertex_data_handler;
+                vertex_data_handler = NULL;
+            }
+            
+            if (modifies_inedges || modifies_outedges) {
+                iomgr->commit_cached_blocks();
+            }
         }
         
         virtual void iteration_finished() {
@@ -992,10 +986,6 @@ namespace graphchi {
             only_adjacency = b;
         }
 
-        virtual void set_preload_commit(bool b){
-            preload_commit = b;
-        }
-        
         virtual void set_disable_outedges(bool b) {
             disable_outedges = b;
         }

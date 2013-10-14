@@ -31,10 +31,14 @@
 
 #include <string>
 #include <algorithm>
+#include <stdint.h>
+#include <memory.h>
+#include <cstdlib>
+
+#include "graphchi_basic_includes.hpp"
 
 #include "../matrixmarket/mmio.h"
 #include "../matrixmarket/mmio.c"
-#include "graphchi_basic_includes.hpp"
 #include "api/graphlab2_1_GAS_api/graphlab.hpp"
 
 #include "als_vertex_program.hpp"
@@ -96,7 +100,8 @@ int convert_matrixmarket_for_ALS_graphlab(std::string base_filename) {
     int ret_code;
     MM_typecode matcode;
     FILE *f;
-    int M, N, nz;   
+    uint M, N;
+    size_t nz;
     
     /**
      * Create sharder object
@@ -152,24 +157,20 @@ int convert_matrixmarket_for_ALS_graphlab(std::string base_filename) {
         assert(M < 5 || N < 5 || nz < 10);
     }   
     
-    
-    if (!sharderobj.preprocessed_file_exists()) {
-        for (int i=0; i<nz; i++)
-        {
-            int I, J;
-            double val;
-            fscanf(f, "%d %d %lg\n", &I, &J, &val);
-            I--;  /* adjust from 1-based to 0-based */
-            J--;
-             
-            
-            sharderobj.preprocessing_add_edge(I, M + J, edge_data(val, edge_data::TRAIN));
-        }
-        sharderobj.end_preprocessing();
+
+    for (int i=0; i<nz; i++)
+    {
+        int I, J;
+        double val;
+        fscanf(f, "%d %d %lg\n", &I, &J, &val);
+        I--;  /* adjust from 1-based to 0-based */
+        J--;
+         
         
-    } else {
-        logstream(LOG_INFO) << "Matrix already preprocessed, just run sharder." << std::endl;
+        sharderobj.preprocessing_add_edge(I, M + J, edge_data(val, edge_data::TRAIN));
     }
+    sharderobj.end_preprocessing();
+
     if (f !=stdin) fclose(f);
     
     

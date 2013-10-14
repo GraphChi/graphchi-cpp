@@ -167,7 +167,6 @@ void set_engine_flags(T & pengine){
   pengine.set_enable_deterministic_parallelism(false);
   pengine.set_modifies_inedges(false);
   pengine.set_modifies_outedges(false);
-  pengine.set_preload_commit(false);
 }
 template<typename T>
 void set_engine_flags(T & pengine, bool modify_outedges){
@@ -175,7 +174,6 @@ void set_engine_flags(T & pengine, bool modify_outedges){
   pengine.set_enable_deterministic_parallelism(false);
   pengine.set_modifies_inedges(false);
   pengine.set_modifies_outedges(modify_outedges);
-  pengine.set_preload_commit(false);
 }
 
 

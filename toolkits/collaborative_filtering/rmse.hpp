@@ -125,9 +125,15 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     double val;
     int rc = fscanf(f, "%d %d %lg\n", &I, &J, &val);
     if (rc != 3)
-      logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+      logstream(LOG_FATAL)<<"Error when reading input test file, on data line " << i+2 << std::endl;
     I--;  /* adjust from 1-based to 0-based */
     J--;
+
+    if (I < 0 || (uint)I >= M)
+       logstream(LOG_FATAL)<<"Bad input " << I+1<< " in test file in line " << i+2<< " . First column should be in the range 1 to " << M << std::endl;
+    if (J < 0 || (uint)J >= N)
+       logstream(LOG_FATAL)<<"Bad input " << J+1<< " in test file in line " << i+2<< ". Second column should be in the range 1 to " << N << std::endl;
+
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
     //for mcmc methods, store the sum of predictions
@@ -193,7 +199,7 @@ void test_predictions3(float (*prediction_func)(const vertex_data & user, const 
 float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra);
 
 
-void detect_matrix_size(std::string filename, FILE *&f, uint &_M, uint &_N, size_t & nz, uint nodes, size_t edges, int type);
+void detect_matrix_size(std::string filename, FILE *&f, uint &_MM, uint &_NN, size_t & nz, uint nodes, size_t edges, int type);
 
 /**
   compute validation rmse

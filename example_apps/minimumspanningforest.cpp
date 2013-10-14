@@ -23,7 +23,7 @@
  *
  * @section DESCRIPTION
  * Minimum spanning forest based on Boruvska steps. Also alternatively implementation using
- * star contraction.
+ * star contraction. Unfortunately, this code is quite optimized and hard to read.
  *
  * This application demonstrates how graph contraction algorithms can be implemented efficiently
  * with GraphChi.
@@ -385,9 +385,9 @@ int main(int argc, const char ** argv) {
     /* Detect the number of shards or preprocess an input to create them */
     int nshards          = get_option_int("nshards", 0);
     delete_shards<EdgeDataTypeFirstIter>(filename, nshards);
-    
+     
     convert_if_notexists<int, EdgeDataTypeFirstIter>(filename, get_option_string("nshards", "0"));
-    
+     
     contractionType = get_option_string("algo", "boruvska") == "boruvska" ? BORUVSKA : STAR;
     
     if (contractionType == BORUVSKA) {
@@ -411,6 +411,7 @@ int main(int argc, const char ** argv) {
             engine.set_modifies_inedges(true);
             engine.set_modifies_outedges(true);
             engine.set_disable_outedges(false);
+
 
             engine.run(boruvska_starcontraction, 2);
             
@@ -488,8 +489,6 @@ int main(int argc, const char ** argv) {
             nshards = (int)shardedout.finish_sharding();
             filename = contractedname;
         }
-        
-        
         
     }
     m.stop_time("msf-total-runtime");

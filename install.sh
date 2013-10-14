@@ -7,7 +7,12 @@ EIGEN_DIST=http://bitbucket.org/eigen/eigen/get/$EIGEN_FILE
 test -z `which wget`
 if [ $? -eq 1 ]; then
   rm -fR $EIGEN_DIST
-  wget --max-redirect 20 $EIGEN_DIST
+  if [ "$(uname -o)" == "Cygwin" ]; then
+    # '--no-check-certificate' to silence complaint about bitbucket.org's certificate
+    wget --no-check-certificate --max-redirect 20 $EIGEN_DIST
+  else
+    wget --max-redirect 20 $EIGEN_DIST
+  fi
   if [ $? -ne 0 ]; then
      echo "Failed to download file"
      echo "Please download manually the file $EIGEN_DIST to the root GraphChi folder"

@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string>
 #include <assert.h>
+#include <sys/mman.h>
 
 #include "graphchi_types.hpp"
 #include "api/chifilenames.hpp"
@@ -64,9 +65,22 @@ namespace graphchi {
         
         VertexDataType * loaded_chunk;
 
+        bool use_mmap;
+        VertexDataType * mmap_file;
+        size_t mmap_length;
+        
+        vid_t last_nvertices;
+        
 
-        virtual void open_file(std::string base_filename) {
-            filedesc = iomgr->open_session(filename.c_str(), false);
+        virtual void open_file() {
+            if (!use_mmap) {
+                filedesc = iomgr->open_session(filename.c_str(), false);
+            } else {
+                mmap_length = get_filesize(filename);
+                filedesc = open(filename.c_str(), O_RDWR);
+                mmap_file = (VertexDataType *) mmap(NULL, mmap_length, PROT_WRITE | PROT_READ, MAP_SHARED, filedesc, 0);
+                assert(mmap_file);
+            }
         }
         
     public:
@@ -74,21 +88,51 @@ namespace graphchi {
         vertex_data_store(std::string base_filename, size_t nvertices, stripedio * iomgr) : iomgr(iomgr), loaded_chunk(NULL){
             vertex_st = vertex_en = 0;
             filename = filename_vertex_data<VertexDataType>(base_filename);
-            check_size(nvertices);
-            iomgr->allow_preloading(filename);
-            open_file(filename);
+            
+            mmap_file = NULL;
+            last_nvertices = 0;
+            use_mmap = get_option_int("mmap", 0);  // Whether to mmap the degree file to memory
+            if (use_mmap) {
+                logstream(LOG_INFO) << "Use memory mapping for vertex data." << std::endl;
+                check_size(nvertices);
+            } else {
+                check_size(nvertices);
+                open_file();
+            }
+            
         }    
         
         virtual ~vertex_data_store() {
-            iomgr->close_session(filedesc);
-            iomgr->wait_for_writes();
-            if (loaded_chunk != NULL) {
-                iomgr->managed_release(filedesc, &loaded_chunk);
-            }    
+            if (!use_mmap) {
+                iomgr->close_session(filedesc);
+                iomgr->wait_for_writes();
+                if (loaded_chunk != NULL) {
+                    iomgr->managed_release(filedesc, &loaded_chunk);
+                }
+            } else {
+                logstream(LOG_INFO) << "Syncing vertex data..." << std::endl;
+                msync(mmap_file, mmap_length, MS_SYNC);
+                munmap(mmap_file, mmap_length);
+                close(filedesc);
+            }
         }
         
+        
         void check_size(size_t nvertices) {
-            checkarray_filesize<VertexDataType>(filename, nvertices);
+            if (nvertices == last_nvertices) return;
+            if (!use_mmap) {
+                checkarray_filesize<VertexDataType>(filename, nvertices);
+            } else {
+                if (mmap_file) {
+                    msync(mmap_file, mmap_length, MS_SYNC);
+                    munmap(mmap_file, mmap_length);
+                    mmap_file = NULL;
+                    close(filedesc);
+                }
+                checkarray_filesize<VertexDataType>(filename, nvertices);
+                open_file();
+            }
+            last_nvertices = nvertices;
         }
         
         void clear(size_t nvertices) {
@@ -102,32 +146,41 @@ namespace graphchi {
          * @param vertex_en last vertex id, inclusive
          */
         virtual void load(vid_t _vertex_st, vid_t _vertex_en) {
-            assert(_vertex_en >= _vertex_st);
-            vertex_st = _vertex_st;
-            vertex_en = _vertex_en;
-            
-            size_t datasize = (vertex_en - vertex_st + 1)* sizeof(VertexDataType);
-            size_t datastart = vertex_st * sizeof(VertexDataType);
-            
-            if (loaded_chunk != NULL) {
-                iomgr->managed_release(filedesc, &loaded_chunk);
+            if (!use_mmap) {
+                assert(_vertex_en >= _vertex_st);
+                vertex_st = _vertex_st;
+                vertex_en = _vertex_en;
+                
+                size_t datasize = (vertex_en - vertex_st + 1)* sizeof(VertexDataType);
+                size_t datastart = vertex_st * sizeof(VertexDataType);
+                
+                if (loaded_chunk != NULL) {
+                    iomgr->managed_release(filedesc, &loaded_chunk);
+                }
+                
+                iomgr->managed_malloc(filedesc, &loaded_chunk, datasize, datastart);
+                iomgr->managed_preada_now(filedesc, &loaded_chunk, datasize, datastart);
+            } else {
+                // Do nothing
             }
-            
-            iomgr->managed_malloc(filedesc, &loaded_chunk, datasize, datastart);
-            iomgr->managed_preada_now(filedesc, &loaded_chunk, datasize, datastart);
+
         }
         
         /**
           * Saves the current chunk of vertex values
           */
         virtual void save(bool async=false) {
-            assert(loaded_chunk != NULL); 
-            size_t datasize = (vertex_en - vertex_st + 1) * sizeof(VertexDataType);
-            size_t datastart = vertex_st * sizeof(VertexDataType);
-            if (async) {
-                iomgr->managed_pwritea_async(filedesc, &loaded_chunk, datasize, datastart, false);
+            if (!use_mmap) {
+                assert(loaded_chunk != NULL); 
+                size_t datasize = (vertex_en - vertex_st + 1) * sizeof(VertexDataType);
+                size_t datastart = vertex_st * sizeof(VertexDataType);
+                if (async) {
+                    iomgr->managed_pwritea_async(filedesc, &loaded_chunk, datasize, datastart, false);
+                } else {
+                    iomgr->managed_pwritea_now(filedesc, &loaded_chunk, datasize, datastart);
+                }
             } else {
-                iomgr->managed_pwritea_now(filedesc, &loaded_chunk, datasize, datastart);
+                // do nothing
             }
         }
         
@@ -136,14 +189,22 @@ namespace graphchi {
          * Returns id of the first vertex currently in memory. Fails if nothing loaded yet.
          */
         vid_t first_vertex_id() {
-            assert(loaded_chunk != NULL);
-            return vertex_st; 
+            if (!use_mmap) {
+                assert(loaded_chunk != NULL);
+                return vertex_st;
+            } else {
+                return 0;
+            }
         }  
         
         
         VertexDataType * vertex_data_ptr(vid_t vertexid) {
-            assert(vertexid >= vertex_st && vertexid <= vertex_en);
-            return &loaded_chunk[vertexid - vertex_st];
+            if (!use_mmap) {
+                assert(vertexid >= vertex_st && vertexid <= vertex_en);
+                return &loaded_chunk[vertexid - vertex_st];
+            } else {
+                return &mmap_file[vertexid];
+            }
         }   
         
         

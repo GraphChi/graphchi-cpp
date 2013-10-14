@@ -120,7 +120,9 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
             const std::string & vecfile){
    
 
-   int nconv = 0;
+ 
+
+  int nconv = 0;
    int its = 1;
    DistMat A(info);
    DistSlicedMat U(info.is_square() ? data_size : 0, info.is_square() ? 2*data_size : data_size, true, info, "U");
@@ -133,51 +135,48 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
      v_0 = randu(size(A,2));
    PRINT_VEC2("svd->V", v_0);
    
-   DistDouble vnorm = norm(v_0);
-   v_0=v_0/vnorm;
-   PRINT_INT(nv);
+  DistDouble vnorm = norm(v_0);
+  v_0=v_0/vnorm;
+  PRINT_INT(nv);
 
-   while(nconv < nsv && its < max_iter){
-     std::cout<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
-     int k = nconv;
-     int n = nv;
-     PRINT_INT(k);
-     PRINT_INT(n);
+  while(nconv < nsv && its < max_iter){
+    std::cout<<"Starting iteration: " << its << " at time: " << mytimer.current_time() << std::endl;
+    int k = nconv;
+    int n = nv;
+    PRINT_INT(k);
+    PRINT_INT(n);
 
-     alpha = zeros(n);
-     beta = zeros(n);
+    alpha = zeros(n);
+    beta = zeros(n);
 
-     U[k] = V[k]*A._transpose();
-     orthogonalize_vs_all(U, k, alpha(0));
-     //alpha(0)=norm(U[k]).toDouble(); 
-     PRINT_VEC3("alpha", alpha, 0);
-     //U[k] = U[k]/alpha(0);
+    U[k] = V[k]*A._transpose();
+    PRINT_VEC(U[k]);
+    orthogonalize_vs_all(U, k, alpha(0));
+    PRINT_VEC(U[k]);
+    PRINT_VEC3("alpha", alpha, 0);
 
-     for (int i=k+1; i<n; i++){
-       std::cout <<"Starting step: " << i << " at time: " << mytimer.current_time() <<  std::endl;
-       PRINT_INT(i);
+    for (int i=k+1; i<n; i++){
+      std::cout <<"Starting step: " << i << " at time: " << mytimer.current_time() <<  std::endl;
+      PRINT_INT(i);
 
-       V[i]=U[i-1]*A;
-       orthogonalize_vs_all(V, i, beta(i-k-1));
+      V[i]=U[i-1]*A;
+      PRINT_VEC(V[i]);
+      orthogonalize_vs_all(V, i, beta(i-k-1));
+      PRINT_VEC(V[i]);
       
-       //beta(i-k-1)=norm(V[i]).toDouble();
-       //V[i] = V[i]/beta(i-k-1);
-       PRINT_VEC3("beta", beta, i-k-1); 
+      PRINT_VEC3("beta", beta, i-k-1); 
       
-       U[i] = V[i]*A._transpose();
-       orthogonalize_vs_all(U, i, alpha(i-k));
-       //alpha(i-k)=norm(U[i]).toDouble();
-
-       //U[i] = U[i]/alpha(i-k);
-       PRINT_VEC3("alpha", alpha, i-k);
+      U[i] = V[i]*A._transpose();
+      orthogonalize_vs_all(U, i, alpha(i-k));
+      PRINT_VEC3("alpha", alpha, i-k);
      }
 
-     V[n]= U[n-1]*A;
-     orthogonalize_vs_all(V, n, beta(n-k-1));
-     //beta(n-k-1)=norm(V[n]).toDouble();
-     PRINT_VEC3("beta", beta, n-k-1);
+    V[n]= U[n-1]*A;
+    orthogonalize_vs_all(V, n, beta(n-k-1));
+    PRINT_VEC3("beta", beta, n-k-1);
 
   //compute svd of bidiagonal matrix
+  
   PRINT_INT(nv);
   PRINT_NAMED_INT("svd->nconv", nconv);
   n = nv - nconv;
@@ -204,7 +203,9 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
   PRINT_VEC2("beta",beta);
   PRINT_MAT2("PT", PT.transpose());
 
-  //estiamte the error
+  
+   //estiamte the error
+  
   int kk = 0;
   for (int i=nconv; i < nv; i++){
     int j = i-nconv;
@@ -235,6 +236,7 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
 
   vec v;
   if (!finished){
+    
     vec swork=get_col(PT,kk); 
     PRINT_MAT2("swork", swork);
     v = zeros(size(A,1));
@@ -246,9 +248,11 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
   }
 
 
-   //compute the ritz eigenvectors of the converged singular triplets
+   
+  //compute the ritz eigenvectors of the converged singular triplets
   if (kk > 0){
-    PRINT_VEC2("svd->V", V[nconv]);
+  PRINT_VEC2("svd->V", V[nconv]);
+    
     mat tmp= V.get_cols(nconv,nconv+n)*PT;
     V.set_cols(nconv, nconv+kk, get_cols(tmp, 0, kk));
     PRINT_VEC2("svd->V", V[nconv]);
@@ -258,6 +262,13 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
     PRINT_VEC2("svd->U", U[nconv]);
   }
 
+  
+
+
+
+
+
+  
   nconv=nconv+kk;
   if (finished)
     break;
@@ -269,9 +280,6 @@ vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest,
   its++;
   PRINT_NAMED_INT("svd->its", its);
   PRINT_NAMED_INT("svd->nconv", nconv);
-  //nv = min(nconv+mpd, N);
-  //if (nsv < 10)
-  //  nv = 10;
   PRINT_NAMED_INT("nv",nv);
 
 } // end(while)
@@ -280,7 +288,9 @@ printf(" Number of computed signular values %d",nconv);
 printf("\n");
   DistVec normret(info, nconv, false, "normret");
   DistVec normret_tranpose(info, nconv, true, "normret_tranpose");
-  for (int i=0; i < nconv; i++){
+  
+
+  for (int i=0; i < std::min(nsv,nconv); i++){
     normret = V[i]*A._transpose() -U[i]*sigma(i);
     double n1 = norm(normret).toDouble();
     PRINT_DBL(n1);
