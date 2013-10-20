@@ -30,9 +30,8 @@
 
 using namespace std;
 
-
+#define GRAPHCHI_DISABLE_COMPRESSION
 int nshards;
-int input_cols = 3;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
   metrics m("svd-inmemory-factors");
@@ -341,7 +340,6 @@ int main(int argc,  const char *argv[]) {
   nsv = get_option_int("nsv", 1);
   tol = get_option_float("tol", 1e-5);
   save_vectors = get_option_int("save_vectors", 1);
-  input_cols = get_option_int("input_cols", 3);
   max_iter = get_option_int("max_iter", max_iter);
 
   parse_command_line_args();
@@ -377,11 +375,11 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Load matrix " << training << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  if (input_cols == 3)
-    nshards = convert_matrixmarket<edge_data>(training);
-  else if (input_cols == 4)
+  if (tokens_per_row == 3 || tokens_per_row == 2)
+    nshards = convert_matrixmarket<edge_data>(training,0,0,tokens_per_row);
+  else if (tokens_per_row == 4)
     nshards = convert_matrixmarket4<edge_data>(training);
-  else logstream(LOG_FATAL)<<"--input_cols=XX should be either 3 or 4 input columns" << std::endl;
+  else logstream(LOG_FATAL)<<"--tokens_per_row=XX should be either 3 or 4 input columns" << std::endl;
 
  
   info.rows = M; info.cols = N; info.nonzeros = L;

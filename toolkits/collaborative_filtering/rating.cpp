@@ -39,7 +39,6 @@ int num_ratings;
 double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
-int tokens_per_row = 3;
 int algo = 0;
 int start_user=0;
 int end_user=INT_MAX;
