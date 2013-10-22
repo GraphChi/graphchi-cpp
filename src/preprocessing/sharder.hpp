@@ -463,9 +463,12 @@ namespace graphchi {
             preprocessing_add_edge(from, to, EdgeDataType());
         }
         
+        size_t curadjfilepos;
+        
         /** Buffered write function */
         template <typename T>
         void bwrite(int f, char * buf, char * &bufptr, T val) {
+            curadjfilepos += sizeof(T);
             if (bufptr + sizeof(T) - buf >= SHARDER_BUFSIZE) {
                 writea(f, buf, bufptr - buf);
                 bufptr = buf;
@@ -618,7 +621,7 @@ namespace graphchi {
             m.start_time("shard_final");
             blockid = 0;
             size_t edgecounter = 0;
-            
+            curadjfilepos = 0;
             logstream(LOG_INFO) << "Starting final processing for shard: " << shard << std::endl;
             
             std::string fname = filename_shard_adj(basefilename, shard, nshards);
@@ -665,7 +668,7 @@ namespace graphchi {
             }
             
             // Index file
-            std::string indexfile = filename_shard_adjidx(basefilename, shard, nshards);
+            std::string indexfile = filename_shard_adjidx(fname);
             int idxf = open(indexfile.c_str(),  O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
             size_t last_index_output = 0;
             size_t index_interval_edges = 1024 * 1024;
@@ -760,10 +763,10 @@ namespace graphchi {
                     
                     // Write index
                     if (istart - last_index_output >= index_interval_edges) {
-                        size_t a = write(idxf, &curvid, sizeof(vid_t));
+                        size_t curfpos = curadjfilepos;
+                        shard_index sidx(curvid, curfpos, istart);
+                        size_t a = write(idxf, &sidx, sizeof(shard_index));
                         assert(a>0);
-                        size_t curfpos = lseek(f, 0, SEEK_CUR);
-                        a = write(idxf, &curfpos, sizeof(size_t));
                         last_index_output = istart;
                     }
                     

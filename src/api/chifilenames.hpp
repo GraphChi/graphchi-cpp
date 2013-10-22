@@ -148,12 +148,8 @@ namespace graphchi {
         return ss.str();
     }
     
-    static std::string filename_shard_adjidx(std::string basefilename, int p, int nshards) {
-        std::stringstream ss;
-        ss << basefilename;
-        ss << ".edata_azv.";
-        ss << p << "_" << nshards << ".adjidx";
-        return ss.str();
+    static std::string filename_shard_adjidx(std::string adjfilename) {
+        return adjfilename + "idx";
     }
     
     /**
@@ -349,7 +345,7 @@ namespace graphchi {
                     << ", " << strerror(errno) << std::endl;
             }
             
-            std::string idxname = filename_shard_adjidx(base_filename, p, nshards);
+            std::string idxname = filename_shard_adjidx(adjname);
             logstream(LOG_DEBUG) << "Deleting " << idxname << " exists: " << file_exists(idxname) << std::endl;
             
             if (file_exists(idxname)) {

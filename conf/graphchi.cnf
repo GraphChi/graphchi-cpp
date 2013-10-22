@@ -10,8 +10,8 @@ membudget_mb = 2000
 cachesize_mb = 1000
 
 # Good for 4 gigs
-membudget_mb = 600
-cachesize_mb = 400
+membudget_mb = 800
+cachesize_mb = 0
 
 # I/O settings
 io.blocksize = 1048576 
