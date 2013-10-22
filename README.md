@@ -75,6 +75,8 @@ GraphChi is based on the Parallel Sliding Windows method which allows efficient 
 
 ## Performance
 
+**NOTE:** Following performance figures are somewhat outdated. Current performance should be better.
+
 In the table below, we have picked some recent running time results for large-scale graph problems from the literature, and run the same experiment using GraphChi. For GraphChi, we used a Mac Mini (2012 model), with 8 gigabytes of RAM and 256 gigabyte SSD drive. 
 
 While distributed clusters can solve the same problems faster than GraphChi on a single computer, for many purposes GraphChi's performance should be adequate. The numbers below do not include time for transferring the input to cloud or cluster, and usually do not include the graph loading time. GraphChi's running times include loading the graph and saving the results, but not preprocessing time. Preprocessing needs to be done only once per graph (you can run many different algorithms on the same preprocessed graph). The preprocessing times are listed in a separate table below.
