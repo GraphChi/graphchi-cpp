@@ -83,6 +83,7 @@ namespace graphchi {
         bool async_edata_loading;
         bool is_loaded;
         bool disable_async_writes;
+        bool enable_parallel_loading;
         size_t blocksize;
         metrics &m;
         std::vector<shard_index> index;
@@ -105,6 +106,7 @@ namespace graphchi {
             adj_session = -1;
             edgedata = NULL;
             doneptr = NULL;
+            enable_parallel_loading = true;
             disable_async_writes = false;
             async_edata_loading = !svertex_t().computational_edges();
 #ifdef SUPPORT_DELETIONS
@@ -135,6 +137,10 @@ namespace graphchi {
         
         void set_disable_async_writes(bool b) {
             disable_async_writes = b;
+        }
+        
+        void disable_parallel_loading() {
+            enable_parallel_loading = false;
         }
         
         void commit(bool commit_inedges, bool commit_outedges) {
@@ -384,7 +390,11 @@ namespace graphchi {
             bool setoffset = false;
             bool setrangeoffset = false;
             
-            
+            if (!enable_parallel_loading) {
+                index.clear();
+                index.push_back(shard_index(0, 0, 0));
+            }
+
 #pragma omp parallel for schedule(dynamic, 1)
             for(int chunk=0; chunk < (int)index.size(); chunk++) {
                 /* Parallelized loading of adjacency data ... */

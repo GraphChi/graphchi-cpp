@@ -24,7 +24,7 @@ namespace graphchi {
         return a.deg < b.deg || (a.deg == b.deg && a.id < b.id);
     }
     
-    
+     
     /**
       * Override the basic graphchi vertex class and use this for reprocessing the edges. Hack.
       */
@@ -128,6 +128,7 @@ namespace graphchi {
                                 filename_shard_adj(base_filename, p, nshards),
                                 intervals[p].first, intervals[p].second, 4096 * 1024, m);
             memshard.only_adjacency = true;
+            memshard.disable_parallel_loading();
             memshard.load();
             memshard.load_vertices(intervals[p].first, intervals[p].second, vertices);
         }

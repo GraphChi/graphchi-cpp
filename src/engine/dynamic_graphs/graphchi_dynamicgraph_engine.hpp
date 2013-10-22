@@ -530,6 +530,8 @@ namespace graphchi {
         
 #define BBUF 32000000
         
+        size_t curadjfilepos;
+
         /**
          * Code for committing changes to disk.
          */
@@ -658,6 +660,7 @@ namespace graphchi {
                     }
                     suffix = suffix + ".i" + std::string(iterstr);
                     newsuffices.push_back(suffix);
+                    curadjfilepos = 0;
                     std::string outfile_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + suffix;
                     std::string outfile_edata_dirname = dirname_shard_edata_block(outfile_edata, base_engine::blocksize);
                     mkdir(outfile_edata_dirname.c_str(), 0777);
@@ -693,6 +696,15 @@ namespace graphchi {
                     char * ebuf = (char*) malloc(BBUF);
                     char * ebufptr = ebuf;
                     size_t tot_edatabytes = 0;
+                    
+                    // Index file
+                    std::string indexfile = filename_shard_adjidx(outfile_adj);
+                    int idxf = open(indexfile.c_str(),  O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+                    size_t last_index_output = 0;
+                    size_t index_interval_edges = 1024 * 1024;
+                    size_t edgecounter = 0;
+                    assert(idxf>0);
+
                     
                     // Now create a new shard file window by window
                     for(int window=0; window < this->nshards; window++) {
@@ -793,6 +805,17 @@ namespace graphchi {
                                     bwrite<uint8_t>(f, buf, bufptr, 0);
                                     bwrite<uint8_t>(f, buf, bufptr, nnz);
                                 } else {
+                                    
+                                    // Write index
+                                    if (edgecounter - last_index_output >= index_interval_edges) {
+                                        size_t curfpos = curadjfilepos;
+                                        shard_index sidx(curvid, curfpos, edgecounter);
+                                        size_t a = write(idxf, &sidx, sizeof(shard_index));
+                                        assert(a>0);
+                                        last_index_output = edgecounter;
+                                    }
+
+                                    
                                     if (count < 255) {
                                         uint8_t x = (uint8_t)count;
                                         bwrite<uint8_t>(f, buf, bufptr, x);
@@ -812,6 +835,7 @@ namespace graphchi {
                                             bwrite(f, buf, bufptr,  vertex.outedge(i)->vertexid);
                                             bwrite_edata<EdgeDataType>(ebuf, ebufptr, vertex.outedge(i)->get_data(), tot_edatabytes, outfile_edata);
                                             ne++;
+                                            edgecounter++;
                                         } else assert(outparts == 2);
                                     }
                                     curvid++;
@@ -841,6 +865,7 @@ namespace graphchi {
                     delete curshard;
                     close(f);
                     close(ef);
+                    close(idxf);
                     
                     this->iomgr->wait_for_writes();
                 } // splits
@@ -849,10 +874,11 @@ namespace graphchi {
                 std::string old_file_adj = filename_shard_adj(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];          
                 std::string old_file_edata = filename_shard_edata<EdgeDataType>(this->base_filename, 0, 0) + ".dyngraph" + shard_suffices[shard];
                 std::string old_blockdir =  dirname_shard_edata_block(old_file_edata, base_engine::blocksize);
-
+                std::string old_file_adj_idx = filename_shard_adjidx(old_file_adj);
                 remove(old_file_adj.c_str());
                 remove(old_blockdir.c_str());
-                
+                remove(old_file_adj_idx.c_str());
+
                 std::string old_sizefilename = old_file_edata + ".size";
                 remove(old_sizefilename.c_str());
             }
@@ -907,6 +933,7 @@ namespace graphchi {
         
         template <typename T>
         void bwrite(int f, char * buf, char * &bufptr, T val) {
+            curadjfilepos += sizeof(T);
             if (bufptr+sizeof(T)-buf>=BBUF) {
                 writea(f, buf, bufptr-buf);
                 bufptr = buf;
