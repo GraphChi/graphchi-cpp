@@ -15,7 +15,7 @@ cachesize_mb = 400
 
 # I/O settings
 io.blocksize = 1048576 
-mmap = 1  # Use mmaped files where applicable
+mmap = 0  # Use mmaped files where applicable
 
 
 # Comma-delimited list of metrics output reporters.
