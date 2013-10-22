@@ -612,10 +612,6 @@ namespace graphchi {
         
         
         int lastpart;
-        
-        
-        
-        
         degree * degrees;
         
         virtual void finish_shard(int shard, edge_t * shovelbuf, size_t shovelsize) {
@@ -667,6 +663,12 @@ namespace graphchi {
                 free(shovelbuf);
                 shovelbuf = tmpbuf; tmpbuf = NULL;
             }
+            
+            // Index file
+            std::string indexfile = filename_shard_adjidx(basefilename, shard, nshards);
+            int idxf = open(indexfile.c_str(),  O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
+            size_t last_index_output = 0;
+            size_t index_interval_edges = 1024 * 1024;
             
             // Create the final file
             int f = open(fname.c_str(), O_WRONLY | O_CREAT, S_IROTH | S_IWOTH | S_IWUSR | S_IRUSR);
@@ -755,6 +757,17 @@ namespace graphchi {
                     if (edge.stopper()) count++;  
 #endif
                     assert(count>0 || curvid==0);
+                    
+                    // Write index
+                    if (istart - last_index_output >= index_interval_edges) {
+                        size_t a = write(idxf, &curvid, sizeof(vid_t));
+                        assert(a>0);
+                        size_t curfpos = lseek(f, 0, SEEK_CUR);
+                        a = write(idxf, &curfpos, sizeof(size_t));
+                        last_index_output = istart;
+                    }
+                    
+                    // Write counts
                     if (count>0) {
                         if (count < 255) {
                             uint8_t x = (uint8_t)count;
@@ -766,10 +779,14 @@ namespace graphchi {
                     }
                     
 #ifndef DYNAMICEDATA
+                    
+                  
+                        
                     for(size_t j=istart; j < i; j++) {
                         bwrite(f, buf, bufptr,  shovelbuf[j].dst);
                     }
 #else
+                    
                     // Special dealing with dynamic edata because some edges can be present multiple
                     // times in the shovel.
                     for(size_t j=istart; j < i; j++) {
@@ -806,6 +823,7 @@ namespace graphchi {
             free(buf);
             free(shovelbuf);
             close(f);
+            close(idxf);
             
             /* Write edata size file */
             if (!no_edgevalues) {
