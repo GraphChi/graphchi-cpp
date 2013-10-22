@@ -4,16 +4,14 @@
 
 MIT Technology Review article about GraphChi: ["Your laptop can now analyze big data"](http://www.technologyreview.com/news/428497/your-laptop-can-now-analyze-big-data/?nlid=nldly&nld=2012-07-17)
 
+### NEW: Improved performance.
+(October 21, 2013)
+In-edges are now loaded in parallel, improving performance on multicore machines significantly.
+
 ### NEW: Graph contraction algorithms
 
 Read about graph contraction technique, which we used to implemented efficient minimum spanning forest computation [ Graph Contraction Algorithms ](https://github.com/GraphChi/graphchi-cpp/wiki/Graph-Contraction-Algorithms).
-
-### NEW: GraphChi version 0.2
-
-Highlight of the release includes support for dynamically sized edge and vertex values.
-
-**Read [release announcement.](https://github.com/GraphChi/graphchi-cpp/wiki/GraphChi-Version0p2-Release)  **
-
+ 
 ### Discussion group
 
 http://groups.google.com/group/graphchi-discuss
@@ -76,6 +74,8 @@ For an introduction on writing your own applications, read  [Creating-GraphChi-A
 GraphChi is based on the Parallel Sliding Windows method which allows efficient asynchronous processing of mutable graphs from disk. See [Introduction-To-GraphChi](https://github.com/GraphChi/graphchi-cpp/wiki/Introduction-To-GraphChi) for description.
 
 ## Performance
+
+**NOTE:** Following performance figures are somewhat outdated. Current performance should be better.
 
 In the table below, we have picked some recent running time results for large-scale graph problems from the literature, and run the same experiment using GraphChi. For GraphChi, we used a Mac Mini (2012 model), with 8 gigabytes of RAM and 256 gigabyte SSD drive. 
 
