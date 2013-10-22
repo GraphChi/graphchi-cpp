@@ -64,6 +64,8 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     objective_vec = zeros(gcontext.execthreads);
     stat_vec = zeros(gcontext.execthreads);
     node_without_edges = 0;
+    if (gcontext.iteration == 0)
+      run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -210,6 +212,7 @@ int main(int argc, const char ** argv) {
   halt_on_mrr_decrease = get_option_int("halt_on_mrr_decrease", 0);
   num_ratings = get_option_int("num_ratings", 10000); //number of top predictions over which we compute actual MRR
   verbose     = get_option_int("verbose", 0);
+  debug       = get_option_int("debug", 0);
 
   parse_command_line_args();
   parse_implicit_command_line();

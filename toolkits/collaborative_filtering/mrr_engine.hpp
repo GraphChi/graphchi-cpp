@@ -83,6 +83,9 @@ struct ValidationMRRProgram : public GraphChiProgram<VertexDataType, EdgeDataTyp
         {
           if (known_likes.find(sorted_indices[i]) != known_likes.end())
           {
+            if (debug && vertex.id() % 1000 == 0 ){
+               std::cout<<"User: "<< vertex.id() << " item: "<< sorted_indices[i] << " in position: " << i << " prediction: " << sorted_distances[i] << std::endl;
+            }
             MRR = 1.0/(i+1);
             break;
           }

@@ -76,6 +76,7 @@ vec stat_vec;                        // verbose info about step size
 int verbose;                         // additional output about step size
 double training_objective;
 double last_training_objective;
+int debug;                           // printout more debug information
 
 /* other relevant global args defined in common.hpp:
 uint M;                    // number of users

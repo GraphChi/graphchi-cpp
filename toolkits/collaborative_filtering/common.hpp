@@ -68,6 +68,7 @@ int regnormal = 0; // if set to 1, compute LS regularization according to the pa
 int clean_cache = 0;
 int R_output_format = 0; // if set to 1, all matrices and vectors are written in sparse matrix market format since
                          // R does not currently support array format (dense format).
+int tokens_per_row = 3; //number of columns per input row
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -122,6 +123,7 @@ void parse_command_line_args(){
 
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
   input_file_offset = get_option_int("input_file_offset", input_file_offset);
+  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
   /* find out loss type (optional, for SGD variants only) */
   loss              = get_option_string("loss", loss);
   if (loss == "square")

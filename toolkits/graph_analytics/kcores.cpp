@@ -37,7 +37,6 @@
 using namespace graphchi;
 
 int square = 0;
-int tokens_per_row = 3;
 
 bool debug = false;
 int max_iter = 50;
@@ -176,7 +175,6 @@ int main(int argc,  const char *argv[]) {
   unittest      = get_option_int("unittest", 0); 
   datafile      = get_option_string("training");
   square        = get_option_int("square", 0);
-  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
   nodes = get_option_int("nodes", nodes);
   orig_edges = get_option_int("orig_edges", orig_edges);
 
