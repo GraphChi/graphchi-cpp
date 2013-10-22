@@ -270,6 +270,8 @@ namespace graphchi {
                 
                 cpedata(edata_filename, dest_edata, true);
                 cp(adj_filename, dest_adj);
+                cp(filename_shard_adjidx(adj_filename), filename_shard_adjidx(dest_adj));
+
             }
         }
         

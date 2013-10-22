@@ -56,7 +56,7 @@ namespace graphchi {
     
 
     template <typename EdgeDataType>
-    void order_by_degree(std::string &base_filename, int nshards, metrics &m) {
+    int order_by_degree(std::string &base_filename, int nshards, metrics &m) {
         /* Load degree file */
         std::string degree_filename = filename_degree_data(base_filename);
         
@@ -139,8 +139,7 @@ namespace graphchi {
 
         /* Finish sharding */
         std::stringstream ss; ss << nshards;
-        sharderobj.execute_sharding(ss.str());
-        
+        return sharderobj.execute_sharding(ss.str());
     }
 
 };

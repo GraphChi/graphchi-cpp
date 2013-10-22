@@ -450,7 +450,7 @@ int main(int argc, const char ** argv) {
     }
     assert(nshards > 1);
     
-    order_by_degree<EdgeDataType>(filename, nshards, m);
+    nshards = order_by_degree<EdgeDataType>(filename, nshards, m);
     
     
     /* Initialize adjacency container */
