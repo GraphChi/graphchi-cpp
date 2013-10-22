@@ -58,7 +58,8 @@
 
 namespace graphchi {
     
-    template <typename VertexDataType, typename EdgeDataType,   
+    
+    template <typename VertexDataType, typename EdgeDataType,
     typename svertex_t = graphchi_vertex<VertexDataType, EdgeDataType> >
     
     class graphchi_engine {
@@ -97,7 +98,7 @@ namespace graphchi {
         bool enable_deterministic_parallelism;
         bool store_inedges;
         bool disable_vertexdata_storage;
-        bool preload_commit; //alow storing of modified edge data on preloaded data into memory
+
         bool randomization;
         bool initialize_edges_before_run;
         
@@ -148,9 +149,6 @@ namespace graphchi {
             /* Initialize IO */
             m.start_time("iomgr_init");
             iomgr = new stripedio(m);
-            if (disable_preloading()) {
-                iomgr->set_disable_preloading(true);
-            }
             m.stop_time("iomgr_init");
 #ifndef DYNAMICEDATA
             logstream(LOG_INFO) << "Initializing graphchi_engine. This engine expects " << sizeof(EdgeDataType)
@@ -174,7 +172,7 @@ namespace graphchi {
             modifies_outedges = true;
             modifies_inedges = true;
             save_edgesfiles_after_inmemmode = false;
-            preload_commit = true;
+
             only_adjacency = false;
             disable_outedges = false;
             reset_vertexdata = false;
@@ -234,10 +232,6 @@ namespace graphchi {
             return new degree_data(base_filename, iomgr);
         }
         
-        virtual bool disable_preloading() {
-            return false;
-        }
-        
         
             
         /**
@@ -267,11 +261,6 @@ namespace graphchi {
 #ifndef DYNAMICEDATA
                 std::string edata_filename = filename_shard_edata<EdgeDataType>(base_filename, p, nshards);
                 std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
-                /* Let the IO manager know that we will be reading these files, and
-                 it should decide whether to preload them or not.
-                 */
-                iomgr->allow_preloading(edata_filename);
-                iomgr->allow_preloading(adj_filename);
 #else
                 std::string edata_filename = filename_shard_edata<int>(base_filename, p, nshards);
                 std::string adj_filename = filename_shard_adj(base_filename, p, nshards);
@@ -714,6 +703,10 @@ namespace graphchi {
             m.start_time("runtime");
             if (degree_handler == NULL)
                 degree_handler = create_degree_handler();
+            iomgr->set_cache_budget(get_option_long("cachesize_mb", 0) * 1024L * 1024L);
+
+            m.set("cachesize_mb", get_option_int("cachesize_mb", 0));
+            m.set("membudget_mb", get_option_int("membudget_mb", 0));
 
             randomization = get_option_int("randomization", 0) == 1;
             
@@ -904,8 +897,6 @@ namespace graphchi {
                     } // while subintervals
 
                     if (memoryshard->loaded() && (save_edgesfiles_after_inmemmode || !is_inmemory_mode())) {
-                        logstream(LOG_INFO) << "Commit memshard" << std::endl;
-
                         memoryshard->commit(modifies_inedges, modifies_outedges & !disable_outedges);
                         
                         if (!randomization) {
@@ -940,11 +931,8 @@ namespace graphchi {
                     logstream(LOG_DEBUG) << "Last iteration is now: " << (niters-1) << std::endl;
                 }
                 iteration_finished();
+                iomgr->first_pass_finished(); // Tell IO-manager that we have passed over the graph (used for optimization)
             } // Iterations
-            
-            // Commit preloaded shards
-            if (preload_commit)
-              iomgr->commit_preloaded();
             
             m.stop_time("runtime");
             
@@ -973,6 +961,10 @@ namespace graphchi {
                 delete vertex_data_handler;
                 vertex_data_handler = NULL;
             }
+            
+            if (modifies_inedges || modifies_outedges) {
+                iomgr->commit_cached_blocks();
+            }
         }
         
         virtual void iteration_finished() {
@@ -995,10 +987,6 @@ namespace graphchi {
             only_adjacency = b;
         }
 
-        virtual void set_preload_commit(bool b){
-            preload_commit = b;
-        }
-        
         virtual void set_disable_outedges(bool b) {
             disable_outedges = b;
         }

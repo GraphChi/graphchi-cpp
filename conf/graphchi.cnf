@@ -6,14 +6,16 @@ loadthreads = 4
 niothreads = 2
 
 # Good for 8gigs
-#membudget_mb = 3000
+membudget_mb = 2000
+cachesize_mb = 1000
 
 # Good for 4 gigs
 membudget_mb = 800
+cachesize_mb = 0
 
 # I/O settings
 io.blocksize = 1048576 
-mmap = 1  # Use mmaped files where applicable
+mmap = 0  # Use mmaped files where applicable
 
 
 # Comma-delimited list of metrics output reporters.

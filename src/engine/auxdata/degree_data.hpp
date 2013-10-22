@@ -74,7 +74,6 @@ namespace graphchi {
             filename = filename_degree_data(base_filename);
             modified = false;
             if (!use_mmap) {
-                iomgr->allow_preloading(filename);
                 filedesc = iomgr->open_session(filename.c_str(), false);
             } else {
                 mmap_length = get_filesize(filename);

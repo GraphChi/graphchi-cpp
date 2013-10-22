@@ -64,6 +64,7 @@ namespace graphchi {
         int filedesc;
         
         VertexDataType * loaded_chunk;
+
         bool use_mmap;
         VertexDataType * mmap_file;
         size_t mmap_length;
@@ -76,7 +77,6 @@ namespace graphchi {
                 filedesc = iomgr->open_session(filename.c_str(), false);
             } else {
                 mmap_length = get_filesize(filename);
-                logstream(LOG_INFO) << "mmap_length=" << mmap_length << std::endl;
                 filedesc = open(filename.c_str(), O_RDWR);
                 mmap_file = (VertexDataType *) mmap(NULL, mmap_length, PROT_WRITE | PROT_READ, MAP_SHARED, filedesc, 0);
                 assert(mmap_file);
@@ -116,6 +116,8 @@ namespace graphchi {
                 close(filedesc);
             }
         }
+        
+        
         void check_size(size_t nvertices) {
             if (nvertices == last_nvertices) return;
             if (!use_mmap) {
@@ -161,6 +163,7 @@ namespace graphchi {
             } else {
                 // Do nothing
             }
+
         }
         
         /**

@@ -146,7 +146,7 @@ namespace graphchi {
     class internal_graphchi_vertex {
         
     public:   // Todo, use friend
-        int inc;
+        volatile int inc;
         volatile int outc;
         
         vid_t vertexid;
@@ -226,9 +226,10 @@ namespace graphchi {
                 return;
             }
 #endif
-            if (inedges_ptr != NULL) 
-                inedges_ptr[inc] = graphchi_edge<EdgeDataType>(src, ptr);
-            inc++;  // Note: do not move inside the brackets, since we need to still keep track of inc even if inedgeptr is null!
+            int i = __sync_add_and_fetch(&inc, 1);
+            if (inedges_ptr != NULL)
+                inedges_ptr[i - 1] = graphchi_edge<EdgeDataType>(src, ptr);
+            
             assert(src != vertexid);
           /*  if(inedges_ptr != NULL && inc > outedges_ptr - inedges_ptr) {
                 logstream(LOG_FATAL) << "Tried to add more in-edges as the stored in-degree of this vertex (" << src << "). Perhaps a preprocessing step had failed?" << std::endl;
@@ -244,7 +245,7 @@ namespace graphchi {
             }
 #endif
             int i = __sync_add_and_fetch(&outc, 1);
-            if (outedges_ptr != NULL) outedges_ptr[i-1] = graphchi_edge<EdgeDataType>(dst, ptr);
+            if (outedges_ptr != NULL) outedges_ptr[i - 1] = graphchi_edge<EdgeDataType>(dst, ptr);
             assert(dst != vertexid);
         }
         

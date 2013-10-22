@@ -148,6 +148,10 @@ namespace graphchi {
         return ss.str();
     }
     
+    static std::string filename_shard_adjidx(std::string adjfilename) {
+        return adjfilename + "idx";
+    }
+    
     /**
      * Configuration file name
      */
@@ -341,7 +345,15 @@ namespace graphchi {
                     << ", " << strerror(errno) << std::endl;
             }
             
+            std::string idxname = filename_shard_adjidx(adjname);
+            logstream(LOG_DEBUG) << "Deleting " << idxname << " exists: " << file_exists(idxname) << std::endl;
             
+            if (file_exists(idxname)) {
+                int err = remove(idxname.c_str());
+                if (err != 0) logstream(LOG_ERROR) << "Error removing file " << idxname
+                    << ", " << strerror(errno) << std::endl;
+            }
+
         }
         
         std::string numv_filename = base_filename + ".numvertices";

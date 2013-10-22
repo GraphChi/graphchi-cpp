@@ -53,9 +53,6 @@
 
 namespace graphchi {
     
-    
-    
-    
     /**
      * A streaming block.
      */
@@ -75,48 +72,70 @@ namespace graphchi {
         is_edata_block(is_edata_block){ data = NULL; }
         
         void commit_async(stripedio * iomgr) {
-            if (active && data != NULL && writedesc >= 0) {
-                if (is_edata_block) {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
-                    data = NULL;
-                } else {
-                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
+            if (readdesc != CACHED_SESSION_ID) {
+                if (active && data != NULL && writedesc >= 0) {
+                    if (is_edata_block) {
+                        std::string blockfilename = iomgr->get_session_filename(readdesc);
+                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
+                            iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
+                        } else {
+                            readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release
+                        }
+                        data = NULL;
+                    } else {
+                        iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
+                    }
                 }
             }
         }
         
         void commit_now(stripedio * iomgr) {
-            if (active && data != NULL && writedesc >= 0) {
-                size_t len = ptr-data;
-                if (len > end-offset) len = end-offset;
-                if (is_edata_block) {
-                    iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
-                } else {
-                    iomgr->managed_pwritea_now(writedesc, &data, len, offset);
+            if (readdesc != CACHED_SESSION_ID) {
+                if (active && data != NULL && writedesc >= 0) {
+                    size_t len = ptr-data;
+                    if (len > end-offset) len = end-offset;
+                    if (is_edata_block) {
+                        std::string blockfilename = iomgr->get_session_filename(readdesc);
+                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
+                            iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
+                        } else {
+                            readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release
+                        }
+                    } else {
+                        iomgr->managed_pwritea_now(writedesc, &data, len, offset);
+                    }
                 }
             }
         }
         void read_async(stripedio * iomgr) {
-            if (is_edata_block) {
-                iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
+            if (readdesc != CACHED_SESSION_ID) {
+                if (is_edata_block) {
+                    iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
+                } else {
+                    iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
+                }
                 
-            } else {
-                iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
             }
         }
         void read_now(stripedio * iomgr) {
-            if (is_edata_block) {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
-            } else {
-                iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+            if (readdesc != CACHED_SESSION_ID) {
+                if (is_edata_block) {
+                    iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
+                } else {
+                    iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
+                }
             }
         }
         
         void release(stripedio * iomgr) {
-            if (data != NULL) {
-                iomgr->managed_release(readdesc, &data);
+            if (data != NULL && readdesc != CACHED_SESSION_ID) {
                 if (is_edata_block) {
+                    
+                    iomgr->managed_release(readdesc, &data);
                     iomgr->close_session(readdesc);
+                } else {
+                    iomgr->managed_release(readdesc, &data);
+                    
                 }
             }
             data = NULL;
@@ -217,7 +236,7 @@ namespace graphchi {
                 curadjblock->release(iomgr);
                 delete curadjblock;
                 curadjblock = NULL;
-            }            
+            }
             iomgr->close_session(adjfile_session);
         }
         
@@ -231,7 +250,7 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Initialize edge data: " << filename_edata << std::endl;
             ET * initblock = (ET *) malloc(blocksize);
             for(int i=0; i < (int) (blocksize/sizeof(ET)); i++) initblock[i] = ET();
-            for(size_t off=0; off < edatafilesize; off+=blocksize) {
+            for(size_t off=0; off < edatafilesize; off += blocksize) {
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (off / blocksize), blocksize);
                 size_t len = std::min(blocksize, edatafilesize - off);
                 int f = open(blockfilename.c_str(), O_WRONLY);
@@ -287,7 +306,11 @@ namespace graphchi {
                 }
                 // Load next
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
-                int edata_session = iomgr->open_session(blockfilename, false, true);
+                
+                void * cachedblock = iomgr->get_block_cache().get_cached(blockfilename);
+                
+                
+                int edata_session = (cachedblock == NULL ? iomgr->open_session(blockfilename, false, true) : CACHED_SESSION_ID);
                 sblock newblock(edata_session, edata_session, true);
                 
                 // We align blocks always to the blocksize, even if that requires
@@ -296,10 +319,14 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);
-                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
+                if (cachedblock == NULL) {
+                    iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
+                } else {
+                    newblock.data = (uint8_t*)cachedblock;
+                }
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
-                curblock = &activeblocks[activeblocks.size()-1];                
+                curblock = &activeblocks[activeblocks.size()-1];
             }
         }
         
@@ -359,7 +386,7 @@ namespace graphchi {
          */
         void read_next_vertices(int nvecs, vid_t start,  std::vector<svertex_t> & prealloc, bool record_index=false, bool disable_writes=false)  {
             metrics_entry me = m.start_time();
-
+            
             if (!record_index)
                 move_close_to(start);
             
@@ -530,4 +557,3 @@ namespace graphchi {
 
 #endif
 #endif
-

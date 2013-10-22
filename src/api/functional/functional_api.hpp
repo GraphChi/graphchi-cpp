@@ -97,6 +97,11 @@ namespace graphchi {
         /* Process input file - if not already preprocessed */
         int nshards           
             = convert_if_notexists<typename FunctionalProgramProxySemisync<KERNEL>::EdgeDataType>(filename, get_option_string("nshards", "auto"));
+        if (nshards == 1) {
+            nshards = 2;
+            // Ugly:
+            logstream(LOG_ERROR) << "Functional engine currently does not support in-memory engine, thus at least 2 shards." << std::endl;
+        }
         functional_engine<typename FunctionalProgramProxySemisync<KERNEL>::VertexDataType, 
             typename FunctionalProgramProxySemisync<KERNEL>::EdgeDataType,
             typename FunctionalProgramProxySemisync<KERNEL>::fvertex_t > 
@@ -124,6 +129,11 @@ namespace graphchi {
         FunctionalProgramProxyBulkSync<KERNEL> program;
         int nshards           
             = convert_if_notexists<typename FunctionalProgramProxyBulkSync<KERNEL>::EdgeDataType>(filename, get_option_string("nshards", "auto"));
+        if (nshards == 1) {
+            nshards = 2;
+            // Ugly:
+            logstream(LOG_ERROR) << "Functional engine currently does not support in-memory engine, thus at least 2 shards." << std::endl;
+        }
         functional_engine<typename FunctionalProgramProxyBulkSync<KERNEL>::VertexDataType,
             typename FunctionalProgramProxyBulkSync<KERNEL>::EdgeDataType,
             typename FunctionalProgramProxyBulkSync<KERNEL>::fvertex_t > 

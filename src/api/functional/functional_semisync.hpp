@@ -81,7 +81,9 @@ public:
     // we do not need atomic instructions here!
     inline void add_inedge(vid_t src, ET * ptr, bool special_edge) {
         if (gcontext->iteration > 0) {
+            get_lock(vinfo.vertexid).lock();
             cumval = kernel.plus(cumval, kernel.op_neighborval(*gcontext, vinfo, src, *ptr));
+            get_lock(vinfo.vertexid).unlock();
         } 
     }
     
