@@ -11,10 +11,7 @@ In-edges are now loaded in parallel, improving performance on multicore machines
 ### NEW: Graph contraction algorithms
 
 Read about graph contraction technique, which we used to implemented efficient minimum spanning forest computation [ Graph Contraction Algorithms ](https://github.com/GraphChi/graphchi-cpp/wiki/Graph-Contraction-Algorithms).
-
-
-**Read [release announcement.](https://github.com/GraphChi/graphchi-cpp/wiki/GraphChi-Version0p2-Release)  **
-
+ 
 ### Discussion group
 
 http://groups.google.com/group/graphchi-discuss
