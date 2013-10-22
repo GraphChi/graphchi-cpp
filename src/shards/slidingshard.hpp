@@ -52,7 +52,10 @@
 
 
 namespace graphchi {
-
+    
+    
+    
+    
     /**
      * A streaming block.
      */
@@ -72,70 +75,48 @@ namespace graphchi {
         is_edata_block(is_edata_block){ data = NULL; }
         
         void commit_async(stripedio * iomgr) {
-            if (readdesc != CACHED_SESSION_ID) {
-                if (active && data != NULL && writedesc >= 0) {
-                    if (is_edata_block) {
-                        std::string blockfilename = iomgr->get_session_filename(readdesc);
-                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
-                            iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
-                        } else {
-                            readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release
-                        }
-                        data = NULL;
-                    } else {
-                        iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
-                    }
+            if (active && data != NULL && writedesc >= 0) {
+                if (is_edata_block) {
+                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, 0, true, true);
+                    data = NULL;
+                } else {
+                    iomgr->managed_pwritea_async(writedesc, &data, end-offset, offset, true);
                 }
             }
         }
         
         void commit_now(stripedio * iomgr) {
-            if (readdesc != CACHED_SESSION_ID) {
-                if (active && data != NULL && writedesc >= 0) {
-                    size_t len = ptr-data;
-                    if (len > end-offset) len = end-offset;
-                    if (is_edata_block) {
-                        std::string blockfilename = iomgr->get_session_filename(readdesc);
-                        if (false == iomgr->get_block_cache().consider_caching(blockfilename, data, end - offset, true)) {
-                            iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
-                        } else {
-                            readdesc = writedesc = CACHED_SESSION_ID; // Cached - so don't release
-                        }
-                    } else {
-                        iomgr->managed_pwritea_now(writedesc, &data, len, offset);
-                    }
+            if (active && data != NULL && writedesc >= 0) {
+                size_t len = ptr-data;
+                if (len > end-offset) len = end-offset;
+                if (is_edata_block) {
+                    iomgr->managed_pwritea_now(writedesc, &data, end - offset, 0); /* Need to write whole block in the compressed regime */
+                } else {
+                    iomgr->managed_pwritea_now(writedesc, &data, len, offset);
                 }
             }
         }
         void read_async(stripedio * iomgr) {
-            if (readdesc != CACHED_SESSION_ID) {
-                if (is_edata_block) {
-                    iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
-                } else {
-                    iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
-                }
-               
+            if (is_edata_block) {
+                iomgr->managed_preada_async(readdesc, &data, (end - offset), 0);
+                
+            } else {
+                iomgr->managed_preada_async(readdesc, &data, end - offset, offset);
             }
         }
         void read_now(stripedio * iomgr) {
-            if (readdesc != CACHED_SESSION_ID) {
-                if (is_edata_block) {
-                    iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
-                } else {
-                    iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
-                }
+            if (is_edata_block) {
+                iomgr->managed_preada_now(readdesc, &data, end-offset, 0);
+            } else {
+                iomgr->managed_preada_now(readdesc, &data, end-offset, offset);
             }
         }
         
         void release(stripedio * iomgr) {
-            if (data != NULL && readdesc != CACHED_SESSION_ID) {
+            if (data != NULL) {
+                iomgr->managed_release(readdesc, &data);
                 if (is_edata_block) {
-                    
-                    iomgr->managed_release(readdesc, &data);
                     iomgr->close_session(readdesc);
-                } else {
-                    iomgr->managed_release(readdesc, &data);
-
                 }
             }
             data = NULL;
@@ -167,11 +148,11 @@ namespace graphchi {
         size_t adjoffset, edataoffset, adjfilesize, edatafilesize;
         size_t window_start_edataoffset;
         
-        uint8_t *adjdata;
-        
         std::vector<sblock> activeblocks;
+        int adjfile_session;
         int writedesc;
         sblock * curblock;
+        sblock * curadjblock;
         metrics &m;
         
         std::map<int, indexentry> sparse_index; // Sparse index that can be created in the fly
@@ -200,6 +181,7 @@ namespace graphchi {
             disable_writes = false;
             only_adjacency = onlyadj;
             curblock = NULL;
+            curadjblock = NULL;
             window_start_edataoffset = 0;
             disable_async_writes = false;
             
@@ -215,7 +197,7 @@ namespace graphchi {
                 // Nothing
             }
             
-            adjdata = (uint8_t *)iomgr->get_mmaped_file(filename_adj, false);
+            adjfile_session = iomgr->open_session(filename_adj, true);
             save_offset();
             
             async_edata_loading = !svertex_t().computational_edges();
@@ -230,7 +212,13 @@ namespace graphchi {
                 curblock->release(iomgr);
                 delete curblock;
                 curblock = NULL;
-            }    
+            }
+            if (curadjblock != NULL) {
+                curadjblock->release(iomgr);
+                delete curadjblock;
+                curadjblock = NULL;
+            }
+            iomgr->close_session(adjfile_session);
         }
         
         
@@ -243,7 +231,7 @@ namespace graphchi {
             logstream(LOG_DEBUG) << "Initialize edge data: " << filename_edata << std::endl;
             ET * initblock = (ET *) malloc(blocksize);
             for(int i=0; i < (int) (blocksize/sizeof(ET)); i++) initblock[i] = ET();
-            for(size_t off=0; off < edatafilesize; off += blocksize) {
+            for(size_t off=0; off < edatafilesize; off+=blocksize) {
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (off / blocksize), blocksize);
                 size_t len = std::min(blocksize, edatafilesize - off);
                 int f = open(blockfilename.c_str(), O_WRONLY);
@@ -277,6 +265,8 @@ namespace graphchi {
                 
                 if (curblock != NULL) // Move the pointer - this may invalidate the curblock, but it is being checked later
                     curblock->ptr += closest_offset.edataoffset - edataoffset;
+                if (curadjblock != NULL)
+                    curadjblock->ptr += closest_offset.adjoffset - adjoffset;
                 curvid = (vid_t)closest_vid;
                 adjoffset = closest_offset.adjoffset;
                 edataoffset = closest_offset.edataoffset;
@@ -297,11 +287,7 @@ namespace graphchi {
                 }
                 // Load next
                 std::string blockfilename = filename_shard_edata_block(filename_edata, (int) (edataoffset / blocksize), blocksize);
-                
-                void * cachedblock = iomgr->get_block_cache().get_cached(blockfilename);
-                
-                
-                int edata_session = (cachedblock == NULL ? iomgr->open_session(blockfilename, false, true) : CACHED_SESSION_ID);
+                int edata_session = iomgr->open_session(blockfilename, false, true);
                 sblock newblock(edata_session, edata_session, true);
                 
                 // We align blocks always to the blocksize, even if that requires
@@ -310,23 +296,40 @@ namespace graphchi {
                 size_t correction = edataoffset - newblock.offset;
                 newblock.end = std::min(edatafilesize, newblock.offset + blocksize);
                 assert(newblock.end >= newblock.offset);
-                if (cachedblock == NULL) {
-                    iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
-                } else {
-                    newblock.data = (uint8_t*)cachedblock;
-                }
+                iomgr->managed_malloc(edata_session, &newblock.data, newblock.end - newblock.offset, newblock.offset);
                 newblock.ptr = newblock.data + correction;
                 activeblocks.push_back(newblock);
-                curblock = &activeblocks[activeblocks.size()-1];                
+                curblock = &activeblocks[activeblocks.size()-1];
             }
         }
         
+        inline void check_adjblock(size_t toread) {
+            if (curadjblock == NULL || curadjblock->end <= adjoffset + toread) {
+                if (curadjblock != NULL) {
+                    curadjblock->release(iomgr);
+                    delete curadjblock;
+                    curadjblock = NULL;
+                }
+                sblock * newblock = new sblock(0, adjfile_session);
+                newblock->offset = adjoffset;
+                newblock->end = std::min(adjfilesize, adjoffset+blocksize);
+                assert(newblock->end > 0);
+                assert(newblock->end >= newblock->offset);
+                iomgr->managed_malloc(adjfile_session, &newblock->data, newblock->end - newblock->offset, adjoffset);
+                newblock->ptr = newblock->data;
+                metrics_entry me = m.start_time();
+                iomgr->managed_preada_now(adjfile_session, &newblock->data, newblock->end - newblock->offset, adjoffset);
+                m.stop_time(me, "blockload");
+                curadjblock = newblock;
+            }
+        }
         
         template <typename U>
         inline U read_val() {
-            uint8_t * adjptr = adjdata + adjoffset;
-            U res = *((U*)adjptr);
+            check_adjblock(sizeof(U));
+            U res = *((U*)curadjblock->ptr);
             adjoffset += sizeof(U);
+            curadjblock->ptr += sizeof(U);
             return res;
         }
         
@@ -343,6 +346,8 @@ namespace graphchi {
         inline void skip(int n, int sz) {
             size_t tot = n * sz;
             adjoffset += tot;
+            if (curadjblock != NULL)
+                curadjblock->ptr += tot;
             edataoffset += sizeof(ET)*n;
             if (curblock != NULL)
                 curblock->ptr += sizeof(ET)*n;
@@ -354,7 +359,7 @@ namespace graphchi {
          */
         void read_next_vertices(int nvecs, vid_t start,  std::vector<svertex_t> & prealloc, bool record_index=false, bool disable_writes=false)  {
             metrics_entry me = m.start_time();
-
+            
             if (!record_index)
                 move_close_to(start);
             
@@ -424,6 +429,7 @@ namespace graphchi {
                             
                             if (!((target >= range_st && target <= range_end))) {
                                 logstream(LOG_ERROR) << "Error : " << target << " not in [" << range_st << " - " << range_end << "]" << std::endl;
+                                iomgr->print_session(adjfile_session);
                             }
                             assert(target >= range_st && target <= range_end);
                         }
@@ -461,6 +467,11 @@ namespace graphchi {
          */
         void flush() {
             release_prior_to_offset(true);
+            if (curadjblock != NULL) {
+                curadjblock->release(iomgr);
+                delete curadjblock;
+                curadjblock = NULL;
+            }
         }
         
         /**
@@ -470,6 +481,11 @@ namespace graphchi {
             this->adjoffset = newoff;
             this->curvid = _curvid;
             this->edataoffset = edgeptr;
+            if (curadjblock != NULL) {
+                curadjblock->release(iomgr);
+                delete curadjblock;
+                curadjblock = NULL;
+            }
         }
         
         /**
@@ -514,4 +530,3 @@ namespace graphchi {
 
 #endif
 #endif
-

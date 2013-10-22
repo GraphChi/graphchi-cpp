@@ -326,6 +326,7 @@ namespace graphchi {
                 munmap((void*)minfo.ptr, minfo.length);
                 close(minfo.filedesc);
             }
+            mmaped.clear();
         }
         
         void set_cache_budget(size_t c) {

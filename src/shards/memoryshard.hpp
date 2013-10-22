@@ -73,10 +73,12 @@ namespace graphchi {
         size_t streaming_offset_edge_ptr;
         uint8_t * adjdata;
         char ** edgedata;
+        int * doneptr;
         std::vector<size_t> blocksizes;
         uint64_t chunkid;
         
         std::vector<int> block_edatasessions;
+        int adj_session;
         
         bool async_edata_loading;
         bool is_loaded;
@@ -99,7 +101,9 @@ namespace graphchi {
             adjdata = NULL;
             only_adjacency = false;
             is_loaded = false;
+            adj_session = -1;
             edgedata = NULL;
+            doneptr = NULL;
             disable_async_writes = false;
             async_edata_loading = !svertex_t().computational_edges();
 #ifdef SUPPORT_DELETIONS
@@ -111,15 +115,21 @@ namespace graphchi {
             int nblocks = (int) block_edatasessions.size();
             
             for(int i=0; i < nblocks; i++) {
-                if (edgedata[i] != NULL && block_edatasessions[i] != CACHED_SESSION_ID) {
+                if (edgedata[i] != NULL) {
                     iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     iomgr->close_session(block_edatasessions[i]);
                 }
             }
-
+            if (adj_session >= 0) {
+                if (adjdata != NULL) iomgr->managed_release(adj_session, &adjdata);
+                iomgr->close_session(adj_session);
+            }
             if (edgedata != NULL)
                 free(edgedata);
             edgedata = NULL;
+            if (doneptr != NULL) {
+                free(doneptr);
+            }
         }
         
         void set_disable_async_writes(bool b) {
@@ -142,29 +152,19 @@ namespace graphchi {
             if (commit_inedges) {
                 int start_stream_block = (int) (range_start_edge_ptr / blocksize);
                 
-        #pragma omp parallel for
+#pragma omp parallel for
                 for(int i=0; i < nblocks; i++) {
                     /* Write asynchronously blocks that will not be needed by the sliding windows on
                      this iteration. */
                     if (i >= start_stream_block || disable_async_writes) {
-                        if (block_edatasessions[i] != CACHED_SESSION_ID) {
-                            // Try to include in cache. If succeeds, do not release.
-                            if (false == iomgr->get_block_cache().consider_caching(
-                                    iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i], true)) {
-                                iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
-                                iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                                iomgr->close_session(block_edatasessions[i]);
-                            } else {
-                                iomgr->close_session(block_edatasessions[i]);
-                                block_edatasessions[i] = CACHED_SESSION_ID;
-                            }
-                        }
+                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
+                        iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
+                        iomgr->close_session(block_edatasessions[i]);
+                        
                         edgedata[i] = NULL;
                         
                     } else {
-                        if (block_edatasessions[i] != CACHED_SESSION_ID) {
-                            iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
-                        }
+                        iomgr->managed_pwritea_async(block_edatasessions[i], &edgedata[i], blocksizes[i], 0, true, true);
                         edgedata[i] = NULL;
                     }
                 }
@@ -179,37 +179,26 @@ namespace graphchi {
                 int endblock = (int) (last / blocksize);
 #pragma omp parallel for
                 for(int i=0; i < nblocks; i++) {
-                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
-                        if (false == iomgr->get_block_cache().consider_caching(
-                                                                               iomgr->get_session_filename(block_edatasessions[i]), edgedata[i], blocksizes[i], true)) {
-                            if (i >= startblock && i <= endblock) {
-                                iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
-                            }
-                            iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                            iomgr->close_session(block_edatasessions[i]);
-                        } else {
-                            iomgr->close_session(block_edatasessions[i]);
-                            block_edatasessions[i] = CACHED_SESSION_ID;
-                        }
+                    if (i >= startblock && i <= endblock) {
+                        iomgr->managed_pwritea_now(block_edatasessions[i], &edgedata[i], blocksizes[i], 0);
                     }
+                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                     edgedata[i] = NULL;
+                    iomgr->close_session(block_edatasessions[i]);
                 }
             } else {
                 for(int i=0; i < nblocks; i++) {
-                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
-                        iomgr->close_session(block_edatasessions[i]);
-                    }
+                    iomgr->close_session(block_edatasessions[i]);
                 }
             }
             
             m.stop_time(cm, "memshard_commit");
             
+            iomgr->managed_release(adj_session, &adjdata);
             // FIXME: this is duplicated code from destructor
             for(int i=0; i < nblocks; i++) {
                 if (edgedata[i] != NULL) {
-                    if (block_edatasessions[i] != CACHED_SESSION_ID) {
-                        iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
-                    }
+                    iomgr->managed_release(block_edatasessions[i], &edgedata[i]);
                 }
             }
             block_edatasessions.clear();
@@ -229,31 +218,27 @@ namespace graphchi {
             size_t compressedsize = 0;
             int blockid = 0;
             
+            if (!async_edata_loading) {
+                doneptr = (int *) malloc(nblocks * sizeof(int));
+                for(int i=0; i < nblocks; i++) doneptr[i] = 1;
+            }
+            
             while(blockid < nblocks) {
                 std::string block_filename = filename_shard_edata_block(filename_edata, blockid, blocksize);
                 if (file_exists(block_filename)) {
                     size_t fsize = std::min(edatafilesize - blocksize * blockid, blocksize);
                     
                     compressedsize += get_filesize(block_filename);
+                    int blocksession = iomgr->open_session(block_filename, false, true); // compressed
+                    block_edatasessions.push_back(blocksession);
                     blocksizes.push_back(fsize);
-
-                    /* Check if cached */
-                    void * cachedblock = iomgr->get_block_cache().get_cached(block_filename);
-                    if (cachedblock != NULL) {
-                        // Cached
-                        block_edatasessions.push_back(CACHED_SESSION_ID);
-                        edgedata[blockid] = (char*)cachedblock;
+                    
+                    edgedata[blockid] = NULL;
+                    iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
+                    if (async_edata_loading) {
+                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
                     } else {
-                        int blocksession = iomgr->open_session(block_filename, false, true); // compressed
-                        block_edatasessions.push_back(blocksession);
-                        
-                        edgedata[blockid] = NULL;
-                        iomgr->managed_malloc(blocksession, &edgedata[blockid], fsize, 0);
-                        if (async_edata_loading) {
-                            iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0);
-                        } else {
-                            iomgr->managed_preada_now(blocksession, &edgedata[blockid], fsize, 0);
-                        }
+                        iomgr->managed_preada_async(blocksession, &edgedata[blockid], fsize, 0, (volatile int *)&doneptr[blockid]);
                     }
                     blockid++;
                     
@@ -288,9 +273,21 @@ namespace graphchi {
             // so we need the edge data while loading
 #endif
             
-            /* Use mmaped file for adjacency */
-            adjdata = (uint8_t*)iomgr->get_mmaped_file(filename_adj, false);
-            assert(adjdata != NULL);
+            //preada(adjf, adjdata, adjfilesize, 0);
+            
+            adj_session = iomgr->open_session(filename_adj, true);
+            iomgr->managed_malloc(adj_session, &adjdata, adjfilesize, 0);
+            
+            /* Load in parallel: replaces older stream solution */
+            size_t bufsize = 16 * 1024 * 1024;
+            int n = (int) (adjfilesize / bufsize + 1);
+            
+#pragma omp parallel for
+            for(int i=0; i < n; i++) {
+                size_t toread = std::min(adjfilesize - i * bufsize, (size_t)bufsize);
+                iomgr->preada_now(adj_session, adjdata + i * bufsize, toread, i * bufsize, true);
+            }
+            
             
             /* Initialize edge data asynchonous reading */
             if (!only_adjacency) {
@@ -300,7 +297,7 @@ namespace graphchi {
         }
         
         
-    
+        
         void load_vertices(vid_t window_st, vid_t window_en, std::vector<svertex_t> & prealloc, bool inedges=true, bool outedges=true) {
             /* Find file size */
             m.start_time("memoryshard_create_edges");
@@ -365,6 +362,10 @@ namespace graphchi {
                 bool any_edges = false;
                 while(--n>=0) {
                     int blockid = (int) (edgeptr / blocksize);
+                    if (!async_edata_loading && !only_adjacency) {
+                        /* Wait until blocks loaded (non-asynchronous version) */
+                        while(doneptr[edgeptr / blocksize] != 0) { usleep(10); }
+                    }
                     
                     vid_t target = *((vid_t*) ptr);
                     ptr += sizeof(vid_t);
