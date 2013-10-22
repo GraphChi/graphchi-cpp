@@ -296,7 +296,7 @@ namespace graphchi {
          * If the data is only in one shard, we can just
          * keep running from memory.
          */
-        bool is_inmemory_mode() {
+        virtual bool is_inmemory_mode() {
             return (nshards == 1 && num_vertices() < 2 * maxwindow); // Do not switch to in-memory mode if num of vertices too high. Ugly heuristic.
         }
         
@@ -390,7 +390,7 @@ namespace graphchi {
             iomgr->wait_for_reads();
         }
         
-        void exec_updates(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
+        virtual void exec_updates(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                           std::vector<svertex_t> &vertices) {
             metrics_entry me = m.start_time();
             size_t nvertices = vertices.size();
@@ -460,7 +460,7 @@ namespace graphchi {
          a separate analysis phase to check which vertices can be run in parallel, and
          then run it in chunks. Not difficult.
          **/
-        void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
+        virtual void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                                         std::vector<svertex_t> &vertices) {
             work = nupdates = 0;
             for(iter=0; iter<niters; iter++) {

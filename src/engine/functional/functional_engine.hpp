@@ -64,6 +64,11 @@ namespace graphchi {
             this->iomgr->wait_for_reads();
         }
         
+        
+        /* Not supported */
+        virtual bool is_inmemory_mode() {
+            return false;
+        }
 
         /* Override - do not allocate edge data */
         virtual void init_vertices(std::vector<fvertex_t> &vertices, graphchi_edge<EdgeDataType> * &e) {
