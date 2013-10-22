@@ -46,7 +46,8 @@
 #include "graphchi_types.hpp"
 
 namespace graphchi {
-        
+    
+    
     template <typename KERNEL>
     class functional_vertex_unweighted_bulksync : public graphchi_vertex<typename KERNEL::VertexDataType, PairContainer<typename KERNEL::EdgeDataType> > {
     public:
@@ -89,10 +90,13 @@ namespace graphchi {
         // we do not need atomic instructions here!
         inline void add_inedge(vid_t src, ET * ptr, bool special_edge) {
             if (gcontext->iteration > 0) {
-                cumval = kernel.plus(cumval, kernel.op_neighborval(*gcontext, 
+                get_lock(vinfo.vertexid).lock();
+                cumval = kernel.plus(cumval, kernel.op_neighborval(*gcontext,
                                                                vinfo, 
                                                                src, 
                                                                ptr->oldval(gcontext->iteration)));
+                get_lock(vinfo.vertexid).unlock();
+
             }
         }
         
