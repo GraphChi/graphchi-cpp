@@ -5,7 +5,7 @@
 MIT Technology Review article about GraphChi: ["Your laptop can now analyze big data"](http://www.technologyreview.com/news/428497/your-laptop-can-now-analyze-big-data/?nlid=nldly&nld=2012-07-17)
 
 ### NEW: Improved performance.
-
+(October 21, 2013)
 In-edges are now loaded in parallel, improving performance on multicore machines significantly.
 
 ### NEW: Graph contraction algorithms
