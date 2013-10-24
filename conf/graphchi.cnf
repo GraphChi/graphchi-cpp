@@ -6,8 +6,8 @@ loadthreads = 4
 niothreads = 2
 
 # Good for 8gigs
-membudget_mb = 2000
-cachesize_mb = 1000
+#membudget_mb = 2000
+#cachesize_mb = 1000
 
 # Good for 4 gigs
 membudget_mb = 800
