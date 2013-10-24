@@ -42,7 +42,7 @@
 namespace graphchi {
 
 template <typename KERNEL>
-class functional_vertex_unweighted_semisync : public graphchi_vertex<typename KERNEL::VertexDataType, typename KERNEL::EdgeDataType> {
+class functional_vertex_unweighted_semisync  {
 public:
     
     typedef typename KERNEL::VertexDataType VT;
@@ -54,10 +54,17 @@ public:
     vertex_info vinfo;
     graphchi_context * gcontext;
     
-    functional_vertex_unweighted_semisync() : graphchi_vertex<VT, ET> () {}
+    // Dummy
+    bool inc;
+    bool outc;
+    bool scheduled;
+    bool modified;
+    bool parallel_safe;
+    VT * dataptr;
+
+    functional_vertex_unweighted_semisync() {}
     
-    functional_vertex_unweighted_semisync(graphchi_context &ginfo, vid_t _id, int indeg, int outdeg) : 
-    graphchi_vertex<VT, ET> (_id, NULL, NULL, indeg, outdeg) { 
+    functional_vertex_unweighted_semisync(graphchi_context &ginfo, vid_t _id, int indeg, int outdeg) { 
         vinfo.indegree = indeg;
         vinfo.outdegree = outdeg;
         vinfo.vertexid = _id;
@@ -104,6 +111,19 @@ public:
         return false;
     }
     
+    
+    /**
+     * Modify the vertex value. The new value will be
+     * stored on disk.
+     */
+    virtual void set_data(VT d) {
+        *(this->dataptr) = d;
+        this->modified = true;
+    }
+    
+    VT get_data() {
+        return *(this->dataptr);
+    }
     
 };
 

@@ -302,6 +302,10 @@ namespace graphchi {
                 if (curblock != NULL) {
                     if (!curblock->active) {
                         curblock->release(iomgr);
+                    } else if (svertex_t().computational_edges()) {
+                        // Can commit directly
+                        curblock->commit_now(iomgr);
+                        curblock->release(iomgr);
                     }
                 }
                 // Load next
@@ -432,7 +436,6 @@ namespace graphchi {
                     skip(n, sizeof(vid_t));
                 } else {
                     svertex_t& vertex = prealloc[i];
-                    assert(vertex.id() == curvid);
                     
                     if (vertex.scheduled) {
                         

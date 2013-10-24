@@ -65,7 +65,7 @@ namespace graphchi {
         }
         
         
-        /* Not supported */
+        
         virtual bool is_inmemory_mode() {
             return false;
         }

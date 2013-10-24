@@ -356,17 +356,20 @@ namespace graphchi {
         
         virtual void load_before_updates(std::vector<svertex_t> &vertices) {
             omp_set_num_threads(load_threads);
+            
+       
+            
 #pragma omp parallel for schedule(dynamic, 1)
             for(int p=-1; p < nshards; p++)  {
                 if (p==(-1)) {
-                    /* Load memory shard */
+                    /* Load memory shard - is internally parallelized */
                     if (!memoryshard->loaded()) {
                         memoryshard->load();
                     }
                     
                     /* Load vertex edges from memory shard */
                     memoryshard->load_vertices(sub_interval_st, sub_interval_en, vertices, true, !disable_outedges);
-                    
+                  
                     /* Load vertices */
                     if (!disable_vertexdata_storage) {
                         vertex_data_handler->load(sub_interval_st, sub_interval_en);
@@ -710,6 +713,12 @@ namespace graphchi {
 
             randomization = get_option_int("randomization", 0) == 1;
             
+            if (svertex_t().computational_edges()) {
+                // Heuristic
+                set_maxwindow(membudget_mb * 1024 * 1024 / 3 / 100);
+                logstream(LOG_INFO) << "Set maxwindow:" << maxwindow << std::endl;
+            }
+            
             if (randomization) {
                 timeval tt;
                 gettimeofday(&tt, NULL);
@@ -862,6 +871,8 @@ namespace graphchi {
                         graphchi_edge<EdgeDataType> * edata = NULL;
                         
                         std::vector<svertex_t> vertices(nvertices, svertex_t());
+                        logstream(LOG_DEBUG) << "Allocation " << nvertices << " vertices, sizeof:" << sizeof(svertex_t)
+                        << " total:" << nvertices * sizeof(svertex_t) << std::endl;
                         init_vertices(vertices, edata);
                         
                         /* Load data */
