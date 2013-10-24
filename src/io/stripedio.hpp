@@ -405,14 +405,20 @@ namespace graphchi {
                         << " error: " << strerror(errno) << std::endl;
                     assert(rddesc>=0);
                     iodesc->readdescs.push_back(rddesc);
-
+#ifdef F_NOCACHE
+                    if (!readonly)
+                        fcntl(rddesc, F_NOCACHE, 1);
+#endif
                     if (!readonly) {
                         int wrdesc = rddesc; // Change by Aapo: Aug 11, 2012. I don't think we need separate wrdesc?
 
                         if (wrdesc < 0) logstream(LOG_ERROR)  << "Could not open for writing: " << fname << " session: " << session_id
                             << " error: " << strerror(errno) << std::endl;
                         assert(wrdesc>=0);
-
+#ifdef F_NOCACHE
+                        fcntl(wrdesc, F_NOCACHE, 1);
+                        
+#endif
                         iodesc->writedescs.push_back(wrdesc);
                     }
                 }
