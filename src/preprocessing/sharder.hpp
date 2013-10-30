@@ -333,7 +333,7 @@ namespace graphchi {
             
             edgedatasize = sizeof(FinalEdgeDataType);
             no_edgevalues = false;
-            compressed_block_size = 4096 * 1024;
+            compressed_block_size = 1024 * 1024;
             filter_max_vertex = 0;
             curshovel_buffer = NULL;
             while (compressed_block_size % sizeof(FinalEdgeDataType) != 0) compressed_block_size++;

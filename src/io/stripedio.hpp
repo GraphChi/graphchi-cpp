@@ -251,7 +251,7 @@ namespace graphchi {
         
     public:
         stripedio( metrics &_m) : m(_m), cache(0) {
-            stripesize = get_option_int("io.stripesize", 4096 * 1024 / 2);
+            stripesize = get_option_int("io.stripesize", 1024 * 1024 / 2);
 
             multiplex = get_option_int("multiplex", 1);
             if (multiplex>1) {

@@ -126,7 +126,7 @@ namespace graphchi {
             }
             memory_shard<int, EdgeDataType, special_sharding_vertex<int, EdgeDataType> > memshard(iomgr, filename_shard_edata<EdgeDataType>(base_filename, p, nshards), 
                                 filename_shard_adj(base_filename, p, nshards),
-                                intervals[p].first, intervals[p].second, 4096 * 1024, m);
+                                intervals[p].first, intervals[p].second, 1024 * 1024, m);
             memshard.only_adjacency = true;
             memshard.disable_parallel_loading();
             memshard.load();

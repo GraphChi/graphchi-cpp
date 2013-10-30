@@ -211,7 +211,7 @@ namespace graphchi {
         if (start_num > 0) {
             last_shard_num = start_num;
         }
-        size_t blocksize = 4096 * 1024;
+        size_t blocksize = 1024 * 1024;
         while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
         
         for(try_shard_num=start_num; try_shard_num <= last_shard_num; try_shard_num++) {
@@ -300,7 +300,7 @@ namespace graphchi {
          remove(degreefname.c_str());
          } */
         
-        size_t blocksize = 4096 * 1024;
+        size_t blocksize = 1024 * 1024;
         while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
         
         for(int p=0; p < nshards; p++) {

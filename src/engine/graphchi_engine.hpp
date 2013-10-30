@@ -177,7 +177,7 @@ namespace graphchi {
             disable_outedges = false;
             reset_vertexdata = false;
             initialize_edges_before_run = false;
-            blocksize = get_option_long("blocksize", 4096 * 1024);
+            blocksize =  1024 * 1024;
 #ifndef DYNAMICEDATA
             while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
 #endif
