@@ -69,6 +69,20 @@ or installation is required).
 
 For an introduction on writing your own applications, read  [Creating-GraphChi-Applications](https://github.com/GraphChi/graphchi-cpp/wiki/Creating-GraphChi-Applications).
 
+### Problems compiling on Mac
+
+If compiler complains about missing "omp.h" (OpenMP library), here is a way you can install it:
+
+(Contributed by Jose Pablo Gonzalez):
+1) Install homebrew ( http://brew.sh )
+2) brew tap homebrew/versions 
+3) Install a compiler:
+brew install apple-gcc42
+4) Modify the Makefile to use the new compiler:
+CPP = g++-4.2
+5) make
+
+
 ## How GraphChi works
 
 GraphChi is based on the Parallel Sliding Windows method which allows efficient asynchronous processing of mutable graphs from disk. See [Introduction-To-GraphChi](https://github.com/GraphChi/graphchi-cpp/wiki/Introduction-To-GraphChi) for description.
