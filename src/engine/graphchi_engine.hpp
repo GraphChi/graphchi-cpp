@@ -540,6 +540,12 @@ namespace graphchi {
                 int outc = d.outdegree * (!disable_outedges);
                 vertices[i] = svertex_t(sub_interval_st + i, &edata[ecounter], 
                                         &edata[ecounter + inc * store_inedges], inc, outc);
+                
+                /* Store correct out-degree even if out-edge loading disabled */
+                if (disable_outedges) {
+                    vertices[i].outc = d.outdegree;
+                }
+                
                 if (scheduler != NULL) {
                     bool is_sched = ( scheduler->is_scheduled(sub_interval_st + i));
                     if (is_sched) {
@@ -1020,6 +1026,9 @@ namespace graphchi {
             membudget_mb = mbs;
         }
         
+        int get_membudget_mb() {
+            return membudget_mb;
+        }
         
         void set_load_threads(int lt) {
             load_threads = lt;
