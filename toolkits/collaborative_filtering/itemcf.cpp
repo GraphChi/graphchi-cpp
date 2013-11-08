@@ -34,6 +34,7 @@
  * Acknowledgements: thanks to Clive Cox, Rummble Labs,  for implementing Asym. Cosince metric and contributing the code.
  */
 
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 #include <set>
 #include <iomanip>
@@ -42,7 +43,7 @@
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
-
+#include <libgen.h>
 
 enum DISTANCE_METRICS{
   JACCARD = 0,
@@ -54,7 +55,6 @@ enum DISTANCE_METRICS{
 int min_allowed_intersection = 1;
 vec written_pairs;
 size_t zero_dist = 0;
-size_t actual_written = 0;
 size_t item_pairs_compared = 0;
 size_t not_enough = 0;
 std::vector<FILE*> out_files;
@@ -350,8 +350,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           printf("comparing %d to pivot %d distance is %g\n", i - M + 1, v.id() - M + 1, dist);
         if (dist != 0){
           heap.push_back(index_val(i, dist)); 
-                //where the output format is: 
-         //[item A] [ item B ] [ distance ] 
         }
         else zero_dist++;
       }
@@ -376,7 +374,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    * on even iterations, schedules only item nodes
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-      gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
+    gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
     if (gcontext.iteration == 0)
       written_pairs = zeros(gcontext.execthreads);
 
@@ -464,7 +462,6 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Please specify the number of ratings to generate for each user using the --K command" << std::endl;
 
  logstream(LOG_INFO) << "M = " << M << std::endl;
-    
   assert(M > 0 && N > 0);
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
@@ -499,13 +496,24 @@ int main(int argc, const char ** argv) {
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << sum(written_pairs) << " pairs with zero distance: " << zero_dist << std::endl;
   if (not_enough)
     logstream(LOG_WARNING)<<"Items that did not have enough similar items: " << not_enough << std::endl;
-  for (uint i=0; i< out_files.size(); i++){
-    fflush(out_files[i]);
+ 
+  for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
-  }
-
-  std::cout<<"Created "  << number_of_omp_threads() << " output files with the format: " << training << ".outXX, where XX is the output thread number" << std::endl; 
 
   delete[] relevant_items;
+
+  /* write the matrix market info header to be used later */
+  FILE * pmm = fopen((training + "-topk:info").c_str(), "w");
+  if (pmm == NULL)
+    logstream(LOG_FATAL)<<"Failed to open " << training << ":info to file" << std::endl;
+  fprintf(pmm, "%%%%MatrixMarket matrix coordinate real general\n");
+  fprintf(pmm, "%u %u %u\n", N, N, (unsigned int)sum(written_pairs));
+  fclose(pmm);
+
+  /* sort output files */
+  logstream(LOG_INFO)<<"Going to sort and merge output files " << std::endl;
+  std::string dname= dirname(strdup(argv[0]));
+  system(("bash " + dname + "/topk.sh " + std::string(basename(strdup(training.c_str())))).c_str()); 
+
   return 0;
 }
