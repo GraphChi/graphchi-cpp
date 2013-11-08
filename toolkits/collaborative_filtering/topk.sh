@@ -31,3 +31,4 @@ fi
 echo "File written: $TRAINING-topk"
 echo "Total lines: `wc -l $TRAINING-topk | awk '{print $1}'`"
 rm -f `dirname $TRAINING`/*.sorted
+rm -f $TRAINING.out*
