@@ -384,6 +384,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
 
   uint I, J;
   double val = 1.0;
+  int zero_entries = 0;
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: "
       << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
@@ -391,7 +392,10 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
       if (tokens_per_row == 3){
         int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
-          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+          logstream(LOG_FATAL)<<"Error when reading input file in line: " << i << std::endl;
+        if (val == 0 && ! allow_zeros)
+          logstream(LOG_FATAL)<<"Zero weight encountered at input file line: " << i << " . Run with --allow_zeros=1 to ignore zero weights." << std::endl;
+        else if (val == 0) { zero_entries++; continue; }
       }
       else if (tokens_per_row == 2){
         int rc = fscanf(f, "%u %u\n", &I, &J);
@@ -437,9 +441,12 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     write_global_mean(base_filename, TRAINING);
     sharderobj.end_preprocessing();
 
+    if (zero_entries)
+      logstream(LOG_WARNING)<<"Found " << zero_entries << " edges with zero weight!" << std::endl;
     
   fclose(f);
   fclose(fsim);
+
 
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
@@ -493,6 +500,7 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
   uint I, J;
   double val = 1.0;
   bool active_edge = true;
+  int zero_entries = 0;
 
   for (size_t i=0; i<nz; i++)
     {
@@ -500,6 +508,12 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
         int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
           logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+        if (val == 0 && ! allow_zeros)
+          logstream(LOG_FATAL)<<"Encountered zero edge [ " << I << " " <<J << " 0] in line: " << i << " . Run with --allow_zeros=1 to ignore zero weights." << std::endl;
+        else if (val == 0){
+           zero_entries++;
+           continue;
+        }
       }
       else if (tokens_per_row == 2){
         int rc = fscanf(f, "%u %u\n", &I, &J);
@@ -546,7 +560,9 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
     }
     write_global_mean(base_filename, type);
     sharderobj.end_preprocessing();
- 
+
+  if (zero_entries)
+     logstream(LOG_WARNING)<<"Found " << zero_entries << " zero edges!" << std::endl; 
   fclose(f);
 
 
