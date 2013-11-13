@@ -30,6 +30,10 @@
  *
  * For Asym. Cosine see: F. Aiolli, A Preliminary Study on a Recommender System for the Million Songs Dataset Challenge
  * Preference Learning: Problems and Applications in AI (PL-12), ECAI-12 Workshop, Montpellier
+ * 
+ * For Probablistic item similarity see: Oliver Jojic, Manu Shukla, and Niranjan Bhosarekar. 2011. A probabilistic definition of item 
+   similarity. In Proceedings of the fifth ACM conference on Recommender systems (RecSys '11). ACM, New York, NY, USA, 229-236.
+
  *
  * Acknowledgements: thanks to Clive Cox, Rummble Labs,  for implementing Asym. Cosince metric and contributing the code.
  */
@@ -50,6 +54,7 @@ enum DISTANCE_METRICS{
   AA = 1,
   RA = 2,
   ASYM_COSINE = 3,
+  PROB = 4
 };
 
 int min_allowed_intersection = 1;
@@ -63,6 +68,8 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 float asym_cosine_alpha = 0.5;
+double prob_sim_normalization_constant = 0;
+
 int debug = 0;
 
 bool is_item(vid_t v){ return v >= M; }
@@ -94,7 +101,7 @@ struct dense_adj {
   int count;
   vid_t * adjlist;
 
-  dense_adj() { adjlist = NULL; }
+  dense_adj() { adjlist = NULL; count = 0; }
   dense_adj(int _count, vid_t * _adjlist) : count(_count), adjlist(_adjlist) {
   }
 
@@ -170,18 +177,31 @@ class adjlist_container {
    * calc distance between two items.
    * Let a be all the users rated item 1
    * Let b be all the users rated item 2
+   * Let intersection (a,b) be the number of users rated both items
+   * Let size(a) be the number of users rated item 1
+   * Let size(b) be the number of users rated item 2
+   * 
+   * Only for prob similarity:
+   * Let M be the total number of users
+   * Let N be the total number of iterms
+   * Let L be the total number of training ratings
    *
-   * 1) Using Jackard index:
-   *      Dist_ab = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
+   * 0) Using Jackard index:
+   *      Dist_12 = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
    *
-   * 2) Using AA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
+   * 1) Using AA index:
+   *      Dist_12 = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
    *
-   * 3) Using RA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
+   * 2) Using RA index:
+   *      Dist_12 = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
    *
-   * 4) Using Asym Cosine:
-   *      Dist_ab = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   * 3) Using Asym Cosine:
+   *      Dist_12 = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   * 
+   * 4) Using prob similarity:
+   *      Dist_12 = intersection(a,b) / [ sum(user k  in b) p(k,1) ]
+   *      where p(k,1) = 1 / [ 1 + (L / (MN-L)) ((N - degree(k))/degree(K)) * ((M - degree(1)) / degree(1)) ]
+   *                                    
    */
   double calc_distance(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
@@ -237,13 +257,35 @@ class adjlist_container {
        }
        return dist;
     }
-    else if (distance_metric == ASYM_COSINE){
+  /* 3) Using Asym Cosine:
+   *      Dist_12 = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   */
+     else if (distance_metric == ASYM_COSINE){
       uint set_a_size = v.num_edges(); //number of users connected to current item
       uint set_b_size = acount(pivot); //number of users connected to current pivot
       return intersection_size / (pow(set_a_size,asym_cosine_alpha) * pow(set_b_size,1-asym_cosine_alpha));
     }
+    /* 4) Using prob similarity:
+    *      Dist_12 = intersection(a,b) / [ sum(user k  in b) p(k,1) ]
+    *      where p(k,1) = 1 / [ 1 + (L / (MN-L)) ((N - degree(k))/degree(K)) * ((M - degree(1)) / degree(1)) ]
+    */
+     else if (distance_metric == PROB){
+      double sum = 0;
+      for(int i=0; i<pivot_edges.count; i++) {
+        int node_k = pivot_edges.adjlist[i];
+        int degree_k = latent_factors_inmem[node_k].degree;
+        assert(degree_k > 0);
+        double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - acount(pivot)) / double(acount(pivot))));
+        assert(p_k_1 > 0 && p_k_1 <= 1.0);
+        sum += p_k_1;
+      }
+      return intersection_size / sum;
+   }
+   else { 
+     assert(false);
+   }
 
-    return 0;
+   return -1; //just to avoid warning
   }
 
   inline bool is_pivot(vid_t vid) {
@@ -287,9 +329,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       }
       else if (is_user(v.id())){
 
-        //in the zero iteration, if using AA distance metric, initialize array
+        //in the zero iteration, if using AA/RA/PROB distance metric, initialize array
         //with node degrees 
-        if (gcontext.iteration == 0 && (distance_metric == AA || distance_metric == RA)){
+        if (gcontext.iteration == 0 && (distance_metric == AA || distance_metric == RA || distance_metric == PROB)){
            latent_factors_inmem[v.id()].degree = v.num_edges();
         }
 
@@ -449,8 +491,8 @@ int main(int argc, const char ** argv) {
   distance_metric          = get_option_int("distance", JACCARD);
   asym_cosine_alpha        = get_option_float("asym_cosine_alpha", 0.5);
   debug                    = get_option_int("debug", debug);
-  if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE)
-    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACCARD, 1) AA, 2) RA, 3) ASYM_COSINE" << std::endl;  
+  if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE && distance_metric != PROB)
+    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0= JACCARD, 1= AA, 2= RA, 3= ASYM_COSINE, 4 = PROB" << std::endl;  
   parse_command_line_args();
 
   mytimer.start();
@@ -469,8 +511,11 @@ int main(int argc, const char ** argv) {
   relevant_items = new bool[N];
 
   //store node degrees in an array to be used for AA distance metric
-  if (distance_metric == AA || distance_metric == RA)
+  if (distance_metric == AA || distance_metric == RA || distance_metric == PROB)
     latent_factors_inmem.resize(M);
+  if (distance_metric == PROB)
+    prob_sim_normalization_constant = (double)L / (double)(M*N-L);
+
 
   /* Run */
   ItemDistanceProgram program;
