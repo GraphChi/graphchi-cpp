@@ -401,7 +401,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
-        if (item_pairs_compared % 1000000 == 0)
+        if (item_pairs_compared % 100000 == 0)
           logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::setw(10) <<sum(written_pairs) << " written. " << std::endl;
         if (debug)
           printf("comparing %d to pivot %d distance is %lg\n", i - M + 1, v.id() - M + 1, dist);

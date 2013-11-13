@@ -26,7 +26,7 @@
  * the current user ratings and the item similarities.  
  *
  */
-
+#define GRAPHCHI_DISABLE_COMPRESSION
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -220,9 +220,11 @@ class adjlist_container {
             continue;
           }
 
-	  assert(get_val(pivot_edges.edges, item.id()) != 0);
+	        assert(get_val(pivot_edges.edges, item.id()) != 0);
           float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
-          assert(weight != 0);
+          if (!allow_zeros)
+             assert(weight != 0);
+          else if (weight == 0) continue;
 
           if (undirected || find_twice(edges, other_item)){
           //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
