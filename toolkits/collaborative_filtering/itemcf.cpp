@@ -275,7 +275,7 @@ class adjlist_container {
         int node_k = pivot_edges.adjlist[i];
         int degree_k = latent_factors_inmem[node_k].degree;
         assert(degree_k > 0);
-        double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - acount(pivot)) / double(acount(pivot))));
+        double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - num_edges) / (double)num_edges));
         assert(p_k_1 > 0 && p_k_1 <= 1.0);
         sum += p_k_1;
       }
