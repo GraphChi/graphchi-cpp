@@ -168,7 +168,13 @@ class adjlist_container {
      */
     double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float edge_weight) {
       assert(is_pivot(user_pivot));
-      assert(edge_weight != 0);
+
+      if (!allow_zeros)
+        assert(edge_weight != 0);
+      else {
+         if (edge_weight == 0)
+           return 0;
+      }
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
 
       if (!get_val(pivot_edges.edges, item.id())){
@@ -343,17 +349,18 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
          /* GO over the compu sum*/
          FOR_ITERATOR(j, user.edges){
            int item_id = j.index(); 
-           assert(item_id>=0 && item_id < N);
+           assert(item_id>=M && item_id < N+M);
            int user_id = adjcontainer->adjs[i].vid;
            assert(user_id >= 0 && user_id < M);
            int degree_k = latent_factors_inmem[user_id].degree;
            int degree_x = latent_factors_inmem[item_id].degree;
            assert(degree_k > 0);
+           assert(degree_x > 0);
            double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - degree_x) / (double)degree_x));
            assert(p_k_1 > 0 && p_k_1 <= 1.0);
-           assert(j.index() < nnz(user.ratings));
+           //assert(j.index() < nnz(user.ratings));
            //add weight according to equation (15) in the probabalistic item similarity paper
-           user.ratings.coeffRef(j.index())  = p_k_1 * (1.0 + user.ratings.coeffRef(j.index()));
+           user.ratings.coeffRef(j)  = p_k_1 * (1.0 + user.ratings.coeffRef(j));
            assert(user.ratings.coeffRef(j) > 0);
          }
           
@@ -446,7 +453,7 @@ int main(int argc, const char ** argv) {
 
   assert(M > 0 && N > 0);
   prob_sim_normalization_constant = (double)L / (double)(M*N-L);
-
+  latent_factors_inmem.resize(M+N);
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
 
