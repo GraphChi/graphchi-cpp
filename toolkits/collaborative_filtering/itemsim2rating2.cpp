@@ -50,9 +50,10 @@ int grabbed_edges = 0;
 int debug;
 int undirected = 1;
 double Q = 3; //the power of the weights added into the total score
+double prob_sim_normalization_constant = 0;
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
-int zero_edges = 0;
+
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
@@ -68,13 +69,16 @@ struct edge_data{
 
 
 struct vertex_data{ 
-  vertex_data(){ }
+  //vec pvec; 
+  int degree;
+  vertex_data(){ degree = 0; }
 
-  //empty functions to be compatible with other stuff (unused here)
   void set_val(int index, float val){
+    //pvec[index] = val;
   }
   float get_val(int index){
-     return 0;
+    //return pvec[index];
+    return 0;
   }
 };
 std::vector<vertex_data> latent_factors_inmem;
@@ -164,12 +168,7 @@ class adjlist_container {
      */
     double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float edge_weight) {
       assert(is_pivot(user_pivot));
-      if (!allow_zeros) 
-        assert(edge_weight != 0);
-      else if (edge_weight == 0){
-        zero_edges++;
-        return 0;
-      }
+      assert(edge_weight != 0);
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
 
       if (!get_val(pivot_edges.edges, item.id())){
@@ -231,9 +230,16 @@ class adjlist_container {
            assert(weight != 0);
         else if (weight == 0) continue;
 
+        if (weight < 1){
+           if (debug)
+              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because of similarity is smaller than one." << std::endl;
+           continue;
+        }
+
         if (undirected || find_twice(edges, other_item)){
           pivot_edges.mymutex.lock();
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + edge_weight * pow(weight,Q));
+          //add weight according to equation (15) in the probabalistic item similarity paper
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + weight - 1);
           pivot_edges.mymutex.unlock();
 
           if (debug)
@@ -262,6 +268,8 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
   void update(graphchi_vertex<VertexDataType, edge_data> &v, graphchi_context &gcontext) {
     if (debug)
       printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id());
+        
+    latent_factors_inmem[v.id()].degree = v.num_edges();
 
     /* Even iteration numbers:
      * 1) load a subset of users into memory (pivots)
@@ -270,6 +278,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
     if (gcontext.iteration % 2 == 0) {
       if (adjcontainer->is_pivot(v.id()) && is_user(v.id())){
         adjcontainer->load_edges_into_memory(v);         
+
         if (debug)
           printf("Loading pivot %d intro memory\n", v.id());
       }
@@ -329,6 +338,25 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
             continue;
           }
           //assert(user.ratings.size() == N);
+         
+
+         /* GO over the compu sum*/
+         FOR_ITERATOR(j, user.edges){
+           int item_id = j.index(); 
+           assert(item_id>=0 && item_id < N);
+           int user_id = adjcontainer->adjs[i].vid;
+           assert(user_id >= 0 && user_id < M);
+           int degree_k = latent_factors_inmem[user_id].degree;
+           int degree_x = latent_factors_inmem[item_id].degree;
+           assert(degree_k > 0);
+           double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - degree_x) / (double)degree_x));
+           assert(p_k_1 > 0 && p_k_1 <= 1.0);
+           assert(j.index() < nnz(user.ratings));
+           //add weight according to equation (15) in the probabalistic item similarity paper
+           user.ratings.coeffRef(j.index())  = p_k_1 * (1.0 + user.ratings.coeffRef(j.index()));
+           assert(user.ratings.coeffRef(j) > 0);
+         }
+          
           ivec positions = reverse_sort_index(user.ratings, K);
           assert(positions.size() > 0);
           for (int j=0; j < positions.size(); j++){
@@ -417,6 +445,7 @@ int main(int argc, const char ** argv) {
   int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
 
   assert(M > 0 && N > 0);
+  prob_sim_normalization_constant = (double)L / (double)(M*N-L);
 
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
@@ -440,8 +469,6 @@ int main(int argc, const char ** argv) {
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
   std::cout<<"Created output files with the format: " << training << "-rec" << std::endl; 
-  if (zero_edges)
-    std::cout<<"Found: " << zero_edges<< " user edges with weight zero. Those are ignored." <<std::endl;
 
   delete[] relevant_items;
   fclose(out_file);

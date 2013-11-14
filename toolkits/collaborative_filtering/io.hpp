@@ -651,7 +651,7 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
       logstream(LOG_FATAL)<<"Zero entries are not allowed in a sparse matrix market vector. Use --zero=true to avoid this error"<<std::endl;
     //set observation value
     vertex_data & vdata = latent_factors_inmem[row];
-    vdata.pvec[type] = val;
+    vdata.set_val(type, val);
   }
   fclose(f);
 
