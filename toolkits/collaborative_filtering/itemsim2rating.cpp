@@ -52,7 +52,7 @@ int undirected = 1;
 double Q = 3; //the power of the weights added into the total score
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
-
+int zero_edges = 0;
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
@@ -165,7 +165,12 @@ class adjlist_container {
      */
     double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float edge_weight) {
       assert(is_pivot(user_pivot));
-      assert(edge_weight != 0);
+      if (!allow_zeros) 
+        assert(edge_weight != 0);
+      else if (edge_weight == 0){
+        zero_edges++;
+        return 0;
+      }
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
 
       if (!get_val(pivot_edges.edges, item.id())){
@@ -436,6 +441,8 @@ int main(int argc, const char ** argv) {
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
   std::cout<<"Created output files with the format: " << training << "-rec" << std::endl; 
+  if (zero_edges)
+    std::cout<<"Found: " << zero_edges<< " user edges with weight zero. Those are ignored." <<std::endl;
 
   delete[] relevant_items;
   fclose(out_file);
