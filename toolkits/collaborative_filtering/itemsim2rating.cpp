@@ -47,7 +47,6 @@ FILE * out_file;
 timer mytimer;
 bool * relevant_items  = NULL;
 int grabbed_edges = 0;
-int distance_metric;
 int debug;
 int undirected = 1;
 double Q = 3; //the power of the weights added into the total score
@@ -67,7 +66,6 @@ struct edge_data{
   edge_data(float up_weight, float down_weight) : up_weight(up_weight), down_weight(down_weight) { };
 };
 
-typedef edge_data  EdgeDataType;  // Edges store the "rating" of user->movie pair
 
 struct vertex_data{ 
   vec pvec; 
@@ -85,7 +83,7 @@ std::vector<vertex_data> latent_factors_inmem;
 
 struct dense_adj {
   sparse_vec edges;
-  sparse_vec        ratings;
+  sparse_vec ratings;
   mutex mymutex;
   vid_t vid;
   dense_adj() { 
@@ -143,7 +141,7 @@ class adjlist_container {
     /**
      * Grab pivot's adjacency list into memory.
      */
-    int load_edges_into_memory(graphchi_vertex<uint32_t, EdgeDataType> &v) {
+    int load_edges_into_memory(graphchi_vertex<uint32_t, edge_data> &v) {
       assert(is_pivot(v.id()));
       assert(is_user(v.id()));
 
@@ -165,9 +163,9 @@ class adjlist_container {
      * add weighted ratings for each linked item
      *
      */
-    double compute_ratings(graphchi_vertex<uint32_t, EdgeDataType> &item, vid_t user_pivot, int distance_metric) {
+    double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float edge_weight) {
       assert(is_pivot(user_pivot));
-      //assert(is_item(pivot) && is_item(v.id()));
+      assert(edge_weight != 0);
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
 
       if (!get_val(pivot_edges.edges, item.id())){
@@ -179,6 +177,7 @@ class adjlist_container {
       int num_edges = item.num_edges();
       if (debug)
         logstream(LOG_DEBUG)<<"Found " << num_edges << " edges from item : " << item.id() << std::endl;
+      
       //if there are not enough neighboring user nodes to those two items there is no need
       //to actually count the intersection
       if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection){
@@ -197,6 +196,8 @@ class adjlist_container {
 
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
+        assert(other_item - M >= 0);
+
         bool up = item.id() < other_item;
         if (debug)
           logstream(LOG_DEBUG)<<"Checking now edge: " << other_item << std::endl;
@@ -207,30 +208,30 @@ class adjlist_container {
           continue;
         }
 
-          if (!undirected && ((!up && item.edge(i)->get_data().up_weight == 0) ||
+        if (!undirected && ((!up && item.edge(i)->get_data().up_weight == 0) ||
               (up && item.edge(i)->get_data().down_weight == 0))){
             if (debug)
               logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
             continue;
-          }
+        }
 
-          if (get_val(pivot_edges.edges, other_item)){
+        if (get_val(pivot_edges.edges, other_item)){
             if (debug)
               logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because alrteady connected to pivot" << std::endl;
             continue;
-          }
+        }
 
-	        assert(get_val(pivot_edges.edges, item.id()) != 0);
-          float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
-          if (!allow_zeros)
-             assert(weight != 0);
-          else if (weight == 0) continue;
+	assert(get_val(pivot_edges.edges, item.id()) != 0);
+        float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
+        if (!allow_zeros)
+           assert(weight != 0);
+        else if (weight == 0) continue;
 
-          if (undirected || find_twice(edges, other_item)){
-          //pivot_edges.ratings[edges[i]-M] += item.edge(i)->get_data() * get_val(pivot_edges.edges, item.id());
+        if (undirected || find_twice(edges, other_item)){
           pivot_edges.mymutex.lock();
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + pow(weight,Q) /* * get_val(pivot_edges.edges, item.id())*/);
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + edge_weight * pow(weight,Q));
           pivot_edges.mymutex.unlock();
+
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
           }
@@ -249,12 +250,12 @@ class adjlist_container {
 
 adjlist_container * adjcontainer;
 
-struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
+struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
 
   /**
    *  Vertex update function.
    */
-  void update(graphchi_vertex<VertexDataType, EdgeDataType> &v, graphchi_context &gcontext) {
+  void update(graphchi_vertex<VertexDataType, edge_data> &v, graphchi_context &gcontext) {
     if (debug)
       printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id());
 
@@ -282,8 +283,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         if (debug)
           printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
    
-        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), distance_metric);
+        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), v.edge(i)->get_data().up_weight);
         item_pairs_compared++;
+
         if (item_pairs_compared % 1000000 == 0)
           logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
       }
@@ -380,20 +382,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
   }
 
-
-  /**
-   * Called before an execution interval is started.
-   *
-   */
-  void after_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &gcontext) {        
-
-    //on odd iterations, dump user recommendations computed so far to disk
-    if (gcontext.iteration % 2 == 1){
-        printf("entering iteration: %d on after_exec_interval\n", gcontext.iteration);
-        printf("pivot_st is %d window_st %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
-
-     }
-  }
 };
 
 
@@ -408,10 +396,10 @@ int main(int argc, const char ** argv) {
 
   /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("itemsim2rating");    
+  metrics m("itemsim2rating2");    
+
   /* Basic arguments for application */
   min_allowed_intersection = get_option_int("min_allowed_intersection", min_allowed_intersection);
-
   debug                    = get_option_int("debug", 0);
   parse_command_line_args();
   std::string similarity   = get_option_string("similarity", "");
@@ -419,22 +407,23 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
   undirected               = get_option_int("undirected", 1);
   Q                        = get_option_float("Q", Q);
+  K 			   = get_option_int("K");
+  
   mytimer.start();
-  int nshards          = convert_matrixmarket_and_item_similarity<EdgeDataType>(training, similarity);
-  K = get_option_int("K");
+  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
 
   assert(M > 0 && N > 0);
 
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
+
   //array for marking which items are conected to the pivot items via users.
   relevant_items = new bool[N];
 
   /* Run */
   ItemDistanceProgram program;
-  graphchi_engine<VertexDataType, EdgeDataType> engine(training,nshards, true, m); 
+  graphchi_engine<VertexDataType, edge_data> engine(training, nshards, true, m); 
   set_engine_flags(engine);
-  //engine.set_maxwindow(M+N+1);
 
   out_file = open_file((training + "-rec").c_str(), "w");
 
