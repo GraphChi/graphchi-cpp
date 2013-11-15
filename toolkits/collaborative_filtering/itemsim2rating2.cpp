@@ -94,15 +94,6 @@ struct dense_adj {
   }
 };
 
-bool find_twice(std::vector<vid_t>& edges, vid_t val){
-  int ret = 0;
-  for (int i=0; i < (int)edges.size(); i++){
-      if (edges[i] == val)
-        ret++;
-  }
-  assert(ret >= 0 && ret <= 2);
-  return (ret == 2);
-}
 // This is used for keeping in-memory
 class adjlist_container {
   public:
@@ -166,13 +157,13 @@ class adjlist_container {
      * add weighted ratings for each linked item
      *
      */
-    double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float edge_weight) {
+    double compute_ratings(graphchi_vertex<uint32_t, edge_data> &item, vid_t user_pivot, float user_item_edge_weight) {
       assert(is_pivot(user_pivot));
 
       if (!allow_zeros)
-        assert(edge_weight != 0);
+        assert(user_item_edge_weight != 0);
       else {
-         if (edge_weight == 0)
+         if (user_item_edge_weight == 0)
            return 0;
       }
       dense_adj &pivot_edges = adjs[user_pivot - pivot_st];
@@ -231,26 +222,23 @@ class adjlist_container {
         }
 
        	assert(get_val(pivot_edges.edges, item.id()) != 0);
-        float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
-        if (!allow_zeros)
-           assert(weight != 0);
-        else if (weight == 0) continue;
+        float weight = item.edge(i)->get_data().up_weight;
+        if (weight == 0)
+           logstream(LOG_FATAL)<<"Bug: found zero edge weight between: " << item.id() << " -> " << other_item<<std::endl;
 
         if (weight < 1){
            if (debug)
-              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because of similarity is smaller than one." << std::endl;
+              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because of similarity is smaller than one: " << weight << std::endl;
            continue;
         }
 
-        if (undirected || find_twice(edges, other_item)){
-          pivot_edges.mymutex.lock();
-          //add weight according to equation (15) in the probabalistic item similarity paper
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + ((edge_weight-0.5)/0.5)* (weight- 1));
-          pivot_edges.mymutex.unlock();
+        pivot_edges.mymutex.lock();
+        //add weight according to equation (15) in the probabalistic item similarity paper
+        set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + ((user_item_edge_weight-0.5)/0.5)* (weight- 1));
+        pivot_edges.mymutex.unlock();
 
-          if (debug)
-            logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
-          }
+        if (debug)
+           logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
       }
 
       if (debug)
@@ -302,7 +290,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         if (debug)
           printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
    
-        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), v.edge(i)->get_data().up_weight);
+        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), std::max(v.edge(i)->get_data().up_weight, v.edge(i)->get_data().down_weight));
         item_pairs_compared++;
 
         if (item_pairs_compared % 1000000 == 0)
