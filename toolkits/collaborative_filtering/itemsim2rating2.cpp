@@ -230,7 +230,7 @@ class adjlist_container {
             continue;
         }
 
-	assert(get_val(pivot_edges.edges, item.id()) != 0);
+       	assert(get_val(pivot_edges.edges, item.id()) != 0);
         float weight = std::max(item.edge(i)->get_data().down_weight, item.edge(i)->get_data().up_weight);
         if (!allow_zeros)
            assert(weight != 0);
@@ -245,7 +245,7 @@ class adjlist_container {
         if (undirected || find_twice(edges, other_item)){
           pivot_edges.mymutex.lock();
           //add weight according to equation (15) in the probabalistic item similarity paper
-          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + weight - 1);
+          set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + ((edge_weight-0.5)/0.5)* (weight- 1));
           pivot_edges.mymutex.unlock();
 
           if (debug)
