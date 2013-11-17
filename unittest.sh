@@ -49,8 +49,7 @@ display_name "TESTING NMF"
 ./toolkits/collaborative_filtering/nmf --training=reverse_netflix.mm --minval=1 --maxval=5 --max_iter=6 --quiet=1 --clean_cache=1
 
 display_name "TESTING SVD"
-rm -fR smallnetflix_mm.*
-./toolkits/collaborative_filtering/svd --training=smallnetflix_mm --nsv=3 --nv=5 --max_iter=5 --quiet=1 --tol=1e-1 --clean_cache=1
+./toolkits/collaborative_filtering/svd --training=smallnetflix_mm --nsv=3 --nv=5 --max_iter=5 --quiet=1 --tol=1e-1 --clean_cache=1 --validation=smallnetflix_mme --test=smallnetflix_mme
 
 display_name "TESTING SVD-ONESIDED"
 ./toolkits/collaborative_filtering/svd_onesided --training=smallnetflix_mm --nsv=3 --nv=5 --max_iter=5 --quiet=1 --tol=1e-1 --clean_cache=1
