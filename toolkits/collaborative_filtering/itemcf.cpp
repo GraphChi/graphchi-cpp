@@ -377,10 +377,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
-        //if JACCARD which is symmetric, compare only to pivots which are smaller than this item id
-        if ((distance_metric != ASYM_COSINE && i >= v.id()) || (!relevant_items[i-M]))
+        //if using a symmetric distance function, compare only to pivots which are smaller than this item id
+        if (((distance_metric != ASYM_COSINE || distance_metric != PROB) && i >= v.id()) || (!relevant_items[i-M]))
           continue;
-        else if (distance_metric == ASYM_COSINE && i == v.id())
+        //no need to compare an item against itself
+        else if (i == v.id())
           continue;
         
         double dist = adjcontainer->calc_distance(v, i, distance_metric);

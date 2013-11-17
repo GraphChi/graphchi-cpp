@@ -30,6 +30,7 @@
 #include "eigen_wrapper.hpp"
 
 extern graphchi_engine<VertexDataType, EdgeDataType> * pengine; 
+void reset_rmse(int threads);
 
 double regularization;
 bool debug;
@@ -118,9 +119,9 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     /*** COMPUTE r = c*A*x  ********/
     if (mi.A_offset  && mi.x_offset >= 0){
       for(int e=0; e < vertex.num_edges(); e++) {
-        const edge_data & edge = vertex.edge(e)->get_data();
+        const EdgeDataType weight = vertex.edge(e)->get_data();
         const vertex_data  & movie = latent_factors_inmem[vertex.edge(e)->vertex_id()];
-        val += (edge.weight * movie.pvec[mi.x_offset]);
+        val += (((float)weight) * movie.pvec[mi.x_offset]);
       }
 
       if  (info.is_square() && mi.use_diag)// add the diagonal term
@@ -145,6 +146,14 @@ struct Axb : public GraphChiProgram<VertexDataType, EdgeDataType> {
     assert(mi.r_offset>=0 && mi.r_offset < user.pvec.size());
     user.pvec[mi.r_offset] = val;
   } //end update
+
+  /**
+   * Called before an iteration is started.
+   */
+  void before_iteration(int iteration, graphchi_context &gcontext) {
+    reset_rmse(gcontext.execthreads);
+  }
+
 
 
 }; //end Axb
@@ -671,7 +680,7 @@ void orthogonalize_vs_all(DistSlicedMat & mat, int curoffset, double &alpha){
   if (curoffset > 0){
     for (int j=0; j < mi.ortho_repeats; j++){
       memset(alphas, 0, sizeof(double)*curoffset);
-#pragma omp parallel for
+//#pragma omp parallel for
       for (int i=mat.start_offset; i< current.offset; i++){
         for (int k=info.get_start_node(!current.transpose); k< info.get_end_node(!current.transpose); k++){
           assert(i-mat.start_offset>=0 && i-mat.start_offset < curoffset);
@@ -682,7 +691,7 @@ void orthogonalize_vs_all(DistSlicedMat & mat, int curoffset, double &alpha){
         }
       }
       for (int i=mat.start_offset; i< current.offset; i++){
-#pragma omp parallel for
+//#pragma omp parallel for
         for (int k=info.get_start_node(!current.transpose); k< info.get_end_node(!current.transpose); k++){
           latent_factors_inmem[k].pvec[current.offset] -= alphas[i-mat.start_offset]  * latent_factors_inmem[k].pvec[i];
         }
