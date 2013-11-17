@@ -325,7 +325,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       if (adjcontainer->is_pivot(v.id()) && is_item(v.id())){
         adjcontainer->load_edges_into_memory(v);         
         if (debug)
-          printf("Loading pivot %dintro memory\n", v.id());
+          printf("Loading pivot %dintro memory\n", v.id()-M+input_file_offset);
       }
       else if (is_user(v.id())){
 
@@ -348,10 +348,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           }
         }
         if (debug)
-          printf("user %d is linked to pivot %d\n", v.id(), pivot);
-        if (!has_pivot) //this user is not connected to any of the pivot item nodes and thus
+          printf("user %d is linked to pivot %d\n", v.id()+input_file_offset, pivot);
+        if (!has_pivot){ //this user is not connected to any of the pivot item nodes and thus
           //it is not relevant at this point
+          if (debug) 
+             printf("user %d is not connected pivot", v.id()+input_file_offset);
           return; 
+        }
 
         //this user is connected to a pivot items, thus all connected items should be compared
         for(int i=0; i<v.num_edges(); i++) {
@@ -369,7 +372,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     else {
       if (!relevant_items[v.id() - M]){
         if (debug)
-          logstream(LOG_DEBUG)<<"Skipping item: " << v.id() << " since not relevant" << std::endl;
+          std::cout<<"Skipping item: " << v.id() << " since not relevant" << std::endl;
         return;
       }
       std::vector<index_val> heap;
@@ -378,11 +381,15 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
         //if using a symmetric distance function, compare only to pivots which are smaller than this item id
-        if (((distance_metric != ASYM_COSINE || distance_metric != PROB) && i >= v.id()) || (!relevant_items[i-M]))
+        if (((distance_metric != ASYM_COSINE && distance_metric != PROB) && i >= v.id()) || (!relevant_items[i-M])){
+          if (debug) 
+            std::cout<<"Skipping item: " << v.id() << " smaller or not relevant" << std::endl;
           continue;
+        }
         //no need to compare an item against itself
-        else if (i == v.id())
+        else if (i == v.id()){
           continue;
+        }
         
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;

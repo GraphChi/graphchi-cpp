@@ -170,79 +170,73 @@ class adjlist_container {
 
       if (!get_val(pivot_edges.edges, item.id())){
         if (debug)
-          logstream(LOG_DEBUG)<<"Skipping item pivot pair since not connected!" << item.id() << std::endl;
+          std::cout<<"Skipping item pivot pair since not connected!" << item.id() << std::endl;
         return 0;
       }
 
       int num_edges = item.num_edges();
       if (debug)
-        logstream(LOG_DEBUG)<<"Found " << num_edges << " edges from item : " << item.id() << std::endl;
+        std::cout<<"Found " << num_edges << " edges from item : " << item.id()-M+1 << std::endl;
       
       //if there are not enough neighboring user nodes to those two items there is no need
       //to actually count the intersection
       if (num_edges < min_allowed_intersection || nnz(pivot_edges.edges) < min_allowed_intersection){
         if (debug)
-          logstream(LOG_DEBUG)<<"skipping item pivot pair since < min_allowed_intersection" << std::endl;
+          std::cout<<"skipping item pivot pair since < min_allowed_intersection" << std::endl;
         return 0;
       }
-
-      std::vector<vid_t> edges;
-      for(int i=0; i < num_edges; i++){
-        if (is_item(item.edge(i)->vertex_id()))
-        edges.push_back(item.edge(i)->vertex_id());
-      }
-      std::sort(edges.data(), edges.data()+edges.size());
 
 
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
-        assert(other_item - M >= 0);
+        //user node, continue
+        if (other_item < M )
+          continue;
 
+        //other item node
+        assert(other_item - M >= 0);
+        assert(other_item != item.id());
         bool up = item.id() < other_item;
         if (debug)
-          logstream(LOG_DEBUG)<<"Checking now edge: " << other_item << std::endl;
+          std::cout<<"Checking now edge number " << i << "  " << item.id()-M+1 << " -> " << other_item-M+1 << " weight: " << 
+item.edge(i)->get_data().up_weight + item.edge(i)->get_data().down_weight << std::endl;
 
-        if (is_user(other_item)){
-          if (debug)
-              logstream(LOG_DEBUG)<<"skipping edge to user " << other_item << std::endl;
-          continue;
-        }
-
-        if (!undirected && ((!up && item.edge(i)->get_data().up_weight == 0) ||
-              (up && item.edge(i)->get_data().down_weight == 0))){
+        if ((up && item.edge(i)->get_data().up_weight == 0) ||
+              (!up && item.edge(i)->get_data().down_weight == 0)){
             if (debug)
-              logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
+              std::cout<<"skipping edge with wrong direction to " << other_item-M+1 << std::endl;
             continue;
         }
 
         if (get_val(pivot_edges.edges, other_item)){
             if (debug)
-              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because alrteady connected to pivot" << std::endl;
+              std::cout<<"skipping edge to " << other_item << " because alrteady connected to pivot" << std::endl;
             continue;
         }
 
        	assert(get_val(pivot_edges.edges, item.id()) != 0);
-        float weight = item.edge(i)->get_data().up_weight;
+        double weight = item.edge(i)->get_data().up_weight+ item.edge(i)->get_data().down_weight;
         if (weight == 0)
-           logstream(LOG_FATAL)<<"Bug: found zero edge weight between: " << item.id() << " -> " << other_item<<std::endl;
+           logstream(LOG_FATAL)<<"Bug: found zero edge weight between: " << item.id()-M+input_file_offset << " -> " << other_item-M+input_file_offset <<std::endl;
 
-        if (weight < 1){
+        if (weight <= 1){
            if (debug)
-              logstream(LOG_DEBUG)<<"skipping edge to " << other_item << " because of similarity is smaller than one: " << weight << std::endl;
+              std::cout<<"skipping edge to " << item.id()-M+1 << " -> " << other_item-M+1 << " because of similarity is smaller or equal to one: " << weight << std::endl;
            continue;
         }
 
         pivot_edges.mymutex.lock();
         //add weight according to equation (15) in the probabalistic item similarity paper
         set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + ((user_item_edge_weight-0.5)/0.5)* (weight- 1));
-        pivot_edges.mymutex.unlock();
+        if (debug){
+           std::cout<<"Adding weight: " << (((user_item_edge_weight-0.5)/0.5)* (weight- 1)) << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<< " weight-1: " << weight-1<<std::endl;
+         }
+         pivot_edges.mymutex.unlock();
 
-        if (debug)
-           logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
-      }
+     }
 
       if (debug)
-        logstream(LOG_DEBUG)<<"Finished user pivot " << user_pivot << std::endl;
+        std::cout<<"Finished user pivot " << user_pivot << std::endl;
       return 0;
     }
 
@@ -288,9 +282,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         if (!adjcontainer->is_pivot(v.edge(i)->vertex_id()))
           continue;
         if (debug)
-          printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+1 , v.id() - M + 1);
+          printf("comparing user pivot %d to item %d\n", v.edge(i)->vertex_id()+input_file_offset , v.id() - M + 1);
    
-        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), std::max(v.edge(i)->get_data().up_weight, v.edge(i)->get_data().down_weight));
+        adjcontainer->compute_ratings(v, v.edge(i)->vertex_id(), v.edge(i)->get_data().up_weight+ v.edge(i)->get_data().down_weight);
         item_pairs_compared++;
 
         if (item_pairs_compared % 1000000 == 0)
@@ -352,8 +346,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
            assert(user.ratings.coeffRef(j) > 0);
          }
           
-          ivec positions = reverse_sort_index(user.ratings, K);
+          ivec positions = reverse_sort_index(user.ratings, std::min(nnz(user.ratings),(int)K));
           assert(positions.size() > 0);
+          positions.conservativeResize(std::min(nnz(user.ratings),(int)K));
           for (int j=0; j < positions.size(); j++){
             assert(positions[j] >= 0);
             assert(positions[j] < (int)N);
@@ -390,11 +385,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
         printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
       //}
-      if (adjcontainer->pivot_st < window_en){
+      if (adjcontainer->pivot_st < std::min(M, window_en)){
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(window_en + 1);
+          adjcontainer->extend_pivotrange(std::min(M, window_en + 1));
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
           if (window_en+1 >= gcontext.nvertices) {
             // every user was a pivot item, so we are done
@@ -432,7 +427,7 @@ int main(int argc, const char ** argv) {
   std::string similarity   = get_option_string("similarity", "");
   if (similarity == "")
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
-  undirected               = get_option_int("undirected", 1);
+  undirected               = get_option_int("undirected", 0);
   Q                        = get_option_float("Q", Q);
   K 			   = get_option_int("K");
   

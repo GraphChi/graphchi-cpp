@@ -434,6 +434,9 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+      if (I == J)
+        logstream(LOG_FATAL)<<"Item similarity to itself found for item " << I << " in line; " << i << std::endl;
+      //std::cout<<"Adding an edge between "<<M+I<< " : " << M+J << "  " << (I<J)  << " " << val << std::endl; 
       sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type(I < J? val: 0, I>J? val: 0));
     }
 
