@@ -46,6 +46,7 @@ struct vertex_data {
   void set_val(int field_type, double value) { 
     pvec[field_type] = value;
   }
+  double get_val(int field_type){ return pvec[field_type]; }
   //double get_output(int field_type){ return pred_x; }
 }; // end of vertex_data
 
@@ -127,6 +128,14 @@ void init_lanczos(bipartite_graph_descriptor & info){
   } 
   logstream(LOG_INFO)<<"Allocated a total of: " << ((double)actual_vector_len * info.total() * sizeof(double)/ 1e6) << " MB for storing vectors." << std::endl;
 }
+
+void output_svd_result(std::string filename) {
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M , "This file contains SVD output matrix U. In each row nconv factors of a single user node.", latent_factors_inmem, nconv);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M  ,M+N, "This file contains SVD  output matrix V. In each row nconv factors of a single item node.", latent_factors_inmem, nconv);
+  logstream(LOG_INFO) << "SVD output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                           ", " << filename + "_V.mm " << std::endl;
+}
+
 
 vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest, 
             const std::string & vecfile){
@@ -323,13 +332,8 @@ printf("\n");
      std::cout<<"Going to save output vectors U and V" << std::endl;
      if (nconv == 0)
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
-     char output_filename[256];
-     for (int i=0; i< nconv; i++){
-        sprintf(output_filename, "%s.U.%d", training.c_str(), i);
-        write_output_vector(output_filename, U[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
-        sprintf(output_filename, "%s.V.%d", training.c_str(), i);
-        write_output_vector(output_filename, V[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix V'");
-     }
+  
+     output_svd_result(training);   
   }
   return sigma;
 }
