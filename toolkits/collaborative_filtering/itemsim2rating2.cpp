@@ -230,6 +230,7 @@ item.edge(i)->get_data().up_weight + item.edge(i)->get_data().down_weight << std
         set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + ((user_item_edge_weight-0.5)/0.5)* (weight- 1));
         if (debug){
            std::cout<<"Adding weight: " << (((user_item_edge_weight-0.5)/0.5)* (weight- 1)) << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<< " weight-1: " << weight-1<<std::endl;
+           std::cout<<pivot_edges.ratings<<std::endl;
          }
          pivot_edges.mymutex.unlock();
 
@@ -320,7 +321,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
           if (debug)
             logstream(LOG_DEBUG)<<"Going over user" << adjcontainer->adjs[i].vid << std::endl;
           dense_adj &user = adjcontainer->adjs[i];
-          if (nnz(user.edges) == 0 || nnz(user.ratings) == 0){
+          if (nnz(user.ratings) == 0){
             if (debug)
               logstream(LOG_DEBUG)<<"User with no edges" << std::endl;
             continue;
@@ -329,9 +330,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
          
 
          /* GO over the compu sum*/
-         FOR_ITERATOR(j, user.edges){
+         FOR_ITERATOR(j, user.ratings){
            int item_id = j.index(); 
-           assert(item_id>=M && item_id < N+M);
+           assert(item_id>=0 && item_id < N);
            int user_id = adjcontainer->adjs[i].vid;
            assert(user_id >= 0 && user_id < M);
            int degree_k = latent_factors_inmem[user_id].degree;
@@ -342,15 +343,22 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
            assert(p_k_1 > 0 && p_k_1 <= 1.0);
            //assert(j.index() < nnz(user.ratings));
            //add weight according to equation (15) in the probabalistic item similarity paper
-           user.ratings.coeffRef(j)  = p_k_1 * (1.0 + user.ratings.coeffRef(j));
-           assert(user.ratings.coeffRef(j) > 0);
+           set_val( user.ratings, item_id, p_k_1 * (1.0 + get_val(user.ratings, item_id)));
+           assert(get_val(user.ratings, item_id) > 0);
          }
           
           ivec positions = reverse_sort_index(user.ratings, std::min(nnz(user.ratings),(int)K));
+          if (debug)
+            std::cout<<positions<<std::endl;
           assert(positions.size() > 0);
           positions.conservativeResize(std::min(nnz(user.ratings),(int)K));
           for (int j=0; j < positions.size(); j++){
-            assert(positions[j] >= 0);
+            
+            if (positions[j] >= N){
+               std::cout<<"bug: user rating " << user.ratings << " pos: " << positions << std::endl;
+               continue;
+            }
+            assert(positions[j] >= (int)0);
             assert(positions[j] < (int)N);
 
 	    //skip zero entries
@@ -361,7 +369,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
             }
             int rc = fprintf(out_file, "%u %u %lg\n", user.vid+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
             if (debug)
-              logstream(LOG_DEBUG)<<"Writing rating from user" << user.vid+1 << " to item: " << positions[j] << std::endl;
+              logstream(LOG_DEBUG)<<"Writing rating from user" << user.vid+1 << " to item: " << positions[j]-M+1 << std::endl;
             assert(rc > 0);
             written_pairs++;
           }
