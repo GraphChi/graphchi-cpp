@@ -677,7 +677,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   if (fc.hash_strings){
     for (int i=0; i< fc.total_features+2; i++){
       if (fc.node_id_maps[i].string2nodeid.size() == 0)
-        logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
+        logstream(LOG_FATAL)<<"Failed sanity check for feature number : " << i << " no values find in data " << std::endl;
     }
   }
 

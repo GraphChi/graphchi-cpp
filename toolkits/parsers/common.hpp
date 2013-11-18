@@ -51,22 +51,22 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
     int rc = getline(&linebuf, &linesize, f);
     if (rc == -1)
       break;
-
+  
+    char * line2 = strdup(linebuf);
     if (fields == 1){
-       char *pch = strtok(linebuf,"\r\n\t");
+       char *pch = strsep(&line2,"\r\n\t");
        if (!pch)
          logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
         map[pch] = ++line;
     }
     else {
-    char *pch = strtok(linebuf,"\r\n\t");
+    char *pch = strsep(&line2,"\r\n\t");
     if (!pch){
       logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
     }
-      char * pch2 = strtok(NULL,"\n");
+      char * pch2 = strsep(&line2,"\r\t\n");
       if (!pch2)
         logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
-    map[pch] = atoi(pch2);
     line++;
     }
     //free(to_free);
@@ -92,7 +92,7 @@ void save_map_to_text_file(const std::map<unsigned long long,uint> & map, const 
     out_file fout(filename);
     unsigned int total = 0;
     for (it = map.begin(); it != map.end(); it++){ 
-      fprintf(fout.outf, "%llu\t%u\n", it->first, it->second + optional_offset);
+      fprintf(fout.outf, "%llu\t%u\n", it->first , it->second + optional_offset);
      total++;
     } 
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
