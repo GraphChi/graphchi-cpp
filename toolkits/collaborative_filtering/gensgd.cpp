@@ -42,8 +42,9 @@
 #define GRAPHCHI_DISABLE_COMPRESSION //remove this if you want to save memory but increase runtime
 
 #define MAX_FEATURES 256
-#define FEATURE_WIDTH 34 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
+#define FEATURE_WIDTH 68 //MAX NUMBER OF ALLOWED FEATURES IN TEXT FILE
 
+double gensgd_rate0 = 1e-03;
 double gensgd_rate1 = 1e-03;
 double gensgd_rate2 = 1e-03;
 double gensgd_rate3 = 1e-03;
@@ -72,6 +73,10 @@ int cold_start = 0;
 double inputGlobalMean = 0;
 int binary_prediction = 0;
 int verbose = 0; //print statistics about step sizes
+int train_only = 0;
+int validation_only = 0;
+int node_id_maps_size = 0;
+int latent_factors_inmem_size = 0;
 
 struct stats{
   float minval;
@@ -316,35 +321,15 @@ float get_value(char * pch, bool read_only, const char * linebuf_debug, int i){
   return ret;
 }
 
-char * read_one_token(char *& linebuf, const char * pspaces, size_t i, char * linebuf_debug, int token, int type = TRAINING){
-  char *pch = strsep(&linebuf,pspaces);
+char * read_one_token(char *& linebuf, size_t i, char * linebuf_debug, int token, int type = TRAINING){
+  char *pch = strsep(&linebuf,"\r\n\t ;,");
   if (pch == NULL && type == TRAINING)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
   else if (pch == NULL && type == TEST)
      return NULL;
-
-  if (json_input){
-    //for json, multiple separators may lead to empty strings, we simply skip them
-     while(pch && !strcmp(pch, "")){ 
-       pch = strsep(&linebuf, pspaces);
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << " token number: " << token << std::endl;
-     }
-     //toekn should not be empty
-   assert(strcmp(pch, ""));
-   if (i == 0)
-     header_titles.push_back(pch);
-
-   pch = strsep(&linebuf, pspaces);
-   //for json, multiple separators may lead to empty strings, we simply skip them
-     while(pch && !strcmp(pch, "")){ 
-       pch = strsep(&linebuf, pspaces);
-      if (pch == NULL)
-        logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << " token number: " << token << std::endl;
-     }
-   }
   return pch;
 }
+  
  
 /* Read and parse one input line from file */
 bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & J, float &val, std::vector<float>& valarray, int type, char * linebuf_debug){
@@ -366,16 +351,13 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
 
   assert(file_columns >= 2);
 
-  const char* spaces[] = {"\t,\r\n "};
-  const char * json_spaces[] = {"\t,\r\n \":{}"};
-  const char * pspaces = ((!json_input) ? *spaces : *json_spaces);
 
   char * pch = NULL;
  
   while (token < file_columns){
     /* READ FROM */
     if (token == fc.from_pos){
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
+      pch = read_one_token(linebuf, i, linebuf_debug, token);
       I = (uint)get_node_id(pch, 0, i, type != TRAINING);
       if (type == TRAINING){
         assert( I >= 0 && I < M);
@@ -384,7 +366,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.to_pos){
       /* READ TO */
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token);
+      pch = read_one_token(linebuf, i, linebuf_debug, token);
       J = (uint)get_node_id(pch, 1, i, type != TRAINING);
       if (type == TRAINING)
         assert(J >= 0 && J < N);
@@ -392,7 +374,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
     }
     else if (token == fc.val_pos){
       /* READ RATING */
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token, type);
+      pch = read_one_token(linebuf, i, linebuf_debug, token, type);
       if (pch == NULL && type == TEST)
          return true;
       val = get_value(pch, type != TRAINING, linebuf_debug, i);
@@ -403,7 +385,7 @@ bool read_line(FILE * f, const std::string filename, size_t i, uint & I, uint & 
         break;
 
       /* READ FEATURES */
-      pch = read_one_token(linebuf, pspaces, i, linebuf_debug, token, type);
+      pch = read_one_token(linebuf, i, linebuf_debug, token, type);
       if (pch == NULL && type == TEST)
         return true;
       if (!fc.feature_selection[token]){
@@ -569,10 +551,34 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   // Note, code based on: http://math.nist.gov/MatrixMarket/mmio/c/example_read.c
   FILE *f;
   size_t nz;
+
+  int nshards;
+  if (validation_only && (nshards = find_shards<als_edge_type>(base_filename, get_option_string("nshards", "auto")))) {
+    if (check_origfile_modification_earlier<als_edge_type>(base_filename, nshards)) {
+      logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
+      FILE * infile = fopen((base_filename + ".gm").c_str(), "r");
+      int ret =  fscanf(infile, "%d\n%d\n%ld\n%d\n%lf\n%d\n%d\n", &M, &N, &L, &fc.total_features, &globalMean, &node_id_maps_size, &latent_factors_inmem_size);
+      assert(ret == 7);
+      assert(node_id_maps_size >= 0);
+      assert(latent_factors_inmem_size >=M+N);
+      fclose(infile);
+      fc.node_id_maps.resize(node_id_maps_size);
+      for (int i=0; i < (int)fc.node_id_maps.size(); i++){
+        char buf[256];
+        sprintf(buf, "%s.map.%d", training.c_str(), i);
+        load_map_from_txt_file(fc.node_id_maps[i].string2nodeid, buf, 2);
+        assert(fc.node_id_maps[i].string2nodeid.size() > 0);
+        logstream(LOG_INFO)<<"Loaded a map of size" << fc.node_id_maps[i].string2nodeid.size() << ". "<<std::endl;
+
+      }
+      logstream(LOG_INFO)<<"Finished loading " << node_id_maps_size << " maps. "<<std::endl;
+      return nshards;
+    }
+  }
+
   /**
    * Create sharder object
    */
-  int nshards;
   sharder<als_edge_type> sharderobj(base_filename);
   sharderobj.start_preprocessing();
 
@@ -654,28 +660,12 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
 
   //calc stats
   assert(L > 0);
-  for (int i=0; i< fc.total_features; i++){
-    fc.stats_array[i].meanval /= L;
-  }
   //assert(globalMean != 0);
   if (globalMean == 0)
     logstream(LOG_WARNING)<<"Found global mean of the data to be zero (val_pos). Please verify this is correct." << std::endl;
   globalMean /= L;
   logstream(LOG_INFO)<<"Computed global mean is: " << globalMean << std::endl;
   inputGlobalMean = globalMean;
-
-  //print features
-  for (int i=0; i< fc.total_features; i++){
-    logstream(LOG_INFO) << "Feature " << i << " min val: " << fc.stats_array[i].minval << " max val: " << fc.stats_array[i].maxval << "  mean val: " << fc.stats_array[i].meanval << std::endl;
-  }
-
-
-  FILE * outf = fopen((base_filename + ".gm").c_str(), "w");
-  fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg", M, N, L, fc.total_features, globalMean);
-  for (int i=0; i < fc.total_features; i++){
-    fprintf(outf, "%12.8g\n%12.8g\n%12.8g\n", fc.stats_array[i].minval, fc.stats_array[i].maxval, fc.stats_array[i].meanval);
-  }
-  fclose(outf);
 
   fclose(f);
 
@@ -1072,7 +1062,6 @@ void init_gensgd(bool load_factors_from_file){
   fc.offsets.resize(howmany);
   get_offsets(fc.offsets);
   assert(D > 0);
-  if (!load_factors_from_file){
     double factor = 0.1/sqrt(D);
 #pragma omp parallel for
     for (int i=0; i< nodes; i++){
@@ -1081,7 +1070,6 @@ void init_gensgd(bool load_factors_from_file){
 #pragma omp parallel for
     for (int i=0; i< FEATURE_WIDTH; i++)
       real_features[i].pvec = randu(D)*factor;
-  }
 }
 
 
@@ -1117,11 +1105,15 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
    *  Vertex update function - computes the least square step
    */
   void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
+    if (validation_only) //no need to train
+      return;
+
     if (is_user(vertex.id()) && vertex.num_outedges() == 0){
       if (gcontext.iteration == 0)
         vertex_with_no_edges++;
       return;
     }
+  
 
     if (cold_start == ITEM && gcontext.iteration == 0){
        vertex_data & item = latent_factors_inmem[vertex.id()];
@@ -1155,7 +1147,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         float eui = pui - rui;
 
         //update global mean bias
-        double step1 = gensgd_rate1 * (eui + gensgd_reg0 * globalMean);
+        double step1 = gensgd_rate0 * (eui + gensgd_reg0 * globalMean);
         globalMean -= step1;
         stat1[omp_get_thread_num()] += fabs(step1);
 
@@ -1210,6 +1202,7 @@ void print_step_size(){
   void after_iteration(int iteration, graphchi_context &gcontext) {
     if (iteration == 1 && vertex_with_no_edges > 0)
       logstream(LOG_WARNING)<<"There are " << vertex_with_no_edges << " users without ratings" << std::endl;
+    gensgd_rate0 *= gensgd_mult_dec;
     gensgd_rate1 *= gensgd_mult_dec;
     gensgd_rate2 *= gensgd_mult_dec;
     gensgd_rate3 *= gensgd_mult_dec;
@@ -1234,22 +1227,25 @@ void print_step_size(){
 };
 
 
-void output_gensgd_result(std::string filename) {
-  MMOutputter_mat<vertex_data> mmoutput(filename + "_U.mm", 0, latent_factors_inmem.size(), "This file contains Gensgd output matrices. In each row D factors of a single user node, then item nodes, then features", latent_factors_inmem);
-  MMOutputter_vec<vertex_data> mmoutput_bias(filename + "_U_bias.mm", 0, latent_factors_inmem.size(), BIAS_POS, "This file contains Gensgd output bias vector. In each row a single user bias.", latent_factors_inmem);
-  MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains Gensgd global mean which is required for computing predictions.", globalMean);
-  //output mapping between string to array index of features.
-  if (fc.hash_strings){
-    assert(2+fc.total_features+fc.node_features == (int)fc.node_id_maps.size());
-    for (int i=0; i < 2+fc.total_features+fc.node_features; i++){
-      char buf[256];
-      sprintf(buf, "%s.map.%d", filename.c_str(), i);
-      save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, fc.offsets[i]);
+void output_model(std::string filename){
+     MMOutputter_mat<vertex_data> user_output(filename + "_U.mm", 0, latent_factors_inmem.size(), "This file contains GENSGD output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
+     MMOutputter_vec<vertex_data> user_bias_vec(filename + "_U_bias.mm", 0, latent_factors_inmem.size(), BIAS_POS, "This file contains GENSGD output bias vector. In each row a single user bias.", latent_factors_inmem);
+     MMOutputter_scalar gmean(filename + "_global_mean.mm", "This file contains GENSGD global mean which is required for computing predictions.", globalMean);
+
+    logstream(LOG_INFO) << "GENSGD output files (in matrix market format): " << filename << "_U.mm" << "," << filename << "_global_mean.mm" << std::endl;
+    //output mapping between string to array index of features.
+    if (fc.hash_strings){
+      assert(2+fc.total_features+fc.node_features == (int)fc.node_id_maps.size());
+      for (int i=0; i < (int)fc.node_id_maps.size(); i++){
+        char buf[256];
+        sprintf(buf, "%s.map.%d", filename.c_str(), i);
+        save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, 0);
+      }
     }
-  }
- 
-  logstream(LOG_INFO) << " GENSGD output files (in matrix market format): " << filename << "_U.mm" << ",  "<< filename <<  "_global_mean.mm, " << filename << "_U_bias.mm "  <<std::endl;
-}
+  FILE * outf = fopen((filename + ".gm").c_str(), "w");
+  fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg\n%d\n%d\n", M, N, L, fc.total_features, globalMean, (int)fc.node_id_maps.size(), (int)latent_factors_inmem.size());
+  fclose(outf);
+ }
 
 int main(int argc, const char ** argv) {
 
@@ -1264,6 +1260,7 @@ int main(int argc, const char ** argv) {
   metrics m("als-tensor-inmemory-factors");
 
   //specific command line parameters for gensgd
+  gensgd_rate0 = get_option_float("gensgd_rate1", gensgd_rate0);
   gensgd_rate1 = get_option_float("gensgd_rate1", gensgd_rate1);
   gensgd_rate2 = get_option_float("gensgd_rate2", gensgd_rate2);
   gensgd_rate3 = get_option_float("gensgd_rate3", gensgd_rate3);
@@ -1290,6 +1287,8 @@ int main(int argc, const char ** argv) {
   std::string string_features = get_option_string("features", fc.default_feature_str);
   std::string real_features = get_option_string("real_features", "");
   verbose = get_option_int("verbose",1); 
+  train_only = get_option_int("train_only", 0);
+  validation_only = get_option_int("validation_only", 0);
 
   //input sanity checks
   if (file_columns < 3)
@@ -1401,16 +1400,16 @@ int main(int argc, const char ** argv) {
     get_offsets(fc.offsets);
   }
 
+  /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
-    vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    assert(user_bias.size() == num_feature_bins());
-    for (uint i=0; num_feature_bins(); i++){
+    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
+    assert(user_bias.size() == latent_factors_inmem.size());
+    for (uint i=0; i<latent_factors_inmem.size(); i++){
       latent_factors_inmem[i].bias = user_bias[i];
     }
-    vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
-    globalMean = gm[0];
-  }
+  } 
+ 
 
 
   /* Run */
@@ -1418,14 +1417,18 @@ int main(int argc, const char ** argv) {
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   set_engine_flags(engine);
   pengine = &engine;
+  if (validation_only)
+    niters = 1;
   engine.run(program, niters);
-
-  /* Output test predictions in matrix-market format */
-  output_gensgd_result(training);
-  test_predictions_N(&gensgd_predict, fc);    
 
   if (new_validation_users > 0)
     logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
+ 
+  output_model(training);
+  if (train_only)
+     return 0;
+
+  test_predictions_N(&gensgd_predict, fc);    
   if (new_test_users > 0)
     std::cout<<"Found " << new_test_users<< " new test users with no information about them in training dataset!" << std::endl;
 
