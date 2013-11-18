@@ -77,6 +77,11 @@ int train_only = 0;
 int validation_only = 0;
 int node_id_maps_size = 0;
 int latent_factors_inmem_size = 0;
+int csv = 0;
+
+char tokens[]={"\n\r\t ;,"};
+char csv_tokens[] = {","};
+char * ptokens = tokens;
 
 struct stats{
   float minval;
@@ -322,7 +327,7 @@ float get_value(char * pch, bool read_only, const char * linebuf_debug, int i){
 }
 
 char * read_one_token(char *& linebuf, size_t i, char * linebuf_debug, int token, int type = TRAINING){
-  char *pch = strsep(&linebuf,"\r\n\t ;,");
+  char *pch = strsep(&linebuf,ptokens);
   if (pch == NULL && type == TRAINING)
         logstream(LOG_FATAL)<<"Error reading line " << i << " [ " << linebuf_debug << " ] " << std::endl;
   else if (pch == NULL && type == TEST)
@@ -602,14 +607,14 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     strncpy(linebuf_debug, linebuf, 1024);
-    char *pch = strtok(linebuf,"\t,\r;");
+    char *pch = strtok(linebuf,ptokens);
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error header line " << " [ " << linebuf_debug << " ] " << std::endl;
 
     header_titles.push_back(pch);
 
     while (pch != NULL){
-      pch = strtok(NULL, "\t,\r;");
+      pch = strtok(NULL, ptokens);
       if (pch == NULL)
         break;
       header_titles.push_back(pch);
@@ -722,7 +727,7 @@ void read_node_features(std::string base_filename, bool square, feature_control 
 
 
     /** READ [FROM] */
-    char *pch = strtok(linebuf,"\t,\r; ");
+    char *pch = strtok(linebuf,ptokens);
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
     I = (uint)get_node_id(pch, user?0:1, lines, true);
@@ -738,14 +743,14 @@ void read_node_features(std::string base_filename, bool square, feature_control 
 
     /** READ USER FEATURES */
     while (pch != NULL){
-      pch = strtok(NULL, "\t,\r; ");
+      pch = strtok(NULL, ptokens);
       if (pch == NULL)
         break;
       if (binary){
         J = (uint)get_node_id(pch, 2+fc.total_features+fc.node_features-1, lines);
       }
       else { 
-        pch = strtok(NULL, "\t\r,;: ");
+        pch = strtok(NULL, ptokens);
         if (pch == NULL)
           logstream(LOG_FATAL)<<"Failed to read feture value" << std::endl;
         val = atof(pch);
@@ -798,7 +803,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     lines++;
 
     /** READ [FROM] */
-    char *pch = strtok(linebuf,"\t,\r; ");
+    char *pch = strtok(linebuf, ptokens);
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Error reading line " << lines << " [ " << linebuf_debug << " ] " << std::endl;
     I = (uint)get_node_id(pch, user? 0 : 1, lines, true);
@@ -810,7 +815,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     else assert(I < (uint)fc.offsets[2]);
 
     /** READ TO */  
-    pch = strtok(NULL, "\t,\r; ");
+    pch = strtok(NULL, ptokens);
     if (pch == NULL)
       logstream(LOG_FATAL)<<"Failed to read to field [ " << linebuf_debug << " ] " << std::endl;
 
@@ -1289,6 +1294,11 @@ int main(int argc, const char ** argv) {
   verbose = get_option_int("verbose",1); 
   train_only = get_option_int("train_only", 0);
   validation_only = get_option_int("validation_only", 0);
+  if (validation_only)
+    load_factors_from_file = 1;
+  csv = get_option_int("csv", 0);
+  if (csv) 
+    ptokens = csv_tokens;
 
   //input sanity checks
   if (file_columns < 3)
@@ -1314,7 +1324,7 @@ int main(int argc, const char ** argv) {
   //parse features (optional)
   if (string_features != ""){
     char * pfeatures = strdup(string_features.c_str());
-    char * pch = strtok(pfeatures, ",\n\r\t ");
+    char * pch = strtok(pfeatures, ptokens);
     int node = atoi(pch);
     if (node < 0 || node >= MAX_FEATURES+3)
       logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
@@ -1324,7 +1334,7 @@ int main(int argc, const char ** argv) {
       logstream(LOG_FATAL)<<"Feature id " << node << " can not be equal to --from_pos, --to_pos or --val_pos " << std::endl;
     fc.feature_selection[node] = true;
     fc.total_features++;
-    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+    while ((pch = strtok(NULL, ptokens))!= NULL){
       node = atoi(pch);
       if (node < 0 || node >= MAX_FEATURES+3)
         logstream(LOG_FATAL)<<"Feature id using the --features=XX command should be non negative, starting from zero"<<std::endl;
@@ -1336,7 +1346,7 @@ int main(int argc, const char ** argv) {
   if (real_features != ""){
     int i=0;
     char * pfeatures = strdup(real_features.c_str());
-    char * pch = strtok(pfeatures, ",\n\r\t ");
+    char * pch = strtok(pfeatures, ptokens);
     int node = atoi(pch);
     if (node < 0 || node >= MAX_FEATURES+3)
       logstream(LOG_FATAL)<<"Feature id using the --real_features=XX command should be non negative, starting from zero"<<std::endl;
@@ -1347,7 +1357,7 @@ int main(int argc, const char ** argv) {
     fc.real_features_indicators[node] = true;
     fc.feature_positions[i] = node;
     i++;
-    while ((pch = strtok(NULL, ",\n\r\t "))!= NULL){
+    while ((pch = strtok(NULL, ptokens))!= NULL){
       node = atoi(pch);
       if (node < 0 || node >= MAX_FEATURES+3)
         logstream(LOG_FATAL)<<"Feature id using the --real_features=XX command should be non negative, starting from zero"<<std::endl;

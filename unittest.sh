@@ -115,7 +115,8 @@ if [ $b -ne 1 ]; then
   exit 1
 fi
 display_name "GENSGD"
-./toolkits/collaborative_filtering/gensgd --training=smallnetflix_mm --validation=smallnetflix_mme --from_pos=0 --to_pos=1 --val_pos=2 --rehash=1 --has_header_titles=0 --debug=0 --file_columns=3 --quiet=1 --max_iter=3
+./toolkits/collaborative_filtering/gensgd --training=smallnetflix_mm --validation=smallnetflix_mme --from_pos=0 --to_pos=1 --val_pos=2 --rehash=1 --has_header_titles=0 --debug=0 --file_columns=3 --quiet=1 --max_iter=3 --train_only=1
+./toolkits/collaborative_filtering/gensgd --training=smallnetflix_mm --validation=smallnetflix_mme --from_pos=0 --to_pos=1 --val_pos=2 --rehash=1 --has_header_titles=0 --debug=0 --file_columns=3 --quiet=1 --max_iter=3 --validation_only=1 
 display_name "K-FOLD cross validation"
 ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --kfold_cross_validation=10 --kfold_cross_validation_index=3 
 ./toolkits/collaborative_filtering/als --training=smallnetflix_mm --validation=smallnetflix_mme --lambda=0.065 --minval=1 --maxval=5 --max_iter=6 --quiet=1 --kfold_cross_validation=10 --kfold_cross_validation_index=4 
