@@ -194,7 +194,7 @@ class adjlist_container {
           continue;
 
         //other item node
-        assert(other_item - M >= 0);
+        assert(is_item(other_item));
         assert(other_item != item.id());
         bool up = item.id() < other_item;
         if (debug)
@@ -256,10 +256,18 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
    */
   void update(graphchi_vertex<VertexDataType, edge_data> &v, graphchi_context &gcontext) {
     if (debug)
-      printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id());
-        
-    latent_factors_inmem[v.id()].degree = v.num_edges();
-
+      printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id()+1);
+       
+   
+    if (is_user(v.id())){ 
+      latent_factors_inmem[v.id()].degree = v.num_edges();
+    }
+    else if (is_item(v.id())){
+      for (int i=0; i< v.num_edges(); i++){
+        if (is_user(v.edge(i)->vertex_id()))
+           latent_factors_inmem[v.id()].degree++;
+      }
+    }
     /* Even iteration numbers:
      * 1) load a subset of users into memory (pivots)
      * 2) Find which subset of items is connected to the users
@@ -336,15 +344,15 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
            int user_id = adjcontainer->adjs[i].vid;
            assert(user_id >= 0 && user_id < M);
            int degree_k = latent_factors_inmem[user_id].degree;
-           int degree_x = latent_factors_inmem[item_id].degree;
+           int degree_x = latent_factors_inmem[M+item_id].degree;
            assert(degree_k > 0);
+           if (degree_x <= 0)
+             logstream(LOG_WARNING)<<"User degree is 0: " << user_id <<std::endl;
            assert(degree_x > 0);
            double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - degree_x) / (double)degree_x));
            assert(p_k_1 > 0 && p_k_1 <= 1.0);
-           //assert(j.index() < nnz(user.ratings));
-           //add weight according to equation (15) in the probabalistic item similarity paper
            set_val( user.ratings, item_id, p_k_1 * (1.0 + get_val(user.ratings, item_id)));
-           assert(get_val(user.ratings, item_id) > 0);
+           //assert(get_val(user.ratings, item_id) > 0);
          }
           
           ivec positions = reverse_sort_index(user.ratings, std::min(nnz(user.ratings),(int)K));
@@ -441,10 +449,11 @@ int main(int argc, const char ** argv) {
   
   mytimer.start();
   int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
+  latent_factors_inmem.resize(M+N);
 
   assert(M > 0 && N > 0);
   prob_sim_normalization_constant = (double)L / (double)(M*N-L);
-  latent_factors_inmem.resize(M+N);
+  
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
 
