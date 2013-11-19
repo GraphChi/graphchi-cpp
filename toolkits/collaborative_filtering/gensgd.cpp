@@ -431,7 +431,8 @@ float compute_prediction(
     int val_array_len, 
     float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum), 
     vec * psum, 
-    vertex_data **& node_array){
+    vertex_data **& node_array,
+    int type){
 
   if (I == (uint)-1 && J == (uint)-1)
    logstream(LOG_FATAL)<<"BUG: can not compute prediction for new user and new item" << std::endl;
@@ -448,6 +449,7 @@ float compute_prediction(
   int loc = 0;
   if (I != (uint)-1){
     node_array[index] = &latent_factors_inmem[I+fc.offsets[loc]];
+    if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
      index++; 
@@ -458,6 +460,7 @@ float compute_prediction(
   if (J != (uint)-1){
     assert(J+fc.offsets[index] < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[J+fc.offsets[loc]];
+    if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++; 
@@ -475,6 +478,7 @@ float compute_prediction(
         logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
           " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
       node_array[j+index] = & latent_factors_inmem[pos];
+      if (type == VALIDATION) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << latent_factors_inmem[pos].pvec << " " << latent_factors_inmem[pos].bias << std::endl;
     }
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -893,7 +897,9 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         for (int k=0; k< calc_feature_node_array_size(I,J); k++)
           node_array[k] = NULL;
         vec sum;
-        compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
+        std::cout<<"Going to compute validation for : " <<I << " " <<J << " " << val << " " << size << " " << sum << " " << calc_feature_node_array_size(I,J) << " " << Le << std::endl;
+        compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array, VALIDATION);
+        std::cout<<"Computed prediction is: " << prediction << std::endl;
         delete [] node_array;
         dvalidation_rmse += pow(prediction - val, 2);
         if (calc_error) 
@@ -982,7 +988,7 @@ void test_predictions_N(
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
-    compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
+    compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array, TEST);
     if (binary_prediction)
       prediction = (prediction > cutoff);
     fprintf(fout, "%12.8lg\n", prediction);
@@ -1145,7 +1151,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         vec sum;
 
         //compute current prediction
-        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, howmany, gensgd_predict, &sum, node_array);
+        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, howmany, gensgd_predict, &sum, node_array, TRAINING);
         if (calc_error)
           if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
             errors_vec[omp_get_thread_num()]++;
@@ -1294,9 +1300,7 @@ int main(int argc, const char ** argv) {
   verbose = get_option_int("verbose",1); 
   train_only = get_option_int("train_only", 0);
   validation_only = get_option_int("validation_only", 0);
-  if (validation_only)
-    load_factors_from_file = 1;
-  csv = get_option_int("csv", 0);
+ csv = get_option_int("csv", 0);
   if (csv) 
     ptokens = csv_tokens;
 
@@ -1320,7 +1324,9 @@ int main(int argc, const char ** argv) {
   
   parse_command_line_args();
   parse_implicit_command_line();
-
+  if (validation_only)
+    load_factors_from_file = 1;
+ 
   //parse features (optional)
   if (string_features != ""){
     char * pfeatures = strdup(string_features.c_str());
@@ -1413,11 +1419,7 @@ int main(int argc, const char ** argv) {
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
-    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    assert(user_bias.size() == latent_factors_inmem.size());
-    for (uint i=0; i<latent_factors_inmem.size(); i++){
-      latent_factors_inmem[i].bias = user_bias[i];
-    }
+    load_matrix_market_vector(training + "_U_bias.mm", BIAS_POS, false, true);
   } 
  
 
@@ -1434,9 +1436,10 @@ int main(int argc, const char ** argv) {
   if (new_validation_users > 0)
     logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
  
-  output_model(training);
+  if (!validation_only)
+    output_model(training);
   if (train_only)
-     return 0;
+    return 0;
 
   test_predictions_N(&gensgd_predict, fc);    
   if (new_test_users > 0)

@@ -386,7 +386,7 @@ int main(int argc,  const char *argv[]) {
   //read initial vector from file (optional)
   if (vecfile.size() > 0){
     std::cout << "Load inital vector from file" << vecfile << std::endl;
-    load_matrix_market_vector(vecfile, info, 0, true, false);
+    load_matrix_market_vector(vecfile, 0, true, false);
   }  
 
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 

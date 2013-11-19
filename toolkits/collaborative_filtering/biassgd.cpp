@@ -200,13 +200,8 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
-    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    assert(user_bias.size() == M);
-    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
-    assert(item_bias.size() == N);
-    for (uint i=0; i<M+N; i++){
-      latent_factors_inmem[i].bias = ((i<M)?user_bias[i] : item_bias[i-M]);
-    }
+    load_matrix_market_vector(training + "_U_bias.mm", BIAS_POS, false, true, 0); 
+    load_matrix_market_vector(training + "_V_bias.mm", BIAS_POS, false, true, M); 
     vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
     globalMean = gm[0];
   }
