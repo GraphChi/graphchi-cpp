@@ -449,7 +449,7 @@ float compute_prediction(
   int loc = 0;
   if (I != (uint)-1){
     node_array[index] = &latent_factors_inmem[I+fc.offsets[loc]];
-    if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
+    //if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
      index++; 
@@ -460,7 +460,7 @@ float compute_prediction(
   if (J != (uint)-1){
     assert(J+fc.offsets[index] < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[J+fc.offsets[loc]];
-    if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
+    //if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++; 
@@ -478,7 +478,7 @@ float compute_prediction(
         logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
           " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
       node_array[j+index] = & latent_factors_inmem[pos];
-      if (type == VALIDATION) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << latent_factors_inmem[pos].pvec << " " << latent_factors_inmem[pos].bias << std::endl;
+      //if (type == VALIDATION) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << latent_factors_inmem[pos].pvec << " " << latent_factors_inmem[pos].bias << std::endl;
     }
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -897,9 +897,9 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         for (int k=0; k< calc_feature_node_array_size(I,J); k++)
           node_array[k] = NULL;
         vec sum;
-        std::cout<<"Going to compute validation for : " <<I << " " <<J << " " << val << " " << size << " " << sum << " " << calc_feature_node_array_size(I,J) << " " << Le << std::endl;
+        //std::cout<<"Going to compute validation for : " <<I << " " <<J << " " << val << " " << size << " " << sum << " " << calc_feature_node_array_size(I,J) << " " << Le << std::endl;
         compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array, VALIDATION);
-        std::cout<<"Computed prediction is: " << prediction << std::endl;
+        //std::cout<<"Computed prediction is: " << prediction << std::endl;
         delete [] node_array;
         dvalidation_rmse += pow(prediction - val, 2);
         if (calc_error) 
