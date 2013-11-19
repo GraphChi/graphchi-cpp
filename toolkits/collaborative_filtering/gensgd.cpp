@@ -78,9 +78,10 @@ int validation_only = 0;
 int node_id_maps_size = 0;
 int latent_factors_inmem_size = 0;
 int csv = 0;
+int num_feature_bins_size = 0;
 
 char tokens[]={"\n\r\t ;,"};
-char csv_tokens[] = {","};
+char csv_tokens[] = {",\n\r"};
 char * ptokens = tokens;
 
 struct stats{
@@ -431,7 +432,8 @@ float compute_prediction(
     int val_array_len, 
     float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum), 
     vec * psum, 
-    vertex_data **& node_array){
+    vertex_data **& node_array,
+    int type){
 
   if (I == (uint)-1 && J == (uint)-1)
    logstream(LOG_FATAL)<<"BUG: can not compute prediction for new user and new item" << std::endl;
@@ -448,6 +450,7 @@ float compute_prediction(
   int loc = 0;
   if (I != (uint)-1){
     node_array[index] = &latent_factors_inmem[I+fc.offsets[loc]];
+    //if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
      index++; 
@@ -458,6 +461,7 @@ float compute_prediction(
   if (J != (uint)-1){
     assert(J+fc.offsets[index] < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[J+fc.offsets[loc]];
+    //if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
     index++; 
@@ -475,6 +479,7 @@ float compute_prediction(
         logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
           " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
       node_array[j+index] = & latent_factors_inmem[pos];
+      //if (type == VALIDATION) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << latent_factors_inmem[pos].pvec << " " << latent_factors_inmem[pos].bias << std::endl;
     }
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -562,8 +567,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     if (check_origfile_modification_earlier<als_edge_type>(base_filename, nshards)) {
       logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
       FILE * infile = fopen((base_filename + ".gm").c_str(), "r");
-      int ret =  fscanf(infile, "%d\n%d\n%ld\n%d\n%lf\n%d\n%d\n", &M, &N, &L, &fc.total_features, &globalMean, &node_id_maps_size, &latent_factors_inmem_size);
-      assert(ret == 7);
+      assert( fscanf(infile, "%d\n%d\n%ld\n%d\n%lf\n%d\n%d\n%d\n", &M, &N, &L, &fc.total_features, &globalMean, &node_id_maps_size, &latent_factors_inmem_size,&num_feature_bins_size) ==8);
       assert(node_id_maps_size >= 0);
       assert(latent_factors_inmem_size >=M+N);
       fclose(infile);
@@ -573,8 +577,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
         sprintf(buf, "%s.map.%d", training.c_str(), i);
         load_map_from_txt_file(fc.node_id_maps[i].string2nodeid, buf, 2);
         assert(fc.node_id_maps[i].string2nodeid.size() > 0);
-        logstream(LOG_INFO)<<"Loaded a map of size" << fc.node_id_maps[i].string2nodeid.size() << ". "<<std::endl;
-
       }
       logstream(LOG_INFO)<<"Finished loading " << node_id_maps_size << " maps. "<<std::endl;
       return nshards;
@@ -677,7 +679,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
   if (fc.hash_strings){
     for (int i=0; i< fc.total_features+2; i++){
       if (fc.node_id_maps[i].string2nodeid.size() == 0)
-        logstream(LOG_FATAL)<<"Failed to save feature number : " << i << " no values find in data " << std::endl;
+        logstream(LOG_FATAL)<<"Failed sanity check for feature number : " << i << " no values find in data " << std::endl;
     }
   }
 
@@ -893,7 +895,9 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         for (int k=0; k< calc_feature_node_array_size(I,J); k++)
           node_array[k] = NULL;
         vec sum;
-        compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
+        //std::cout<<"Going to compute validation for : " <<I << " " <<J << " " << val << " " << size << " " << sum << " " << calc_feature_node_array_size(I,J) << " " << Le << std::endl;
+        compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array, VALIDATION);
+        //std::cout<<"Computed prediction is: " << prediction << std::endl;
         delete [] node_array;
         dvalidation_rmse += pow(prediction - val, 2);
         if (calc_error) 
@@ -982,7 +986,7 @@ void test_predictions_N(
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
-    compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array);
+    compute_prediction(I, J, val, prediction, &valarray[0], size, prediction_func, &sum, node_array, TEST);
     if (binary_prediction)
       prediction = (prediction > cutoff);
     fprintf(fout, "%12.8lg\n", prediction);
@@ -1145,7 +1149,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
         vec sum;
 
         //compute current prediction
-        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, howmany, gensgd_predict, &sum, node_array);
+        rmse_vec[omp_get_thread_num()] += compute_prediction(vertex.id(), vertex.outedge(e)->vertex_id()-M, rui ,pui, (float*)data.features, howmany, gensgd_predict, &sum, node_array, TRAINING);
         if (calc_error)
           if ((pui < cutoff && rui > cutoff) || (pui > cutoff && rui < cutoff))
             errors_vec[omp_get_thread_num()]++;
@@ -1247,9 +1251,12 @@ void output_model(std::string filename){
         save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, 0);
       }
     }
-  FILE * outf = fopen((filename + ".gm").c_str(), "w");
-  fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg\n%d\n%d\n", M, N, L, fc.total_features, globalMean, (int)fc.node_id_maps.size(), (int)latent_factors_inmem.size());
-  fclose(outf);
+    FILE * outf = fopen((filename + ".gm").c_str(), "w");
+    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg\n%d\n%d\n%d\n", M, N, L, fc.total_features, globalMean, (int)fc.node_id_maps.size(), (int)latent_factors_inmem.size(),(int)num_feature_bins());
+    fclose(outf);
+
+    if (has_header_titles)
+      save_vec_to_text_file(header_titles, filename + ".header");
  }
 
 int main(int argc, const char ** argv) {
@@ -1294,9 +1301,7 @@ int main(int argc, const char ** argv) {
   verbose = get_option_int("verbose",1); 
   train_only = get_option_int("train_only", 0);
   validation_only = get_option_int("validation_only", 0);
-  if (validation_only)
-    load_factors_from_file = 1;
-  csv = get_option_int("csv", 0);
+ csv = get_option_int("csv", 0);
   if (csv) 
     ptokens = csv_tokens;
 
@@ -1320,7 +1325,9 @@ int main(int argc, const char ** argv) {
   
   parse_command_line_args();
   parse_implicit_command_line();
-
+  if (validation_only)
+    load_factors_from_file = 1;
+ 
   //parse features (optional)
   if (string_features != ""){
     char * pfeatures = strdup(string_features.c_str());
@@ -1379,20 +1386,10 @@ int main(int argc, const char ** argv) {
   if (user_links != "")
     read_node_links(user_links, false, fc, true, false);
 
-  if (json_input)
-    has_header_titles = 1;
-  if (has_header_titles && header_titles.size() == 0)
+  if (has_header_titles && header_titles.size() == 0 && ! validation_only)
     logstream(LOG_FATAL)<<"Please delete temp files (using --clean_cache=1 ) and run again" << std::endl;
 
-  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < MAX_FEATURES+3; i++)
-    if (fc.feature_selection[i])
-      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
-  logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
-  logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
-  logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
-
-  if (fc.node_features){
+    if (fc.node_features){
     int last_offset = fc.node_id_maps.size();
     int toadd = 0;
     for (int i = last_offset - fc.node_features; i < last_offset; i++){
@@ -1413,13 +1410,20 @@ int main(int argc, const char ** argv) {
   /* load initial state from disk (optional) */
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
-    vec user_bias = load_matrix_market_vector(training +"_U_bias.mm", false, true);
-    assert(user_bias.size() == latent_factors_inmem.size());
-    for (uint i=0; i<latent_factors_inmem.size(); i++){
-      latent_factors_inmem[i].bias = user_bias[i];
-    }
+    load_matrix_market_vector(training + "_U_bias.mm", BIAS_POS, false, true);
+    assert(num_feature_bins() == num_feature_bins_size);    
+    if (has_header_titles)
+      load_vec_from_txt_file(header_titles, training + ".header");
   } 
  
+  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
+  for (int i=0; i < MAX_FEATURES+3; i++)
+    if (fc.feature_selection[i])
+      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
+  logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
+
 
 
   /* Run */
@@ -1434,9 +1438,10 @@ int main(int argc, const char ** argv) {
   if (new_validation_users > 0)
     logstream(LOG_WARNING)<<"Found " << new_validation_users<< " new users with no information about them in training dataset!" << std::endl;
  
-  output_model(training);
+  if (!validation_only)
+    output_model(training);
   if (train_only)
-     return 0;
+    return 0;
 
   test_predictions_N(&gensgd_predict, fc);    
   if (new_test_users > 0)

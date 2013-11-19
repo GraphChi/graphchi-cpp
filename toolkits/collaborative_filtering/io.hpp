@@ -581,8 +581,8 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
 
 
 
-void load_matrix_market_vector(const std::string & filename, const bipartite_graph_descriptor & desc,
-    int type, bool optional_field, bool allow_zeros)
+void load_matrix_market_vector(const std::string & filename,
+    int type, bool optional_field, bool allow_zeros, int offset = 0)
 {
 
   int ret_code;
@@ -653,7 +653,7 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
     if (val == 0 && !allow_zeros)
       logstream(LOG_FATAL)<<"Zero entries are not allowed in a sparse matrix market vector. Use --zero=true to avoid this error"<<std::endl;
     //set observation value
-    vertex_data & vdata = latent_factors_inmem[row];
+    vertex_data & vdata = latent_factors_inmem[row+offset];
     vdata.set_val(type, val);
   }
   fclose(f);

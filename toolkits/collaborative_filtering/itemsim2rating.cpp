@@ -190,14 +190,6 @@ class adjlist_container {
         return 0;
       }
 
-      std::vector<vid_t> edges;
-      for(int i=0; i < num_edges; i++){
-        if (is_item(item.edge(i)->vertex_id()))
-        edges.push_back(item.edge(i)->vertex_id());
-      }
-      std::sort(edges.data(), edges.data()+edges.size());
-
-
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
         assert(other_item - M >= 0);
@@ -212,8 +204,8 @@ class adjlist_container {
           continue;
         }
 
-        if (!undirected && ((!up && item.edge(i)->get_data().up_weight == 0) ||
-              (up && item.edge(i)->get_data().down_weight == 0))){
+        if (!undirected && ((up && item.edge(i)->get_data().up_weight == 0) ||
+              (!up && item.edge(i)->get_data().down_weight == 0))){
             if (debug)
               logstream(LOG_DEBUG)<<"skipping edge with wrong direction to " << other_item << std::endl;
             continue;
@@ -231,7 +223,6 @@ class adjlist_container {
            assert(weight != 0);
         else if (weight == 0) continue;
 
-        if (undirected || find_twice(edges, other_item)){
           pivot_edges.mymutex.lock();
           set_val(pivot_edges.ratings, other_item-M, get_val(pivot_edges.ratings, other_item-M) + edge_weight * pow(weight,Q));
           pivot_edges.mymutex.unlock();
@@ -239,7 +230,6 @@ class adjlist_container {
           if (debug)
             logstream(LOG_DEBUG)<<"Adding weight: " << weight << " to item: " << other_item-M+1 << " for user: " << user_pivot+1<<std::endl;
           }
-      }
 
       if (debug)
         logstream(LOG_DEBUG)<<"Finished user pivot " << user_pivot << std::endl;
@@ -367,11 +357,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
         printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
       //}
-      if (adjcontainer->pivot_st < window_en){
+      if (adjcontainer->pivot_st < std::min(M, window_en)){
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(window_en + 1);
+          adjcontainer->extend_pivotrange(std::min(M, window_en + 1));
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
           if (window_en+1 >= gcontext.nvertices) {
             // every user was a pivot item, so we are done
