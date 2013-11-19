@@ -76,6 +76,24 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
   fclose(f);
 }
 
+void load_vec_from_txt_file(std::vector<std::string> & vec, const std::string filename){
+  logstream(LOG_INFO)<<"loading vec from txt file: " << filename << std::endl;
+  FILE * f = fopen(filename.c_str(), "r");
+  if (f == NULL)
+    logstream(LOG_FATAL)<<"Failed to open file: " << filename << std::endl;
+
+  char * linebuf = NULL;
+  size_t linesize;
+  while (true){
+    int rc = getline(&linebuf, &linesize, f);
+    if (rc == -1)
+      break;
+    vec.push_back(linebuf);
+ }
+  logstream(LOG_INFO)<<"Loaded total of  " << vec.size() << " vec entries. " << std::endl;
+  fclose(f);
+}
+
 
 void save_map_to_text_file(const std::map<std::string,uint> & map, const std::string filename, int optional_offset = 0){
     std::map<std::string,uint>::const_iterator it;
@@ -87,6 +105,15 @@ void save_map_to_text_file(const std::map<std::string,uint> & map, const std::st
     } 
     logstream(LOG_INFO)<<"Wrote a total of " << total << " map entries to text file: " << filename << std::endl;
 }
+void save_vec_to_text_file(const std::vector<std::string> & vec, const std::string filename){
+    out_file fout(filename);
+    unsigned int total = 0;
+    for (int i = 0; i< (int)vec.size(); i++){ 
+      fprintf(fout.outf, "%s\n", vec[i].c_str());
+    } 
+    logstream(LOG_INFO)<<"Wrote a total of " << vec.size() << " vec entries to text file: " << filename << std::endl;
+}
+
 
 void save_map_to_text_file(const std::map<unsigned long long,uint> & map, const std::string filename, int optional_offset = 0){
     std::map<unsigned long long,uint>::const_iterator it;

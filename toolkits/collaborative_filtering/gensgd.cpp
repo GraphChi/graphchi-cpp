@@ -78,6 +78,7 @@ int validation_only = 0;
 int node_id_maps_size = 0;
 int latent_factors_inmem_size = 0;
 int csv = 0;
+int num_feature_bins_size = 0;
 
 char tokens[]={"\n\r\t ;,"};
 char csv_tokens[] = {",\n\r"};
@@ -566,8 +567,7 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
     if (check_origfile_modification_earlier<als_edge_type>(base_filename, nshards)) {
       logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
       FILE * infile = fopen((base_filename + ".gm").c_str(), "r");
-      int ret =  fscanf(infile, "%d\n%d\n%ld\n%d\n%lf\n%d\n%d\n", &M, &N, &L, &fc.total_features, &globalMean, &node_id_maps_size, &latent_factors_inmem_size);
-      assert(ret == 7);
+      assert( fscanf(infile, "%d\n%d\n%ld\n%d\n%lf\n%d\n%d\n%d\n", &M, &N, &L, &fc.total_features, &globalMean, &node_id_maps_size, &latent_factors_inmem_size,&num_feature_bins_size) ==8);
       assert(node_id_maps_size >= 0);
       assert(latent_factors_inmem_size >=M+N);
       fclose(infile);
@@ -1251,9 +1251,12 @@ void output_model(std::string filename){
         save_map_to_text_file(fc.node_id_maps[i].string2nodeid, buf, 0);
       }
     }
-  FILE * outf = fopen((filename + ".gm").c_str(), "w");
-  fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg\n%d\n%d\n", M, N, L, fc.total_features, globalMean, (int)fc.node_id_maps.size(), (int)latent_factors_inmem.size());
-  fclose(outf);
+    FILE * outf = fopen((filename + ".gm").c_str(), "w");
+    fprintf(outf, "%d\n%d\n%ld\n%d\n%12.8lg\n%d\n%d\n%d\n", M, N, L, fc.total_features, globalMean, (int)fc.node_id_maps.size(), (int)latent_factors_inmem.size(),(int)num_feature_bins());
+    fclose(outf);
+
+    if (has_header_titles)
+      save_vec_to_text_file(header_titles, filename + ".header");
  }
 
 int main(int argc, const char ** argv) {
@@ -1383,20 +1386,10 @@ int main(int argc, const char ** argv) {
   if (user_links != "")
     read_node_links(user_links, false, fc, true, false);
 
-  if (json_input)
-    has_header_titles = 1;
-  if (has_header_titles && header_titles.size() == 0)
+  if (has_header_titles && header_titles.size() == 0 && ! validation_only)
     logstream(LOG_FATAL)<<"Please delete temp files (using --clean_cache=1 ) and run again" << std::endl;
 
-  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
-  for (int i=0; i < MAX_FEATURES+3; i++)
-    if (fc.feature_selection[i])
-      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
-  logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
-  logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
-  logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
-
-  if (fc.node_features){
+    if (fc.node_features){
     int last_offset = fc.node_id_maps.size();
     int toadd = 0;
     for (int i = last_offset - fc.node_features; i < last_offset; i++){
@@ -1418,8 +1411,19 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_vector(training + "_U_bias.mm", BIAS_POS, false, true);
+    assert(num_feature_bins() == num_feature_bins_size);    
+    if (has_header_titles)
+      load_vec_from_txt_file(header_titles, training + ".header");
   } 
  
+  logstream(LOG_INFO) <<"Total selected features: " << fc.total_features << " : " << std::endl;
+  for (int i=0; i < MAX_FEATURES+3; i++)
+    if (fc.feature_selection[i])
+      logstream(LOG_INFO)<<"Selected feature: " << std::setw(3) << i << " : " << (has_header_titles? header_titles[i] : "") <<std::endl;
+  logstream(LOG_INFO)<<"Target variable " << std::setw(3) << fc.val_pos << " : " << (has_header_titles? header_titles[fc.val_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"From            " << std::setw(3) << fc.from_pos<< " : " << (has_header_titles? header_titles[fc.from_pos] : "") <<std::endl;
+  logstream(LOG_INFO)<<"To              " << std::setw(3) << fc.to_pos  << " : " << (has_header_titles? header_titles[fc.to_pos] : "") <<std::endl;
+
 
 
   /* Run */
