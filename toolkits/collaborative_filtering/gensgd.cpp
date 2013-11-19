@@ -80,7 +80,7 @@ int latent_factors_inmem_size = 0;
 int csv = 0;
 
 char tokens[]={"\n\r\t ;,"};
-char csv_tokens[] = {","};
+char csv_tokens[] = {",\n\r"};
 char * ptokens = tokens;
 
 struct stats{
@@ -577,8 +577,6 @@ int convert_matrixmarket_N(std::string base_filename, bool square, feature_contr
         sprintf(buf, "%s.map.%d", training.c_str(), i);
         load_map_from_txt_file(fc.node_id_maps[i].string2nodeid, buf, 2);
         assert(fc.node_id_maps[i].string2nodeid.size() > 0);
-        logstream(LOG_INFO)<<"Loaded a map of size" << fc.node_id_maps[i].string2nodeid.size() << ". "<<std::endl;
-
       }
       logstream(LOG_INFO)<<"Finished loading " << node_id_maps_size << " maps. "<<std::endl;
       return nshards;
