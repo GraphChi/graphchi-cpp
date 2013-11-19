@@ -210,6 +210,8 @@ struct vertex_data {
 
 };
 
+vertex_data vertex_dummy; //placeholders for new validaiton/test users
+
 struct edge_data {
   float features[FEATURE_WIDTH];
   float weight;
@@ -242,12 +244,11 @@ int calc_feature_node_array_size(uint node, uint item){
     assert(item <= N);
     assert(fc.offsets[1]+item < latent_factors_inmem.size());
   }
-  int ret =  fc.total_features;
+  int ret =  fc.total_features+2;
   if (node != (uint)-1)
-    ret+= (1+nnz(latent_factors_inmem[node].features));
+    ret += nnz(latent_factors_inmem[node].features);
   if (item != (uint)-1)
-    ret += (1+nnz(latent_factors_inmem[fc.offsets[1]+item].features));
-
+    ret += nnz(latent_factors_inmem[fc.offsets[1]+item].features);
   assert(ret > 0);
   return ret;
 }
@@ -435,8 +436,8 @@ float compute_prediction(
     vertex_data **& node_array,
     int type){
 
-  if (I == (uint)-1 && J == (uint)-1)
-   logstream(LOG_FATAL)<<"BUG: can not compute prediction for new user and new item" << std::endl;
+  //if (I == (uint)-1 && J == (uint)-1)
+  // logstream(LOG_FATAL)<<"BUG: can not compute prediction for new user and new item" << std::endl;
  
   if (J != (uint)-1) 
     assert(J >=0 && J <= N);
@@ -453,8 +454,9 @@ float compute_prediction(
     //if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
-     index++; 
   }
+  else node_array[index] = &vertex_dummy; 
+  index++; 
   loc++;
 
   /* 1) ITEM NODE */
@@ -464,8 +466,9 @@ float compute_prediction(
     //if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
-    index++; 
   }
+  else node_array[index] = &vertex_dummy; 
+  index++; 
   loc++;
 
   /* 2) FEATURES GIVEN IN RATING LINE */
@@ -887,7 +890,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         assert(size == num_feature_bins());
         if (I == (uint)-1 || J == (uint)-1){
           new_validation_users++;
-          continue;
+        //  continue;
         }
 
         double prediction;
@@ -966,7 +969,7 @@ void test_predictions_N(
       logstream(LOG_FATAL)<<"Failed to read line: " <<i << " in file: " << test << std::endl;
 
     if (I == (uint)-1 || J == (uint)-1){
-        if (cold_start == NONE){
+        /*if (cold_start == NONE){
            fprintf(fout, "N/A\n");
           new_test_users++;
         }
@@ -982,7 +985,8 @@ void test_predictions_N(
            fprintf(fout, "%12.8g\n", inputGlobalMean);
            new_test_users++;
         }
-        continue;
+        continue;*/
+        
     }
     vertex_data ** node_array = new vertex_data*[calc_feature_node_array_size(I,J)];
     vec sum;
@@ -1327,6 +1331,8 @@ int main(int argc, const char ** argv) {
   parse_implicit_command_line();
   if (validation_only)
     load_factors_from_file = 1;
+  vertex_dummy.pvec = ones(D);
+  vertex_dummy.bias = 0;
  
   //parse features (optional)
   if (string_features != ""){
