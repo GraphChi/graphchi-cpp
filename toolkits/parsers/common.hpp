@@ -60,14 +60,15 @@ void load_map_from_txt_file(T1 & map, const std::string filename, int fields){
         map[pch] = ++line;
     }
     else {
-    char *pch = strsep(&line2,"\r\n\t");
-    if (!pch){
-      logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
-    }
+      char *pch = strsep(&line2,"\r\n\t");
+      if (!pch){
+        logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
+      }
       char * pch2 = strsep(&line2,"\r\t\n");
       if (!pch2)
         logstream(LOG_FATAL) << "Error when parsing file: " << filename << ":" << line <<std::endl;
-    line++;
+      map[pch] = atoi(pch2);
+      line++;
     }
     //free(to_free);
   }
