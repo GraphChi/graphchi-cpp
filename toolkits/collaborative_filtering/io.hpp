@@ -376,7 +376,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
   uint N_row = 0 ,N_col = 0;
   detect_matrix_size(similarity_file, fsim, N_row, N_col, nz_sim);
-  if (fsim == NULL)
+  if (fsim == NULL || nz_sim == 0)
     logstream(LOG_FATAL)<<"Failed to open item similarity input file: " << similarity_file << std::endl;
   if (N_row != N || N_col != N)
     logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << N_row <<" x " << N_col << "  Instead of " << N << " x " << N << std::endl;

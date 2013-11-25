@@ -26,7 +26,7 @@
  * the current user ratings and the item similarities.  
  *
  */
-#define GRAPHCHI_DISABLE_COMPRESSION
+//#define GRAPHCHI_DISABLE_COMPRESSION
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -38,12 +38,13 @@
 #include "util.hpp"
 #include "timer.hpp"
 #include "common.hpp"
+#include <libgen.h>
 
 
 int min_allowed_intersection = 1;
-size_t written_pairs = 0;
+vec written_pairs;
 size_t item_pairs_compared = 0;
-FILE * out_file;
+std::vector<FILE*> out_files;
 timer mytimer;
 bool * relevant_items  = NULL;
 int grabbed_edges = 0;
@@ -53,6 +54,8 @@ double Q = 3; //the power of the weights added into the total score
 double prob_sim_normalization_constant = 0;
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
+int start_user=0;
+int end_user=INT_MAX;
 
 /**
  * Type definitions. Remember to create suitable graph shards using the
@@ -126,7 +129,8 @@ class adjlist_container {
     void extend_pivotrange(vid_t en) {
       assert(en>pivot_en);
       assert(en > pivot_st);
-      pivot_en = en; 
+      pivot_st = start_user;
+      pivot_en = std::min(end_user, (int)en); 
       adjs.resize(pivot_en - pivot_st);
       //for (uint i=0; i< pivot_en - pivot_st; i++)
       //  adjs[i].ratings = zeros(N);
@@ -190,8 +194,11 @@ class adjlist_container {
       for(int i=0; i < num_edges; i++){
         vid_t other_item = item.edge(i)->vertex_id();
         //user node, continue
-        if (other_item < M )
+        if (other_item < M ){
+          if (debug)
+            std::cout<<"skipping an edge to item " << other_item << std::endl;
           continue;
+        }
 
         //other item node
         assert(is_item(other_item));
@@ -297,7 +304,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         item_pairs_compared++;
 
         if (item_pairs_compared % 1000000 == 0)
-          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::endl;
+          logstream(LOG_INFO)<< std::setw(10) << mytimer.current_time() << ")  " << std::setw(10) << item_pairs_compared << " pairs compared " << std::setw(10) << sum(written_pairs) << std::endl;
       }
     }//end of iteration % 2 == 1 
   }//end of update function
@@ -309,7 +316,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
     gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
-      
+   if (gcontext.iteration == 0)
+      written_pairs = zeros(gcontext.execthreads);
+
+ 
    if (gcontext.iteration % 2 == 0){
       for (vid_t i=0; i < M; i++){
         //even iterations, schedule only user nodes
@@ -325,6 +335,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
 
   void after_iteration(int iteration, graphchi_context &gcontext){
     if (gcontext.iteration % 2 == 1){
+#pragma omp parallel for
      for (int i=0; i< (int)adjcontainer->adjs.size(); i++){
           if (debug)
             logstream(LOG_DEBUG)<<"Going over user" << adjcontainer->adjs[i].vid << std::endl;
@@ -375,11 +386,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
                 logstream(LOG_DEBUG)<<"Found zero in position " << j << std::endl;
               break;
             }
-            int rc = fprintf(out_file, "%u %u %lg\n", user.vid+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
+            int rc = fprintf(out_files[omp_get_thread_num()], "%u %u %lg\n", user.vid+1, positions[j]+1, get_val(user.ratings, positions[j]));//write item similarity to file
             if (debug)
               logstream(LOG_DEBUG)<<"Writing rating from user" << user.vid+1 << " to item: " << positions[j]-M+1 << std::endl;
             assert(rc > 0);
-            written_pairs++;
+            written_pairs[omp_get_thread_num()]++;
           }
         }
       grabbed_edges = 0;
@@ -401,11 +412,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
         printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
       //}
-      if (adjcontainer->pivot_st < std::min(M, window_en)){
+      if (adjcontainer->pivot_st < std::min(std::min((int)M,end_user), (int)window_en)){
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(std::min(M, window_en + 1));
+          adjcontainer->extend_pivotrange(std::min(std::min((int)M, end_user), (int)window_en + 1));
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
           if (window_en+1 >= gcontext.nvertices) {
             // every user was a pivot item, so we are done
@@ -445,7 +456,11 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
   undirected               = get_option_int("undirected", 0);
   Q                        = get_option_float("Q", Q);
-  K 			   = get_option_int("K");
+   start_user = get_option_int("start_user", start_user);
+  if (start_user > 0)
+    start_user-=input_file_offset;
+  end_user   = get_option_int("end_user",   end_user);
+
   
   mytimer.start();
   int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
@@ -465,19 +480,36 @@ int main(int argc, const char ** argv) {
   graphchi_engine<VertexDataType, edge_data> engine(training, nshards, true, m); 
   set_engine_flags(engine);
 
-  out_file = open_file((training + "-rec").c_str(), "w");
+  //open output files as the number of operating threads
+  out_files.resize(number_of_omp_threads());
+  for (uint i=0; i< out_files.size(); i++){
+    char buf[256];
+    sprintf(buf, "%s-rec.out%d", training.c_str(), i);
+    out_files[i] = open_file(buf, "w");
+  }
 
+
+  K 			   = get_option_int("K");
+  assert(K > 0);
   //run the program
   engine.run(program, niters);
+
+  for (uint i=0; i< out_files.size(); i++)
+    fclose(out_files[i]);
+  
+  delete[] relevant_items;
+
 
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);
 
-  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
-  std::cout<<"Created output files with the format: " << training << "-rec" << std::endl; 
+  std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << sum(written_pairs) << std::endl;
 
-  delete[] relevant_items;
-  fclose(out_file);
+  logstream(LOG_INFO)<<"Going to sort and merge output files " << std::endl;
+  std::string dname= dirname(strdup(argv[0]));
+  system(("bash " + dname + "/topk.sh " + std::string(basename(strdup((training+"-rec").c_str())))).c_str()); 
+
+
   return 0;
 }
