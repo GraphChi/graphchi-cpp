@@ -39,8 +39,6 @@ double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
 int algo = 0;
-int start_user=0;
-int end_user=INT_MAX;
 vec singular_values;
 
 enum {
@@ -363,12 +361,6 @@ int main(int argc, const char ** argv) {
   else if (algorithm == "climf")
      algo = CLIMF;
 
-  //optional, compute rating to a user subset
-  start_user = get_option_int("start_user", start_user);
-  if (start_user > 0)
-    start_user--;
-  end_user   = get_option_int("end_user",   end_user);
-  end_user--;
 
   parse_command_line_args();
 

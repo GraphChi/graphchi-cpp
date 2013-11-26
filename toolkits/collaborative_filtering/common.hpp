@@ -37,6 +37,8 @@
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 
 #include <stdio.h>
+#include <limits.h>
+
 #ifdef __APPLE__
 //#include "getline.hpp" //fix for missing getline() function on MAC OS
 #endif 
@@ -70,6 +72,9 @@ int R_output_format = 0; // if set to 1, all matrices and vectors are written in
                          // R does not currently support array format (dense format).
 int tokens_per_row = 3; //number of columns per input row
 int allow_zeros;
+int start_user=0; //start offset of user 
+int end_user=INT_MAX; //end offset of user
+
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -91,6 +96,8 @@ void remove_cached_files(){
   int rc;
   assert(training != "");
   rc = system((std::string("rm -fR ") + training + std::string(".*")).c_str()); 
+  assert(!rc);
+  rc = system((std::string("rm -fR ") + training + std::string("_degs.bin")).c_str()); 
   assert(!rc);
   if (validation != ""){
     rc = system((std::string("rm -fR ") + validation + std::string(".*")).c_str()); 
@@ -163,6 +170,9 @@ void parse_command_line_args(){
     remove_cached_files();
 
   R_output_format = get_option_int("R_output_format", R_output_format);
+  start_user = get_option_int("start_user", start_user);
+  end_user   = get_option_int("end_user",   end_user);
+
 }
 
 template<typename T>

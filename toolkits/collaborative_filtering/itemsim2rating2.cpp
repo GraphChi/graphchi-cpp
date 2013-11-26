@@ -46,7 +46,6 @@ vec written_pairs;
 size_t item_pairs_compared = 0;
 std::vector<FILE*> out_files;
 timer mytimer;
-bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int debug;
 int undirected = 1;
@@ -261,12 +260,6 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
     if (debug)
       printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id()+1);
        
-    if (gcontext.iteration == 0){ 
-    if (is_user(v.id())){ 
-      degrees[v.id()] = v.num_edges();
-    }
-      printf("Set degree %d for node %u\n", degrees[v.id()], v.id());
-    }
 
     /* Even iteration numbers:
      * 1) load a subset of users into memory (pivots)
@@ -451,7 +444,9 @@ int main(int argc, const char ** argv) {
   
   mytimer.start();
 
-  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity, 3, &degrees);
+  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity, 3, degrees);
+  if (debug) for (int i=0; i< degrees.size(); i++)
+    std::cout<<"degree of node: " << i << " is: " << degrees[i]<<std::endl;
 
   assert(M > 0 && N > 0);
   prob_sim_normalization_constant = (double)L / (double)(M*N-L);
@@ -459,8 +454,6 @@ int main(int argc, const char ** argv) {
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
 
-  //array for marking which items are conected to the pivot items via users.
-  relevant_items = new bool[N];
 
   /* Run */
   ItemDistanceProgram program;
@@ -484,7 +477,6 @@ int main(int argc, const char ** argv) {
   for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
   
-  delete[] relevant_items;
 
 
   /* Report execution metrics */

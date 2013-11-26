@@ -404,7 +404,8 @@ int main(int argc, const char ** argv) {
   K 			   = get_option_int("K");
   
   mytimer.start();
-  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
+  vec unused;
+  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity, 3, unused);
 
   assert(M > 0 && N > 0);
 
