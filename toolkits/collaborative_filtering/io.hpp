@@ -353,7 +353,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row = 3) {
+int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row = 3, vec * degrees = NULL) {
   FILE *f = NULL, *fsim = NULL;
   size_t nz, nz_sim;
   /**
@@ -382,9 +382,13 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << N_row <<" x " << N_col << "  Instead of " << N << " x " << N << std::endl;
   L=nz + nz_sim;
 
+  if (degrees)
+     degrees->resize(M+N);
+
   uint I, J;
   double val = 1.0;
   int zero_entries = 0;
+  unsigned int actual_edges = 0;
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: "
       << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
@@ -410,10 +414,16 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val, 0));
+      if (I< start_user || I >= end_user){
+         if (degrees) degrees->operator[](J+M)++;
+         continue;
+      }
+      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val, 0));
+      std::cout<<"adding an edge: " <<I << " -> " << M+J << std::endl;
+      actual_edges++;
     }
 
-    logstream(LOG_DEBUG)<<"Finished loading " << nz << " ratings from file: " << base_filename << std::endl;
+    logstream(LOG_DEBUG)<<"Finished loading " << actual_edges << " ratings from file: " << base_filename << std::endl;
 
     for (size_t i=0; i<nz_sim; i++){
       if (tokens_per_row == 3){
@@ -438,8 +448,10 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Item similarity to itself found for item " << I << " in line; " << i << std::endl;
       //std::cout<<"Adding an edge between "<<M+I<< " : " << M+J << "  " << (I<J)  << " " << val << std::endl; 
       sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type(I < J? val: 0, I>J? val: 0));
+      actual_edges++;
     }
 
+    L = actual_edges;
     logstream(LOG_DEBUG)<<"Finished loading " << nz_sim << " ratings from file: " << similarity_file << std::endl;
     write_global_mean(base_filename, TRAINING);
     sharderobj.end_preprocessing();

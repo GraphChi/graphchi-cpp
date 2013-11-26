@@ -50,13 +50,10 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int debug;
 int undirected = 1;
-double Q = 3; //the power of the weights added into the total score
 double prob_sim_normalization_constant = 0;
 bool is_item(vid_t v){ return v >= M; }
 bool is_user(vid_t v){ return v < M; }
-int start_user=0;
-int end_user=INT_MAX;
-
+vec degrees;
 /**
  * Type definitions. Remember to create suitable graph shards using the
  * Sharder-program. 
@@ -73,8 +70,7 @@ struct edge_data{
 
 struct vertex_data{ 
   //vec pvec; 
-  int degree;
-  vertex_data(){ degree = 0; }
+  vertex_data(){}
 
   void set_val(int index, float val){
     //pvec[index] = val;
@@ -265,16 +261,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
     if (debug)
       printf("Entered iteration %d with %d\n", gcontext.iteration, is_item(v.id()) ? (v.id() - M + 1): v.id()+1);
        
-   
+    if (gcontext.iteration == 0){ 
     if (is_user(v.id())){ 
-      latent_factors_inmem[v.id()].degree = v.num_edges();
+      degrees[v.id()] = v.num_edges();
     }
-    else if (is_item(v.id())){
-      for (int i=0; i< v.num_edges(); i++){
-        if (is_user(v.edge(i)->vertex_id()))
-           latent_factors_inmem[v.id()].degree++;
-      }
+      printf("Set degree %d for node %u\n", degrees[v.id()], v.id());
     }
+
     /* Even iteration numbers:
      * 1) load a subset of users into memory (pivots)
      * 2) Find which subset of items is connected to the users
@@ -346,19 +339,19 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
             continue;
           }
           //assert(user.ratings.size() == N);
-         
-
+         assert(adjcontainer->adjs[i].vid >= start_user && adjcontainer->adjs[i].vid < end_user);
+         int user_id = adjcontainer->adjs[i].vid;
+         assert(user_id >= 0 && user_id < M);
+         int degree_k = degrees[user_id];
+         assert(degree_k > 0);
+             
          /* GO over the compu sum*/
          FOR_ITERATOR(j, user.ratings){
            int item_id = j.index(); 
            assert(item_id>=0 && item_id < N);
-           int user_id = adjcontainer->adjs[i].vid;
-           assert(user_id >= 0 && user_id < M);
-           int degree_k = latent_factors_inmem[user_id].degree;
-           int degree_x = latent_factors_inmem[M+item_id].degree;
-           assert(degree_k > 0);
+           int degree_x = degrees[M+item_id];
            if (degree_x <= 0)
-             logstream(LOG_WARNING)<<"User degree is 0: " << user_id <<std::endl;
+             logstream(LOG_WARNING)<<"Item degree is 0: " << user_id << " -> " << item_id << std::endl;
            assert(degree_x > 0);
            double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - degree_x) / (double)degree_x));
            assert(p_k_1 > 0 && p_k_1 <= 1.0);
@@ -455,16 +448,10 @@ int main(int argc, const char ** argv) {
   if (similarity == "")
     logstream(LOG_FATAL)<<"Missing similarity input file. Please specify one using the --similarity=filename command line flag" << std::endl;
   undirected               = get_option_int("undirected", 0);
-  Q                        = get_option_float("Q", Q);
-   start_user = get_option_int("start_user", start_user);
-  if (start_user > 0)
-    start_user-=input_file_offset;
-  end_user   = get_option_int("end_user",   end_user);
-
   
   mytimer.start();
-  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity);
-  latent_factors_inmem.resize(M+N);
+
+  int nshards          = convert_matrixmarket_and_item_similarity<edge_data>(training, similarity, 3, &degrees);
 
   assert(M > 0 && N > 0);
   prob_sim_normalization_constant = (double)L / (double)(M*N-L);
