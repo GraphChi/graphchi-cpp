@@ -33,6 +33,7 @@
 #include <iomanip>
 #include <set>
 #include <iostream>
+#include <libgen.h>
 #include "eigen_wrapper.hpp"
 #include "distance.hpp"
 #include "util.hpp"
@@ -131,7 +132,8 @@ class adjlist_container {
     void extend_pivotrange(vid_t en) {
       assert(en>pivot_en);
       assert(en > pivot_st);
-      pivot_en = en; 
+      pivot_st = start_user;
+      pivot_en = std::min(end_user, (int)en); 
       adjs.resize(pivot_en - pivot_st);
       //for (uint i=0; i< pivot_en - pivot_st; i++)
       //  adjs[i].ratings = zeros(N);
@@ -357,11 +359,11 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
         printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
       //}
-      if (adjcontainer->pivot_st < std::min(M, window_en)){
+      if (adjcontainer->pivot_st < std::min(std::min((int)M,end_user), (int)window_en)){
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
-          adjcontainer->extend_pivotrange(std::min(M, window_en + 1));
+          adjcontainer->extend_pivotrange(std::min(std::min((int)M, end_user), (int)window_en + 1));
           logstream(LOG_DEBUG) << "Window en is: " << window_en << " vertices: " << gcontext.nvertices << std::endl;
           if (window_en+1 >= gcontext.nvertices) {
             // every user was a pivot item, so we are done
@@ -430,7 +432,10 @@ int main(int argc, const char ** argv) {
     metrics_report(m);
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
-  std::cout<<"Created output files with the format: " << training << "-rec" << std::endl; 
+  logstream(LOG_INFO)<<"Going to sort and merge output files " << std::endl;
+  std::string dname= dirname(strdup(argv[0]));
+  system(("bash " + dname + "/topk.sh " + std::string(basename(strdup((training+"-rec").c_str())))).c_str()); 
+
   if (zero_edges)
     std::cout<<"Found: " << zero_edges<< " user edges with weight zero. Those are ignored." <<std::endl;
 
