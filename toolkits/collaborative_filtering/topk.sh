@@ -14,7 +14,7 @@ for i in `ls ${TRAINING}.out[0-9]*`
 do
   FOUND=1
   echo "Sorting output file $i"
-  sort -r -g -k 1,1 -k 2,2 -k 3,3 $i > $i.sorted
+  sort -g -k 1,1 -k 2,2 -k 3,3r $i > $i.sorted
 done
 
 if [ $FOUND -eq 0 ]; then
@@ -23,7 +23,7 @@ if [ $FOUND -eq 0 ]; then
 fi
 
 echo "Merging sorted files:"
-sort -r -g  -k 1,1 -k 2,2 -k 3,3 -m `dirname $TRAINING`/*.sorted > $TRAINING-topk
+sort -g  -k 1,1 -k 2,2 -k 3,3r -m `dirname $TRAINING`/*.sorted > $TRAINING-topk
 if [ $? -ne 0 ]; then
   echo "Error: Failed to merge!"
   exit 1
