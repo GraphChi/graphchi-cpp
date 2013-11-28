@@ -74,6 +74,7 @@ int tokens_per_row = 3; //number of columns per input row
 int allow_zeros;
 int start_user=0; //start offset of user 
 int end_user=INT_MAX; //end offset of user
+int binary_relevance_threshold = -1; // if set, all edge values above this number will treated as binary 1
 
 
 /* support for different loss types (for SGD variants) */
@@ -133,6 +134,7 @@ void parse_command_line_args(){
   input_file_offset = get_option_int("input_file_offset", input_file_offset);
   tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
   allow_zeros = get_option_int("allow_zeros", 0);
+  binary_relevance_threshold = get_option_int("binary_relevance_threshold", -1);
   /* find out loss type (optional, for SGD variants only) */
   loss              = get_option_string("loss", loss);
   if (loss == "square")
