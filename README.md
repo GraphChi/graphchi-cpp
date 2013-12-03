@@ -124,3 +124,7 @@ Apache [Giraph](http://giraph.apache.org/) is an open-source implementation of t
   <tr><td>uk-union</td><td>33 min</td></tr>
   <tr><td>yahoo-web</td><td>37 min</td></tr>
 </table>
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/GraphChi/graphchi-cpp/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
