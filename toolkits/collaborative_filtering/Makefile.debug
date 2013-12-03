@@ -23,7 +23,7 @@
 #  Written by Danny Bickson
 #  Thanks to Yucheng Low for fixing the Makefile
 INCFLAGS = -I/usr/local/include/ -I../../src/ -I.
-CPPFLAGS = -g $(INCFLAGS) -fopenmp -Wall -Wno-strict-aliasing
+CPPFLAGS = -g $(INCFLAGS) -fopenmp -Wno-unused-local-typedefs -Wall -Wno-strict-aliasing
 LINKFLAGS = -lz
 CPP = g++
 CXX = g++
