@@ -54,7 +54,7 @@ int main(int argc, const char ** argv) {
 
     std::string filename = get_option_string("file");
     int nshards             = convert_if_notexists<EdgeDataType>(filename, get_option_string("nshards", "auto"));
-    size_t blocksize= get_option_long("blocksize", 4096 * 1024);
+    size_t blocksize= get_option_long("blocksize", 1024 * 1024);
     
     char * buf = (char *) malloc(blocksize);
     for(int p=0; p < nshards; p++) {

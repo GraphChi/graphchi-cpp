@@ -28,6 +28,8 @@
 #define GRAPHCHI_FUNCTIONALDEFS_DEF
 
 #include "api/graphchi_program.hpp"
+#include <vector>
+#include "util/pthread_tools.hpp"
 
 namespace graphchi {
     
@@ -36,6 +38,12 @@ namespace graphchi {
         int indegree;
         int outdegree;
     };
+    
+    /* Special sparse locking */
+    mutex & get_lock(vid_t vertexid) {
+        static std::vector<mutex> locks(1024);
+        return locks[vertexid % 1024];
+    }
 
 };
 

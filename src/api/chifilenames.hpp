@@ -148,6 +148,10 @@ namespace graphchi {
         return ss.str();
     }
     
+    static std::string filename_shard_adjidx(std::string adjfilename) {
+        return adjfilename + "idx";
+    }
+    
     /**
      * Configuration file name
      */
@@ -207,7 +211,7 @@ namespace graphchi {
         if (start_num > 0) {
             last_shard_num = start_num;
         }
-        size_t blocksize = 4096 * 1024;
+        size_t blocksize = 1024 * 1024;
         while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
         
         for(try_shard_num=start_num; try_shard_num <= last_shard_num; try_shard_num++) {
@@ -296,7 +300,7 @@ namespace graphchi {
          remove(degreefname.c_str());
          } */
         
-        size_t blocksize = 4096 * 1024;
+        size_t blocksize = 1024 * 1024;
         while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
         
         for(int p=0; p < nshards; p++) {
@@ -341,7 +345,15 @@ namespace graphchi {
                     << ", " << strerror(errno) << std::endl;
             }
             
+            std::string idxname = filename_shard_adjidx(adjname);
+            logstream(LOG_DEBUG) << "Deleting " << idxname << " exists: " << file_exists(idxname) << std::endl;
             
+            if (file_exists(idxname)) {
+                int err = remove(idxname.c_str());
+                if (err != 0) logstream(LOG_ERROR) << "Error removing file " << idxname
+                    << ", " << strerror(errno) << std::endl;
+            }
+
         }
         
         std::string numv_filename = base_filename + ".numvertices";

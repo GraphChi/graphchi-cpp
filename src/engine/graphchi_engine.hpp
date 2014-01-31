@@ -58,7 +58,6 @@
 
 namespace graphchi {
     
-#define MAX_MEMBUDGET (1024L * 1024L * 800L)   // FIXME
     
     template <typename VertexDataType, typename EdgeDataType,
     typename svertex_t = graphchi_vertex<VertexDataType, EdgeDataType> >
@@ -178,7 +177,7 @@ namespace graphchi {
             disable_outedges = false;
             reset_vertexdata = false;
             initialize_edges_before_run = false;
-            blocksize = get_option_long("blocksize", 4096 * 1024);
+            blocksize =  1024 * 1024;
 #ifndef DYNAMICEDATA
             while (blocksize % sizeof(EdgeDataType) != 0) blocksize++;
 #endif
@@ -297,7 +296,7 @@ namespace graphchi {
          * If the data is only in one shard, we can just
          * keep running from memory.
          */
-        bool is_inmemory_mode() {
+        virtual bool is_inmemory_mode() {
             return (nshards == 1 && num_vertices() < 2 * maxwindow); // Do not switch to in-memory mode if num of vertices too high. Ugly heuristic.
         }
         
@@ -314,7 +313,6 @@ namespace graphchi {
                 return maxvid;
             } else {
                 size_t memreq = 0;
-                size_t membudget_limited = std::min(membudget, size_t(MAX_MEMBUDGET));
                 int max_interval = maxvid - fromvid;
                 for(int i=0; i < max_interval; i++) {
                     degree deg = degree_handler->get_degree(fromvid + i);
@@ -323,7 +321,7 @@ namespace graphchi {
                     
                     // Raw data and object cost included
                     memreq += sizeof(svertex_t) + (sizeof(EdgeDataType) + sizeof(vid_t) + sizeof(graphchi_edge<EdgeDataType>))*(outc + inc);
-                    if (memreq > membudget_limited) {
+                    if (memreq > membudget) {
                         logstream(LOG_DEBUG) << "Memory budget exceeded with " << memreq << " bytes." << std::endl;
                         return fromvid + i - 1;  // Previous was enough
                     }
@@ -358,17 +356,20 @@ namespace graphchi {
         
         virtual void load_before_updates(std::vector<svertex_t> &vertices) {
             omp_set_num_threads(load_threads);
+            
+       
+            
 #pragma omp parallel for schedule(dynamic, 1)
             for(int p=-1; p < nshards; p++)  {
                 if (p==(-1)) {
-                    /* Load memory shard */
+                    /* Load memory shard - is internally parallelized */
                     if (!memoryshard->loaded()) {
                         memoryshard->load();
                     }
                     
                     /* Load vertex edges from memory shard */
                     memoryshard->load_vertices(sub_interval_st, sub_interval_en, vertices, true, !disable_outedges);
-                    
+                  
                     /* Load vertices */
                     if (!disable_vertexdata_storage) {
                         vertex_data_handler->load(sub_interval_st, sub_interval_en);
@@ -392,7 +393,7 @@ namespace graphchi {
             iomgr->wait_for_reads();
         }
         
-        void exec_updates(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
+        virtual void exec_updates(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                           std::vector<svertex_t> &vertices) {
             metrics_entry me = m.start_time();
             size_t nvertices = vertices.size();
@@ -462,7 +463,7 @@ namespace graphchi {
          a separate analysis phase to check which vertices can be run in parallel, and
          then run it in chunks. Not difficult.
          **/
-        void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
+        virtual void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                                         std::vector<svertex_t> &vertices) {
             work = nupdates = 0;
             for(iter=0; iter<niters; iter++) {
@@ -539,6 +540,12 @@ namespace graphchi {
                 int outc = d.outdegree * (!disable_outedges);
                 vertices[i] = svertex_t(sub_interval_st + i, &edata[ecounter], 
                                         &edata[ecounter + inc * store_inedges], inc, outc);
+                
+                /* Store correct out-degree even if out-edge loading disabled */
+                if (disable_outedges) {
+                    vertices[i].outc = d.outdegree;
+                }
+                
                 if (scheduler != NULL) {
                     bool is_sched = ( scheduler->is_scheduled(sub_interval_st + i));
                     if (is_sched) {
@@ -705,9 +712,18 @@ namespace graphchi {
             m.start_time("runtime");
             if (degree_handler == NULL)
                 degree_handler = create_degree_handler();
-            iomgr->set_cache_budget((size_t)std::max((long long int)0, (long long int)membudget_mb * 1024L * 1024L - (long long int)MAX_MEMBUDGET));
+            iomgr->set_cache_budget(get_option_long("cachesize_mb", 0) * 1024L * 1024L);
+
+            m.set("cachesize_mb", get_option_int("cachesize_mb", 0));
+            m.set("membudget_mb", get_option_int("membudget_mb", 0));
 
             randomization = get_option_int("randomization", 0) == 1;
+            
+            if (svertex_t().computational_edges()) {
+                // Heuristic
+                set_maxwindow(membudget_mb * 1024 * 1024 / 3 / 100);
+                logstream(LOG_INFO) << "Set maxwindow:" << maxwindow << std::endl;
+            }
             
             if (randomization) {
                 timeval tt;
@@ -861,6 +877,8 @@ namespace graphchi {
                         graphchi_edge<EdgeDataType> * edata = NULL;
                         
                         std::vector<svertex_t> vertices(nvertices, svertex_t());
+                        logstream(LOG_DEBUG) << "Allocation " << nvertices << " vertices, sizeof:" << sizeof(svertex_t)
+                        << " total:" << nvertices * sizeof(svertex_t) << std::endl;
                         init_vertices(vertices, edata);
                         
                         /* Load data */
@@ -1008,6 +1026,9 @@ namespace graphchi {
             membudget_mb = mbs;
         }
         
+        int get_membudget_mb() {
+            return membudget_mb;
+        }
         
         void set_load_threads(int lt) {
             load_threads = lt;

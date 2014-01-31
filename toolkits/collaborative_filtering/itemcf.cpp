@@ -30,10 +30,15 @@
  *
  * For Asym. Cosine see: F. Aiolli, A Preliminary Study on a Recommender System for the Million Songs Dataset Challenge
  * Preference Learning: Problems and Applications in AI (PL-12), ECAI-12 Workshop, Montpellier
+ * 
+ * For Probablistic item similarity see: Oliver Jojic, Manu Shukla, and Niranjan Bhosarekar. 2011. A probabilistic definition of item 
+   similarity. In Proceedings of the fifth ACM conference on Recommender systems (RecSys '11). ACM, New York, NY, USA, 229-236.
+
  *
  * Acknowledgements: thanks to Clive Cox, Rummble Labs,  for implementing Asym. Cosince metric and contributing the code.
  */
 
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 #include <set>
 #include <iomanip>
@@ -42,19 +47,19 @@
 #include "timer.hpp"
 #include "eigen_wrapper.hpp"
 #include "engine/dynamic_graphs/graphchi_dynamicgraph_engine.hpp"
-
+#include <libgen.h>
 
 enum DISTANCE_METRICS{
   JACCARD = 0,
   AA = 1,
   RA = 2,
   ASYM_COSINE = 3,
+  PROB = 4
 };
 
 int min_allowed_intersection = 1;
 vec written_pairs;
 size_t zero_dist = 0;
-size_t actual_written = 0;
 size_t item_pairs_compared = 0;
 size_t not_enough = 0;
 std::vector<FILE*> out_files;
@@ -63,6 +68,8 @@ bool * relevant_items  = NULL;
 int grabbed_edges = 0;
 int distance_metric;
 float asym_cosine_alpha = 0.5;
+double prob_sim_normalization_constant = 0;
+
 int debug = 0;
 
 bool is_item(vid_t v){ return v >= M; }
@@ -94,7 +101,7 @@ struct dense_adj {
   int count;
   vid_t * adjlist;
 
-  dense_adj() { adjlist = NULL; }
+  dense_adj() { adjlist = NULL; count = 0; }
   dense_adj(int _count, vid_t * _adjlist) : count(_count), adjlist(_adjlist) {
   }
 
@@ -170,18 +177,31 @@ class adjlist_container {
    * calc distance between two items.
    * Let a be all the users rated item 1
    * Let b be all the users rated item 2
+   * Let intersection (a,b) be the number of users rated both items
+   * Let size(a) be the number of users rated item 1
+   * Let size(b) be the number of users rated item 2
+   * 
+   * Only for prob similarity:
+   * Let M be the total number of users
+   * Let N be the total number of iterms
+   * Let L be the total number of training ratings
    *
-   * 1) Using Jackard index:
-   *      Dist_ab = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
+   * 0) Using Jackard index:
+   *      Dist_12 = intersection(a,b) / (size(a) + size(b) - size(intersection(a,b))
    *
-   * 2) Using AA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
+   * 1) Using AA index:
+   *      Dist_12 = sum_user k in intersection(a,b) [ 1 / log(degree(k)) ] 
    *
-   * 3) Using RA index:
-   *      Dist_ab = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
+   * 2) Using RA index:
+   *      Dist_12 = sum_user k in intersection(a,b) [ 1 / degree(k) ] 
    *
-   * 4) Using Asym Cosine:
-   *      Dist_ab = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   * 3) Using Asym Cosine:
+   *      Dist_12 = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   * 
+   * 4) Using prob similarity:
+   *      Dist_12 = intersection(a,b) / [ sum(user k  in b) p(k,1) ]
+   *      where p(k,1) = 1 / [ 1 + (L / (MN-L)) ((N - degree(k))/degree(K)) * ((M - degree(1)) / degree(1)) ]
+   *                                    
    */
   double calc_distance(graphchi_vertex<uint32_t, uint32_t> &v, vid_t pivot, int distance_metric) {
     //assert(is_pivot(pivot));
@@ -237,13 +257,35 @@ class adjlist_container {
        }
        return dist;
     }
-    else if (distance_metric == ASYM_COSINE){
+  /* 3) Using Asym Cosine:
+   *      Dist_12 = intersection(a,b) / size(a)^alpha * size(b)^(1-alpha)
+   */
+     else if (distance_metric == ASYM_COSINE){
       uint set_a_size = v.num_edges(); //number of users connected to current item
       uint set_b_size = acount(pivot); //number of users connected to current pivot
       return intersection_size / (pow(set_a_size,asym_cosine_alpha) * pow(set_b_size,1-asym_cosine_alpha));
     }
+    /* 4) Using prob similarity:
+    *      Dist_12 = intersection(a,b) / [ sum(user k  in b) p(k,1) ]
+    *      where p(k,1) = 1 / [ 1 + (L / (MN-L)) ((N - degree(k))/degree(K)) * ((M - degree(1)) / degree(1)) ]
+    */
+     else if (distance_metric == PROB){
+      double sum = 0;
+      for(int i=0; i<pivot_edges.count; i++) {
+        int node_k = pivot_edges.adjlist[i];
+        int degree_k = latent_factors_inmem[node_k].degree;
+        assert(degree_k > 0);
+        double p_k_1 = 1.0 / ( 1.0 + prob_sim_normalization_constant * ((N - degree_k)/(double)degree_k) * ((M - num_edges) / (double)num_edges));
+        assert(p_k_1 > 0 && p_k_1 <= 1.0);
+        sum += p_k_1;
+      }
+      return intersection_size / sum;
+   }
+   else { 
+     assert(false);
+   }
 
-    return 0;
+   return -1; //just to avoid warning
   }
 
   inline bool is_pivot(vid_t vid) {
@@ -283,13 +325,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       if (adjcontainer->is_pivot(v.id()) && is_item(v.id())){
         adjcontainer->load_edges_into_memory(v);         
         if (debug)
-          printf("Loading pivot %dintro memory\n", v.id());
+          printf("Loading pivot %dintro memory\n", v.id()-M+input_file_offset);
       }
       else if (is_user(v.id())){
 
-        //in the zero iteration, if using AA distance metric, initialize array
+        //in the zero iteration, if using AA/RA/PROB distance metric, initialize array
         //with node degrees 
-        if (gcontext.iteration == 0 && (distance_metric == AA || distance_metric == RA)){
+        if (gcontext.iteration == 0 && (distance_metric == AA || distance_metric == RA || distance_metric == PROB)){
            latent_factors_inmem[v.id()].degree = v.num_edges();
         }
 
@@ -306,10 +348,13 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           }
         }
         if (debug)
-          printf("user %d is linked to pivot %d\n", v.id(), pivot);
-        if (!has_pivot) //this user is not connected to any of the pivot item nodes and thus
+          printf("user %d is linked to pivot %d\n", v.id()+input_file_offset, pivot);
+        if (!has_pivot){ //this user is not connected to any of the pivot item nodes and thus
           //it is not relevant at this point
+          if (debug) 
+             printf("user %d is not connected pivot", v.id()+input_file_offset);
           return; 
+        }
 
         //this user is connected to a pivot items, thus all connected items should be compared
         for(int i=0; i<v.num_edges(); i++) {
@@ -327,7 +372,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
     else {
       if (!relevant_items[v.id() - M]){
         if (debug)
-          logstream(LOG_DEBUG)<<"Skipping item: " << v.id() << " since not relevant" << std::endl;
+          std::cout<<"Skipping item: " << v.id() << " since not relevant" << std::endl;
         return;
       }
       std::vector<index_val> heap;
@@ -335,11 +380,16 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
       
 
       for (vid_t i=adjcontainer->pivot_st; i< adjcontainer->pivot_en; i++){
-        //if JACCARD which is symmetric, compare only to pivots which are smaller than this item id
-        if ((distance_metric != ASYM_COSINE && i >= v.id()) || (!relevant_items[i-M]))
+        //if using a symmetric distance function, compare only to pivots which are smaller than this item id
+        if (((distance_metric != ASYM_COSINE && distance_metric != PROB) && i >= v.id()) || (!relevant_items[i-M])){
+          if (debug) 
+            std::cout<<"Skipping item: " << v.id() << " smaller or not relevant" << std::endl;
           continue;
-        else if (distance_metric == ASYM_COSINE && i == v.id())
+        }
+        //no need to compare an item against itself
+        else if (i == v.id()){
           continue;
+        }
         
         double dist = adjcontainer->calc_distance(v, i, distance_metric);
         item_pairs_compared++;
@@ -350,12 +400,10 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
           printf("comparing %d to pivot %d distance is %g\n", i - M + 1, v.id() - M + 1, dist);
         if (dist != 0){
           heap.push_back(index_val(i, dist)); 
-                //where the output format is: 
-         //[item A] [ item B ] [ distance ] 
         }
         else zero_dist++;
       }
-      sort(heap.begin(), heap.end(), &Greater);
+      std::partial_sort(heap.begin(), heap.begin()+std::min(heap.size(), (size_t)K), heap.end(), &Greater);
       int thread_num = omp_get_thread_num();
       if (heap.size() < K)
         not_enough++;
@@ -376,7 +424,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
    * on even iterations, schedules only item nodes
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
-      gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
+    gcontext.scheduler->remove_tasks(0, gcontext.nvertices - 1);
     if (gcontext.iteration == 0)
       written_pairs = zeros(gcontext.execthreads);
 
@@ -451,8 +499,8 @@ int main(int argc, const char ** argv) {
   distance_metric          = get_option_int("distance", JACCARD);
   asym_cosine_alpha        = get_option_float("asym_cosine_alpha", 0.5);
   debug                    = get_option_int("debug", debug);
-  if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE)
-    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0) JACCARD, 1) AA, 2) RA, 3) ASYM_COSINE" << std::endl;  
+  if (distance_metric != JACCARD && distance_metric != AA && distance_metric != RA && distance_metric != ASYM_COSINE && distance_metric != PROB)
+    logstream(LOG_FATAL)<<"Wrong distance metric. --distance_metric=XX, where XX should be either 0= JACCARD, 1= AA, 2= RA, 3= ASYM_COSINE, 4 = PROB" << std::endl;  
   parse_command_line_args();
 
   mytimer.start();
@@ -464,7 +512,6 @@ int main(int argc, const char ** argv) {
     logstream(LOG_FATAL)<<"Please specify the number of ratings to generate for each user using the --K command" << std::endl;
 
  logstream(LOG_INFO) << "M = " << M << std::endl;
-    
   assert(M > 0 && N > 0);
   //initialize data structure which saves a subset of the items (pivots) in memory
   adjcontainer = new adjlist_container();
@@ -472,8 +519,11 @@ int main(int argc, const char ** argv) {
   relevant_items = new bool[N];
 
   //store node degrees in an array to be used for AA distance metric
-  if (distance_metric == AA || distance_metric == RA)
+  if (distance_metric == AA || distance_metric == RA || distance_metric == PROB)
     latent_factors_inmem.resize(M);
+  if (distance_metric == PROB)
+    prob_sim_normalization_constant = (double)L / (double)(M*N-L);
+
 
   /* Run */
   ItemDistanceProgram program;
@@ -499,13 +549,24 @@ int main(int argc, const char ** argv) {
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << sum(written_pairs) << " pairs with zero distance: " << zero_dist << std::endl;
   if (not_enough)
     logstream(LOG_WARNING)<<"Items that did not have enough similar items: " << not_enough << std::endl;
-  for (uint i=0; i< out_files.size(); i++){
-    fflush(out_files[i]);
+ 
+  for (uint i=0; i< out_files.size(); i++)
     fclose(out_files[i]);
-  }
-
-  std::cout<<"Created "  << number_of_omp_threads() << " output files with the format: " << training << ".outXX, where XX is the output thread number" << std::endl; 
 
   delete[] relevant_items;
+
+  /* write the matrix market info header to be used later */
+  FILE * pmm = fopen((training + "-topk:info").c_str(), "w");
+  if (pmm == NULL)
+    logstream(LOG_FATAL)<<"Failed to open " << training << ":info to file" << std::endl;
+  fprintf(pmm, "%%%%MatrixMarket matrix coordinate real general\n");
+  fprintf(pmm, "%u %u %u\n", N, N, (unsigned int)sum(written_pairs));
+  fclose(pmm);
+
+  /* sort output files */
+  logstream(LOG_INFO)<<"Going to sort and merge output files " << std::endl;
+  std::string dname= dirname(strdup(argv[0]));
+  system(("bash " + dname + "/topk.sh " + std::string(basename(strdup(training.c_str())))).c_str()); 
+
   return 0;
 }

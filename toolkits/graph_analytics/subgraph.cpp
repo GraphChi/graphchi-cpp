@@ -46,7 +46,6 @@ using namespace graphchi;
 using namespace std;
 
 int square = 0;
-int tokens_per_row = 3;
 int _degree = 0;
 int seed_edges_only = 0;
 int undirected = 1;
@@ -219,7 +218,6 @@ int main(int argc,  const char *argv[]) {
   debug         = get_option_int("debug", 0);
   datafile      = get_option_string("training");
   square        = get_option_int("square", 0);
-  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
   edges         = get_option_int("edges", 2460000000);
   nodes         = get_option_int("nodes", nodes);
   orig_edges         = get_option_int("orig_edges", orig_edges);

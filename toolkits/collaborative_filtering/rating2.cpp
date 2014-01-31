@@ -39,10 +39,7 @@ int num_ratings;
 double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
-int tokens_per_row = 3;
 int algo = 0;
-int start_user=0;
-int end_user=INT_MAX;
 
 #define BIAS_POS -1
 
@@ -349,12 +346,6 @@ int main(int argc, const char ** argv) {
   else if (algorithm == "biassgd")
     algo = BIASSGD;
   else logstream(LOG_FATAL)<<"--algorithm should be svd++ or biassgd"<<std::endl;
-  //optional, compute rating to a user subset
-  start_user = get_option_int("start_user", start_user);
-  if (start_user > 0)
-    start_user--;
-  end_user   = get_option_int("end_user",   end_user);
-  end_user--;
 
   parse_command_line_args();
 

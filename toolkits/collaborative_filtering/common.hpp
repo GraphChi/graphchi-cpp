@@ -37,6 +37,8 @@
 #include "../../example_apps/matrix_factorization/matrixmarket/mmio.c"
 
 #include <stdio.h>
+#include <limits.h>
+
 #ifdef __APPLE__
 //#include "getline.hpp" //fix for missing getline() function on MAC OS
 #endif 
@@ -68,6 +70,12 @@ int regnormal = 0; // if set to 1, compute LS regularization according to the pa
 int clean_cache = 0;
 int R_output_format = 0; // if set to 1, all matrices and vectors are written in sparse matrix market format since
                          // R does not currently support array format (dense format).
+int tokens_per_row = 3; //number of columns per input row
+int allow_zeros;
+int start_user=0; //start offset of user 
+int end_user=INT_MAX; //end offset of user
+int binary_relevance_threshold = -1; // if set, all edge values above this number will treated as binary 1
+
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -89,6 +97,8 @@ void remove_cached_files(){
   int rc;
   assert(training != "");
   rc = system((std::string("rm -fR ") + training + std::string(".*")).c_str()); 
+  assert(!rc);
+  rc = system((std::string("rm -fR ") + training + std::string("_degs.bin")).c_str()); 
   assert(!rc);
   if (validation != ""){
     rc = system((std::string("rm -fR ") + validation + std::string(".*")).c_str()); 
@@ -122,6 +132,9 @@ void parse_command_line_args(){
 
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
   input_file_offset = get_option_int("input_file_offset", input_file_offset);
+  tokens_per_row = get_option_int("tokens_per_row", tokens_per_row);
+  allow_zeros = get_option_int("allow_zeros", 0);
+  binary_relevance_threshold = get_option_int("binary_relevance_threshold", -1);
   /* find out loss type (optional, for SGD variants only) */
   loss              = get_option_string("loss", loss);
   if (loss == "square")
@@ -159,6 +172,9 @@ void parse_command_line_args(){
     remove_cached_files();
 
   R_output_format = get_option_int("R_output_format", R_output_format);
+  start_user = get_option_int("start_user", start_user);
+  end_user   = get_option_int("end_user",   end_user);
+
 }
 
 template<typename T>

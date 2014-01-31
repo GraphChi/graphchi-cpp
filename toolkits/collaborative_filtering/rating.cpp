@@ -23,10 +23,9 @@
  * @section DESCRIPTION
  *
  * This program computes top K recommendations based on the linear model computed
- * by one of: als,sparse_als,wals, sgd and nmf applications.
+ * by one of: als,sparse_als,wals, sgd, nmf, climf and svd algos.
  * 
  */
-
 
 
 
@@ -39,16 +38,12 @@ int num_ratings;
 double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
-int tokens_per_row = 3;
 int algo = 0;
-int start_user=0;
-int end_user=INT_MAX;
-
+vec singular_values;
 
 enum {
-  ALS = 0, SPARSE_ALS = 1, SGD = 2, NMF = 3, WALS = 4
+  ALS = 0, SPARSE_ALS = 1, SGD = 2, NMF = 3, WALS = 4, SVD = 5, CLIMF = 6
 };
-
 
 struct vertex_data {
   vec ratings;
@@ -113,6 +108,53 @@ float als_predict(const vertex_data& user,
 
 }
 
+/** compute a missing value based on SVD algorithm */
+float svd_predict(const vertex_data& user, 
+    const vertex_data& movie, 
+    const float rating, 
+    double & prediction, 
+    void * extra = NULL){
+
+  Eigen::DiagonalMatrix<double, Eigen::Dynamic> diagonal_matrix(D);      
+  diagonal_matrix.diagonal() = singular_values;
+
+  prediction = user.pvec.transpose() * diagonal_matrix * movie.pvec;
+  //truncate prediction to allowed values
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  //return the squared error
+  float err = rating - prediction;
+  assert(!std::isnan(err));
+  return err*err; 
+
+}
+
+// logistic function
+double g(double x)
+{
+  double ret = 1.0 / (1.0 + std::exp(-x));
+
+  if (std::isinf(ret) || std::isnan(ret))
+  {
+    logstream(LOG_FATAL) << "overflow in g()" << std::endl;
+  }
+
+  return ret;
+}
+
+/* compute prediction based on CLiMF algorithm */
+float climf_predict(const vertex_data& user,
+    const vertex_data& movie,
+    const float rating,
+    double & prediction,
+    void * extra = NULL)
+{
+  prediction = g(dot(user.pvec,movie.pvec));  // this is actually a predicted reciprocal rank, not a rating
+  return 0;  // as we have to return something
+}
+
+
+
 
 void rating_stats(){
 
@@ -146,6 +188,8 @@ void rating_stats(){
 void read_factors(std::string base_filename){
     load_matrix_market_matrix(training + "_U.mm", 0, D);
     load_matrix_market_matrix(training + "_V.mm", M, D);
+    if (algo == SVD)
+       singular_values = load_matrix_market_vector(training + ".singular_values", false, true);
 }
 
 
@@ -188,7 +232,13 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
           continue;
         vertex_data & other = latent_factors_inmem[i];
         double dist;
-        als_predict(vdata, other, 0, dist); 
+        if (algo != SVD && algo != CLIMF)
+           als_predict(vdata, other, 0, dist); 
+        else if (algo == SVD)
+           svd_predict(vdata, other, 0, dist);
+        else if (algo == CLIMF)
+           climf_predict(vdata, other, 0, dist);
+        else assert(false);
         indices[i-M] = i-M;
         distances[i-M] = dist + 1e-10;
       }
@@ -197,7 +247,12 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
       int random_other = ::randi(M, M+N-1);
       vertex_data & other = latent_factors_inmem[random_other];
       double dist;
-      als_predict(vdata, other, 0, dist); 
+      if (algo != SVD && algo != CLIMF)
+           als_predict(vdata, other, 0, dist); 
+      else if (algo == CLIMF)
+           climf_predict(vdata, other, 0, dist);
+      if (algo != SVD)
+           als_predict(vdata, other, 0, dist); 
       indices[i] = random_other-M;
       distances[i] = dist;
     }
@@ -295,18 +350,17 @@ int main(int argc, const char ** argv) {
 
   debug         = get_option_int("debug", 0);
   std::string algorithm = get_option_string("algorithm");
-  if (algorithm == "als" || algorithm == "sparse_als" || algorithm == "sgd" || algorithm == "nmf")
+  if (algorithm == "als" || algorithm == "sparse_als" || algorithm == "sgd" || algorithm == "nmf" || algorithm == "svd" || algorithm == "climf")
     tokens_per_row = 3;
   else if (algorithm == "wals")
     tokens_per_row = 4;
-  else logstream(LOG_FATAL)<<"--algorithm=XX should be one of: als, sparse_als, sgd, nmf, wals" << std::endl;
+  else logstream(LOG_FATAL)<<"--algorithm=XX should be one of: als, sparse_als, sgd, nmf, wals, svd, climf" << std::endl;
 
-  //optional, compute rating to a user subset
-  start_user = get_option_int("start_user", start_user);
-  if (start_user > 0)
-    start_user--;
-  end_user   = get_option_int("end_user",   end_user);
-  end_user--;
+  if (algorithm == "svd")
+     algo = SVD;
+  else if (algorithm == "climf")
+     algo = CLIMF;
+
 
   parse_command_line_args();
 

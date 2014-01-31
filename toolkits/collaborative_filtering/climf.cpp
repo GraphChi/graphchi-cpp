@@ -45,6 +45,8 @@
 #include "rmse.hpp"  // just for test_predictions()
 #include "mrr_engine.hpp"
 
+int node_without_edges=0;
+
 /**
  * GraphChi programs need to subclass GraphChiProgram<vertex-type, edge-type>
  * class. The main logic is usually in the update function.
@@ -60,6 +62,10 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     reset_mrr(gcontext.execthreads);
     last_training_objective = training_objective;
     objective_vec = zeros(gcontext.execthreads);
+    stat_vec = zeros(gcontext.execthreads);
+    node_without_edges = 0;
+    if (gcontext.iteration == 0)
+      run_validation(pvalidation_engine, gcontext);
   }
 
   /**
@@ -76,6 +82,8 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     }
     logstream(LOG_DEBUG) << "after_iteration: running validation engine" << std::endl;
     run_validation(pvalidation_engine, gcontext);
+    if (verbose)
+       std::cout<<"Average step size: " << sum(stat_vec)/(double)M << "Node without edges: " << node_without_edges << std::endl;
     sgd_gamma *= sgd_step_dec;
   }
 
@@ -109,6 +117,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       if (num_relevant < 2)
       {
         return;  // need at least 2 edges to compute updates with CLiMF!
+        node_without_edges++;
       }
 
       // compute gradients
@@ -144,6 +153,7 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       }
 
       U += sgd_gamma*dU;  // not thread-safe
+      stat_vec[omp_get_thread_num()] += fabs(sgd_gamma*dU[0]);
 
       // compute smoothed MRR
       for(int j = 0; j < Ni; j++)
@@ -162,7 +172,6 @@ struct SGDVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       }
     }
 
-    assert(objective_vec.size() > omp_get_thread_num());
     objective_vec[omp_get_thread_num()] += objective;
   }
 };
@@ -202,6 +211,8 @@ int main(int argc, const char ** argv) {
   binary_relevance_thresh = get_option_float("binary_relevance_thresh", 0);
   halt_on_mrr_decrease = get_option_int("halt_on_mrr_decrease", 0);
   num_ratings = get_option_int("num_ratings", 10000); //number of top predictions over which we compute actual MRR
+  verbose     = get_option_int("verbose", 0);
+  debug       = get_option_int("debug", 0);
 
   parse_command_line_args();
   parse_implicit_command_line();

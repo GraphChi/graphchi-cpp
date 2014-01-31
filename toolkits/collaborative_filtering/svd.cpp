@@ -27,37 +27,28 @@
 #include "types.hpp"
 #include "eigen_wrapper.hpp"
 #include "timer.hpp"
-
 using namespace std;
 
-
+#define GRAPHCHI_DISABLE_COMPRESSION
 int nshards;
-int input_cols = 3;
+int nconv = 0;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
-  metrics m("svd-inmemory-factors");
-
+metrics m("svd-inmemory-factors");
+vec singular_values;
 
 struct vertex_data {
   vec pvec;
   double value;
   double A_ii;
   vertex_data(){ value = 0; A_ii = 1; }
-  //TODO void add_self_edge(double value) { A_ii = value; }
 
-  void set_val(double value, int field_type) { 
+  void set_val(int field_type, double value) { 
     pvec[field_type] = value;
   }
+  double get_val(int field_type){ return pvec[field_type]; }
   //double get_output(int field_type){ return pred_x; }
 }; // end of vertex_data
-
-struct edge_data {
-  float weight;
-  edge_data(double weight = 0) : weight(weight) { }
-  edge_data(double weight, double ignored) : weight(weight) { }
-  //void set_field(int pos, double val){ weight = val; }
-  //double get_field(int pos){ return weight; }
-};
 
 
 /**
@@ -65,13 +56,36 @@ struct edge_data {
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef float EdgeDataType; 
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 
 #include "io.hpp"
+#include "rmse.hpp"
+#include "rmse_engine.hpp"
+
+/** compute a missing value based on SVD algorithm */
+float svd_predict(const vertex_data& user, 
+    const vertex_data& movie, 
+    const float rating, 
+    double & prediction, 
+    void * extra = NULL){
+
+  Eigen::DiagonalMatrix<double, Eigen::Dynamic> diagonal_matrix(nconv);      
+  diagonal_matrix.diagonal() = singular_values;
+
+  prediction = user.pvec.head(nconv).transpose() * diagonal_matrix * movie.pvec.head(nconv);
+  //truncate prediction to allowed values
+  prediction = std::min((double)prediction, maxval);
+  prediction = std::max((double)prediction, minval);
+  //return the squared error
+  float err = rating - prediction;
+  assert(!std::isnan(err));
+  return err*err; 
+
+}
 
 
 
@@ -87,7 +101,6 @@ std::vector<vertex_data> latent_factors_inmem;
 
 //LANCZOS VARIABLES
 int max_iter = 10;
-bool no_edge_data = false;
 int actual_vector_len;
 int nv = 0;
 int nsv = 0;
@@ -116,16 +129,23 @@ void init_lanczos(bipartite_graph_descriptor & info){
   logstream(LOG_INFO)<<"Allocated a total of: " << ((double)actual_vector_len * info.total() * sizeof(double)/ 1e6) << " MB for storing vectors." << std::endl;
 }
 
+void output_svd_result(std::string filename) {
+  MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M , "This file contains SVD output matrix U. In each row nconv factors of a single user node.", latent_factors_inmem, nconv);
+  MMOutputter_mat<vertex_data> item_mat(filename + "_V.mm", M  ,M+N, "This file contains SVD  output matrix V. In each row nconv factors of a single item node.", latent_factors_inmem, nconv);
+  logstream(LOG_INFO) << "SVD output files (in matrix market format): " << filename << "_U.mm" <<
+                                                                           ", " << filename + "_V.mm " << std::endl;
+}
+
+
 vec lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec & errest, 
             const std::string & vecfile){
    
 
  
 
-  int nconv = 0;
    int its = 1;
    DistMat A(info);
-   DistSlicedMat U(info.is_square() ? data_size : 0, info.is_square() ? 2*data_size : data_size, true, info, "U");
+   DistSlicedMat U(info.is_square() ? data_size/2 : 0, info.is_square() ? data_size : data_size, true, info, "U");
    DistSlicedMat V(0, data_size, false, info, "V");
    vec alpha, beta, b;
    vec sigma = zeros(data_size);
@@ -312,13 +332,8 @@ printf("\n");
      std::cout<<"Going to save output vectors U and V" << std::endl;
      if (nconv == 0)
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
-     char output_filename[256];
-     for (int i=0; i< nconv; i++){
-        sprintf(output_filename, "%s.U.%d", training.c_str(), i);
-        write_output_vector(output_filename, U[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix U");
-        sprintf(output_filename, "%s.V.%d", training.c_str(), i);
-        write_output_vector(output_filename, V[i].to_vec(), false, "GraphLab v2 SVD output. This file contains eigenvector number i of the matrix V'");
-     }
+  
+     output_svd_result(training);   
   }
   return sigma;
 }
@@ -341,7 +356,6 @@ int main(int argc,  const char *argv[]) {
   nsv = get_option_int("nsv", 1);
   tol = get_option_float("tol", 1e-5);
   save_vectors = get_option_int("save_vectors", 1);
-  input_cols = get_option_int("input_cols", 3);
   max_iter = get_option_int("max_iter", max_iter);
 
   parse_command_line_args();
@@ -370,18 +384,24 @@ int main(int argc,  const char *argv[]) {
   else if (unittest == 3){
     training = "gklanczos_testC";
     vecfile = "gklanczos_testC_v0";
-    nsv = 4; nv = 10;
+    nsv = 25; nv = 25;
     debug = true;  max_iter = 100;
     //TODO core.set_ncpus(1);
+  }
+  else if (unittest == 4){
+    training = "A2";
+    vecfile = "A2_v0";
+    nsv=3; nv = 4; 
+    debug=true; max_iter=3;
   }
 
   std::cout << "Load matrix " << training << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  if (input_cols == 3)
-    nshards = convert_matrixmarket<edge_data>(training);
-  else if (input_cols == 4)
-    nshards = convert_matrixmarket4<edge_data>(training);
-  else logstream(LOG_FATAL)<<"--input_cols=XX should be either 3 or 4 input columns" << std::endl;
+  if (tokens_per_row == 3 || tokens_per_row == 2)
+    nshards = convert_matrixmarket<EdgeDataType>(training,0,0,tokens_per_row);
+  //else if (tokens_per_row == 4)
+  //  nshards = convert_matrixmarket4<EdgeDataType>(training);
+  else logstream(LOG_FATAL)<<"--tokens_per_row=XX should be either 2 or 3 input columns" << std::endl;
 
  
   info.rows = M; info.cols = N; info.nonzeros = L;
@@ -394,22 +414,16 @@ int main(int argc,  const char *argv[]) {
   //read initial vector from file (optional)
   if (vecfile.size() > 0){
     std::cout << "Load inital vector from file" << vecfile << std::endl;
-    load_matrix_market_vector(vecfile, info, 0, true, false);
+    load_matrix_market_vector(vecfile, 0, true, false);
   }  
-//or start with a random initial vector
-  else {
-#pragma omp parallel for
-    for (int i=0; i< (int)M; i++)
-      latent_factors_inmem[i].pvec[0] = drand48();
-  }
 
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   set_engine_flags(engine);
   pengine = &engine;   
 
   vec errest;
-  vec singular_values = lanczos(info, mytimer, errest, vecfile);
- 
+  singular_values = lanczos(info, mytimer, errest, vecfile);
+  singular_values.conservativeResize(nconv); 
   std::cout << "Lanczos finished " << mytimer.current_time() << std::endl;
 
   write_output_vector(training + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");
@@ -424,6 +438,20 @@ int main(int argc,  const char *argv[]) {
     for (int i=0; i< errest.size(); i++)
       assert(errest[i] < 1e-15);
   }
+  else if (unittest == 4){
+    assert(pow(singular_values[0]-  2.16097, 2) < 1e-8);
+    assert(pow(singular_values[2]-  0.554159, 2) < 1e-8);
+   }
+ 
+  if (validation != ""){
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION, false);
+    graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL;    
+    init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &svd_predict);
+    ValidationRMSEProgram program;
+    pvalidation_engine->run(program, 1);
+  }
+  
+  test_predictions(&svd_predict);    
 
   /* Report execution metrics */
   if (!quiet)

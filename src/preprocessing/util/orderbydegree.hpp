@@ -24,7 +24,7 @@ namespace graphchi {
         return a.deg < b.deg || (a.deg == b.deg && a.id < b.id);
     }
     
-    
+     
     /**
       * Override the basic graphchi vertex class and use this for reprocessing the edges. Hack.
       */
@@ -56,7 +56,7 @@ namespace graphchi {
     
 
     template <typename EdgeDataType>
-    void order_by_degree(std::string &base_filename, int nshards, metrics &m) {
+    int order_by_degree(std::string &base_filename, int nshards, metrics &m) {
         /* Load degree file */
         std::string degree_filename = filename_degree_data(base_filename);
         
@@ -126,8 +126,9 @@ namespace graphchi {
             }
             memory_shard<int, EdgeDataType, special_sharding_vertex<int, EdgeDataType> > memshard(iomgr, filename_shard_edata<EdgeDataType>(base_filename, p, nshards), 
                                 filename_shard_adj(base_filename, p, nshards),
-                                intervals[p].first, intervals[p].second, 4096 * 1024, m);
+                                intervals[p].first, intervals[p].second, 1024 * 1024, m);
             memshard.only_adjacency = true;
+            memshard.disable_parallel_loading();
             memshard.load();
             memshard.load_vertices(intervals[p].first, intervals[p].second, vertices);
         }
@@ -138,8 +139,7 @@ namespace graphchi {
 
         /* Finish sharding */
         std::stringstream ss; ss << nshards;
-        sharderobj.execute_sharding(ss.str());
-        
+        return sharderobj.execute_sharding(ss.str());
     }
 
 };

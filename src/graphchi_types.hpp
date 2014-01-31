@@ -57,6 +57,14 @@ namespace graphchi {
             }
         }
     };
+    
+    struct shard_index {
+        vid_t vertexid;
+        size_t filepos;
+        size_t edgecounter;
+        shard_index(vid_t vertexid, size_t filepos, size_t edgecounter) : vertexid(vertexid), filepos(filepos), edgecounter(edgecounter) {}
+    };
+    
 
 }
 

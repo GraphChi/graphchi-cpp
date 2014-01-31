@@ -28,34 +28,25 @@
 
 using namespace std;
 
-
-int input_cols = 3;
+#define GRAPHCHI_DISABLE_COMPRESSION
+int nshards;
+int nconv = 0;
 /* Metrics object for keeping track of performance counters
      and other information. Currently required. */
 metrics m("svd-onesided-inmemory-factors");
-int nshards;
+vec singular_values;
 
 struct vertex_data {
   vec pvec;
   double value;
   double A_ii;
   vertex_data(){ value = 0; A_ii = 1; }
-  //TODO void add_self_edge(double value) { A_ii = value; }
 
-  void set_val(double value, int field_type) { 
+  void set_val(int field_type, double value) { 
     pvec[field_type] = value;
   }
   //double get_output(int field_type){ return pred_x; }
 }; // end of vertex_data
-
-struct edge_data {
-  float weight;
-  edge_data(double weight = 0) : weight(weight) { }
-  edge_data(double weight, double ignored) : weight(weight) { }
-  //void set_field(int pos, double val){ weight = val; }
-  //double get_field(int pos){ return weight; }
-};
-
 
 
 /**
@@ -63,13 +54,14 @@ struct edge_data {
  * Sharder-program. 
  */
 typedef vertex_data VertexDataType;
-typedef edge_data EdgeDataType;  // Edges store the "rating" of user->movie pair
+typedef float EdgeDataType; 
 
 graphchi_engine<VertexDataType, EdgeDataType> * pengine = NULL; 
 std::vector<vertex_data> latent_factors_inmem;
 
 
 #include "io.hpp"
+void reset_rmse(int){}
 
 
 /**
@@ -84,7 +76,6 @@ std::vector<vertex_data> latent_factors_inmem;
 
 //LANCZOS VARIABLES
 int max_iter = 10;
-bool no_edge_data = false;
 int actual_vector_len;
 int nv = 0;
 int nsv = 0;
@@ -99,16 +90,13 @@ int data_size = max_iter;
 #include "math.hpp"
 #include "printouts.hpp"
 
-
-
-
 void init_lanczos(bipartite_graph_descriptor & info){
   srand48(time(NULL));
   latent_factors_inmem.resize(info.total());
   data_size = nsv + nv+1 + max_iter;
-  actual_vector_len = data_size;
   if (info.is_square())
-     actual_vector_len = data_size + 3;
+    data_size *= 2;
+  actual_vector_len = data_size;
 #pragma omp parallel for
   for (int i=0; i< info.total(); i++){
      if (i < info.get_start_node(false) || info.is_square())
@@ -123,7 +111,6 @@ vec one_sided_lanczos( bipartite_graph_descriptor & info, timer & mytimer, vec &
             const std::string & vecfile){
    
 
-   int nconv = 0;
    int its = 1;
    DistMat A(info);
    int other_size_offset = info.is_square() ? data_size : 0;
@@ -323,6 +310,7 @@ printf("\n");
   }
 
   if (save_vectors){
+     std::cout<<"Going to save output vectors V" << std::endl;
     if (nconv == 0)
        logstream(LOG_FATAL)<<"No converged vectors. Aborting the save operation" << std::endl;
     char output_filename[256];
@@ -349,7 +337,6 @@ int main(int argc,  const char *argv[]) {
   nsv = get_option_int("nsv", 1);
   tol = get_option_float("tol", 1e-5);
   save_vectors = get_option_int("save_vectors", 1);
-  input_cols = get_option_int("input_cols", 3);
   max_iter = get_option_int("max_iter", max_iter);
 
   parse_command_line_args();
@@ -386,11 +373,8 @@ int main(int argc,  const char *argv[]) {
 
   std::cout << "Load matrix " << training << std::endl;
   /* Preprocess data if needed, or discover preprocess files */
-  if (input_cols == 3)
-    nshards = convert_matrixmarket<edge_data>(training);
-  else if (input_cols == 4)
-    nshards = convert_matrixmarket4<edge_data>(training);
-  else logstream(LOG_FATAL)<<"--input_cols=XX should be either 3 or 4 input columns" << std::endl;
+  if (tokens_per_row == 3 || tokens_per_row == 2)
+    nshards = convert_matrixmarket<EdgeDataType>(training,0,0,tokens_per_row);
 
   info.rows = M; info.cols = N; info.nonzeros = L;
   assert(info.rows > 0 && info.cols > 0 && info.nonzeros > 0);
@@ -402,22 +386,16 @@ int main(int argc,  const char *argv[]) {
   //read initial vector from file (optional)
   if (vecfile.size() > 0){
     std::cout << "Load inital vector from file" << vecfile << std::endl;
-    load_matrix_market_vector(vecfile, info, 0, true, false);
+    load_matrix_market_vector(vecfile, 0, true, false);
   }  
- //or start with a random initial vector
-  else {
-#pragma omp parallel for
-    for (int i=0; i< (int)M; i++)
-      latent_factors_inmem[i].pvec[0] = drand48();
-  }
 
   graphchi_engine<VertexDataType, EdgeDataType> engine(training, nshards, false, m); 
   set_engine_flags(engine);
   pengine = &engine;   
 
   vec errest;
-  vec singular_values = one_sided_lanczos(info, mytimer, errest, vecfile);
- 
+  singular_values = one_sided_lanczos(info, mytimer, errest, vecfile);
+  singular_values.conservativeResize(nconv); 
   std::cout << "Lanczos finished in " << mytimer.current_time() << std::endl;
 
   write_output_vector(training + ".singular_values", singular_values,false, "%GraphLab SVD Solver library. This file contains the singular values.");

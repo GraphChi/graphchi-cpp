@@ -353,7 +353,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
  * have id + num-rows.
  */
 template <typename als_edge_type>
-int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row = 3) {
+int convert_matrixmarket_and_item_similarity(std::string base_filename, std::string similarity_file, int tokens_per_row, vec & degrees) {
   FILE *f = NULL, *fsim = NULL;
   size_t nz, nz_sim;
   /**
@@ -376,14 +376,18 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
     logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
   uint N_row = 0 ,N_col = 0;
   detect_matrix_size(similarity_file, fsim, N_row, N_col, nz_sim);
-  if (fsim == NULL)
+  if (fsim == NULL || nz_sim == 0)
     logstream(LOG_FATAL)<<"Failed to open item similarity input file: " << similarity_file << std::endl;
   if (N_row != N || N_col != N)
     logstream(LOG_FATAL)<<"Wrong item similarity file matrix size: " << N_row <<" x " << N_col << "  Instead of " << N << " x " << N << std::endl;
   L=nz + nz_sim;
 
+  degrees.resize(M+N);
+
   uint I, J;
   double val = 1.0;
+  int zero_entries = 0;
+  unsigned int actual_edges = 0;
     logstream(LOG_INFO) << "Starting to read matrix-market input. Matrix dimensions: "
       << M << " x " << N << ", non-zeros: " << nz << std::endl;
 
@@ -391,7 +395,10 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
       if (tokens_per_row == 3){
         int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
-          logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+          logstream(LOG_FATAL)<<"Error when reading input file in line: " << i << std::endl;
+        if (val == 0 && ! allow_zeros)
+          logstream(LOG_FATAL)<<"Zero weight encountered at input file line: " << i << " . Run with --allow_zeros=1 to ignore zero weights." << std::endl;
+        else if (val == 0) { zero_entries++; continue; }
       }
       else if (tokens_per_row == 2){
         int rc = fscanf(f, "%u %u\n", &I, &J);
@@ -406,10 +413,17 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
-      sharderobj.preprocessing_add_edge(I, M==N?J:M + J, als_edge_type((float)val, 0));
+      degrees[J+M]++;
+      degrees[I]++;
+      if (I< (uint)start_user || I >= (uint)end_user){
+         continue;
+      }
+      sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val, 0));
+      //std::cout<<"adding an edge: " <<I << " -> " << M+J << std::endl;
+      actual_edges++;
     }
 
-    logstream(LOG_DEBUG)<<"Finished loading " << nz << " ratings from file: " << base_filename << std::endl;
+    logstream(LOG_DEBUG)<<"Finished loading " << actual_edges << " ratings from file: " << base_filename << std::endl;
 
     for (size_t i=0; i<nz_sim; i++){
       if (tokens_per_row == 3){
@@ -430,16 +444,24 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Row index larger than the matrix row size " << I << " > " << M << " in line: " << i << std::endl;
       if (J >= N)
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
+      if (I == J)
+        logstream(LOG_FATAL)<<"Item similarity to itself found for item " << I << " in line; " << i << std::endl;
+      //std::cout<<"Adding an edge between "<<M+I<< " : " << M+J << "  " << (I<J)  << " " << val << std::endl; 
       sharderobj.preprocessing_add_edge(M+I, M+J, als_edge_type(I < J? val: 0, I>J? val: 0));
+      actual_edges++;
     }
 
+    L = actual_edges;
     logstream(LOG_DEBUG)<<"Finished loading " << nz_sim << " ratings from file: " << similarity_file << std::endl;
     write_global_mean(base_filename, TRAINING);
     sharderobj.end_preprocessing();
 
+    if (zero_entries)
+      logstream(LOG_WARNING)<<"Found " << zero_entries << " edges with zero weight!" << std::endl;
     
   fclose(f);
   fclose(fsim);
+
 
   logstream(LOG_INFO) << "Now creating shards." << std::endl;
 
@@ -493,6 +515,7 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
   uint I, J;
   double val = 1.0;
   bool active_edge = true;
+  int zero_entries = 0;
 
   for (size_t i=0; i<nz; i++)
     {
@@ -500,6 +523,12 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
         int rc = fscanf(f, "%u %u %lg\n", &I, &J, &val);
         if (rc != 3)
           logstream(LOG_FATAL)<<"Error when reading input file: " << i << std::endl;
+        if (val == 0 && ! allow_zeros)
+          logstream(LOG_FATAL)<<"Encountered zero edge [ " << I << " " <<J << " 0] in line: " << i << " . Run with --allow_zeros=1 to ignore zero weights." << std::endl;
+        else if (val == 0){
+           zero_entries++;
+           continue;
+        }
       }
       else if (tokens_per_row == 2){
         int rc = fscanf(f, "%u %u\n", &I, &J);
@@ -546,7 +575,9 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
     }
     write_global_mean(base_filename, type);
     sharderobj.end_preprocessing();
- 
+
+  if (zero_entries)
+     logstream(LOG_WARNING)<<"Found " << zero_entries << " zero edges!" << std::endl; 
   fclose(f);
 
 
@@ -562,8 +593,8 @@ int convert_matrixmarket(std::string base_filename, size_t nodes = 0, size_t edg
 
 
 
-void load_matrix_market_vector(const std::string & filename, const bipartite_graph_descriptor & desc,
-    int type, bool optional_field, bool allow_zeros)
+void load_matrix_market_vector(const std::string & filename,
+    int type, bool optional_field, bool allow_zeros, int offset = 0)
 {
 
   int ret_code;
@@ -634,8 +665,8 @@ void load_matrix_market_vector(const std::string & filename, const bipartite_gra
     if (val == 0 && !allow_zeros)
       logstream(LOG_FATAL)<<"Zero entries are not allowed in a sparse matrix market vector. Use --zero=true to avoid this error"<<std::endl;
     //set observation value
-    vertex_data & vdata = latent_factors_inmem[row];
-    vdata.pvec[type] = val;
+    vertex_data & vdata = latent_factors_inmem[row+offset];
+    vdata.set_val(type, val);
   }
   fclose(f);
 

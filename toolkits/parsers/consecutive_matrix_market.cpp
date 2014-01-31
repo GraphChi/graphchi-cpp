@@ -221,8 +221,11 @@ int main(int argc,  const char *argv[]) {
   if (!single_domain){
     save_map_to_text_file(string2nodeid2, outdir + dir + "movie.map.text");
   }
-  logstream(LOG_INFO)<<"Writing matrix market header into file: matrix_market.info" << std::endl;
-  out_file fout("matrix_market.info");
+  std::string filename = "matrix_market.info";
+  if (in_files.size() == 1)
+     filename = in_files[0] + ".out:info";
+  logstream(LOG_INFO)<<"Writing matrix market header into file: " << filename << std::endl;
+  out_file fout(filename.c_str());
   MM_typecode out_typecode;
   mm_clear_typecode(&out_typecode);
   mm_set_integer(&out_typecode); 

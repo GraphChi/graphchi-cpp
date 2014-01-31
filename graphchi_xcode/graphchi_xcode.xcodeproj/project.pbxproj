@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5F0A1FCF16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F0A1FCD16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp */; };
+		5F10740318242CD3003DC44E /* pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F648EE617B82B9900EFEE76 /* stronglyconnectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648EDE17B80D7800EFEE76 /* stronglyconnectedcomponents.cpp */; };
 		5F684D0717F3656700E1FA0A /* contractionresearch.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F684D0617F3656700E1FA0A /* contractionresearch.1 */; };
@@ -16,7 +17,6 @@
 		5F74B05C15D6CF5E00ED3EA9 /* blocksplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F74B04F15D6CEE200ED3EA9 /* blocksplitter.cpp */; };
 		5FB782F0159D269600816BDE /* basic_smoketest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F71E159B918100423ECE /* basic_smoketest.cpp */; };
 		5FCC1D18159501840003D0E9 /* sharder_basic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1D041594FADE0003D0E9 /* sharder_basic.cpp */; };
-		5FCC1EC21599F5AE0003D0E9 /* pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */; };
 		5FCC1ED6159A04000003D0E9 /* als_edgefactors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1ECA159A03D50003D0E9 /* als_edgefactors.cpp */; };
 		5FCC2132159DF2080003D0E9 /* trianglecounting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC2104159DEC0E0003D0E9 /* trianglecounting.cpp */; };
 		5FCC22AE15A1EFC60003D0E9 /* als_graphlab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC229215A1EC330003D0E9 /* als_graphlab.cpp */; };
@@ -1663,7 +1663,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5FCC1EC21599F5AE0003D0E9 /* pagerank.cpp in Sources */,
+				5F10740318242CD3003DC44E /* pagerank.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

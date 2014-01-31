@@ -364,7 +364,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
             // Schedule vertices that were pivots on last iteration, so they can
             // keep count of the triangles counted by their lower id neighbros.
             for(vid_t i=adjcontainer->pivot_st; i < adjcontainer->pivot_en; i++) {
-                gcontext.scheduler->add_task(i); 
+                gcontext.scheduler->add_task(i, true);
             }
             grabbed_edges = 0;
             adjcontainer->clear();
@@ -373,7 +373,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
             logstream(LOG_INFO) << "Now pivots: " << adjcontainer->pivot_st << " " << adjcontainer->pivot_en << std::endl;
             for(vid_t i=0; i < gcontext.nvertices; i++) {
                 if (i < adjcontainer->pivot_en) { 
-                    gcontext.scheduler->add_task(i); 
+                    gcontext.scheduler->add_task(i, true);
                 }
             }
         }
@@ -400,7 +400,7 @@ struct TriangleCountingProgram : public GraphChiProgram<VertexDataType, EdgeData
                 if (grabbed_edges < max_grab_edges * 0.8) {
                     logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << std::endl;
                     for(vid_t vid=window_st; vid <= window_en; vid++) {
-                        gcontext.scheduler->add_task(vid);
+                        gcontext.scheduler->add_task(vid, true);
                     }
                     adjcontainer->extend_pivotrange(window_en + 1);
                     if (window_en == gcontext.nvertices) {
@@ -450,7 +450,7 @@ int main(int argc, const char ** argv) {
     }
     assert(nshards > 1);
     
-    order_by_degree<EdgeDataType>(filename, nshards, m);
+    nshards = order_by_degree<EdgeDataType>(filename, nshards, m);
     
     
     /* Initialize adjacency container */
