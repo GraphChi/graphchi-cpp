@@ -211,7 +211,7 @@ struct BoruvskaStarContractionStep : public GraphChiProgram<VertexDataType, Edge
     void after_iteration(int iteration, graphchi_context &gcontext) {
         logstream(LOG_INFO) << "To contract: " << num_contract << ", tails=" << num_tails << " heads=" << num_heads <<
         " active=" << num_active_vertices << std::endl;
-        if (iteration == 1) {
+        if (iteration == 0) {
             fprintf(complog, "%d,%d,%ld\n", num_contract, num_active_vertices, num_edges);
         }
     }
@@ -345,7 +345,7 @@ int main(int argc, const char ** argv) {
             componentids.resize(engine.num_vertices());
         }
         
-        engine.run(boruvska_starcontraction, 2); // hack
+        engine.run(boruvska_starcontraction, 1);  
         
         /* Step 2: Run contraction */
         /* Initialize output */
