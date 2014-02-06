@@ -69,19 +69,21 @@ or installation is required).
 
 For an introduction on writing your own applications, read  [Creating-GraphChi-Applications](https://github.com/GraphChi/graphchi-cpp/wiki/Creating-GraphChi-Applications).
 
-### Problems compiling on Mac
+### Compiling on Mac
 
-If compiler complains about missing "omp.h" (OpenMP library), here is a way you can install it:
+1. Change directory to graphchi: `cd graphchi-cpp`
+- Install graphchi: `bash install.sh`
 
-(Contributed by Jose Pablo Gonzalez):
-1) Install homebrew ( http://brew.sh )
-2) brew tap homebrew/versions 
-3) Install a compiler:
-brew install apple-gcc42
-4) Modify the Makefile to use the new compiler:
-CPP = g++-4.2
-5) make
+ _If compiler complains about missing the "omp.h" (OpenMP library)*:_
+- [Install homebrew](http://brew.sh)
+- `brew tap homebrew/versions`
+- Install a compiler:
+`brew install apple-gcc42`
+- Modify the Makefile to use the new compiler:
+`CPP = g++-4.2`
+- `make`
 
+*Contributed by Jose Pablo Gonzalez
 
 ## How GraphChi works
 
