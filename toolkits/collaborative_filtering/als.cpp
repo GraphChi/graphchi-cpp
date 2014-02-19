@@ -50,7 +50,7 @@
  * the matrix market format. 
  * 
  */
-
+#define GRAPHCHI_DISABLE_COMPRESSION
 
 #include "common.hpp"
 #include "eigen_wrapper.hpp"
@@ -196,10 +196,10 @@ int main(int argc, const char ** argv) {
 
 
   /* Preprocess data if needed, or discover preprocess files */
-  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, 3, TRAINING, false);
+  int nshards = convert_matrixmarket<EdgeDataType>(training, 0, 0, tokens_per_row, TRAINING, false);
   init_feature_vectors<std::vector<vertex_data> >(M+N, latent_factors_inmem, !load_factors_from_file);
   if (validation != ""){
-    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, 3, VALIDATION, false);
+    int vshards = convert_matrixmarket<EdgeDataType>(validation, 0, 0, tokens_per_row, VALIDATION, false);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &als_predict);
   }
 
