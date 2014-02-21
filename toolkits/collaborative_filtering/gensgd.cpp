@@ -460,7 +460,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 /**
   compute validation rmse
   */
-  void validation_rmse_N(
+  void validation_rmse_N(std::string & filename, 
       float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum)
       ,graphchi_context & gcontext, 
       feature_control & fc, 
@@ -468,7 +468,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       int type = VALIDATION) {
 
     assert(fc.total_features <= fc.feature_num);
-    if ((validation == "") || !file_exists(validation)) {
+    if ((filename == "") || !file_exists(filename)) {
       if ((validation != (training + "e")) && gcontext.iteration == 0)
         logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
       std::cout << std::endl;
@@ -501,7 +501,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
     {
       int size = num_feature_bins();
       if (!read_line(f, validation, i, I, J, val, valarray, VALIDATION, linebuf_debug))
-        logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " << validation << std::endl;
+        logstream(LOG_FATAL)<<"Failed to read line: " << i << " in file: " <<filename << std::endl;
 
       bool active_edge = decide_if_edge_is_active(i, VALIDATION);
 
@@ -530,12 +530,13 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     fclose(f);
 
+    int howmany = ((type == TRAINING)? L: Le);
     assert(Le > 0);
-    dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
+    dvalidation_rmse = sqrt(dvalidation_rmse / (double)howmany);
     std::cout<< (type == TRAINING ? "  Training RMSE: " :"  Validation RMSE: ") << std::setw(10) << dvalidation_rmse;
     if (!calc_error)
       std::cout << std::endl;
-    else std::cout << " Validation error: " << std::setw(10) << validation_error/Le << std::endl;
+    else std::cout << (type == TRAINING? " Training Error" : " Validation error: ") << std::setw(10) << validation_error/howmany << std::endl;
     if (halt_on_rmse_increase && dvalidation_rmse > last_validation_rmse && gcontext.iteration > 0){
       logstream(LOG_WARNING)<<"Stopping engine because of validation RMSE increase" << std::endl;
       gcontext.set_last_iteration(gcontext.iteration);
@@ -851,12 +852,10 @@ void print_step_size(){
 
     if (!exact_training_rmse)
       training_rmse_N(iteration, gcontext);
-    else {std::string tmp = validation;
-      validation = training;
-      validation_rmse_N(&gensgd_predict, gcontext, fc, TRAINING);
-      validation = tmp;
-      validation_rmse_N(&gensgd_predict, gcontext, fc, VALIDATION);
+    else {
+      validation_rmse_N(training, &gensgd_predict, gcontext, fc, false, TRAINING);
     }
+    validation_rmse_N(validation, &gensgd_predict, gcontext, fc, false, VALIDATION);
     if (verbose)
       print_step_size();
   };
