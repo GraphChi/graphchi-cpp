@@ -65,7 +65,7 @@ int cold_start = 0;
 int binary_prediction = 0;
 int verbose = 0; //print statistics about step sizes
 int node_id_maps_size = 0;
-
+bool debug2 = false;
 
 enum _cold_start{
    NONE = 0,
@@ -218,7 +218,7 @@ float compute_prediction(
   int loc = 0;
   if (I != (uint)-1){
     node_array[index] = &latent_factors_inmem[I+fc.offsets[loc]];
-    //if (type == VALIDATION) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << latent_factors_inmem[fc.offsets[loc]].pvec << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
+    if (debug2) std::cout<<"I: "<<I<< " offset: " << I+fc.offsets[loc] << " " << head(latent_factors_inmem[fc.offsets[loc]].pvec,5).transpose() << " " << latent_factors_inmem[fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   }
@@ -230,7 +230,7 @@ float compute_prediction(
   if (J != (uint)-1){
     assert(J+fc.offsets[index] < latent_factors_inmem.size());
     node_array[index] = &latent_factors_inmem[J+fc.offsets[loc]];
-    //if (type == VALIDATION) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << latent_factors_inmem[J+fc.offsets[loc]].pvec <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
+    if (debug2) std::cout<<"J: "<<J<< " offset: " << J+fc.offsets[loc] << " " << head(latent_factors_inmem[J+fc.offsets[loc]].pvec,5).transpose() <<" " << latent_factors_inmem[J+fc.offsets[loc]].bias << std::endl ;
     if (node_array[index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
   }
@@ -249,7 +249,7 @@ float compute_prediction(
         logstream(LOG_FATAL)<<"Bug: j is: " << j << " fc.total_features " << fc.total_features << " index : " << index << " loc: " << loc <<  
           " fc.offsets " << fc.offsets[j+loc] << " vlarray[j] " << valarray[j] << " pos: " << pos << " latent_factors_inmem.size() " << latent_factors_inmem.size() << std::endl;
       node_array[j+index] = & latent_factors_inmem[pos];
-      //if (type == VALIDATION) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << latent_factors_inmem[pos].pvec << " " << latent_factors_inmem[pos].bias << std::endl;
+      if (debug2) std::cout<<"j+index: "<<j+index<< " offset: " << pos << " " << head(latent_factors_inmem[pos].pvec,5).transpose() << " " << latent_factors_inmem[pos].bias << std::endl;
     }
     if (node_array[j+index]->pvec[0] >= 1e5)
       logstream(LOG_FATAL)<<"Got into numerical problem, try to decrease SGD step size" << std::endl;
@@ -464,7 +464,8 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
       float (*prediction_func)(const vertex_data ** array, int arraysize, const float * val_array, int val_array_size, float rating, double & prediction, vec * psum)
       ,graphchi_context & gcontext, 
       feature_control & fc, 
-      bool square = false) {
+      bool square = false, 
+      int type = VALIDATION) {
 
     assert(fc.total_features <= fc.feature_num);
     if ((validation == "") || !file_exists(validation)) {
@@ -531,7 +532,7 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     assert(Le > 0);
     dvalidation_rmse = sqrt(dvalidation_rmse / (double)Le);
-    std::cout<<"  Validation RMSE: " << std::setw(10) << dvalidation_rmse;
+    std::cout<< (type == TRAINING ? "  Training RMSE: " :"  Validation RMSE: ") << std::setw(10) << dvalidation_rmse;
     if (!calc_error)
       std::cout << std::endl;
     else std::cout << " Validation error: " << std::setw(10) << validation_error/Le << std::endl;
@@ -639,12 +640,17 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
   prediction = globalMean;
   assert(!std::isnan(prediction));
   assert((int)fc.feature_positions.size() > node_array_size+2);
+  if (debug2)
+    std::cout<<"Adding global mean: "<< globalMean << std::endl;
 
   for (int i=0; i< node_array_size; i++){
     if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
       prediction += node_array[i]->bias * val_array[i-2];
-    else
+    else{
       prediction += node_array[i]->bias;
+      if (debug2)
+        std::cout<<"Adding bias: "<< i << " : " << node_array[i]->bias << std::endl;
+    }
   }
 
   assert(!std::isnan(prediction));
@@ -653,9 +659,10 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
     for (int i=0; i< node_array_size; i++){
       if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
         sum->operator[](j) += node_array[i]->pvec[j] * val_array[i-2];
-      else 
-        sum->operator[](j) += node_array[i]->pvec[j] ;
-
+      else {
+        sum->operator[](j) += node_array[i]->pvec[j];
+      }
+      if (debug2)
       if (sum->operator[](j) >= 1e5)
         logstream(LOG_FATAL)<<"Got into numerical problems. Try to decrease step size" << std::endl;
       if (i >= 2 && fc.real_features_indicators[fc.feature_positions[i-2]])
@@ -663,6 +670,9 @@ float gensgd_predict(const vertex_data** node_array, int node_array_size,
       else
          sum_sqr[j] += pow(node_array[i]->pvec[j], 2);
     }
+    if (debug2 && j < 3)
+      std::cout<<" Adding sum: " << sum_sqr[j] << std::endl;
+
     prediction += 0.5 * (pow(sum->operator[](j),2) - sum_sqr[j]);
     assert(!std::isnan(prediction));
   }
@@ -838,8 +848,15 @@ void print_step_size(){
     gensgd_rate2 *= gensgd_mult_dec;
     gensgd_rate3 *= gensgd_mult_dec;
     gensgd_rate4 *= gensgd_mult_dec;
-    training_rmse_N(iteration, gcontext);
-    validation_rmse_N(&gensgd_predict, gcontext, fc);
+
+    if (!exact_training_rmse)
+      training_rmse_N(iteration, gcontext);
+    else {std::string tmp = validation;
+      validation = training;
+      validation_rmse_N(&gensgd_predict, gcontext, fc, TRAINING);
+      validation = tmp;
+      validation_rmse_N(&gensgd_predict, gcontext, fc, VALIDATION);
+    }
     if (verbose)
       print_step_size();
   };
@@ -917,6 +934,7 @@ int main(int argc, const char ** argv) {
   cold_start = get_option_int("cold_start", cold_start);
   binary_prediction = get_option_int("binary_prediction", 0);
   verbose = get_option_int("verbose",1); 
+  debug2 = get_option_int("debug2", 0);
  D = get_option_int("D", D);
   if (D <=2 || D>= 300)
     logstream(LOG_FATAL)<<"Allowed range for latent factor vector D is [2,300]." << std::endl;

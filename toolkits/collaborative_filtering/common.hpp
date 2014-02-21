@@ -75,7 +75,7 @@ int allow_zeros;
 int start_user=0; //start offset of user 
 int end_user=INT_MAX; //end offset of user
 int binary_relevance_threshold = -1; // if set, all edge values above this number will treated as binary 1
-
+int exact_training_rmse = 0; //if 1, will compute training RMSE explicitly exact computation, this will slow down the run
 
 /* support for different loss types (for SGD variants) */
 std::string loss = "square";
@@ -174,7 +174,7 @@ void parse_command_line_args(){
   R_output_format = get_option_int("R_output_format", R_output_format);
   start_user = get_option_int("start_user", start_user);
   end_user   = get_option_int("end_user",   end_user);
-
+  exact_training_rmse = get_option_int("exact_training_rmse", 0);
 }
 
 template<typename T>
