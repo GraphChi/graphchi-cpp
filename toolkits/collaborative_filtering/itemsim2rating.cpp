@@ -432,9 +432,6 @@ int main(int argc, const char ** argv) {
     metrics_report(m);
 
   std::cout<<"Total item pairs compared: " << item_pairs_compared << " total written to file: " << written_pairs << std::endl;
-  logstream(LOG_INFO)<<"Going to sort and merge output files " << std::endl;
-  std::string dname= dirname(strdup(argv[0]));
-  system(("bash " + dname + "/topk.sh " + std::string(basename(strdup((training+"-rec").c_str())))).c_str()); 
 
   if (zero_edges)
     std::cout<<"Found: " << zero_edges<< " user edges with weight zero. Those are ignored." <<std::endl;

@@ -415,7 +415,7 @@ int convert_matrixmarket_and_item_similarity(std::string base_filename, std::str
         logstream(LOG_FATAL)<<"Col index larger than the matrix col size " << J << " > " << N << " in line; " << i << std::endl;
       degrees[J+M]++;
       degrees[I]++;
-      if (I< start_user || I >= end_user){
+      if (I< (uint)start_user || I >= (uint)end_user){
          continue;
       }
       sharderobj.preprocessing_add_edge(I, M + J, als_edge_type((float)val, 0));

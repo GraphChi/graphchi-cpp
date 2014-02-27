@@ -403,7 +403,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, EdgeDataType
         }
         else zero_dist++;
       }
-      sort(heap.begin(), heap.end(), &Greater);
+      std::partial_sort(heap.begin(), heap.begin()+std::min(heap.size(), (size_t)K), heap.end(), &Greater);
       int thread_num = omp_get_thread_num();
       if (heap.size() < K)
         not_enough++;

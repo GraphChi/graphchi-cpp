@@ -321,7 +321,9 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
 
   void after_iteration(int iteration, graphchi_context &gcontext){
     if (gcontext.iteration % 2 == 1){
+#ifndef __APPLE__
 #pragma omp parallel for
+#endif
      for (int i=0; i< (int)adjcontainer->adjs.size(); i++){
           if (debug)
             logstream(LOG_DEBUG)<<"Going over user" << adjcontainer->adjs[i].vid << std::endl;
@@ -332,16 +334,16 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
             continue;
           }
           //assert(user.ratings.size() == N);
-         assert(adjcontainer->adjs[i].vid >= start_user && adjcontainer->adjs[i].vid < end_user);
-         int user_id = adjcontainer->adjs[i].vid;
-         assert(user_id >= 0 && user_id < M);
+         assert(adjcontainer->adjs[i].vid >= (uint)start_user && adjcontainer->adjs[i].vid < (uint)end_user);
+         uint user_id = adjcontainer->adjs[i].vid;
+         assert(user_id < M);
          int degree_k = degrees[user_id];
          assert(degree_k > 0);
              
          /* GO over the compu sum*/
          FOR_ITERATOR(j, user.ratings){
-           int item_id = j.index(); 
-           assert(item_id>=0 && item_id < N);
+           uint item_id = j.index(); 
+           assert(item_id < N);
            int degree_x = degrees[M+item_id];
            if (degree_x <= 0)
              logstream(LOG_WARNING)<<"Item degree is 0: " << user_id << " -> " << item_id << std::endl;
@@ -359,7 +361,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
           positions.conservativeResize(std::min(nnz(user.ratings),(int)K));
           for (int j=0; j < positions.size(); j++){
             
-            if (positions[j] >= N){
+            if (positions[j] >= (int)N){
                std::cout<<"bug: user rating " << user.ratings << " pos: " << positions << std::endl;
                continue;
             }
@@ -398,7 +400,7 @@ struct ItemDistanceProgram : public GraphChiProgram<VertexDataType, edge_data> {
         printf("entering iteration: %d on before_exec_interval\n", gcontext.iteration);
         printf("pivot_st is %d window_St %d, window_en %d\n", adjcontainer->pivot_st, window_st, window_en);
       //}
-      if (adjcontainer->pivot_st < std::min(std::min((int)M,end_user), (int)window_en)){
+      if ((int)adjcontainer->pivot_st < std::min(std::min((int)M,end_user), (int)window_en)){
         size_t max_grab_edges = get_option_long("membudget_mb", 1024) * 1024 * 1024 / 8;
         if (grabbed_edges < max_grab_edges * 0.8) {
           logstream(LOG_DEBUG) << "Window init, grabbed: " << grabbed_edges << " edges" << " extending pivor_range to : " << window_en + 1 << std::endl;
