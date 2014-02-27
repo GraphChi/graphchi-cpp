@@ -501,7 +501,9 @@ namespace graphchi {
                     scheduler->has_new_tasks = false; // Kind of misleading since scheduler may still have tasks - but no new tasks.
                 } else {
                     nupdates += num_vertices();
-                    work += num_edges();
+                    if (!only_adjacency) {
+                        work += num_edges();
+                    }
                 }
                 
                 exec_updates(userprogram, vertices);
