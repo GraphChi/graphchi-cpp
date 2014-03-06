@@ -159,10 +159,17 @@ void parse_command_line_args(){
   }
   if (kfold_cross_validation != 0){
     logstream(LOG_WARNING)<<"Activating kfold cross vlidation with K="<< kfold_cross_validation << std::endl;
-    if (training == validation)
-      logstream(LOG_FATAL)<<"Using cross validation, validation file (--validation=filename) should have a different name than training" << std::endl;
-    if (validation == "")
-      logstream(LOG_FATAL)<<"You must provide validation input file name (--validation=filename) when using k-fold cross validation" << std::endl;
+    if (validation != "" || test != "")
+      logstream(LOG_FATAL)<<"Using cross validation, validation file (--validation) and test file (--test) should be empty/" << std::endl;
+    //removing tmp file (if present)
+    int rc = system(("rm -fR " + training + "_kfold_tmp_file").c_str());
+    if (rc != 0)
+      logstream(LOG_FATAL)<<"Failed to delete temp file. Please check permissions." << std::endl;
+    //linking training to validation
+    rc = system(("ln -s " + training + " " + training + "_kfold_tmp_file").c_str());
+    if (rc != 0)  
+      logstream(LOG_FATAL)<<"Failed to link temp file. Please check permissions." << std::endl;
+    validation = training + "_kfold_tmp_file";
     clean_cache = 1;
   }
   regnormal = get_option_int("regnormal", regnormal);

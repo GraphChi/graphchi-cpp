@@ -88,6 +88,8 @@ double calc_error_f(double exp_prediction, double err){
 }
 
 
+bool decide_if_edge_is_active(size_t i, int type);
+
 /**
   compute predictions on test data
   */
@@ -96,6 +98,9 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   FILE *f;
   uint Me, Ne;
   size_t nz;   
+
+  if (kfold_cross_validation > 0)
+    test = training;
 
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing test data, nothing to compute
@@ -112,11 +117,14 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   if (avgprd && gcontext->iteration == pmf_burn_in)
     *avgprd = zeros(nz);
 
+  size_t test_ratings = nz;
 
   if (dosave){
     mm_write_banner(fout, matcode);
     fprintf(fout, "%%This file contains predictions of user/item pair, one prediction in each line. The first column is user id. The second column is the item id. The third column is the computed prediction.\n");
-    mm_write_mtx_crd_size(fout ,M,N,nz); 
+    if (kfold_cross_validation > 0)
+      test_ratings = (1.0/(double)kfold_cross_validation)*nz;  
+    mm_write_mtx_crd_size(fout ,M,N,test_ratings); 
   }
 
   for (uint i=0; i<nz; i++)
@@ -133,6 +141,9 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
        logstream(LOG_FATAL)<<"Bad input " << I+1<< " in test file in line " << i+2<< " . First column should be in the range 1 to " << M << std::endl;
     if (J < 0 || (uint)J >= N)
        logstream(LOG_FATAL)<<"Bad input " << J+1<< " in test file in line " << i+2<< ". Second column should be in the range 1 to " << N << std::endl;
+
+    if (!decide_if_edge_is_active(i, VALIDATION))
+       continue;
 
     double prediction;
     (*prediction_func)(latent_factors_inmem[I], latent_factors_inmem[J+M], val, prediction, NULL); //TODO
@@ -152,7 +163,7 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
     fclose(fout);
 
   if (dosave)
-    std::cout<<"Finished writing " << nz << " predictions to file: " << test << ".predict" << std::endl;
+    std::cout<<"Finished writing " << test_ratings << " predictions to file: " << test << ".predict" << std::endl;
 }
 
 void test_predictions3(float (*prediction_func)(const vertex_data & user, const vertex_data & movie, float rating, double & prediction, void * extra), int time_offset = 0) {
