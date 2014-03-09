@@ -100,23 +100,19 @@ struct rbm_user{
 
 
 /**
- * ni = bias = DOUBLE
  * bi = pvec = rbm_bins * DOUBLE 
  * w = weight = rbm_bins * D * Double
  */
 struct rbm_movie{
   double * bi;
-  double * ni;
   double * w;
 
   rbm_movie(const vertex_data& vdata){
-    ni = (double*)&vdata.bias;
     bi = (double*)&vdata.pvec[0];
     w = bi + rbm_bins;
   }
 
   rbm_movie & operator=(vertex_data & data){
-    ni = (double*)&data.bias;
     bi = (double*)&data.pvec[0];
     w = bi + rbm_bins;
     return * this;
@@ -356,7 +352,6 @@ struct RBMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
 void output_rbm_result(std::string filename) {
   MMOutputter_mat<vertex_data> user_mat(filename + "_U.mm", 0, M, "This file contains RBM output matrix U. In each row D factors of a single user node.", latent_factors_inmem);
   MMOutputter_mat<vertex_data> mmoutput_right(filename + "_V.mm", M ,M+N,  "This file contains RBM  output matrix V. In each row D factors of a single item node.", latent_factors_inmem);
-  MMOutputter_vec<vertex_data> mmoutput_bias_right(filename + "_V_bias.mm",M ,M+N , BIAS_POS, "This file contains RBM output bias vector. In each row a single item ni.", latent_factors_inmem);
   logstream(LOG_INFO) << "RBM output files (in matrix market format): " << filename << "_U.mm" <<
                                                                            ", " << filename + "_V.mm " << std::endl;
 }
@@ -387,7 +382,7 @@ int main(int argc, const char ** argv) {
      and other information. Currently required. */
   metrics m("rbm-inmemory-factors");
 
-  /* Basic arguments for application. NOTE: File will be automatically 'sharded'. */
+  /* Basic arguments for RBM algorithm */
   rbm_bins      = get_option_int("rbm_bins", rbm_bins);
   rbm_alpha     = get_option_float("rbm_alpha", rbm_alpha);
   rbm_beta      = get_option_float("rbm_beta", rbm_beta);
@@ -413,10 +408,6 @@ int main(int argc, const char ** argv) {
   if (load_factors_from_file){
     load_matrix_market_matrix(training + "_U.mm", 0, 3*D);
     load_matrix_market_matrix(training + "_V.mm", M, rbm_bins*(D+1));
-    vec item_bias = load_matrix_market_vector(training +"_V_bias.mm", false, true);
-    for (uint i=0; i< N; i++){
-       latent_factors_inmem[M+i].bias = item_bias[i];
-    }
    }
 
   print_config();

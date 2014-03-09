@@ -127,7 +127,7 @@ void parse_command_line_args(){
   assert(valrange > 0);
   quiet    = get_option_int("quiet", 0);
   if (quiet)
-    global_logger().set_log_level(LOG_ERROR);
+    global_logger().set_log_level(LOG_WARNING);
   halt_on_rmse_increase = get_option_int("halt_on_rmse_increase", 0);
 
   load_factors_from_file = get_option_int("load_factors_from_file", 0);
