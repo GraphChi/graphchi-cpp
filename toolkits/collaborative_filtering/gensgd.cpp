@@ -469,15 +469,15 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
 
     assert(fc.total_features <= fc.feature_num);
     if ((filename == "") || !file_exists(filename)) {
-      if ((validation != (training + "e")) && gcontext.iteration == 0)
-        logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
-      std::cout << std::endl;
+      if (validation != "")
+         logstream(LOG_WARNING) << "Validation file was specified, but not found:" << validation << std::endl;
+      std::cout<<std::endl;
       return;
     }
     FILE *f = NULL;
     size_t nz;   
 
-    detect_matrix_size(validation, f, Me, Ne, nz);
+    detect_matrix_size(filename, f, Me, Ne, nz);
     if (f == NULL){
       logstream(LOG_WARNING)<<"Failed to open validation data. Skipping."<<std::endl;
       return;
@@ -522,9 +522,12 @@ void read_node_links(std::string base_filename, bool square, feature_control & f
         //std::cout<<"Computed prediction is: " << prediction << std::endl;
         delete [] node_array;
         dvalidation_rmse += pow(prediction - val, 2);
-        if (calc_error) 
+        if (calc_error){ 
           if ((prediction < cutoff && val > cutoff) || (prediction > cutoff && val < cutoff))
             validation_error++;
+            //if (i % 100000 == 0)
+            //   printf("Going ovr line %d prediction %f val %f cutoff %f error %d\n", i, prediction, val, cutoff, (prediction < cutoff && val > cutoff) || (prediction > cutoff && val < cutoff));
+        }
       }
     }
 
