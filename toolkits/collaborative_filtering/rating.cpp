@@ -39,7 +39,9 @@ double knn_sample_percent = 1.0;
 const double epsilon = 1e-16;
 timer mytimer;
 int algo = 0;
+uint users_without_ratings = 0;
 vec singular_values;
+mutex mymutex;
 
 enum {
   ALS = 0, SPARSE_ALS = 1, SGD = 2, NMF = 3, WALS = 4, SVD = 5, CLIMF = 6
@@ -214,6 +216,12 @@ struct RatingVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     int howmany = (int)(N*knn_sample_percent);
     assert(howmany > 0 );
+    if (vertex.num_outedges() == 0){
+       mymutex.lock();
+       users_without_ratings++;
+       mymutex.unlock();
+    }
+
     vec distances = zeros(howmany);
     ivec indices = ivec::Zero(howmany);
     for (int i=0; i< howmany; i++){
@@ -398,6 +406,10 @@ int main(int argc, const char ** argv) {
   output_knn_result(training);
 
   rating_stats();
+
+  if (users_without_ratings > 0)
+    logstream(LOG_WARNING)<<"Found " << users_without_ratings << " without ratings. For those users no items are recommended (item id 0)" << std::endl;
+
   /* Report execution metrics */
   if (!quiet)
     metrics_report(m);

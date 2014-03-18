@@ -203,8 +203,11 @@ struct  MMOutputter_mat{
       for(int j=0; j < actual_Size; j++) {
         if (R_output_format)
           fprintf(outf, "%d %d %12.8g\n", i-start+input_file_offset, j+input_file_offset, latent_factors_inmem[i].get_val(j));
-        else
-          fprintf(outf, "%1.12e\n", latent_factors_inmem[i].get_val(j));
+        else {
+          fprintf(outf, "%1.12e ", latent_factors_inmem[i].get_val(j));
+          if (j == actual_Size -1)
+	    fprintf(outf, "\n");
+        }
       }
       }
     fclose(outf);
