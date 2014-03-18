@@ -42,8 +42,8 @@
 #include "util/toplist.hpp"
 
 /* HTTP admin tool */
-#include "httpadmin/chi_httpadmin.hpp"
-#include "httpadmin/plotter.hpp"
+//#include "httpadmin/chi_httpadmin.hpp"
+//#include "httpadmin/plotter.hpp"
 
 using namespace graphchi;
 
@@ -115,7 +115,7 @@ struct PagerankProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
      */
     void before_exec_interval(vid_t window_st, vid_t window_en, graphchi_context &ginfo) {        
 #ifdef DEMO
-        update_plotdata(dyngraph_engine);
+   //     update_plotdata(dyngraph_engine);
 #endif
     }
     
@@ -175,8 +175,9 @@ struct PagerankProgram : public GraphChiProgram<VertexDataType, EdgeDataType> {
     
 };
 
+
 /* Demo stuff. */
-class IntervalTopRequest : public custom_request_handler {
+/*class IntervalTopRequest : public custom_request_handler {
 public:
     virtual std::string handle(const char * req) {
         const char * shardnum_str = &req[strlen("/ajax/shardpagerank")];
@@ -208,10 +209,10 @@ public:
         return (strncmp(req, "/ajax/shardpagerank", 19) == 0);
     }
     
-};
+};*/
 
 bool running = true;
-
+/*
 void * plotter_thread(void * info);
 void * plotter_thread(void * info) {
 
@@ -219,12 +220,12 @@ void * plotter_thread(void * info) {
     init_plots(dyngraph_engine);
 
     while(running) {
-       /* Update plots */
-       drawplots(); 
+        // update plots
+       drawplots();
        usleep(1000000 * 10);
     }
     return NULL;
-}
+}*/
 
 /**
   * Function executed by a separate thread that streams
@@ -297,7 +298,7 @@ void * dynamic_graph_reader(void * info) {
             dyngraph_engine->set_json("ingestedges", ingested);
         }
         if (c % 1000 == 0) {
-            set_ingested_edges(ingested);
+        //    set_ingested_edges(ingested);
         }
                 
         
@@ -336,12 +337,14 @@ int main(int argc, const char ** argv) {
     assert(ret>=0);
     
     /* Start HTTP admin */
-    start_httpadmin< graphchi_dynamicgraph_engine<float, float> >(dyngraph_engine);
+   /* start_httpadmin< graphchi_dynamicgraph_engine<float, float> >(dyngraph_engine);
     register_http_request_handler(new IntervalTopRequest());
+    
     
     pthread_t plotterthr;
     ret = pthread_create(&plotterthr, NULL, plotter_thread, NULL);
     assert(ret>=0);
+    */
     
     /* Run the engine */
     PagerankProgram program;
