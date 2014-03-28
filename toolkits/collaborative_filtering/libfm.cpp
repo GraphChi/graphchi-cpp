@@ -158,7 +158,7 @@ void init_libfm(){
   double factor = 0.1/sqrt(D);
 #pragma omp parallel for
   for (int i=0; i< (int)(M+N+K+M); i++){
-      latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
+    latent_factors_inmem[i].pvec = (debug ? 0.1*ones(D) : (::randu(D)*factor));
   }
 }
 
@@ -177,23 +177,22 @@ struct LIBFMVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDa
 
 
     if (gcontext.iteration == 0){
-    if (is_user(vertex.id())) { //user node. find the last rated item and store it
-      vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
-      int max_time = 0;
-      for(int e=0; e < vertex.num_outedges(); e++) {
-        const edge_data & edge = vertex.edge(e)->get_data();
-        if (edge.time >= max_time){
-          max_time = (int)(edge.time - time_offset);
-          *user.last_item = vertex.edge(e)->vertex_id() - M;
-        }
+      if (is_user(vertex.id())) { //user node. find the last rated item and store it
+	vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
+	int max_time = 0;
+	for(int e=0; e < vertex.num_outedges(); e++) {
+	  const edge_data & edge = vertex.edge(e)->get_data();
+	  if (edge.time >= max_time){
+	    max_time = (int)(edge.time - time_offset);
+	    *user.last_item = vertex.edge(e)->vertex_id() - M;
+	  }
+	}
       }
-    }
-if (is_user(vertex.id()) && vertex.num_outedges() == 0)
-      logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
-    return;
-    return;
-  } 
- 
+      if (is_user(vertex.id()) && vertex.num_outedges() == 0)
+	logstream(LOG_WARNING)<<"Vertex: " << vertex.id() << " with no edges: " << std::endl;
+      return;
+    } 
+
     //go over all user nodes
     if (is_user(vertex.id())){
       vertex_data_libfm user = latent_factors_inmem[vertex.id()]; 
@@ -201,46 +200,46 @@ if (is_user(vertex.id()) && vertex.num_outedges() == 0)
       vertex_data & last_item = latent_factors_inmem[M+N+K+(*user.last_item)]; 
 
       for(int e=0; e < vertex.num_outedges(); e++) {
-        vertex_data_libfm movie(latent_factors_inmem[vertex.edge(e)->vertex_id()]);
+	vertex_data_libfm movie(latent_factors_inmem[vertex.edge(e)->vertex_id()]);
 
-        float rui = vertex.edge(e)->get_data().weight;
-        double pui;
-        vec sum;
-        vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
-        float sqErr = libfm_predict(user, movie, time, rui, pui, &sum);
-        float eui = pui - rui;
+	float rui = vertex.edge(e)->get_data().weight;
+	double pui;
+	vec sum;
+	vertex_data & time = latent_factors_inmem[(int)vertex.edge(e)->get_data().time - time_offset];
+	float sqErr = libfm_predict(user, movie, time, rui, pui, &sum);
+	float eui = pui - rui;
 
-        globalMean -= libfm_rate * (eui + reg0 * globalMean);
-        *user.bias -= libfm_rate * (eui + libfm_regw * *user.bias);
-        *movie.bias -= libfm_rate * (eui + libfm_regw * *movie.bias);
-        time.bias -= libfm_rate * (eui + libfm_regw * time.bias);
-        assert(!std::isnan(time.bias));
-        last_item.bias -= libfm_rate * (eui + libfm_regw * last_item.bias);
+	globalMean -= libfm_rate * (eui + reg0 * globalMean);
+	*user.bias -= libfm_rate * (eui + libfm_regw * *user.bias);
+	*movie.bias -= libfm_rate * (eui + libfm_regw * *movie.bias);
+	time.bias -= libfm_rate * (eui + libfm_regw * time.bias);
+	assert(!std::isnan(time.bias));
+	last_item.bias -= libfm_rate * (eui + libfm_regw * last_item.bias);
 
-        for(int f = 0; f < D; f++){
-          // user
-          float grad = sum[f] - user.v[f];
-          user.v[f] -= libfm_rate * (eui * grad + libfm_regv * user.v[f]);
-          // item
-          grad = sum[f] - movie.v[f];
-          movie.v[f] -= libfm_rate * (eui * grad + libfm_regv * movie.v[f]);
-          // time
-          grad = sum[f] - time.pvec[f];
-          time.pvec[f] -= libfm_rate * (eui * grad + libfm_regv * time.pvec[f]);
-          // last item
-          grad = sum[f] - last_item.pvec[f];
-          last_item.pvec[f] -= libfm_rate * (eui * grad + libfm_regv * last_item.pvec[f]);
+	for(int f = 0; f < D; f++){
+	  // user
+	  float grad = sum[f] - user.v[f];
+	  user.v[f] -= libfm_rate * (eui * grad + libfm_regv * user.v[f]);
+	  // item
+	  grad = sum[f] - movie.v[f];
+	  movie.v[f] -= libfm_rate * (eui * grad + libfm_regv * movie.v[f]);
+	  // time
+	  grad = sum[f] - time.pvec[f];
+	  time.pvec[f] -= libfm_rate * (eui * grad + libfm_regv * time.pvec[f]);
+	  // last item
+	  grad = sum[f] - last_item.pvec[f];
+	  last_item.pvec[f] -= libfm_rate * (eui * grad + libfm_regv * last_item.pvec[f]);
 
-        }
+	}
 
-        rmse_vec[omp_get_thread_num()] += sqErr;
+	rmse_vec[omp_get_thread_num()] += sqErr;
       }
 
     }
 
   };
 
- /**
+  /**
    * Called before an iteration is started.
    */
   void before_iteration(int iteration, graphchi_context &gcontext) {
@@ -304,7 +303,7 @@ int main(int argc, const char ** argv) {
   if (validation != ""){
     int vshards = convert_matrixmarket4<EdgeDataType>(validation, true, M==N, VALIDATION);
     init_validation_rmse_engine<VertexDataType, EdgeDataType>(pvalidation_engine, vshards, &libfm_predict, false, true, 1);
-   }
+  }
 
 
   if (load_factors_from_file){
@@ -318,17 +317,17 @@ int main(int argc, const char ** argv) {
     vec last_item_bias = load_matrix_market_vector(training+"_L_bias.m", false, true);
     for (uint i=0; i<M+N+K+M; i++){
       if (i < M)
-        latent_factors_inmem[i].bias = user_bias[i];
+	latent_factors_inmem[i].bias = user_bias[i];
       else if (i <M+N)
-        latent_factors_inmem[i].bias = item_bias[i-M];
+	latent_factors_inmem[i].bias = item_bias[i-M];
       else if (i <M+N+K)
-        latent_factors_inmem[i].bias = time_bias[i-M-N];
+	latent_factors_inmem[i].bias = time_bias[i-M-N];
       else 
-        latent_factors_inmem[i].bias = last_item_bias[i-M-N-K];
+	latent_factors_inmem[i].bias = last_item_bias[i-M-N-K];
     }
     vec gm = load_matrix_market_vector(training + "_global_mean.mm", false, true);
     globalMean = gm[0];
-}
+  }
 
 
   /* Run */
