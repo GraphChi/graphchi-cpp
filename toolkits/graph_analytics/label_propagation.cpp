@@ -140,15 +140,18 @@ int main(int argc, const char ** argv) {
   #pragma omp parallel for
   for (int i=0; i< (int)M; i++){
 
-    //normalize seed probabilities to sum up to one
     if (latent_factors_inmem[i].seed){
+      //verify seed node has non negative probability to one of the states
       assert(sum(latent_factors_inmem[i].pvec) != 0);
-      latent_factors_inmem[i].pvec /= sum(latent_factors_inmem[i].pvec);
-      continue;
     }
     //other nodes get random label probabilities
-    for (int j=0; j< D; j++)
-       latent_factors_inmem[i].pvec[j] = drand48();
+    else { 
+      for (int j=0; j< D; j++){
+        latent_factors_inmem[i].pvec[j] = drand48();
+      }
+    }
+    //normalize probabilities to sum up to one
+    latent_factors_inmem[i].pvec /= sum(latent_factors_inmem[i].pvec);
   }
 
   /* load initial state from disk (optional) */
