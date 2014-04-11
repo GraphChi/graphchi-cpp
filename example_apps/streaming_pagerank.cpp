@@ -330,6 +330,7 @@ int main(int argc, const char ** argv) {
     /* Create the engine object */
     dyngraph_engine = new graphchi_dynamicgraph_engine<float, float>(filename, nshards, scheduler, m); 
     dyngraph_engine->set_modifies_inedges(false); // Improves I/O performance.
+    dyngraph_engine->set_max_edge_data(1e20);
     
     /* Start streaming thread */
     pthread_t strthread;
