@@ -1,5 +1,4 @@
 
-
 /**
  * @file
  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
@@ -56,6 +55,7 @@ namespace graphchi {
             _m.set("engine", "dynamicgraphs");
             added_edges = 0;
             maxshardsize = 200 * 1024 * 1024;
+            is_max_edge_data_initialised = false;
         }
         
     protected:
@@ -75,6 +75,8 @@ namespace graphchi {
         size_t maxshardsize;
         size_t edges_in_shards;
         size_t orig_edges;
+        EdgeDataType max_edge_data;
+        bool is_max_edge_data_initialised;
         
         /**
          * Concurrency control
@@ -334,6 +336,11 @@ namespace graphchi {
                 this->modification_lock.unlock();
             }
         }
+        
+        void set_max_edge_data(EdgeDataType max_edge_data) {
+            this->max_edge_data = max_edge_data;
+            this->is_max_edge_data_initialised = true;
+        }
        
     protected:
         void incorporate_buffered_edges(int window, vid_t window_st, vid_t window_en, std::vector<svertex_t> & vertices) {
@@ -361,7 +368,9 @@ namespace graphchi {
                     created_edge<EdgeDataType> * edge = buffer_for_window[ebi];
                     if (edge->dst >= window_st && edge->dst <= window_en) {
                         if (vertices[edge->dst - window_st].scheduled) {
-                            assert(edge->data < 1e20);
+                            if (this->is_max_edge_data_initialised) {
+                                assert(edge->data < this->max_edge_data);
+                            }
                             if (vertices[edge->dst-window_st].scheduled)
                                 vertices[edge->dst - window_st].add_inedge(edge->src, &edge->data, false);
                             ncreated++;
