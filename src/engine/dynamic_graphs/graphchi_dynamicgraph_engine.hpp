@@ -1,5 +1,4 @@
 
-
 /**
  * @file
  * @author  Aapo Kyrola <akyrola@cs.cmu.edu>
@@ -295,7 +294,7 @@ namespace graphchi {
                 usleep(1000000);
                 return false;
             }
-            if (added_edges - last_commit > 1.2 * max_edge_buffer) {
+            if (added_edges > last_commit && added_edges - last_commit > 1.2 * max_edge_buffer) {
                 logstream(LOG_INFO) << "Over 20% of max buffer... hold on...." << std::endl;
                 usleep(1000000); // Sleep 1 sec
                 return false;
