@@ -361,7 +361,6 @@ namespace graphchi {
                     created_edge<EdgeDataType> * edge = buffer_for_window[ebi];
                     if (edge->dst >= window_st && edge->dst <= window_en) {
                         if (vertices[edge->dst - window_st].scheduled) {
-                            assert(edge->data < 1e20);
                             if (vertices[edge->dst-window_st].scheduled)
                                 vertices[edge->dst - window_st].add_inedge(edge->src, &edge->data, false);
                             ncreated++;

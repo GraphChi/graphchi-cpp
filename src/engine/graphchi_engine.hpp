@@ -412,13 +412,12 @@ namespace graphchi {
             do {
                 omp_set_num_threads(exec_threads);
                 
-                    
         #pragma omp parallel sections 
                     {
         #pragma omp section
                         {
-        #pragma omp parallel for schedule(dynamic)
-                            for(int idx=0; idx <= (int)sub_interval_len; idx++) {
+        #pragma omp parallel for
+                        for(int idx=0; idx <= (int)sub_interval_len; idx++) {
                                 vid_t vid = sub_interval_st + (randomization ? random_order[idx] : idx);
                                 svertex_t & v = vertices[vid - sub_interval_st];
                                 
@@ -466,6 +465,7 @@ namespace graphchi {
         virtual void exec_updates_inmemory_mode(GraphChiProgram<VertexDataType, EdgeDataType, svertex_t> &userprogram,
                                         std::vector<svertex_t> &vertices) {
             work = nupdates = 0;
+            
             for(iter=0; iter<niters; iter++) {
                 logstream(LOG_INFO) << "In-memory mode: Iteration " << iter << " starts. (" << chicontext.runtime() << " secs)" << std::endl;
                 chicontext.iteration = iter;
@@ -506,7 +506,12 @@ namespace graphchi {
                     }
                 }
                 
+                m.start_time("inmem-exec");
+                
                 exec_updates(userprogram, vertices);
+                
+                m.stop_time("inmem-exec");
+                
                 load_after_updates(vertices);
                 
                 userprogram.after_exec_interval(0, (int)num_vertices(), chicontext);
