@@ -55,6 +55,7 @@ namespace graphchi {
         graphchi_engine<VertexDataType, EdgeDataType, svertex_t>(base_filename, nshards, selective_scheduling, _m){
             _m.set("engine", "dynamicgraphs");
             added_edges = 0;
+            last_commit = 0;
             maxshardsize = 200 * 1024 * 1024;
         }
         
