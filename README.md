@@ -132,5 +132,4 @@ Apache [Giraph](http://giraph.apache.org/) is an open-source implementation of t
 </table>
 
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/GraphChi/graphchi-cpp/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
