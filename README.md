@@ -16,6 +16,12 @@ Read about graph contraction technique, which we used to implemented efficient m
 
 http://groups.google.com/group/graphchi-discuss
 
+### License
+
+GraphChi is licensed under the Apache License, Version 2.0.
+Each source code file has full license information.
+
+
 ## Introduction
 
 GraphChi is a spin-off of the GraphLab ( http://www.graphlab.org ) -project from the Carnegie Mellon University. It is based on research by Aapo Kyrola ( http://www.cs.cmu.edu/~akyrola/) and his advisors. 
