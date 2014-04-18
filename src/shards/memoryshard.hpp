@@ -386,6 +386,8 @@ namespace graphchi {
             m.start_time("memoryshard_create_edges");
             
             assert(adjdata != NULL);
+            
+            int nblocks = (int) (edatafilesize / blocksize + (edatafilesize % blocksize != 0));
            
             bool setoffset = false;
             bool setrangeoffset = false;
@@ -417,7 +419,9 @@ namespace graphchi {
                 if (!async_edata_loading && !only_adjacency) {
                     /* Wait until blocks loaded (non-asynchronous version) */
                     for(int blid=(int)edgeptr/blocksize; blid<=(int)(edgeptr_end /blocksize); blid++) {
-                        while(doneptr[blid] != 0) { usleep(10); }
+                        if (blid < nblocks) {
+                            while(doneptr[blid] != 0) { usleep(10); }
+                        }
                     }
                 }
                 
