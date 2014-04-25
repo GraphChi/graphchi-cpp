@@ -269,11 +269,14 @@ float compute_prediction(
       assert(pos < (int)M);
     }
     else {
-      pos = j.index()+fc.offsets[loc];
-      assert((uint)loc < fc.node_id_maps.size());
-      assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
+      int pos2 = 2+fc.total_features;
+      pos = fc.offsets[pos2] + j.index();
+      assert((uint)pos2 < fc.node_id_maps.size());
+      if (j.index() >= fc.node_id_maps[pos2].string2nodeid.size()){
+        std::cout<<"Bug : " << j.index()  << " is big: " << loc << " " << fc.node_id_maps[pos2].string2nodeid.size() <<std::endl;
+        //assert(j.index() < (int)fc.node_id_maps[loc].string2nodeid.size());
+      }
       assert(pos >= 0 && pos < (int)latent_factors_inmem.size());
-      assert(pos >= (int)fc.offsets[loc]);
     }
     //logstream(LOG_INFO)<<"setting index " << i+index << " to: " << pos << std::endl;
     node_array[i+index] = & latent_factors_inmem[pos];
@@ -337,6 +340,7 @@ void read_node_features(std::string base_filename, bool square, feature_control 
   size_t tokens = 0;
   float val = 1;
   int missing_nodes = 0;
+  fc.hash_strings=  1;
 
   while(true){
     /* READ LINE */
@@ -375,6 +379,11 @@ void read_node_features(std::string base_filename, bool square, feature_control 
         break;
       if (binary){
         J = (uint)get_node_id(pch, 2+fc.total_features+fc.node_features-1, tokens, lines);
+        assert(J >= 0);
+        if (J >= fc.node_id_maps[2+fc.total_features+fc.node_features-1].string2nodeid.size()){
+          std::cout<<"BUG_1: I " << I << " J: " << J << " PCH: " << pch << " " << fc.node_id_maps[2+fc.total_features+fc.node_features-1].string2nodeid.size() << " " << fc.node_features << " " <<fc.total_features <<std::endl;
+          assert(false);
+        }
       }
       else { 
         pch = strtok(NULL, ptokens);
@@ -382,7 +391,7 @@ void read_node_features(std::string base_filename, bool square, feature_control 
           logstream(LOG_FATAL)<<"Failed to read feture value" << std::endl;
         val = atof(pch);
       }
-      assert(J >= 0);
+     
       if (user)
         assert(I < latent_factors_inmem.size());
       else assert(I+M < latent_factors_inmem.size());
@@ -806,9 +815,8 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
             gensgd_rate = gensgd_rate2;
           else if (i < 2+fc.total_features) //rating features
             gensgd_rate = gensgd_rate3;
-          else if (i < 2+fc.total_features+fc.node_features) //user and item features
+          else //user and item features
             gensgd_rate = gensgd_rate4;
-          assert(gensgd_rate != 0);
 
           double step2 = gensgd_rate * (eui + gensgd_regw* node_array[i]->bias);
           node_array[i]->bias -= step2;
