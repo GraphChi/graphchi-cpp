@@ -61,12 +61,13 @@ feature_control fc;
  * return a numeric node ID out of the string text read from file (training, validation or test)
  */
 float get_node_id(char * pch, int pos, int token, size_t i, bool read_only = false){
+  //if (pos>=2) std::cout<<"get_node_id" << pch << " " << pos << " token: " << token << " i " << i << " " << read_only << std::endl; 
   assert(pch != NULL);
   assert(i >= 0);
 
   float ret;
   //read numeric id
-  if (!fc.hash_strings || fc.real_features_indicators[token]){
+  if (!fc.hash_strings){
     ret = (pos < 2 ? atoi(pch) : atof(pch)); 
     if (pos < 2)
       ret-=input_file_offset;
@@ -90,6 +91,7 @@ float get_node_id(char * pch, int pos, int token, size_t i, bool read_only = fal
     } 
     else { //else enter node into map (in case it did not exist) and return its position 
       assign_id(fc.node_id_maps[pos], id, pch);
+      //if (pos>=2) std::cout<<"id assigned: " << pos << " " << id << " " << pch << std::endl;
       assert(id < fc.node_id_maps[pos].string2nodeid.size());
       ret = id;
     }
