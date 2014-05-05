@@ -314,7 +314,7 @@ int main(int argc, const char ** argv) {
     vec user_bias =      load_matrix_market_vector(training +"_U_bias.mm", false, true);
     vec item_bias =      load_matrix_market_vector(training +"_V_bias.mm", false, true);
     vec time_bias =      load_matrix_market_vector(training+ "_T_bias.mm", false, true);
-    vec last_item_bias = load_matrix_market_vector(training+"_L_bias.m", false, true);
+    vec last_item_bias = load_matrix_market_vector(training+"_L_bias.mm", false, true);
     for (uint i=0; i<M+N+K+M; i++){
       if (i < M)
 	latent_factors_inmem[i].bias = user_bias[i];
