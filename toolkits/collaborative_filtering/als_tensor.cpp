@@ -135,7 +135,8 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
     double regularization = lambda;
     if (regnormal)
       regularization *= vertex.num_edges();
-    for(int i=0; i < D; i++) XtX(i,i) += regularization;
+    for(int i=0; i < D; i++) 
+      XtX(i,i) += regularization;
 
     // Solve the least squares problem with eigen using Cholesky decomposition
     vdata.pvec = XtX.selfadjointView<Eigen::Upper>().ldlt().solve(Xty);
