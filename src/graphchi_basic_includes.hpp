@@ -85,11 +85,6 @@ namespace graphchi {
             t = strtok(NULL, delims);
         }
         
-        // Temporary promotion : to be removed
-        std::cout << "--------------ANNOUNCEMENT--------------" << std::endl;
-        std::cout << "Please help my Ph.D. study and fill a short survey: http://bit.ly/1llxUIz" << std::endl;
-        std::cout << "    * Thanks: Aapo Kyrola (developer of GraphChi)" << std::endl;
-        std::cout << "----------------------------------------" << std::endl;
         
     }
     
