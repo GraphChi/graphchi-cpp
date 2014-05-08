@@ -112,10 +112,12 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
     if (fgets(line, MM_MAX_LINE_LENGTH, f) == NULL) 
         return MM_PREMATURE_EOF;
 
-    if (sscanf(line, "%s %s %s %s %s", banner, mtx, crd, data_type, 
-        storage_scheme) != 5){
+    int rc;
+    if ((rc = sscanf(line, "%s %s %s %s %s", banner, mtx, crd, data_type, 
+        storage_scheme)) != 5){
         perror("Error: Failed to read matrix market header");
-        exit(1);
+        logstream(LOG_ERROR)<<"scanf returned " << rc << std::endl;
+        return MM_NO_HEADER;
     }
 
     for (p=mtx; *p!='\0'; *p=tolower(*p),p++);  /* convert to lower case */
