@@ -303,6 +303,12 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       time -= matlab_time_offset;
       if (time < 0 && add_time_edges)
         logstream(LOG_FATAL)<<"Time bins should be >= 1 in row " << i << std::endl;
+
+      //only for tensor ALS we add edges between user and time bin and also item and time bin
+      //time bins are numbered beteen M+N to M+N+K
+      if (add_time_edges)
+         time += (M+N);
+
       //avoid self edges
       if (square && I == J)
         continue;
@@ -313,13 +319,13 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
         if (type == TRAINING)
         globalMean += val;
         else globalMean2 += val;
-        sharderobj.preprocessing_add_edge(I, (square? J : (M + J)), als_edge_type(val, time+M+N));
+        sharderobj.preprocessing_add_edge(I, (square? J : (M + J)), als_edge_type(val, time));
       }
       //in case of a tensor, add besides of the user-> movie edge also
       //time -> user and time-> movie edges
       if (add_time_edges){
-        sharderobj.preprocessing_add_edge((uint)time + M + N, I, als_edge_type(val, M+J));
-        sharderobj.preprocessing_add_edge((uint)time + M + N, M+J , als_edge_type(val, I));
+        sharderobj.preprocessing_add_edge((uint)time, I, als_edge_type(val, M+J));
+        sharderobj.preprocessing_add_edge((uint)time, M+J , als_edge_type(val, I));
       }
     }
 
