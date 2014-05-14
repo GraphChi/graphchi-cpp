@@ -119,7 +119,7 @@ struct WALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeDat
       const edge_data & edge = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       Xty += nbr_latent.pvec * edge.weight * edge.time;      
-      XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose() * edge.time;
+      XtX.selfadjointView<Eigen::Upper>().rankUpdate(nbr_latent.pvec, edge.time);
       if (compute_rmse) {
         double prediction;
         rmse_vec[omp_get_thread_num()] += wals_predict(vdata, nbr_latent, edge.weight, prediction) * edge.time;

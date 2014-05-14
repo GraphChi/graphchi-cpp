@@ -131,7 +131,7 @@ struct ALSVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeData
       float observation = vertex.edge(e)->get_data();                
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];
       Xty += nbr_latent.pvec * observation;
-      XtX.triangularView<Eigen::Upper>() += nbr_latent.pvec * nbr_latent.pvec.transpose();
+      XtX.selfadjointView<Eigen::Upper>().rankUpdate(nbr_latent.pvec);
       if (compute_rmse) {
         double prediction;
         rmse_vec[omp_get_thread_num()] += als_predict(vdata, nbr_latent, observation, prediction);
