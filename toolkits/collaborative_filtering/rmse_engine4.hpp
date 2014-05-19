@@ -51,10 +51,10 @@ struct ValidationRMSEProgram4 : public GraphChiProgram<VertexDataType, EdgeDataT
     vertex_data & vdata = latent_factors_inmem[vertex.id()];
     for(int e=0; e < vertex.num_outedges(); e++) {
       double observation = vertex.edge(e)->get_data().weight;                
-      uint time = (uint)vertex.edge(e)->get_data().time - matlab_time_offset;
+      uint time = (uint)vertex.edge(e)->get_data().time;
       vertex_data * time_node = NULL;
       if (time_nodes){
-        assert(time >= 0 && time < M+N+K);
+        assert(time >= time_nodes_offset && time < time_nodes_offset+K);
         time_node = &latent_factors_inmem[time];
       }
       vertex_data & nbr_latent = latent_factors_inmem[vertex.edge(e)->vertex_id()];

@@ -263,7 +263,9 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       logstream(LOG_INFO) << "File " << base_filename << " was already preprocessed, won't do it again. " << std::endl;
       read_global_mean(base_filename, type);
     }
-    return nshards;
+    if (type == TRAINING)
+      time_nodes_offset = M+N;
+     return nshards;
   }
 
   sharder<als_edge_type> sharderobj(base_filename);
@@ -280,7 +282,10 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       logstream(LOG_FATAL)<<"Failed to open training input file: " << base_filename << std::endl;
   }
 
-  compute_matrix_size(nz, type); 
+  if (type == TRAINING)
+     time_nodes_offset = M+N;
+ 
+ compute_matrix_size(nz, type); 
 
   uint I, J;
   double val, time;
@@ -302,12 +307,12 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
       K = std::max((int)time, (int)K);
       time -= matlab_time_offset;
       if (time < 0 && add_time_edges)
-        logstream(LOG_FATAL)<<"Time bins should be >= 1 in row " << i << std::endl;
+        logstream(LOG_FATAL)<<"Time bins should be >= " << matlab_time_offset << " in row " << i << std::endl;
 
       //only for tensor ALS we add edges between user and time bin and also item and time bin
       //time bins are numbered beteen M+N to M+N+K
-      if (add_time_edges)
-         time += (M+N);
+      if (!weighted_als)
+         time += time_nodes_offset;
 
       //avoid self edges
       if (square && I == J)

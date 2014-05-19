@@ -51,7 +51,6 @@ timesvdpp_params tsp;
 
 bool is_user(vid_t id){ return id < M; }
 bool is_item(vid_t id){ return id >= M && id < N; }
-bool is_time(vid_t id){ return id >= M+N; }
 
 #define BIAS_POS -1
 
@@ -158,7 +157,7 @@ float time_svdpp_predict(const time_svdpp_usr & usr,
     double & prediction){
 
   //prediction = global_mean + user_bias + movie_bias
-  double pui  = globalMean + *usr.bu + *mov.bi;
+  double pui  = globalMean + *usr.bu + *mov.bi + *ptime.bt;
   for(int k=0;k<D;k++){
     // + user x movie factors 
     pui += (usr.ptemp[k] * mov.q[k]);
@@ -198,17 +197,16 @@ graphchi_engine<VertexDataType, EdgeDataType> * pvalidation_engine = NULL;
 std::vector<vertex_data> latent_factors_inmem;
 
 void init_time_svdpp_node_data(){
-  int k = D;
 #pragma omp parallel for
-  for (int u = 0; u < (int)M; u++) {
-    vertex_data & data = latent_factors_inmem[u];
-    data.pvec = zeros(4*k);
+  for (int i = 0; i < (int)M; i++) {
+    vertex_data & data = latent_factors_inmem[i];
+    data.pvec = zeros(4*D);
     time_svdpp_usr usr(data);
     *usr.bu = 0;
-    for (int m=0; m< k; m++){
-      usr.p[m] = 0.01*drand48() / (double) (k);
-      usr.pu[m] = 0.001 * drand48() / (double) (k);
-      usr.x[m] = 0.001 * drand48() / (double) (k);
+    for (int m=0; m< D; m++){
+      usr.p[m] = 0.01*drand48() / (double) (D);
+      usr.pu[m] = 0.001 * drand48() / (double) (D);
+      usr.x[m] = 0.001 * drand48() / (double) (D);
       usr.ptemp[m] = usr.p[m];
     }
   }
@@ -216,12 +214,24 @@ void init_time_svdpp_node_data(){
 #pragma omp parallel for
   for (int i = M; i < (int)(N+M); i++) {
     vertex_data & data = latent_factors_inmem[i];
-    data.pvec = zeros(2*k);
+    data.pvec = zeros(2*D);
     time_svdpp_movie movie(data);
     *movie.bi = 0;
-    for (int m = 0; m < k; m++){
-      movie.q[m] = 0.01 * drand48() / (double) (k);
-      movie.y[m] = 0.001 * drand48() / (double) (k);
+    for (int m = 0; m < D; m++){
+      movie.q[m] = 0.01 * drand48() / (double) (D);
+      movie.y[m] = 0.001 * drand48() / (double) (D);
+    }
+  }
+
+#pragma omp parallel for
+  for (int i = time_nodes_offset; i < (int)(time_nodes_offset+K); i++) {
+    vertex_data & data = latent_factors_inmem[i];
+    data.pvec = zeros(2*D);
+    time_svdpp_time timenode(data);
+    *timenode.bt = 0;
+    for (int m = 0; m < D; m++){
+      timenode.z[m] = 0.001 * drand48() / (double) (D);
+      timenode.pt[m] = 0.001 * drand48() / (double) (D);
     }
   }
 }
@@ -229,23 +239,9 @@ void init_time_svdpp_node_data(){
 void init_time_svdpp(){
   fprintf(stderr, "time-SVD++ %d factors\n", D);
 
-  int k = D;
-
   latent_factors_inmem.resize(M+N+K);
 
   init_time_svdpp_node_data();
-
-#pragma omp parallel for
-  for (int i = M+N; i < (int)(M+N+K); i++) {
-    vertex_data & data = latent_factors_inmem[i];
-    data.pvec = zeros(2*k);
-    time_svdpp_time timenode(data);
-    *timenode.bt = 0;
-    for (int m = 0; m < k; m++){
-      timenode.z[m] = 0.001 * drand48() / (double) (k);
-      timenode.pt[m] = 0.001 * drand48() / (double) (k);
-    }
-  }
 }
 
 
@@ -270,7 +266,7 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
       time_svdpp_usr usr(user);
 
       unsigned int userRatings = vertex.num_outedges();
-      double rRuNum = 1/sqrt(userRatings+10);
+      double rRuNum = 1/sqrt(userRatings+1);
       int dim = D;
       double sumY = 0.0;
 
@@ -289,19 +285,20 @@ struct TIMESVDPPVerticesInMemProgram : public GraphChiProgram<VertexDataType, Ed
       }
       vec sum = zeros(dim);
       for(int e=0; e < vertex.num_edges(); e++) {  
-        //edge_data & edge = scope.edge_data(oedgeid);
-        //float rui = edge.weight;
         float rui = vertex.edge(e)->get_data().weight; 
-        uint t = (uint)(vertex.edge(e)->get_data().time - 1); // we assume time bins start from 1
-        assert(t < M+N+K);
+
+        uint t = (uint)(vertex.edge(e)->get_data().time); 
+        assert(t >= time_nodes_offset && t < time_nodes_offset+K);
+        time_svdpp_time time(latent_factors_inmem[t]);
+
         vertex_data & data = latent_factors_inmem[vertex.edge(e)->vertex_id()];
         time_svdpp_movie mov(data);
-        time_svdpp_time time(latent_factors_inmem[t]);
         double pui = 0; 
         time_svdpp_predict(usr, mov, time, rui, pui);
         double eui = rui - pui;
         *usr.bu += tsp.lrate*(eui - tsp.beta* *usr.bu);
         *mov.bi += tsp.lrate * (eui - tsp.beta* *mov.bi);
+        *time.bt += tsp.lrate * (eui - tsp.beta* *time.bt);
 
         for (int k = 0; k < dim; k++) {
           double oldValue = mov.q[k];
