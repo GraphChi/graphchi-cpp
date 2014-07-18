@@ -82,7 +82,11 @@ struct ConnectedComponentsProgram : public GraphChiProgram<VertexDataType, EdgeD
         assert(gcontext.scheduler != NULL);
         
         /* On subsequent iterations, find the minimum label of my neighbors */
-        vid_t curmin = vertex.get_data();
+        vid_t curmin;
+        if(gcontext.iteration == 0)
+            curmin = vertex_values[vertex.id()];
+        else
+            curmin = vertex.get_data();
         for(int i=0; i < vertex.num_edges(); i++) {
             vid_t nblabel = neighbor_value(vertex.edge(i));
             curmin = std::min(nblabel, curmin);
