@@ -54,7 +54,7 @@ struct MyGraphChiProgram : public GraphChiProgram<VertexDataType, EdgeDataType> 
      */
     void update(graphchi_vertex<VertexDataType, EdgeDataType> &vertex, graphchi_context &gcontext) {
 
-        if (ginfo.iteration == 0) {
+        if (gcontext.iteration == 0) {
             /* On first iteration, initialize vertex (and its edges). This is usually required, because
                on each run, GraphChi will modify the data files. To start from scratch, it is easiest
                do initialize the program in code. Alternatively, you can keep a copy of initial data files. */
