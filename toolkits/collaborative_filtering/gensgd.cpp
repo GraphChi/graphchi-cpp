@@ -827,7 +827,7 @@ struct GensgdVerticesInMemProgram : public GraphChiProgram<VertexDataType, EdgeD
 
           vec grad =  sum - node_array[i]->pvec;
           vec step3 = gensgd_rate * (eui*grad + gensgd_regv * node_array[i]->pvec);
-          node_array[i]->pvec -= gensgd_rate * step3;
+          node_array[i]->pvec -= step3;
           stat3[omp_get_thread_num()] += fabs(step3[0]);
           assert(!std::isnan(node_array[i]->pvec[0]));
           assert(node_array[i]->pvec[0] < 1e5);
