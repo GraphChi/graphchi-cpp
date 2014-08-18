@@ -30,10 +30,10 @@ IMPLICIT_RATING_DISABLED = 0,
 IMPLICIT_RATING_RANDOM = 1
 };
 
-double implicitratingweight;
+double implicitratingweight = 1;
 double implicitratingvalue = -1;
-double implicitratingpercentage;
-int    implicitratingtype;
+double implicitratingpercentage = 0;
+int    implicitratingtype = IMPLICIT_RATING_DISABLED;
 
 template<typename als_edge_type>
 uint add_implicit_edges4(int type, sharder<als_edge_type>& shrd){

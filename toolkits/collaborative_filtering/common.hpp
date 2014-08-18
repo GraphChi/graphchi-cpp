@@ -167,11 +167,19 @@ void parse_command_line_args(){
     int rc = system(("rm -fR " + training + "_kfold_tmp_file").c_str());
     if (rc != 0)
       logstream(LOG_FATAL)<<"Failed to delete temp file. Please check permissions." << std::endl;
+    rc = system(("rm -fR " + training + "_kfold_tmp_file:info").c_str());
     //linking training to validation
     rc = system(("ln -s " + training + " " + training + "_kfold_tmp_file").c_str());
     if (rc != 0)  
       logstream(LOG_FATAL)<<"Failed to link temp file. Please check permissions." << std::endl;
     validation = training + "_kfold_tmp_file";
+    if (access((training + ":info").c_str(), F_OK ) != -1 ) {
+      rc = system(("ln -s " + training + ":info " + training + "_kfold_tmp_file:info").c_str());
+      if (rc != 0)  
+      logstream(LOG_FATAL)<<"Failed to link temp file. Please check permissions." << std::endl;
+    }
+
+
     clean_cache = 1;
   }
   regnormal = get_option_int("regnormal", regnormal);
