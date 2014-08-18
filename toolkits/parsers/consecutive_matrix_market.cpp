@@ -176,7 +176,7 @@ int main(int argc,  const char *argv[]) {
 
 	debug = get_option_int("debug", 0);
 	dir = get_option_string("file_list","");
-	filename = get_option_string("trianing","");
+	filename = get_option_string("training","");
 	lines = get_option_int("lines", 0);
 	omp_set_num_threads(get_option_int("ncpus", 1));
 	tsv = get_option_int("tsv", 0); //is this tab seperated file?
