@@ -357,6 +357,7 @@ int convert_matrixmarket4(std::string base_filename, bool add_time_edges = false
 
   // Shard with a specified number of shards, or determine automatically if not defined
   nshards = sharderobj.execute_sharding(get_option_string("nshards", "auto"));
+  logstream(LOG_INFO) << "Successfully finished sharding for " << base_filename<< std::endl;
 
   return nshards;
 }

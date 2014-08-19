@@ -48,7 +48,8 @@ uint add_implicit_edges4(int type, sharder<als_edge_type>& shrd){
   uint added = 0;
   uint toadd  = (uint)(implicitratingnumedges > 0 ? implicitratingnumedges : implicitratingpercentage*N*M);
   logstream(LOG_INFO)<<"Going to add: " << toadd << " implicit edges. " << std::endl;
-  assert(toadd >= 1);
+  if (toadd < 1)
+    logstream(LOG_FATAL)<<"Not able to add implicit edges, percentage or number of edges too small" << std::endl;
   for (uint j=0; j< toadd; j++){
     ivec item = ::randi(1,0,N-1);
     ivec user = ::randi(1,0,M-1);
@@ -69,9 +70,10 @@ uint add_implicit_edges(int type, sharder<als_edge_type>& shrd ){
   };
 
   uint added = 0;
-  uint toadd  = (uint)(implicitratingpercentage*N*M);
+  uint toadd  = (uint)(implicitratingnumedges > 0 ? implicitratingnumedges : implicitratingpercentage*N*M);
   logstream(LOG_INFO)<<"Going to add: " << toadd << " implicit edges. " << std::endl;
-  assert(toadd >= 1);
+  if (toadd < 1)
+    logstream(LOG_FATAL)<<"Not able to add implicit edges, percentage or number of edges too small" << std::endl;
   for (uint j=0; j< toadd; j++){
     ivec item = ::randi(1,0,N-1);
     ivec user = ::randi(1,0,M-1);
