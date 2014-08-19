@@ -247,7 +247,7 @@ struct AdPredictorVerticesInMemProgram : public GraphChiProgram<VertexDataType, 
 			double prediction;
 			double ret = ctr_predict(row, row, row.y, prediction);
                         double predicted_target = prediction < 0 ? -1: 1;
-			if (predicted_target == -1  && row.y == 1 || predicted_target == 1 && row.y == -1)
+			if ((predicted_target == -1  && row.y == 1) || (predicted_target == 1 && row.y == -1))
 				err_vec[omp_get_thread_num()] += 1.0;  
                         if (debug)
                                 std::cout<<"Prediction was: " << prediction << " real value: " << row.y << std::endl;
