@@ -99,9 +99,6 @@ void test_predictions(float (*prediction_func)(const vertex_data & user, const v
   uint Me, Ne;
   size_t nz;   
 
-  if (kfold_cross_validation > 0)
-    test = training;
-
   if ((f = fopen(test.c_str(), "r")) == NULL) {
     return; //missing test data, nothing to compute
   }
