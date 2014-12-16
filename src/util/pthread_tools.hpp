@@ -6,14 +6,13 @@
 #include <cstdlib>
 #include <memory.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include <sched.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <vector>
 #include <cassert>
 #include <list>
-#include <iostream> 
+#include <iostream>
 
 #undef _POSIX_SPIN_LOCKS
 #define _POSIX_SPIN_LOCKS -1
@@ -25,12 +24,12 @@
  * \file pthread_tools.hpp A collection of utilities for threading
  */
 namespace graphchi {
-    
-    
-    
+
+
+
     /**
-     * \class mutex 
-     * 
+     * \class mutex
+     *
      * Wrapper around pthread's mutex On single core systems mutex
      * should be used.  On multicore systems, spinlock should be used.
      */
@@ -62,14 +61,14 @@ namespace graphchi {
         }
         friend class conditional;
     }; // End of Mutex
-    
+
 #if _POSIX_SPIN_LOCKS >= 0
     // We should change this to use a test for posix_spin_locks eventually
-    
+
     // #ifdef __linux__
     /**
      * \class spinlock
-     * 
+     *
      * Wrapper around pthread's spinlock On single core systems mutex
      * should be used.  On multicore systems, spinlock should be used.
      * If pthread_spinlock is not available, the spinlock will be
@@ -84,8 +83,8 @@ namespace graphchi {
             int error = pthread_spin_init(&m_spin, PTHREAD_PROCESS_PRIVATE);
             assert(!error);
         }
-        
-        inline void lock() const { 
+
+        inline void lock() const {
             int error = pthread_spin_lock( &m_spin  );
             assert(!error);
         }
@@ -108,8 +107,8 @@ namespace graphchi {
     typedef mutex spinlock;
 #define SPINLOCK_SUPPORTED 0
 #endif
-    
-    
+
+
     /**
      * \class conditional
      * Wrapper around pthread's condition variable
@@ -148,40 +147,15 @@ namespace graphchi {
             assert(!error);
         }
     }; // End conditional
-    
-    /**
-     * \class semaphore
-     * Wrapper around pthread's semaphore
-     */
-    class semaphore {
-    private:
-        mutable sem_t  m_sem;
-    public:
-        semaphore() {
-            int error = sem_init(&m_sem, 0,0);
-            assert(!error);
-        }
-        inline void post() const {
-            int error = sem_post(&m_sem);
-            assert(!error);
-        }
-        inline void wait() const {
-            int error = sem_wait(&m_sem);
-            assert(!error);
-        }
-        ~semaphore() {
-            int error = sem_destroy(&m_sem);
-            assert(!error);
-        }
-    }; // End semaphore
-    
-         
-    
-    
+
+
+
+
+
 #define atomic_xadd(P, V) __sync_fetch_and_add((P), (V))
 #define cmpxchg(P, O, N) __sync_val_compare_and_swap((P), (O), (N))
 #define atomic_inc(P) __sync_add_and_fetch((P), 1)
-    
+
     /**
      * \class spinrwlock
      * rwlock built around "spinning"
@@ -190,7 +164,7 @@ namespace graphchi {
      * John Mellor-Crummey and Michael Scott
      */
     class spinrwlock {
-        
+
         union rwticket {
             unsigned u;
             unsigned short us;
@@ -209,45 +183,45 @@ namespace graphchi {
         inline void writelock() const {
             unsigned me = atomic_xadd(&l.u, (1<<16));
             unsigned char val = me >> 16;
-            
+
             while (val != l.s.write) sched_yield();
             writing = true;
         }
-        
+
         inline void wrunlock() const{
             rwticket t = *const_cast<rwticket*>(&l);
-            
+
             t.s.write++;
             t.s.read++;
-            
+
             *(volatile unsigned short *) (&l) = t.us;
             writing = false;
             __asm("mfence");
         }
-        
+
         inline void readlock() const {
             unsigned me = atomic_xadd(&l.u, (1<<16));
             unsigned char val = me >> 16;
-            
+
             while (val != l.s.read) sched_yield();
             l.s.read++;
         }
-        
+
         inline void rdunlock() const {
             atomic_inc(&l.s.write);
         }
-        
+
         inline void unlock() const {
             if (!writing) rdunlock();
             else wrunlock();
         }
     };
-    
+
 #undef atomic_xadd
 #undef cmpxchg
 #undef atomic_inc
-    
-    
+
+
     /**
      * \class rwlock
      * Wrapper around pthread's rwlock
@@ -283,7 +257,7 @@ namespace graphchi {
             unlock();
         }
     }; // End rwlock
-    
+
     /**
      * \class barrier
      * Wrapper around pthread's barrier
@@ -301,7 +275,7 @@ namespace graphchi {
         ~barrier() { pthread_barrier_destroy(&m_barrier); }
         inline void wait() const { pthread_barrier_wait(&m_barrier); }
     };
-    
+
 #else
     /**
      * \class barrier
@@ -313,32 +287,32 @@ namespace graphchi {
         int needed;
         int called;
         conditional c;
-        
+
         // we need the following to protect against spurious wakeups
         std::vector<unsigned char> waiting;
     public:
-        
+
         barrier(size_t numthreads) {
             needed = (int)numthreads;
             called = 0;
             waiting.resize(numthreads);
             std::fill(waiting.begin(), waiting.end(), 0);
         }
-        
+
         ~barrier() {}
-        
-        
+
+
         inline void wait() {
             m.lock();
             // set waiting;
             size_t myid = called;
             waiting[myid] = 1;
             called++;
-            
+
             if (called == needed) {
                 // if I have reached the required limit, wait up. Set waiting
                 // to 0 to make sure everyone wakes up
-                
+
                 called = 0;
                 // clear all waiting
                 std::fill(waiting.begin(), waiting.end(), 0);
@@ -352,23 +326,23 @@ namespace graphchi {
         }
     };
 #endif
-    
-    
-    
+
+
+
     inline void prefetch_range(void *addr, size_t len) {
         char *cp;
         char *end = (char*)(addr) + len;
-        
-        for (cp = (char*)(addr); cp < end; cp += 64) __builtin_prefetch(cp, 0); 
+
+        for (cp = (char*)(addr); cp < end; cp += 64) __builtin_prefetch(cp, 0);
     }
     inline void prefetch_range_write(void *addr, size_t len) {
         char *cp;
         char *end = (char*)(addr) + len;
-        
+
         for (cp = (char*)(addr); cp < end; cp += 64) __builtin_prefetch(cp, 1);
     }
-    
-    
-}; 
+
+
+};
 #endif
 
