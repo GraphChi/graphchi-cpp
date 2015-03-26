@@ -1,0 +1,3 @@
+This is our project for 613 Advanced Operating Systems.
+The three group members are Feiyu Yu, Zhijiao Liu and Jiacheng Gu. 
+Gu will be responsible for the setup of test environment, Liu will collect test data and Yu will mainly focus on analyzing the performance of GraphChi
