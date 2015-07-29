@@ -85,20 +85,20 @@ First, try:
 
 If compiler complains about missing "omp.h" (OpenMP library), here is a way you can install it:
 
-A) Direct installation of binary (on Yosemite)
+A. Direct installation of binary (on Yosemite)
 
 See intructions in https://wiki.helsinki.fi/display/HUGG/Installing+the+GNU+compilers+on+Mac+OS+X#InstallingtheGNUcompilersonMacOSX-InstructionsforMacOS10.10(Yosemite)withXcode6
 
 
-B) Using Homebrew
+B. Using Homebrew
 (Contributed by Jose Pablo Gonzalez):
-1) Install homebrew ( http://brew.sh )
-2) brew tap homebrew/versions 
-3) Install a compiler:
-brew install apple-gcc42
-4) Modify the Makefile to use the new compiler:
-CPP = g++-4.2
-5) make
+ 1. Install homebrew ( http://brew.sh )
+ 2. `brew tap homebrew/versions` 
+ 3. Install a compiler:
+`brew install apple-gcc42`
+ 4. Modify the Makefile to use the new compiler:
+`CPP = g++-4.2`
+ 5. `make`
 
 NOTE: you might want to use newer compiler version.
 
