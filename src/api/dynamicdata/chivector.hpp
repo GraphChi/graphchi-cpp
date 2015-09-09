@@ -137,6 +137,8 @@ public:
     
     void clear() {
         nsize = 0;
+	if(extensions != NULL)
+		extensions -> clear();
     }
     
     // TODO: iterators
