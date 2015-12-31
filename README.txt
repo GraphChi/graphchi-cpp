@@ -4,7 +4,7 @@ GraphChi is a powerful graph computation engine that can process very
 large graphs from the disk.
 
 For documentation and background, please visit: 
-       https://code.google.com/p/graphchi/
+       https://github.com/GraphChi/graphchi-cpp
 
 
 INSTALLATION
@@ -15,7 +15,7 @@ GraphChi does not require installation, it is headers-only. Simply type
 GETTING STARTED
 
 Start from the example applications. See instructions here:
-      https://code.google.com/p/graphchi/wiki/ExampleApps
+      https://github.com/GraphChi/graphchi-cpp/wiki/Example-Apps
 
 ... or simply type "make apps".
 
