@@ -1,6 +1,5 @@
 # GraphChi - disk-based large-scale graph computation
 
-**NOTE: This project has been recently moved from Google Code, and some of the wiki pages might be partly broken.**
 
 MIT Technology Review article about GraphChi: ["Your laptop can now analyze big data"](http://www.technologyreview.com/news/428497/your-laptop-can-now-analyze-big-data/?nlid=nldly&nld=2012-07-17)
 
