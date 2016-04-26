@@ -157,7 +157,7 @@ void analyze_labels2(std::string base_filename, FILE * pfile, int printtop = 20)
   /* Write output file */
   std::string outname = base_filename + "_components.txt";
   FILE * resf = fopen(outname.c_str(), "w");
-  if (resf == NULL) {
+  if (!resf) {
     logstream(LOG_ERROR) << "Could not write label outputfile : " << outname << std::endl;
     return;
   }
