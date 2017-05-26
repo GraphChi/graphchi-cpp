@@ -210,7 +210,7 @@ namespace graphchi {
     template <typename EdgeDataType, typename FinalEdgeDataType>
     void convert_edgelist(std::string inputfile, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj, bool multivalue_edges=false) {
         
-        FILE * inf = fopen(inputfile.c_str(), "r");
+        FILE * inf = fopen64(inputfile.c_str(), "r");
         size_t bytesread = 0;
         size_t linenum = 0;
         if (inf == NULL) {
@@ -295,7 +295,7 @@ namespace graphchi {
      */
     template <typename EdgeDataType, typename FinalEdgeDataType>
     void convert_adjlist(std::string inputfile, sharder<EdgeDataType, FinalEdgeDataType> &sharderobj) {
-        FILE * inf = fopen(inputfile.c_str(), "r");
+        FILE * inf = fopen64(inputfile.c_str(), "r");
         if (inf == NULL) {
             logstream(LOG_FATAL) << "Could not load :" << inputfile << " error: " << strerror(errno) << std::endl;
         }
@@ -464,7 +464,7 @@ namespace graphchi {
             if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
                 inputfile = dirname + "/" + inputfile;
                 std::cout << "Process: " << inputfile << std::endl;
-                FILE * inf = fopen(inputfile.c_str(), "r");
+                FILE * inf = fopen64(inputfile.c_str(), "r");
                 if (inf == NULL) {
                     logstream(LOG_FATAL) << "Could not load :" << inputfile << " error: " << strerror(errno) << std::endl;
                 }
@@ -540,7 +540,7 @@ namespace graphchi {
             if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
                 inputfile = dirname + "/" + inputfile;
                 std::cout << "Process: " << inputfile << std::endl;
-                FILE * inf = fopen(inputfile.c_str(), "r");
+                FILE * inf = fopen64(inputfile.c_str(), "r");
                 
                 while(!feof(inf)) {
                     vid_t from;
@@ -581,7 +581,7 @@ namespace graphchi {
             if (inputfile.find(prefix) == 0 && inputfile.find(".tmp") == inputfile.npos) {
                 inputfile = dirname + "/" + inputfile;
                 std::cout << "Process: " << inputfile << std::endl;
-                FILE * inf = fopen(inputfile.c_str(), "r");
+                FILE * inf = fopen64(inputfile.c_str(), "r");
                 
                 while(!feof(inf)) {
                     vid_t from;
