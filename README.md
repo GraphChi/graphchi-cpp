@@ -43,7 +43,7 @@ Java-version of GraphChi: https://github.com/GraphChi/graphchi-java
 
 ### Publication
 
-GraphChi is part of the OSDI'12 proceedings. PDF of the paper can be downloaded here: http://select.cs.cmu.edu/publications/paperdir/osdi2012-kyrola-blelloch-guestrin.pdf
+GraphChi is part of the OSDI'12 proceedings. PDF of the paper can be downloaded here: https://www.usenix.org/system/files/conference/osdi12/osdi12-final-126.pdf
 
 Slides (OSDI talk): http://www.cs.cmu.edu/~akyrola/files/osditalk-graphchi.pptx
 
