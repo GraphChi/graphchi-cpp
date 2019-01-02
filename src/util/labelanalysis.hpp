@@ -166,7 +166,7 @@ void analyze_labels(std::string basefilename, int printtop = 20) {
     std::string outname = basefilename + ".components";
     std::ofstream resf;
     resf.open(outname.c_str());
-    if (resf == NULL) {
+    if (resf.fail()) {
         logstream(LOG_ERROR) << "Could not write label outputfile : " << outname << std::endl;
         return;
     }
