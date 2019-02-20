@@ -1,0 +1,11 @@
+1 Put BP.cpp and HITS.cpp under the folder ./graphchi-cpp-master/example_apps
+
+2 Put toplistHITS.hpp and toplistBP.hpp under the folder ./graphchi-cpp-master/src/util
+
+3 Compile .cpp file using 
+	make example_apps/BP
+	make example_apps/HITS
+
+4 To run the program
+	bin/example_apps/HITS file ./folderName/fileName.txt  (It's relative path version, you also can use absolute path)
+	bin/example_apps/BP file ./folderName/fileName.txt
