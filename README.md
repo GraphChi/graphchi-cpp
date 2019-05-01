@@ -2,7 +2,7 @@
 
 **NOTE: This project has been recently moved from Google Code, and some of the wiki pages might be partly broken.**
 
-MIT Technology Review article about GraphChi: ["Your laptop can now analyze big data"](http://www.technologyreview.com/news/428497/your-laptop-can-now-analyze-big-data/?nlid=nldly&nld=2012-07-17)
+MIT Technology Review article about GraphChi: ["Your laptop can now analyze big data"](https://www.technologyreview.com/s/428497/your-laptop-can-now-analyze-big-data/)
 
 ### NEW: Improved performance.
 (October 21, 2013)
@@ -86,7 +86,7 @@ If compiler complains about missing "omp.h" (OpenMP library), here is a way you 
 
 A) Direct installation of binary (on Yosemite)
 
-See intructions in https://wiki.helsinki.fi/display/HUGG/Installing+the+GNU+compilers+on+Mac+OS+X#InstallingtheGNUcompilersonMacOSX-InstructionsforMacOS10.10(Yosemite)withXcode6
+See intructions in https://wiki.helsinki.fi/display/HUGG/GNU+compiler+install+on+Mac+OS+X
 
 
 B) Using Homebrew
