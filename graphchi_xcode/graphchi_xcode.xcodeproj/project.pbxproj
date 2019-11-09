@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		5F0A1FCF16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F0A1FCD16AB3E4E0066FB56 /* test_dynamicedata_loader.cpp */; };
 		5F10740318242CD3003DC44E /* pagerank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */; };
+		5F36B4B4189C199E006CA08D /* cc_contraction.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F36B4B3189C199E006CA08D /* cc_contraction.1 */; };
+		5F36B4BA189C19C6006CA08D /* cc_contraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F36B4B8189C19C6006CA08D /* cc_contraction.cpp */; };
 		5F56F71D159B78D300423ECE /* bulksync_functional_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F56F703159B771900423ECE /* bulksync_functional_test.cpp */; };
 		5F648EE617B82B9900EFEE76 /* stronglyconnectedcomponents.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F648EDE17B80D7800EFEE76 /* stronglyconnectedcomponents.cpp */; };
 		5F684D0717F3656700E1FA0A /* contractionresearch.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F684D0617F3656700E1FA0A /* contractionresearch.1 */; };
@@ -24,6 +26,16 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		5F36B4AD189C199E006CA08D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				5F36B4B4189C199E006CA08D /* cc_contraction.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 		5F54B84D15FD4D9F00B3842C /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -243,6 +255,11 @@
 		5F359BF615955CD100AF7672 /* functional_bulksync.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_bulksync.hpp; sourceTree = "<group>"; };
 		5F359BF715955D1B00AF7672 /* functional_defs.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = functional_defs.hpp; sourceTree = "<group>"; };
 		5F359BF81596B76200AF7672 /* graphchi_program.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_program.hpp; sourceTree = "<group>"; };
+		5F36B4AA189C18E5006CA08D /* contractionresearch.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = contractionresearch.cpp; sourceTree = "<group>"; };
+		5F36B4AF189C199E006CA08D /* cc_contraction */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = cc_contraction; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F36B4B1189C199E006CA08D /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		5F36B4B3189C199E006CA08D /* cc_contraction.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = cc_contraction.1; sourceTree = "<group>"; };
+		5F36B4B8189C19C6006CA08D /* cc_contraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cc_contraction.cpp; sourceTree = "<group>"; };
 		5F3B0889158AC5520058A8B1 /* graphchi_engine.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = graphchi_engine.hpp; sourceTree = "<group>"; };
 		5F41F79717B0068800C5FD90 /* atomic.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = atomic.hpp; sourceTree = "<group>"; };
 		5F41F79817B0068800C5FD90 /* binary_minheap.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = binary_minheap.hpp; sourceTree = "<group>"; };
@@ -274,7 +291,6 @@
 		5F648EEC17B82B9900EFEE76 /* SCC */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SCC; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F648FC017B94BB700EFEE76 /* unionfind_connectedcomps.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = unionfind_connectedcomps.cpp; sourceTree = "<group>"; };
 		5F64B8D417E7C25F003DC271 /* graphgenerators.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = graphgenerators.cpp; sourceTree = "<group>"; };
-		5F64B8D517E7C25F003DC271 /* graphgenerators.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphgenerators.h; sourceTree = "<group>"; };
 		5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = inmemconncomps.cpp; sourceTree = "<group>"; };
 		5F67654116AF31C500359562 /* vertex_data_dynamic.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = vertex_data_dynamic.hpp; sourceTree = "<group>"; };
 		5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = randomweightinject.cpp; sourceTree = "<group>"; };
@@ -446,6 +462,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		5F36B4AC189C199E006CA08D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5F54B84C15FD4D9F00B3842C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -568,6 +591,7 @@
 				5F74B03515D349EF00ED3EA9 /* graphlab_toolkit_ports */,
 				5F7A0FE31589162F00748D0D /* src */,
 				5F684D0317F3656700E1FA0A /* contractionresearch */,
+				5F36B4B0189C199E006CA08D /* cc_contraction */,
 				5F7A0FFC1589163E00748D0D /* Products */,
 			);
 			name = graphchi_xcode;
@@ -731,6 +755,15 @@
 			path = functional;
 			sourceTree = "<group>";
 		};
+		5F36B4B0189C199E006CA08D /* cc_contraction */ = {
+			isa = PBXGroup;
+			children = (
+				5F36B4B1189C199E006CA08D /* main.cpp */,
+				5F36B4B3189C199E006CA08D /* cc_contraction.1 */,
+			);
+			path = cc_contraction;
+			sourceTree = "<group>";
+		};
 		5F41F79617B0068800C5FD90 /* util */ = {
 			isa = PBXGroup;
 			children = (
@@ -751,7 +784,6 @@
 				5F41F7A517B0068800C5FD90 /* synchronized_queue.hpp */,
 				5F41F7A617B0068800C5FD90 /* toplist.hpp */,
 				5F64B8D417E7C25F003DC271 /* graphgenerators.cpp */,
-				5F64B8D517E7C25F003DC271 /* graphgenerators.h */,
 				5F684CED17ECDD2D00E1FA0A /* randomweightinject.cpp */,
 			);
 			path = util;
@@ -872,6 +904,7 @@
 				5FA2B40B16E8EF58005B2F53 /* jinlianglda */,
 				5F648EEC17B82B9900EFEE76 /* SCC */,
 				5F684D0217F3656700E1FA0A /* contractionresearch */,
+				5F36B4AF189C199E006CA08D /* cc_contraction */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1159,10 +1192,12 @@
 		5FCC1EBC1599F59A0003D0E9 /* example_apps */ = {
 			isa = PBXGroup;
 			children = (
+				5F36B4B8189C19C6006CA08D /* cc_contraction.cpp */,
 				5FCC1EC8159A03D50003D0E9 /* matrix_factorization */,
 				5FCC1EBD1599F59A0003D0E9 /* application_template.cpp */,
 				5FCC1EBE1599F59A0003D0E9 /* communitydetection.cpp */,
 				5FCC1EBF1599F59A0003D0E9 /* connectedcomponents.cpp */,
+				5F36B4AA189C18E5006CA08D /* contractionresearch.cpp */,
 				5F67653F16AF2EAF00359562 /* inmemconncomps.cpp */,
 				5FF774DD17B3E94100F84939 /* minimumspanningforest.cpp */,
 				5FCC1EC01599F59A0003D0E9 /* pagerank.cpp */,
@@ -1222,6 +1257,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		5F36B4AE189C199E006CA08D /* cc_contraction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F36B4B5189C199E006CA08D /* Build configuration list for PBXNativeTarget "cc_contraction" */;
+			buildPhases = (
+				5F36B4AB189C199E006CA08D /* Sources */,
+				5F36B4AC189C199E006CA08D /* Frameworks */,
+				5F36B4AD189C199E006CA08D /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = cc_contraction;
+			productName = cc_contraction;
+			productReference = 5F36B4AF189C199E006CA08D /* cc_contraction */;
+			productType = "com.apple.product-type.tool";
+		};
 		5F54B84915FD4D9F00B3842C /* test_dynamicedata */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5F54B84E15FD4D9F00B3842C /* Build configuration list for PBXNativeTarget "test_dynamicedata" */;
@@ -1539,11 +1591,20 @@
 				5FA2B40316E8EF58005B2F53 /* jinlianglda */,
 				5F648EE317B82B9900EFEE76 /* SCC */,
 				5F684D0117F3656700E1FA0A /* contractionresearch */,
+				5F36B4AE189C199E006CA08D /* cc_contraction */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5F36B4AB189C199E006CA08D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F36B4BA189C19C6006CA08D /* cc_contraction.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5F54B84A15FD4D9F00B3842C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1755,6 +1816,70 @@
 				);
 				SDKROOT = "";
 				USER_HEADER_SEARCH_PATHS = "../src/**";
+			};
+			name = Release;
+		};
+		5F36B4B6189C199E006CA08D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = "";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		5F36B4B7189C199E006CA08D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = "";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -2324,6 +2449,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		5F36B4B5189C199E006CA08D /* Build configuration list for PBXNativeTarget "cc_contraction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F36B4B6189C199E006CA08D /* Debug */,
+				5F36B4B7189C199E006CA08D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 		5F54B84E15FD4D9F00B3842C /* Build configuration list for PBXNativeTarget "test_dynamicedata" */ = {
 			isa = XCConfigurationList;
